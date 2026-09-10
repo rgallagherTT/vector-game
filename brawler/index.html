@@ -45,6 +45,13 @@
         background: #f2c14e; border: 3px solid #fff1c9; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       }
       #touch .super-btn:active { transform: scale(0.94); }
+      #touch .ultra-btn {
+        position: absolute; right: 118px; bottom: 132px; width: 64px; height: 64px; border-radius: 50%;
+        pointer-events: auto; touch-action: none; cursor: pointer;
+        font: 700 11px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.08em; color: #fff1c9;
+        background: #7a2cff; border: 3px solid #d9c2ff; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+      }
+      #touch .ultra-btn:active { transform: scale(0.94); }
       #select {
         position: fixed; inset: 0; z-index: 10;
         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
@@ -99,6 +106,15 @@
       #hud .countdown { min-width: 64px; text-align: center; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; color: #f2c14e; }
       #hud .countdown.idle { color: #6a6458; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; }
 
+      /* Ultra in play: name and seconds left. */
+      #hud-ultra {
+        position: fixed; top: 70px; left: 50%; transform: translateX(-50%); pointer-events: none; user-select: none;
+        padding: 6px 14px; border-radius: 4px; background: rgba(40, 20, 70, 0.8); border: 1px solid #7a2cff; color: #d9c2ff;
+        font: 700 13px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase;
+        font-variant-numeric: tabular-nums;
+      }
+      #hud-ultra.mine { border-color: #f2c14e; color: #fff1c9; }
+      #hud-ultra[hidden] { display: none; }
       #end {
         position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
         background: rgba(20, 22, 28, 0.82); color: #e6dfd0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -124,7 +140,7 @@
         #select .card .stats { font-size: 11px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DfJ2wxoy.js"></script>
+    <script type="module" crossorigin src="./assets/index-ndM2ik91.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -134,7 +150,8 @@
       <div class="countdown idle" id="hud-countdown">hold 10</div>
       <div class="team team-1"><span class="label">them</span><span class="count" id="hud-gems-1">0</span><span class="gem"></span></div>
     </div>
+    <div id="hud-ultra" hidden></div>
     <div id="end" hidden></div>
-    <div id="hint">WASD move · mouse aim · click shoot · Space Super</div>
+    <div id="hint">WASD move · mouse aim · click shoot · Space Super · Q Ultra</div>
   </body>
 </html>
