@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Brawler</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #14161c; }
+      #app { position: fixed; inset: 0; outline: none; }
+      canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
+      #hint {
+        position: fixed; right: 14px; bottom: 12px;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em;
+        color: #8f8878; pointer-events: none; user-select: none;
+      }
+      /* Names above fighters. */
+      #names { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+      #names .nameplate {
+        position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; user-select: none;
+        font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 0.03em;
+        color: #e6dfd0; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6);
+      }
+      #names .nameplate[hidden] { display: none; }
+      #names .nameplate.me { color: #f2c14e; }
+      #names .nameplate.ally { color: #8fe39a; }
+      #names .nameplate.enemy { color: #ff8a7a; }
+      /* Touch sticks (only mounted on touch devices). */
+      #touch { position: fixed; inset: 0; z-index: 5; pointer-events: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+      #touch .stick {
+        position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+        background: rgba(20, 22, 28, 0.35); border: 2px solid rgba(230, 223, 208, 0.35);
+      }
+      #touch .stick[hidden] { display: none; }
+      #touch .stick.aim { border-color: rgba(242, 193, 78, 0.6); }
+      #touch .knob {
+        position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+        background: rgba(230, 223, 208, 0.75);
+      }
+      #touch .stick.aim .knob { background: rgba(242, 193, 78, 0.85); }
+      #touch .super-btn {
+        position: absolute; right: 22px; bottom: 120px; width: 84px; height: 84px; border-radius: 50%;
+        pointer-events: auto; touch-action: none; cursor: pointer;
+        font: 700 13px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.08em; color: #14161c;
+        background: #f2c14e; border: 3px solid #fff1c9; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+      }
+      #touch .super-btn:active { transform: scale(0.94); }
+      #select {
+        position: fixed; inset: 0; z-index: 10;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+        background: radial-gradient(ellipse at center, #232630 0%, #14161c 70%);
+        color: #e6dfd0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      #select[hidden] { display: none; }
+      #select h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.04em; }
+      #select .cards { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; padding: 0 24px; }
+      #select .card {
+        width: 240px; padding: 22px 20px; border-radius: 6px; cursor: pointer; text-align: left;
+        display: flex; flex-direction: column; gap: 10px;
+        background: #1e2129; border: 1px solid #343846; color: inherit;
+        transition: transform 120ms ease, border-color 120ms ease;
+      }
+      #select .card:hover, #select .card:focus-visible { transform: translateY(-3px); border-color: #8f8878; outline: none; }
+      #select .card.selected { border-color: #f2c14e; background: #262a35; }
+      #select .actions { display: flex; gap: 12px; align-items: center; }
+      #select .actions input { padding: 11px 14px; border-radius: 6px; border: 1px solid #343846; background: #1e2129; color: #e6dfd0; font: 15px ui-sans-serif, system-ui, sans-serif; width: 180px; }
+      #select .actions input:focus { outline: none; border-color: #8f8878; }
+      #select .go { padding: 12px 22px; border-radius: 6px; border: 1px solid #8f8878; background: #1e2129; color: #e6dfd0; font: 600 15px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; }
+      #select .go.primary { border-color: #f2c14e; color: #f2c14e; }
+      #select .go:hover, #select .go:focus-visible { background: #262a35; outline: none; }
+      #select .card .name { font-size: 22px; font-weight: 700; letter-spacing: 0.03em; }
+      #select .card .role { font-size: 13px; line-height: 1.45; color: #b9b2a3; }
+      #select .card .stats { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #8f8878; letter-spacing: 0.02em; }
+      #select .card-bruiser .name { color: #ff7a3d; }
+      #select .card-stalker .name { color: #22b8c8; }
+      #select .card-hulk .name { color: #ff3d8a; }
+      #select .card-caster .name { color: #ffd23f; }
+      #select .card-skater .name { color: #7af0ff; }
+      #select .card-archer .name { color: #b9f2c9; }
+      #select .card-warlord .name { color: #ff6a2a; }
+      #select .cards { max-width: 1120px; }
+      #select .card { width: 220px; }
+      #select .select-hint { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #8f8878; letter-spacing: 0.02em; }
+
+      /* Match HUD: team gem counts flanking the countdown. */
+      #hud {
+        position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+        display: flex; align-items: center; gap: 18px; pointer-events: none; user-select: none;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #e6dfd0;
+      }
+      #hud[hidden] { display: none; }
+      #hud .team { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 4px; background: rgba(20, 22, 28, 0.75); border: 1px solid #343846; font-variant-numeric: tabular-nums; }
+      #hud .team .gem { width: 12px; height: 12px; transform: rotate(45deg); border-radius: 2px; }
+      #hud .team .count { font-size: 22px; font-weight: 700; min-width: 28px; text-align: center; }
+      #hud .team .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #b9b2a3; }
+      #hud .team-2 .gem { background: #4fbf5a; }
+      #hud .team-1 .gem { background: #d0533f; }
+      #hud .team.leading { border-color: #f2c14e; }
+      #hud .countdown { min-width: 64px; text-align: center; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; color: #f2c14e; }
+      #hud .countdown.idle { color: #6a6458; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; }
+
+      #end {
+        position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        background: rgba(20, 22, 28, 0.82); color: #e6dfd0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      #end[hidden] { display: none; }
+      #end h1 { margin: 0; font-size: 44px; letter-spacing: 0.06em; }
+      #end h1.win { color: #4fbf5a; }
+      #end h1.loss { color: #d0533f; }
+      #end p { margin: 0; color: #b9b2a3; font-variant-numeric: tabular-nums; }
+      #end button {
+        margin-top: 12px; padding: 12px 28px; border-radius: 6px; border: 1px solid #8f8878; background: #1e2129; color: #e6dfd0;
+        font: 600 15px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer;
+      }
+      #end button:hover, #end button:focus-visible { border-color: #f2c14e; outline: none; }
+      @media (pointer: coarse) {
+        #hint { display: none; }
+      }
+      @media (max-width: 1000px), (max-height: 600px) {
+        #select { gap: 14px; padding: 18px 0 32px; justify-content: flex-start; overflow-y: auto; box-sizing: border-box; }
+        #select h1 { font-size: 20px; }
+        #select .cards { gap: 10px; padding: 0 12px; }
+        #select .card { width: 150px; padding: 12px; gap: 6px; }
+        #select .card .stats { font-size: 11px; }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-DfJ2wxoy.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="select" hidden></div>
+    <div id="hud" hidden>
+      <div class="team team-2"><span class="gem"></span><span class="count" id="hud-gems-2">0</span><span class="label">you</span></div>
+      <div class="countdown idle" id="hud-countdown">hold 10</div>
+      <div class="team team-1"><span class="label">them</span><span class="count" id="hud-gems-1">0</span><span class="gem"></span></div>
+    </div>
+    <div id="end" hidden></div>
+    <div id="hint">WASD move · mouse aim · click shoot · Space Super</div>
+  </body>
+</html>
