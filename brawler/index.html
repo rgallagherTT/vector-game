@@ -113,6 +113,37 @@
       #hud .countdown { min-width: 64px; text-align: center; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; color: #f2c14e; }
       #hud .countdown.idle { color: #6a6458; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; }
 
+      /* Bottom-left: the player's own three abilities and their keys. */
+      #hud-abilities {
+        position: fixed; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px;
+        pointer-events: none; user-select: none; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      #hud-abilities[hidden] { display: none; }
+      #hud-abilities .ability {
+        display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 4px; min-width: 210px;
+        background: rgba(20, 22, 28, 0.75); border: 1px solid #343846; color: #b9b2a3; font-size: 12px; letter-spacing: 0.06em;
+      }
+      #hud-abilities .key { font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 3px 6px; border-radius: 3px; background: #2a2e3a; color: #e6dfd0; min-width: 34px; text-align: center; }
+      #hud-abilities .label { text-transform: uppercase; min-width: 44px; }
+      #hud-abilities .bar { flex: 1; height: 8px; border-radius: 4px; background: #2a2e3a; overflow: hidden; }
+      #hud-abilities .fill { display: block; height: 100%; width: 0; background: #8f8878; transition: width 120ms linear; }
+      #hud-abilities .super .fill { background: #f2c14e; }
+      #hud-abilities .ultra .fill { background: #9a5cff; }
+      #hud-abilities .pips { display: flex; gap: 6px; flex: 1; }
+      #hud-abilities .pip { width: 14px; height: 14px; border-radius: 50%; background: #4fbf5a; box-shadow: 0 0 6px rgba(79, 191, 90, 0.6); }
+      #hud-abilities .pip.spent { background: #3a3f4c; box-shadow: none; }
+      #hud-abilities .ability.ready { border-color: #f2c14e; color: #e6dfd0; }
+      #hud-abilities .ability.ready .label::after { content: ' · ready'; color: #f2c14e; }
+      #hud-abilities .clan.ready .label::after { content: ' · ready'; color: #4fbf5a; }
+      #hud-abilities .clan.empty .label::after { content: ' · spent'; color: #6a6458; }
+      #hud-abilities .ultra.ready { border-color: #9a5cff; }
+      #hud-abilities .ultra.ready .label::after { color: #d9c2ff; }
+      #hud-abilities .ability.ready .fill { animation: hudpulse 0.9s ease-in-out infinite alternate; }
+      @keyframes hudpulse { from { filter: brightness(1); } to { filter: brightness(1.6); } }
+      @media (pointer: coarse) {
+        #hud-abilities { left: 10px; bottom: 10px; transform: scale(0.85); transform-origin: left bottom; }
+        #hud-abilities .key { display: none; }
+      }
       /* Ultra in play: name and seconds left. */
       #hud-ultra {
         position: fixed; top: 70px; left: 50%; transform: translateX(-50%); pointer-events: none; user-select: none;
@@ -147,7 +178,7 @@
         #select .card .stats { font-size: 11px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Bxv_C_BK.js"></script>
+    <script type="module" crossorigin src="./assets/index-DlAUjlDN.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -158,6 +189,11 @@
       <div class="team team-1"><span class="label">them</span><span class="count" id="hud-gems-1">0</span><span class="gem"></span></div>
     </div>
     <div id="hud-ultra" hidden></div>
+    <div id="hud-abilities" hidden>
+      <div class="ability super"><span class="key">SPACE</span><span class="label">Super</span><span class="bar"><span class="fill"></span></span></div>
+      <div class="ability clan"><span class="key">Q</span><span class="label">Clan</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+      <div class="ability ultra"><span class="key">E</span><span class="label">Ultra</span><span class="bar"><span class="fill"></span></span></div>
+    </div>
     <div id="end" hidden></div>
     <div id="hint">WASD move · mouse aim · click shoot · Space Super · Q Clan · E Ultra</div>
   </body>
