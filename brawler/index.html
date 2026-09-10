@@ -96,6 +96,23 @@
       #select .card { width: 220px; }
       #select .select-hint { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #8f8878; letter-spacing: 0.02em; }
 
+      /* Game modes: one tile each, the chosen one lit. */
+      #select .modes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 1120px; padding: 0 12px; }
+      #select .mode {
+        display: flex; flex-direction: column; gap: 4px; width: 300px; padding: 10px 14px; text-align: left; cursor: pointer;
+        border-radius: 6px; border: 1px solid #343846; background: rgba(20, 22, 28, 0.85); color: #b9b2a3;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      #select .mode .name { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #e6dfd0; }
+      #select .mode .blurb { font-size: 12px; line-height: 1.4; }
+      #select .mode:hover, #select .mode:focus-visible { border-color: #8f8878; outline: none; }
+      #select .mode.selected { border-color: #f2c14e; box-shadow: 0 0 0 1px #f2c14e inset; }
+      #select .mode.selected .name { color: #f2c14e; }
+      #select .mode.mode-collapse.selected { border-color: #9fe0e6; box-shadow: 0 0 0 1px #9fe0e6 inset; }
+      #select .mode.mode-collapse.selected .name { color: #9fe0e6; }
+      #select .mode.mode-relay.selected { border-color: #ffd166; box-shadow: 0 0 0 1px #ffd166 inset; }
+      #select .mode:disabled { opacity: 0.35; cursor: default; }
+
       /* Match HUD: team gem counts flanking the countdown. */
       #hud {
         position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
@@ -112,6 +129,23 @@
       #hud .team.leading { border-color: #f2c14e; }
       #hud .countdown { min-width: 64px; text-align: center; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; color: #f2c14e; }
       #hud .countdown.idle { color: #6a6458; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; }
+      #hud .team[hidden], #hud .gem[hidden] { display: none; }
+      /* COLLAPSE: one wide readout; RELAY: gold status. */
+      #hud.mode-collapse .countdown { font-size: 18px; letter-spacing: 0.06em; color: #9fe0e6; padding: 6px 14px; border-radius: 4px; background: rgba(20, 22, 28, 0.75); border: 1px solid #343846; }
+      #hud.mode-collapse .countdown.idle { color: #b9b2a3; font-size: 15px; }
+      #hud.mode-relay .countdown { font-size: 15px; letter-spacing: 0.06em; color: #ffd166; max-width: 320px; }
+      #hud.mode-relay .countdown.idle { color: #8f8878; }
+      /* A short mode notice under the strip. */
+      #hud-notice {
+        position: fixed; top: 108px; left: 50%; transform: translateX(-50%); pointer-events: none; user-select: none;
+        padding: 6px 16px; border-radius: 4px; background: rgba(20, 22, 28, 0.8); border: 1px solid #f2c14e; color: #fff1c9;
+        font: 700 13px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase;
+        animation: noticein 180ms ease-out;
+      }
+      #hud-notice[hidden] { display: none; }
+      @keyframes noticein { from { transform: translateX(-50%) translateY(-6px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+      #hud-abilities.carrying .ability { border-color: #ffd166; }
+      #hud-abilities.carrying .super .label::before { content: 'CORE · '; color: #ffd166; }
 
       /* Bottom-left: the player's own three abilities and their keys. */
       #hud-abilities {
@@ -178,7 +212,7 @@
         #select .card .stats { font-size: 11px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DlAUjlDN.js"></script>
+    <script type="module" crossorigin src="/assets/index-DwsvjDcs.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -189,6 +223,7 @@
       <div class="team team-1"><span class="label">them</span><span class="count" id="hud-gems-1">0</span><span class="gem"></span></div>
     </div>
     <div id="hud-ultra" hidden></div>
+    <div id="hud-notice" hidden></div>
     <div id="hud-abilities" hidden>
       <div class="ability super"><span class="key">SPACE</span><span class="label">Super</span><span class="bar"><span class="fill"></span></span></div>
       <div class="ability clan"><span class="key">Q</span><span class="label">Clan</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
