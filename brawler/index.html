@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Brawler</title>
-    <meta name="build" content="2026-09-11 07:37" />
+    <meta name="build" content="2026-09-11 08:36" />
     <script>
       // Phones cache this page hard. Ask the server for the live stamp once; if it is newer, load
       // the fresh page under a new query so no cache can answer. No storage is used: the stamp
@@ -128,6 +128,8 @@
       #select .card-archer .name { color: #b9f2c9; }
       #select .card-warlord .name { color: #ff6a2a; }
       #select .card-chip .name { color: #d9a066; }
+      #select .card-daemon .name { color: #e8532a; }
+      #select .card .stats.q { color: #e8532a; }
       #select .cards { max-width: 1120px; }
       #select .card { width: 220px; }
       #select .select-hint { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #8f8878; letter-spacing: 0.02em; }
@@ -328,6 +330,11 @@
       #end .results .earn { color: #f2c14e; font-size: 20px; font-weight: 600; }
       #end .results .unlock { color: #7ef29a; }
       #end .results .wallet { color: #8f8878; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      #seized { position: fixed; inset: 0; z-index: 9; display: flex; align-items: flex-start; justify-content: center; padding-top: 14vh; pointer-events: none; }
+      #seized[hidden] { display: none; }
+      #seized .box { border: 3px solid #ff3d3d; padding: 14px 26px; color: #ff3d3d; font: 700 26px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; background: rgba(20, 22, 28, 0.6); animation: seizedPulse 1s ease-in-out infinite; }
+      #seized .box small { display: block; font-size: 13px; letter-spacing: 0.06em; color: #e6dfd0; margin-top: 6px; text-transform: none; }
+      @keyframes seizedPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
       #toast { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 20px); opacity: 0; z-index: 30; padding: 10px 16px; border-radius: 6px; border: 1px solid #8f8878; background: #1e2129; color: #e6dfd0; font: 13px ui-sans-serif, system-ui, sans-serif; transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
       #toast.show { opacity: 1; transform: translate(-50%, 0); }
       body.palette-deuteranopia #hud .team-1 .gem { background: #ffb000; }
@@ -340,7 +347,7 @@
         #select .srow { grid-template-columns: 1fr; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BQf0xQYg.js"></script>
+    <script type="module" crossorigin src="./assets/index-DlO19FTB.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -357,6 +364,7 @@
       <div class="ability clan"><span class="key">Q</span><span class="label">Clan</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
       <div class="ability ultra"><span class="key">E</span><span class="label">Ultra</span><span class="bar"><span class="fill"></span></span></div>
     </div>
+    <div id="seized" hidden><div class="box"><span class="what">SEIZED</span><small class="why">your fighter is being driven</small></div></div>
     <div id="end" hidden></div>
     <div id="hint">WASD move · mouse aim · click shoot · Space Super · Q Clan · E Ultra</div>
   </body>
