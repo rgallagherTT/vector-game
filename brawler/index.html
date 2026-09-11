@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Brawler</title>
-    <meta name="build" content="2026-09-11 04:36" />
+    <meta name="build" content="2026-09-11 07:27" />
     <script>
       // Phones cache this page hard. Ask the server for the live stamp once; if it is newer, load
       // the fresh page under a new query so no cache can answer. No storage is used: the stamp
@@ -260,6 +260,11 @@
       }
 
       /* --- menu: roster / loadout / profile / settings --- */
+      #select .play-switch { display: flex; gap: 0; border: 1px solid #343846; border-radius: 999px; overflow: hidden; }
+      #select .switch { padding: 6px 16px; border: 0; background: #1e2129; color: #b9b2a3; font: 600 12px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+      #select .switch.selected { background: #f2c14e; color: #14161c; }
+      #select.casual .card.selected { border-color: #7ef29a; }
+      #select.casual .wallet { color: #7ef29a; }
       #select.menu { justify-content: flex-start; padding: 22px 0 28px; gap: 16px; overflow-y: auto; box-sizing: border-box; }
       #select .menu-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
       #select .wallet { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #f2c14e; letter-spacing: 0.04em; }
@@ -335,7 +340,7 @@
         #select .srow { grid-template-columns: 1fr; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-T-l9UpSd.js"></script>
+    <script type="module" crossorigin src="./assets/index-BCM2Rapa.js"></script>
   </head>
   <body>
     <div id="app"></div>
