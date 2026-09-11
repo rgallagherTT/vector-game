@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Brawler</title>
-    <meta name="build" content="2026-09-11 02:48" />
+    <meta name="build" content="2026-09-11 03:52" />
     <script>
       // Phones cache this page hard. Ask the server for the live stamp once; if it is newer, load
       // the fresh page under a new query so no cache can answer. No storage is used: the stamp
@@ -258,8 +258,84 @@
         #select .card { width: 150px; padding: 12px; gap: 6px; }
         #select .card .stats { font-size: 11px; }
       }
+
+      /* --- menu: roster / loadout / profile / settings --- */
+      #select.menu { justify-content: flex-start; padding: 22px 0 28px; gap: 16px; overflow-y: auto; box-sizing: border-box; }
+      #select .menu-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      #select .wallet { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #f2c14e; letter-spacing: 0.04em; }
+      #select .tabs { display: flex; gap: 6px; }
+      #select .tab { padding: 8px 18px; border-radius: 6px; border: 1px solid #343846; background: #1e2129; color: #b9b2a3; font: 600 13px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+      #select .tab.selected { border-color: #f2c14e; color: #f2c14e; background: #262a35; }
+      #select .tab:hover, #select .tab:focus-visible { border-color: #8f8878; outline: none; }
+      #select .menu-body { width: min(1120px, 100%); display: flex; justify-content: center; }
+      #select .card.locked { opacity: 0.75; }
+      #select .card.locked .name { color: #8f8878; }
+      #select .card .mastery { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #f2c14e; letter-spacing: 0.04em; }
+      #select .card .mastery.lock { color: #8f8878; }
+      #select .buy, #select .equip { margin-top: 6px; padding: 7px 12px; border-radius: 5px; border: 1px solid #8f8878; background: #1e2129; color: #e6dfd0; font: 600 12px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; white-space: nowrap; }
+      #select .buy { border-color: #f2c14e; color: #f2c14e; }
+      #select .buy:disabled, #select .equip:disabled { opacity: 0.45; cursor: default; }
+      #select .buy:not(:disabled):hover, #select .equip:not(:disabled):hover { background: #262a35; }
+      #select .loadout, #select .profile, #select .settings { width: min(920px, 100%); padding: 0 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; }
+      #select h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.04em; }
+      #select h3 { margin: 0; font: 600 12px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #8f8878; }
+      #select .section { display: flex; flex-direction: column; gap: 6px; }
+      #select .row { display: grid; grid-template-columns: 150px 1fr 1fr auto; gap: 12px; align-items: center; padding: 8px 12px; border-radius: 6px; border: 1px solid #343846; background: rgba(20, 22, 28, 0.85); }
+      #select .row.equipped { border-color: #f2c14e; background: #262a35; }
+      #select .row.unowned { opacity: 0.8; }
+      #select .row .rname { font-weight: 700; letter-spacing: 0.04em; font-size: 14px; }
+      #select .row .gives, #select .row .takes { font-size: 13px; line-height: 1.4; }
+      #select .row .gives { color: #7ef29a; }
+      #select .row .takes { color: #ff8a7a; }
+      #select .row .equip { margin-top: 0; }
+      #select .muted { color: #8f8878; margin: 0; }
+      #select .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      #select .chip { padding: 8px 14px; border-radius: 999px; border: 1px solid #343846; background: #1e2129; color: #e6dfd0; font: 600 12px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; box-shadow: inset 0 0 0 2px var(--tint, transparent); }
+      #select .chip.selected { border-color: #f2c14e; }
+      #select .chip.unowned { opacity: 0.7; }
+      #select .chip:disabled { opacity: 0.4; cursor: default; }
+      #select .statgrid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 14px; }
+      #select .statgrid .k { color: #8f8878; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; align-self: center; }
+      #select .statgrid .v { font-variant-numeric: tabular-nums; }
+      #select .mastery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+      #select .mcell { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 6px; border: 1px solid #343846; background: rgba(20, 22, 28, 0.85); }
+      #select .mcell.locked { opacity: 0.55; }
+      #select .mname { font-weight: 700; letter-spacing: 0.03em; }
+      #select .mrank { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: #f2c14e; }
+      #select .mbar { display: block; height: 5px; border-radius: 3px; background: #343846; overflow: hidden; }
+      #select .mfill { display: block; height: 100%; background: #f2c14e; }
+      #select .mstat { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: #8f8878; }
+      #select .io { display: flex; gap: 10px; flex-wrap: wrap; }
+      #select .srow { display: grid; grid-template-columns: 260px 1fr; gap: 12px; align-items: center; font-size: 14px; }
+      #select .srow .k { color: #b9b2a3; }
+      #select .srow input[type=range] { width: 220px; accent-color: #f2c14e; }
+      #select .srow input[type=checkbox] { width: 18px; height: 18px; accent-color: #f2c14e; }
+      #select .srow select { padding: 7px 10px; border-radius: 5px; border: 1px solid #343846; background: #1e2129; color: #e6dfd0; font: 13px ui-sans-serif, system-ui, sans-serif; }
+      #select .keys { display: flex; flex-wrap: wrap; gap: 8px; }
+      #select .key { padding: 8px 12px; border-radius: 5px; border: 1px solid #343846; background: #1e2129; color: #e6dfd0; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer; }
+      #select .key:hover { border-color: #8f8878; }
+      #select .mode.locked { opacity: 0.8; }
+      #select .mode.locked .name { color: #8f8878; }
+      #select .mode .buy { align-self: flex-start; }
+      #select .go:disabled { opacity: 0.4; cursor: default; }
+      #end .results { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      #end .results p { margin: 0; }
+      #end .results .earn { color: #f2c14e; font-size: 20px; font-weight: 600; }
+      #end .results .unlock { color: #7ef29a; }
+      #end .results .wallet { color: #8f8878; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      #toast { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 20px); opacity: 0; z-index: 30; padding: 10px 16px; border-radius: 6px; border: 1px solid #8f8878; background: #1e2129; color: #e6dfd0; font: 13px ui-sans-serif, system-ui, sans-serif; transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
+      #toast.show { opacity: 1; transform: translate(-50%, 0); }
+      body.palette-deuteranopia #hud .team-1 .gem { background: #ffb000; }
+      body.palette-deuteranopia #hud .team-2 .gem { background: #3b8bff; }
+      body.palette-tritanopia #hud .team-1 .gem { background: #ff3d8a; }
+      body.palette-tritanopia #hud .team-2 .gem { background: #1fb3c8; }
+      @media (max-width: 1000px) {
+        #select .row { grid-template-columns: 1fr 1fr; }
+        #select .row .rname { grid-column: 1 / -1; }
+        #select .srow { grid-template-columns: 1fr; }
+      }
     </style>
-    <script type="module" crossorigin src="./assets/index-CtQ26mHG.js"></script>
+    <script type="module" crossorigin src="./assets/index-9f6Z1xsg.js"></script>
   </head>
   <body>
     <div id="app"></div>
