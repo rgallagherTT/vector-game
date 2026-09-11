@@ -4,6 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Brawler</title>
+    <meta name="build" content="2026-09-11 02:33" />
+    <script>
+      // Phones cache this page hard. Ask the server for the live stamp once; if it is newer, load
+      // the fresh page under a new query so no cache can answer. No storage is used: the stamp
+      // itself rides in the query, which also stops any reload loop.
+      (async () => {
+        try {
+          const meta = document.querySelector('meta[name="build"]');
+          const mine = meta ? meta.getAttribute('content') : '';
+          if (!mine || mine.startsWith('__')) return;
+          const res = await fetch(location.pathname, { cache: 'no-store' });
+          const live = (await res.text()).match(/name="build" content="([^"]+)"/);
+          const stamp = live ? live[1] : '';
+          if (stamp && stamp !== mine) {
+            const q = new URLSearchParams(location.search);
+            if (q.get('r') === stamp) return;
+            q.set('r', stamp);
+            location.replace(location.pathname + '?' + q.toString() + location.hash);
+          }
+        } catch {}
+      })();
+    </script>
     <link rel="icon" href="data:," />
     <style>
       html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #14161c; }
@@ -237,7 +259,7 @@
         #select .card .stats { font-size: 11px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Bkxff9f8.js"></script>
+    <script type="module" crossorigin src="./assets/index-DlqmXh_U.js"></script>
   </head>
   <body>
     <div id="app"></div>
