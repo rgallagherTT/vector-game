@@ -59,6 +59,19 @@
         background: #4fbf5a; border: 3px solid #c8f5cd; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       }
       #touch .clan-btn:active { transform: scale(0.94); }
+      /* The big one: basic attack. Bottom-right, under the thumb, hold to keep firing. */
+      #touch .fire-btn {
+        position: absolute; right: 22px; bottom: 22px; width: 128px; height: 128px; border-radius: 50%;
+        pointer-events: auto; touch-action: none; cursor: pointer;
+        font: 800 20px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.12em; color: #fff;
+        background: radial-gradient(circle at 40% 35%, #ff8a6a, #d0533f 70%); border: 4px solid #ffd2c4;
+        box-shadow: 0 6px 24px rgba(208, 83, 63, 0.55), inset 0 -6px 12px rgba(0, 0, 0, 0.25);
+      }
+      #touch .fire-btn.down, #touch .fire-btn:active { transform: scale(0.92); box-shadow: 0 2px 10px rgba(208, 83, 63, 0.5), inset 0 4px 10px rgba(0, 0, 0, 0.3); }
+      /* The other buttons make room for it. */
+      #touch .super-btn { right: 160px; bottom: 34px; }
+      #touch .ultra-btn { right: 46px; bottom: 166px; }
+      #touch .clan-btn { right: 136px; bottom: 132px; }
       #select {
         position: fixed; inset: 0; z-index: 10;
         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
@@ -224,7 +237,7 @@
         #select .card .stats { font-size: 11px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DIvcZ2Ew.js"></script>
+    <script type="module" crossorigin src="./assets/index-Bkxff9f8.js"></script>
   </head>
   <body>
     <div id="app"></div>
