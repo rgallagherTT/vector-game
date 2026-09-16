@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Brawler</title>
-    <meta name="build" content="2026-09-11 08:36" />
+    <meta name="build" content="2026-09-16 03:33" />
     <script>
       // Phones cache this page hard. Ask the server for the live stamp once; if it is newer, load
       // the fresh page under a new query so no cache can answer. No storage is used: the stamp
@@ -335,6 +335,8 @@
       #seized .box { border: 3px solid #ff3d3d; padding: 14px 26px; color: #ff3d3d; font: 700 26px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; background: rgba(20, 22, 28, 0.6); animation: seizedPulse 1s ease-in-out infinite; }
       #seized .box small { display: block; font-size: 13px; letter-spacing: 0.06em; color: #e6dfd0; margin-top: 6px; text-transform: none; }
       @keyframes seizedPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+      #hud-abilities .ability.far { opacity: 0.45; }
+      #hud-abilities .ability.far .label::after { content: ' · too far'; color: #8f8878; }
       #toast { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 20px); opacity: 0; z-index: 30; padding: 10px 16px; border-radius: 6px; border: 1px solid #8f8878; background: #1e2129; color: #e6dfd0; font: 13px ui-sans-serif, system-ui, sans-serif; transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
       #toast.show { opacity: 1; transform: translate(-50%, 0); }
       body.palette-deuteranopia #hud .team-1 .gem { background: #ffb000; }
@@ -347,7 +349,7 @@
         #select .srow { grid-template-columns: 1fr; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DlO19FTB.js"></script>
+    <script type="module" crossorigin src="./assets/index-C7xgXS5B.js"></script>
   </head>
   <body>
     <div id="app"></div>
