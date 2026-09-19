@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>VECTOR // Stage 1</title>
+<title>VECTOR</title>
 <style>
   :root {
     --cyan: #5ff2ff;
@@ -196,6 +196,26 @@
   #t-wing { left: 33%; top: 30%; width: 12vmin; height: 8vmin; max-width: 70px; max-height: 48px; }
   body.touch-mode #p-radar { transform: translateX(-50%) scale(0.7); transform-origin: bottom center; }
   body.touch-mode #p-status, body.touch-mode #p-weapons { bottom: auto; top: 46%; }
+
+  /* ---------- Stage 4: nametags, versus scoreboard, lobby ---------- */
+  #tags { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
+  .tag3d { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fe8ff; text-align: center; white-space: nowrap; }
+  .tag3d span { display: block; margin-bottom: 3px; text-shadow: 0 0 4px #000; }
+  .tag3d .bar { width: 60px; height: 3px; margin: 0 auto; border-color: rgba(159,232,255,0.5); } .tag3d .bar > i { background: #9fe8ff; }
+  .tag3d.foe { color: var(--red); } .tag3d.foe .bar { border-color: rgba(255,90,90,0.5); } .tag3d.foe .bar > i { background: var(--red); }
+  .tag3d.sel span { color: #fff; }
+  #obj-versus ul { list-style: none; margin: 4px 0 0; padding: 0; font-size: 11px; text-align: left; min-width: 220px; }
+  #obj-versus li { display: flex; gap: 8px; } #obj-versus li span { flex: 1; } #obj-versus li b { font-weight: 400; color: var(--amber); width: 26px; text-align: right; } #obj-versus li i { font-style: normal; color: var(--cyan-dim); width: 26px; text-align: right; }
+  #obj-versus li.me span { color: #fff; }
+  #vs-feed { color: var(--amber); margin-top: 4px; font-size: 10px; }
+  .lobby-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .lobby-top label { margin-left: 0; }
+  .card input[type=text] { pointer-events: auto; background: #03060c; color: var(--cyan); border: var(--line) solid var(--cyan-dim); font-family: var(--mono); font-size: 12px; padding: 6px 8px; letter-spacing: 0.1em; width: 170px; margin-left: 8px; }
+  .item button { float: right; padding: 4px 10px; font-size: 10px; margin: 0 0 0 8px; }
+  .item.host { border-color: var(--amber-dim); }
+  #lobby-party .w { font-size: 11px; padding: 3px 0; border-bottom: 1px dotted rgba(95,242,255,0.2); }
+  details summary { cursor: pointer; pointer-events: auto; margin-top: 12px; }
+  #lobby-status { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -243,6 +263,7 @@
     <div class="obj" id="obj-survive"><div class="label">Hold out</div><div class="big" id="ov-time">0:00</div><div class="small" id="ov-sub"></div></div>
     <div class="obj" id="obj-intercept"><div class="row"><div class="label">Breached</div><span class="big" id="oi-through">0</span><span class="small" id="oi-allowed">/ 3 allowed</span></div><div class="row"><div class="label">Bombers inbound</div><span id="oi-inbound">0</span></div></div>
     <div class="obj" id="obj-boss"><div class="row"><div class="label" id="ob-name">Boss</div><span id="ob-phase">Phase 1 / 3</span></div></div>
+    <div class="obj" id="obj-versus"><div class="row"><div class="label">Dogfight</div><span class="big" id="vs-clock">7:00</span></div><ul id="vs-board"></ul><div id="vs-feed"></div></div>
   </div>
   <div class="panel" id="p-boss">
     <div class="label" id="pb-name">Capital ship</div>
@@ -263,6 +284,7 @@
   <div id="ret-target" class="reticle"><i></i><i></i><i></i><i></i><div class="lockring"></div><div class="dist">0 m</div></div>
   <div id="ret-offscreen" class="reticle"><div class="arrow"></div><div class="dist">0 m</div></div>
 </div>
+<div id="tags"></div>
 <div id="touch">
   <div class="zone" id="stick"><i></i></div>
   <div class="tbtn" id="t-fire">Fire</div><div class="tbtn amber" id="t-msl">Msl</div><div class="tbtn amber" id="t-boost">Boost</div><div class="tbtn" id="t-brake">Brake</div>
@@ -285,7 +307,7 @@
     <div>Space — airbrake / drift</div><div>Q — ship special (Revenant)</div>
     <div>Esc — pause</div><div>M — mute &nbsp; V — wingmen engage / regroup</div>
   </div>
-  <div class="actions"><button id="btn-launch">Launch</button><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Co-op</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
+  <div class="actions"><button id="btn-launch">Launch</button><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
   <div class="small" id="b-coop-status"></div>
   <div class="foot">Ship: <span id="b-ship">Vanguard</span> &nbsp;·&nbsp; Credits: <span id="b-credits">0</span></div>
 </div></div>
@@ -323,12 +345,27 @@
   <div class="foot" id="hg-foot"></div>
 </div></div>
 
-<div class="screen" id="s-coop"><div class="card">
-  <h1>Co-op</h1><h2>Up to four pilots, one sortie — no server needed</h2>
-  <p>One of you hosts and runs the fight; the others join. Each joining pilot needs their own invite code: the host presses "Host a sortie" once per wingmate, sends that code over any chat, and pastes the reply back. Everyone flies, everyone draws fire, everyone can dock at the base. Downed pilots respawn there.</p>
-  <div class="small" id="coop-mode"></div>
-  <div class="actions"><button id="btn-host">Host a sortie</button><button id="btn-join" class="amber">Join a sortie</button></div>
-  <div class="coop-step" id="coop-host" style="display:none"><h3>1 · Send this invite code to your wingmate</h3><textarea id="coop-offer" readonly onfocus="this.select()"></textarea><h3>2 · Paste their reply code here</h3><textarea id="coop-answer" placeholder="reply code"></textarea><div class="actions"><button id="btn-coop-accept">Connect</button></div></div>
+<div class="screen" id="s-coop"><div class="card wide">
+  <h1>Lobby</h1><h2>Everyone with the game open shows up here — pick a callsign, host a sortie or join one</h2>
+  <div class="lobby-top"><label>Callsign<input type="text" id="lobby-name" maxlength="16" autocomplete="off" spellcheck="false"></label><button id="btn-name">Set</button><span class="small" id="lobby-me"></span></div>
+  <div class="hgrid">
+    <div><div class="small">Pilots online</div><div class="list" id="lobby-list" style="margin-top:6px"></div></div>
+    <div>
+      <div class="small">Your sortie</div>
+      <div class="actions" style="margin-top:6px"><button id="btn-host">Host co-op</button><button id="btn-host-vs" class="amber">Host versus</button></div>
+      <div class="list" id="lobby-party" style="margin-top:10px"></div>
+      <div class="small" id="coop-mode" style="margin-top:10px"></div>
+      <details id="coop-manual"><summary class="small">Manual codes (if the lobby is down)</summary>
+        <div class="actions"><button id="btn-manual-host">Host with a code</button><button id="btn-join" class="amber">Join with a code</button></div>
+        <div class="coop-step" id="coop-host" style="display:none"><h3>1 · Send this invite code to your wingmate</h3><textarea id="coop-offer" readonly onfocus="this.select()"></textarea><h3>2 · Paste their reply code here</h3><textarea id="coop-answer" placeholder="reply code"></textarea><div class="actions"><button id="btn-coop-accept">Connect</button></div></div>
+        <div class="coop-step" id="coop-guest" style="display:none"><h3>1 · Paste the host's invite code</h3><textarea id="coop-offer-in" placeholder="invite code"></textarea><div class="actions"><button id="btn-coop-answer">Generate reply code</button></div><h3>2 · Send this reply code back</h3><textarea id="coop-answer-out" readonly onfocus="this.select()"></textarea></div>
+      </details>
+    </div>
+  </div>
+  <div class="small" id="lobby-status"></div>
+  <div id="coop-status">Not connected.</div>
+  <div class="actions"><button id="btn-coop-back" class="amber">Back</button><button id="btn-coop-go" style="display:none">Continue</button><button id="btn-leave" style="display:none">Leave sortie</button></div>
+</div></div>
   <div class="coop-step" id="coop-guest" style="display:none"><h3>1 · Paste the host's invite code</h3><textarea id="coop-offer-in" placeholder="invite code"></textarea><div class="actions"><button id="btn-coop-answer">Generate reply code</button></div><h3>2 · Send this reply code back</h3><textarea id="coop-answer-out" readonly onfocus="this.select()"></textarea></div>
   <div id="coop-status">Not connected.</div>
   <div class="actions"><button id="btn-coop-back" class="amber">Back</button><button id="btn-coop-go" style="display:none">Continue</button></div>
@@ -553,6 +590,13 @@ const CONFIG = {
     dockRadius: 260, hullRepair: 14, shieldRepair: 45, heatCool: 0.6, secondaryRefill: 1.2, offset: { x: 0, y: -40, z: 620 },
   },
   net: { snapshotHz: 15, inputHz: 30, maxProjectiles: 300, respawnDelay: 8, stun: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] },
+  lobby: {                      // live lobby: presence (who is online, with callsigns) + WebRTC signalling over a Supabase Realtime channel (anon key is a public client key)
+    url: 'https://ovikcgljthlkspzbxtov.supabase.co',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aWtjZ2xqdGhsa3NwemJ4dG92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDUyNTUsImV4cCI6MjA5MjI4MTI1NX0.VMxDeDseju-2vZqgqFYBsC5lLjvhZRW7LbWEQLwYj1o',
+    channel: 'vector-lobby', lib: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm', joinTimeout: 25, maxPlayers: 4,
+  },
+  versus: { killsToWin: 10, timeLimit: 420, respawnDelay: 4, spawnRadius: 0.55, creditsPerKill: 40, baseCredits: 300 }, // free-for-all dogfight; spawnRadius is a fraction of the arena radius
+  map: { scale: 1.75 },         // multiplies every mission's arena radius, spawn position and capital placement — bigger maps, same encounters
   mobile: { stickRadius: 70, deadzone: 0.12, throttleRate: 0.9 },
   difficulty: {                 // global knobs — 1.0 everywhere is the original Stage 2 tuning
     enemyDamage: 0.55,          // multiplier on all damage the player takes
@@ -567,9 +611,9 @@ const CONFIG = {
   environment: {
     stars: 3200, starRadius: 9000,
     nebulae: 3,
-    asteroids: 260, asteroidInner: 500, asteroidOuter: 1500, asteroidMinSize: 6, asteroidMaxSize: 38, asteroidThickness: 320,
+    asteroids: 420, asteroidInner: 550, asteroidOuter: 2900, asteroidMinSize: 6, asteroidMaxSize: 44, asteroidThickness: 560,
     planetRadius: 2600, planetDistance: 7000,
-    stationPosition: { x: 600, y: 60, z: -900 },
+    stationPosition: { x: 1000, y: 60, z: -1500 },
   },
   fx: {
     explosionParticles: 90, explosionDebris: 14, debrisLife: 30, debrisSpeed: 45,
@@ -578,7 +622,7 @@ const CONFIG = {
     speedLines: 42,
   },
   hud: {
-    radarRange: 1200, radarSize: 180, textRate: 20, // text refresh Hz
+    radarRange: 1900, radarSize: 180, textRate: 20, // text refresh Hz
     shieldFlashTime: 0.35, damageFlashTime: 0.4,
   },
   audio: { master: 0.55, engine: 0.35, cannon: 0.35, explosion: 0.7, ui: 0.25 },
@@ -634,6 +678,8 @@ const GAME_DEFAULTS = () => ({
   loadout: { secondary: 'homing', module: 'none' },
   campaign: { kills: 0, shotsFired: 0, shotsHit: 0, cleanMissions: 0, creditsEarned: 0, missionsFlown: 0 },
   muted: false,
+  profile: { name: '' },        // callsign shown to everyone in the lobby and over your ship
+  mode: 'coop',                 // 'coop' (campaign missions together) | 'versus' (free-for-all dogfight)
 });
 const game = GAME_DEFAULTS();
 
@@ -1180,6 +1226,7 @@ class PlayerShip extends Ship {
     this.shieldBubble = null; this.engineSprites = []; this.engineLight = null; this.hullMats = [];
     this.shipId = 'vanguard'; this.secondary = 'homing'; this.dash = { active: 0, cooldown: 0 }; this.phased = false; this.secondaryTimer = 0;
     this.input = input; this.isPlayer = true; this.slot = 0; this.callsign = 'Vanguard'; this.respawnTimer = 0; this.docked = false; this.firedTick = false; this.template = shipTemplate;
+    this.active = true; // players are not pooled, but they must satisfy the targetable interface (versus mode targets them)
   }
   build(tint = CONFIG.ship.tint, template = this.template || shipTemplate) {
     this.template = template;
@@ -1256,7 +1303,7 @@ class PlayerShip extends Ship {
       const conv = _v[1].set(0, 0, -W.convergence).applyQuaternion(this.quat).add(this.pos);
       const dir = _v[2].subVectors(conv, muzzle).normalize();
       const vel = _v[3].copy(dir).multiplyScalar(W.projectileSpeed).addScaledVector(this.vel, W.inheritVelocity);
-      world.spawnProjectile(muzzle, vel, 'player', W.damage, W.projectileLife, W.projectileRadius);
+      world.spawnProjectile(muzzle, vel, 'player', W.damage, W.projectileLife, W.projectileRadius, this);
       this.gunSide = -this.gunSide; world.stats.shotsFired++; this.firedTick = true; if (this.input === input) { audio.cannon(); shake.add(W.muzzleShake); }
     }
     // secondary weapon (homing missiles by default; rockets / EMP via the hangar loadout) — see SECONDARIES
@@ -1601,17 +1648,18 @@ class ExplosionLights {
 class World {
   constructor() {
     this.player = new PlayerShip(); this.players = [this.player]; this.stats = null; this.arena = { center: V3(), radius: 2500 }; this.obstacles = []; this.time = 0;
+    this.pvp = false; // versus mode: player weapons hit other players (set per mission by the runner)
     this.allies = new Pool('allies', 4, (i) => new AllyShip(i)); this.base = null; this.events = []; this.netEvents = false;
     this.particles = new ParticleSystem(CONFIG.pools.particles); this.debris = new DebrisField(CONFIG.pools.debris);
     this.shockwaves = new Shockwaves(CONFIG.pools.shockwaves); this.lights = new ExplosionLights(CONFIG.pools.explosionLights);
     // projectiles — one InstancedMesh, per-instance color for team
     const P = CONFIG.pools.projectiles;
-    this.projectiles = new Pool('projectiles', P, () => ({ pos: V3(), prevPos: V3(), vel: V3(), life: 0, team: 'player', damage: 0, radius: 0.6 }));
+    this.projectiles = new Pool('projectiles', P, () => ({ pos: V3(), prevPos: V3(), vel: V3(), life: 0, team: 'player', damage: 0, radius: 0.6, owner: null }));
     const boltGeo = new THREE.BoxGeometry(0.28, 0.28, CONFIG.weapons.boltLength); boltGeo.translate(0, 0, CONFIG.weapons.boltLength * 0.5);
     this.boltMesh = new THREE.InstancedMesh(boltGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), P); this.boltMesh.frustumCulled = false; scene.add(this.boltMesh);
     this.boltColorPlayer = new THREE.Color(CONFIG.weapons.boltColor).multiplyScalar(2.4); this.boltColorEnemy = new THREE.Color(0xff5a3a).multiplyScalar(2.4); this.boltColorFriendly = new THREE.Color(0x7dffb0).multiplyScalar(2.2);
     // missiles
-    this.missiles = new Pool('missiles', CONFIG.pools.missiles, () => ({ pos: V3(), prevPos: V3(), vel: V3(), quat: new THREE.Quaternion(), life: 0, target: null, team: 'player', cfg: null, smoke: 0 }));
+    this.missiles = new Pool('missiles', CONFIG.pools.missiles, () => ({ pos: V3(), prevPos: V3(), vel: V3(), quat: new THREE.Quaternion(), life: 0, target: null, team: 'player', cfg: null, smoke: 0, owner: null }));
     const mGeo = new THREE.ConeGeometry(0.35, 3.2, 6); mGeo.rotateX(-Math.PI / 2);
     this.missileMesh = new THREE.InstancedMesh(mGeo, new THREE.MeshStandardMaterial({ color: 0xd9d9d9, emissive: CONFIG.missiles.color, emissiveIntensity: 1.2, flatShading: true }), CONFIG.pools.missiles); this.missileMesh.frustumCulled = false; scene.add(this.missileMesh);
     // enemies — pooled entities + one InstancedMesh per archetype + one shared glow InstancedMesh
@@ -1639,12 +1687,13 @@ class World {
   spawnAlly(pos, faceDir, leader, callsignIndex = 0) { const a = this.allies.acquire(); if (!a) return null; a.spawn(pos, faceDir, { player: leader || this.player, enemies: this.enemies.items, obstacles: this.obstacles, arena: this.arena, world: this, callsignIndex }); return a; }
   addFriendly(ship) { this.friendlies.push(ship); for (const sph of ship.hullSpheres) this.obstacles.push(sph); }
   liveCapitals() { return this.bosses.filter(b => b.alive); }
-  /** EMP burst: stuns every hostile fighter in radius, strips shields, lightly damages hull. */
-  empBurst(pos, cfg) {
+  /** EMP burst: stuns every hostile fighter in radius, strips shields, lightly damages hull. In versus it also strips rival pilots' shields. */
+  empBurst(pos, cfg, owner = null) {
     this.shockwaves.emit(pos, cfg.radius * 1.1); this.lights.emit(pos, 6000); audio.explosion(0.8); shake.add(0.3);
     for (let i = 0; i < 40; i++) { randomUnit(_v[0]).multiplyScalar(rand(80, 260)); this.particles.emit(pos, _v[0], 0.5, 5, 0x9fe8ff, 0.2); }
     let hit = 0;
-    this.enemies.forEachActive(e => { if (!e.alive || e.pos.distanceTo(pos) > cfg.radius) return; e.stun = Math.max(e.stun, cfg.stunTime); e.shield = Math.max(0, e.shield - cfg.shieldDamage); this.hitShip(e, cfg.hullDamage, e.pos, 'player'); hit++; });
+    this.enemies.forEachActive(e => { if (!e.alive || e.pos.distanceTo(pos) > cfg.radius) return; e.stun = Math.max(e.stun, cfg.stunTime); e.shield = Math.max(0, e.shield - cfg.shieldDamage); this.hitShip(e, cfg.hullDamage, e.pos, 'player', owner); hit++; });
+    if (this.pvp) for (const q of this.players) { if (q === owner || !q.alive || q.phased || q.pos.distanceTo(pos) > cfg.radius) continue; q.shield = Math.max(0, q.shield - cfg.shieldDamage); q.shieldFlash = 1; this.hitShip(q, cfg.hullDamage, q.pos, 'pvp', owner); hit++; }
     for (const b of this.bosses) if (b.alive) for (const sub of b.subsystems) if (sub.alive && sub.kind === 'turret' && sub.pos.distanceTo(pos) < cfg.radius) { sub.stun = cfg.stunTime * 0.6; hit++; }
     return hit;
   }
@@ -1659,15 +1708,17 @@ class World {
     for (const m of Object.values(this.enemyMeshes)) { for (let i = 0; i < CONFIG.pools.enemies; i++) m.setMatrixAt(i, this.hiddenMatrix); m.instanceMatrix.needsUpdate = true; }
     for (let i = 0; i < CONFIG.pools.enemies; i++) this.enemyGlow.setMatrixAt(i, this.hiddenMatrix); this.enemyGlow.instanceMatrix.needsUpdate = true;
   }
-  spawnProjectile(pos, vel, team, damage, life, radius) {
+  spawnProjectile(pos, vel, team, damage, life, radius, owner = null) {
     const p = this.projectiles.acquire(); if (!p) return null;
-    p.pos.copy(pos); p.prevPos.copy(pos); p.vel.copy(vel); p.team = team; p.damage = damage; p.life = life; p.radius = radius;
+    p.pos.copy(pos); p.prevPos.copy(pos); p.vel.copy(vel); p.team = team; p.damage = damage; p.life = life; p.radius = radius; p.owner = owner;
     this.boltMesh.setColorAt(p.poolIndex, team === 'player' ? this.boltColorPlayer : team === 'friendly' ? this.boltColorFriendly : this.boltColorEnemy); this.boltMesh.instanceColor.needsUpdate = true; return p;
   }
-  spawnMissile(pos, vel, quat, target, team, cfg) {
+  spawnMissile(pos, vel, quat, target, team, cfg, owner = null) {
     const m = this.missiles.acquire(); if (!m) return null;
-    m.pos.copy(pos); m.prevPos.copy(pos); m.vel.copy(vel); m.quat.copy(quat); m.target = target; m.team = team; m.cfg = cfg; m.life = cfg.life; m.smoke = 0; return m;
+    m.pos.copy(pos); m.prevPos.copy(pos); m.vel.copy(vel); m.quat.copy(quat); m.target = target; m.team = team; m.cfg = cfg; m.life = cfg.life; m.smoke = 0; m.owner = owner; return m;
   }
+  /** Versus: live rival pilots for a given shooter (everyone but the shooter). */
+  rivalsOf(shooter) { const out = []; for (const q of this.players) if (q !== shooter && q.alive) out.push(q); return out; }
   spawnEnemy(type, pos, faceDir, opts) {
     const e = this.enemies.acquire(); if (!e) { console.warn('[pool] enemy pool exhausted'); return null; }
     e.spawn(type, pos, faceDir, { player: this.player, enemies: this.enemies.items, obstacles: this.obstacles, arena: this.arena, world: this }, opts); return e;
@@ -1685,16 +1736,18 @@ class World {
   }
   sparks(pos, n, color = 0x9fe8ff) { for (let i = 0; i < n; i++) { randomUnit(_v[0]).multiplyScalar(rand(8, 40)); this.particles.emit(pos, _v[0], rand(0.2, 0.5), rand(2, 4), color, 2); } }
   // ---------- damage ----------
-  hitShip(ship, damage, hitPoint, source) {
+  hitShip(ship, damage, hitPoint, source, attacker = null) {
     if (ship.isSubsystem) return this.hitSubsystem(ship, damage, hitPoint, source);
     if (ship.isCapital) return this.hitCapital(ship, damage, hitPoint, source);
     if (ship.isAlly) { const r = ship.takeDamage(damage, hitPoint); this.sparks(hitPoint, 3, r.hullHit ? 0xffb060 : 0x7dffb0); if (r.killed && ship.alive) { ship.alive = false; this.explode(ship.pos, 1.2, 0x7dffb0); ship.respawnTimer = CONFIG.allies.respawnDelay; if (this.onAllyKilled) this.onAllyKilled(ship); this.allies.release(ship); } return r; }
     if (ship.team === 'friendly') { const r = ship.takeDamage(damage, hitPoint); this.sparks(hitPoint, 3, r.hullHit ? 0xffb060 : 0x9fe8ff); if (r.killed && ship.alive) { ship.alive = false; this.explode(ship.pos, 3, 0xffa040); if (this.onFriendlyKilled) this.onFriendlyKilled(ship); } return r; }
-    if (ship.isPlayer) damage *= CONFIG.difficulty.enemyDamage;
+    const pvpHit = ship.isPlayer && attacker && attacker.isPlayer && attacker !== ship; // pilot-on-pilot damage is not scaled by the AI difficulty knob
+    if (ship.isPlayer && !pvpHit) damage *= CONFIG.difficulty.enemyDamage;
     const r = ship.takeDamage(damage, hitPoint);
     if (ship.isPlayer) {
       const local = ship === this.player; this.stats.damageTaken += damage; if (r.hullHit) { this.stats.hullDamageTaken += damage; if (local) { audio.hullHit(); shake.add(0.35); } } else if (r.shieldHit && local) { audio.shieldHit(); shake.add(0.12); }
-      if (r.killed && ship.alive) { ship.alive = false; ship.docked = false; this.explode(ship.pos, 1.6, 0x66ccff); if (this.onPlayerKilled) this.onPlayerKilled(ship); }
+      if (pvpHit) { if (attacker === this.player) this.stats.shotsHit++; this.sparks(hitPoint, 3, r.hullHit ? 0xffb060 : 0x9fe8ff); }
+      if (r.killed && ship.alive) { ship.alive = false; ship.docked = false; this.explode(ship.pos, 1.6, 0x66ccff); if (pvpHit && attacker === this.player) this.stats.kills++; if (this.onPlayerKilled) this.onPlayerKilled(ship, pvpHit ? attacker : null); }
     } else {
       if (source === 'player') this.stats.shotsHit++;
       this.sparks(hitPoint, 3, r.hullHit ? 0xffb060 : 0x9fe8ff);
@@ -1740,8 +1793,9 @@ class World {
       p.life -= dt; if (p.life <= 0) return this.projectiles.release(p);
       p.pos.addScaledVector(p.vel, dt);
       if (p.team === 'player') {
-        for (const e of this.enemies.items) { if (!e.active || !e.alive) continue; if (sweptHit(p.prevPos, p.pos, e.pos, e.radius + p.radius, _v[0])) { this.hitShip(e, p.damage, _v[0], 'player'); return this.projectiles.release(p); } }
+        for (const e of this.enemies.items) { if (!e.active || !e.alive) continue; if (sweptHit(p.prevPos, p.pos, e.pos, e.radius + p.radius, _v[0])) { this.hitShip(e, p.damage, _v[0], 'player', p.owner); return this.projectiles.release(p); } }
         for (const b of this.bosses) { if (!b.alive) continue; const hit = b.sweptTest(p.prevPos, p.pos, p.radius, _v[0]); if (hit) { this.hitShip(hit, p.damage, _v[0], 'player'); return this.projectiles.release(p); } }
+        if (this.pvp) for (const q of this.players) { if (q === p.owner || !q.alive || q.phased) continue; if (sweptHit(p.prevPos, p.pos, q.pos, q.radius + p.radius, _v[0])) { this.hitShip(q, p.damage, _v[0], 'pvp', p.owner); return this.projectiles.release(p); } }
       } else {
         if (p.team === 'enemy') { for (const q of this.players) if (q.alive && !q.phased && sweptHit(p.prevPos, p.pos, q.pos, q.radius + p.radius, _v[0])) { this.hitShip(q, p.damage, _v[0], 'enemy'); return this.projectiles.release(p); } for (const a of this.allies.items) if (a.active && a.alive && sweptHit(p.prevPos, p.pos, a.pos, a.radius + p.radius, _v[0])) { this.hitShip(a, p.damage, _v[0], 'enemy'); return this.projectiles.release(p); } }
         if (p.team === 'enemy') for (const f of this.friendlies) { if (!f.alive) continue; const hit = f.sweptTest(p.prevPos, p.pos, p.radius, _v[0]); if (hit) { this.hitShip(hit, p.damage, _v[0], 'enemy'); return this.projectiles.release(p); } }
@@ -1758,11 +1812,12 @@ class World {
       const f2 = _v[0].set(0, 0, -1).applyQuaternion(m.quat); const spd = Math.min(cfg.speed, m.vel.length() + cfg.accel * dt);
       m.vel.lerp(_v[1].copy(f2).multiplyScalar(spd), 1 - Math.exp(-6 * dt)); m.pos.addScaledVector(m.vel, dt);
       m.smoke += dt; if (m.smoke > 0.03) { m.smoke = 0; this.particles.emit(m.pos, _v[2].copy(m.vel).multiplyScalar(-0.1), 0.6, 3, 0xffb060, 1); }
-      if (t && sweptHit(m.prevPos, m.pos, t.pos, t.radius + cfg.fuseRadius, _v[0])) { this.hitShip(t, cfg.damage, m.pos, m.team); this.explode(m.pos, 0.6); return this.missiles.release(m); }
+      if (t && !(t.isPlayer && t.phased) && sweptHit(m.prevPos, m.pos, t.pos, t.radius + cfg.fuseRadius, _v[0])) { this.hitShip(t, cfg.damage, m.pos, t.isPlayer ? 'pvp' : m.team, m.owner); this.explode(m.pos, 0.6); return this.missiles.release(m); }
       if (!t) { // dumbfire / lost lock: hit whatever is in the way
         const mr = cfg.radius || 1;
-        for (const e of this.enemies.items) { if (!e.active || !e.alive) continue; if (sweptHit(m.prevPos, m.pos, e.pos, e.radius + mr, _v[0])) { this.hitShip(e, cfg.damage, _v[0], m.team); this.explode(m.pos, 0.6); return this.missiles.release(m); } }
+        for (const e of this.enemies.items) { if (!e.active || !e.alive) continue; if (sweptHit(m.prevPos, m.pos, e.pos, e.radius + mr, _v[0])) { this.hitShip(e, cfg.damage, _v[0], m.team, m.owner); this.explode(m.pos, 0.6); return this.missiles.release(m); } }
         for (const b of this.bosses) { if (!b.alive) continue; const hit = b.sweptTest(m.prevPos, m.pos, mr, _v[0]); if (hit) { this.hitShip(hit, cfg.damage, _v[0], m.team); this.explode(m.pos, 0.6); return this.missiles.release(m); } }
+        if (this.pvp && m.team === 'player') for (const q of this.players) { if (q === m.owner || !q.alive || q.phased) continue; if (sweptHit(m.prevPos, m.pos, q.pos, q.radius + mr, _v[0])) { this.hitShip(q, cfg.damage, _v[0], 'pvp', m.owner); this.explode(m.pos, 0.6); return this.missiles.release(m); } }
       }
       for (const a of this.obstacles) if (!a.owner && sweptHit(m.prevPos, m.pos, a.pos, a.radius + 1, _v[0])) { this.explode(m.pos, 0.6); return this.missiles.release(m); }
     });
@@ -1773,6 +1828,12 @@ class World {
       if (!e.alive) return; this.collideWithObstacles(e, dt);
       for (const q of this.players) if (q.alive) { const d = _v[0].subVectors(e.pos, q.pos); const min = e.radius + q.radius; const dist = d.length(); if (dist < min && dist > 0.01) { d.normalize(); e.pos.addScaledVector(d, (min - dist) * 0.5); q.pos.addScaledVector(d, -(min - dist) * 0.5); const dmg = CONFIG.enemies.common.collisionDamage; this.hitShip(e, dmg, e.pos, 'collision'); this.hitShip(q, dmg, q.pos, 'collision'); q.vel.addScaledVector(d, -60); } }
     });
+    // pilots ramming each other (any mode): push apart, both take collision damage
+    for (let i = 0; i < this.players.length; i++) for (let j = i + 1; j < this.players.length; j++) {
+      const a = this.players[i], b = this.players[j]; if (!a.alive || !b.alive || a.phased || b.phased) continue;
+      const d = _v[0].subVectors(a.pos, b.pos); const min = a.radius + b.radius; const dist = d.length();
+      if (dist < min && dist > 0.01) { d.normalize(); a.pos.addScaledVector(d, (min - dist) * 0.5); b.pos.addScaledVector(d, -(min - dist) * 0.5); const dmg = CONFIG.enemies.common.collisionDamage; this.hitShip(a, dmg, a.pos, 'collision'); this.hitShip(b, dmg, b.pos, 'collision'); a.vel.addScaledVector(d, 50); b.vel.addScaledVector(d, -50); }
+    }
     // arena: soft push back on every player
     for (const q of this.players) { const out = _v[0].subVectors(q.pos, this.arena.center); const dist = out.length(); q.outsideArena = dist > this.arena.radius * CONFIG.mission.arenaWarnFraction; if (dist > this.arena.radius) q.vel.addScaledVector(out.normalize(), -CONFIG.mission.arenaPushForce * dt * (dist / this.arena.radius)); }
     updateBase(this, dt);
@@ -1924,8 +1985,8 @@ function updateHUD(dt, alpha) {
     H['h-heat-t'].textContent = pl.overheated ? 'OVERHEAT' : fmt(pl.heat * 100) + '%'; H['h-heat-t'].classList.toggle('heat-warn', pl.overheated);
     H['h-missiles'].textContent = String(pl.missiles); H['h-lock-t'].textContent = SECONDARIES[pl.secondary].needsLock ? (pl.locked ? 'LOCK' : pl.lockProgress > 0 ? 'ACQ' : '--') : 'FREE'; H['h-sec-label'].textContent = SECONDARIES[pl.secondary].label;
     const sp = SHIPS[pl.shipId]?.special; H['h-dash-row'].style.display = sp ? 'flex' : 'none'; if (sp) { setBar(H['h-dash'], pl.dash.active > 0 ? 1 : 1 - pl.dash.cooldown / sp.cooldown); H['h-dash-t'].textContent = pl.dash.active > 0 ? 'PHASE' : pl.dash.cooldown > 0 ? fmt(pl.dash.cooldown, 1) : 'RDY'; }
-    H['h-tname'].textContent = t ? t.name.toUpperCase() : 'NONE'; H['h-trange'].textContent = t ? `${fmt(t.pos.distanceTo(pl.pos))} m` : '--';
-    H['h-hostiles'].textContent = String(world.countEnemies()); H['h-wave'].textContent = mission.statusText;
+    H['h-tname'].textContent = t ? (t.isPlayer ? t.callsign || t.name : t.name).toUpperCase() : 'NONE'; H['h-trange'].textContent = t ? `${fmt(t.pos.distanceTo(pl.pos))} m` : '--';
+    H['h-hostiles'].textContent = String(world.pvp ? world.rivalsOf(pl).length : world.countEnemies()); H['h-wave'].textContent = mission.statusText;
     H['p-warn'].classList.toggle('on', !!pl.outsideArena); if (pl.outsideArena) H['p-warn'].textContent = 'Return to combat zone';
     if (CONFIG.render.showFps) { H.fps.classList.add('on'); fpsAcc += dt; fpsN++; if (fpsAcc >= 0.5) { H.fps.textContent = `${Math.round(fpsN / fpsAcc)} fps · ${renderer.info.render.calls} calls`; fpsAcc = 0; fpsN = 0; } } else H.fps.classList.remove('on');
   }
@@ -1953,6 +2014,8 @@ function drawRadar(pl) {
   for (const b of world.bosses) if (b.alive) plot(b.pos, '#ff5a5a', 5, pl.target === b || (pl.target && pl.target.boss === b), true);
   for (const f of world.friendlies) if (f.alive) plot(f.pos, '#7dffb0', 4, false, true);
   world.enemies.forEachActive(e => { if (e.alive) plot(e.pos, e.type === 'ace' || e.type === 'core' ? '#ff5a5a' : e.type === 'gunship' ? '#ffd27a' : e.type === 'bomber' ? '#ff7a3a' : e.type === 'support' ? '#7dffb0' : '#ffb347', e.type === 'gunship' || e.type === 'bomber' ? 3 : 2, e === pl.target, false); });
+  world.allies.forEachActive(a => { if (a.alive) plot(a.pos, '#7dffb0', 2, false, false); });
+  for (const q of world.players) if (q !== pl && q.alive) plot(q.pos, world.pvp ? '#ff5a5a' : '#9fe8ff', 3, q === pl.target, true); // other pilots: hostile red in versus, pale cyan in co-op
   g.fillStyle = '#5ff2ff'; g.beginPath(); g.moveTo(c, c - 5); g.lineTo(c + 4, c + 4); g.lineTo(c - 4, c + 4); g.closePath(); g.fill();
 }
 
@@ -2009,13 +2072,14 @@ const OBJECTIVE_HANDLERS = {
 let squadTimer = 0;
 function updateSquadHUD(dt = 1 / 60) {
   const pl = world.player; squadTimer += dt; if (squadTimer < 0.15) return; squadTimer = 0;
+  $('p-wing').style.display = world.pvp ? 'none' : ''; // no wingmen in a dogfight
   const list = world.allies.items.filter(a => a.active); const held = world.allyRespawn ? world.allyRespawn.length : 0;
   $('wing-list').innerHTML = list.map(a => `<div class="w ${a.alive ? '' : 'dead'}"><span>${a.callsign}</span><div class="bar green"><i style="transform:scaleX(${clamp(a.hull / a.maxHull, 0, 1).toFixed(2)})"></i></div></div>`).join('') + (held ? `<div class="w dead"><span>${held} rearming at base</span></div>` : '');
   $('wing-stance').textContent = `V — ${world.allyStance === 'engage' ? 'engage (press to regroup)' : 'regroup (press to engage)'}`;
   $('p-dock').classList.toggle('on', !!pl.docked); if (pl.docked) $('p-dock').textContent = `Docked at ${world.base ? world.base.name : 'base'} — repairing`;
-  const mate = world.players.find(p => p !== pl && (p.alive || net.active)); const peer = $('p-peer'); peer.classList.toggle('on', !!mate && net.active);
-  if (mate && net.active) { $('peer-name').textContent = (mate.callsign || 'Wingmate').toUpperCase() + (mate.alive ? '' : ' — DOWN'); setBar($('peer-hull'), mate.hull / mate.maxHull); $('peer-range').textContent = mate.alive ? `${fmt(mate.pos.distanceTo(pl.pos))} m` : `respawn ${fmt(Math.max(0, mate.respawnTimer))}s`; }
-  if (!pl.alive && net.active && pl.respawnTimer > 0) { $('p-warn').classList.add('on'); $('p-warn').textContent = `Ship lost — respawning at base in ${fmt(pl.respawnTimer)}s`; }
+  const mate = world.players.find(p => p !== pl && (p.alive || net.active)); const peer = $('p-peer'); peer.classList.toggle('on', !!mate && net.active && !world.pvp);
+  if (mate && net.active && !world.pvp) { $('peer-name').textContent = (mate.callsign || 'Wingmate').toUpperCase() + (mate.alive ? '' : ' — DOWN'); setBar($('peer-hull'), mate.hull / mate.maxHull); $('peer-range').textContent = mate.alive ? `${fmt(mate.pos.distanceTo(pl.pos))} m` : `respawn ${fmt(Math.max(0, mate.respawnTimer))}s`; }
+  if (!pl.alive && (net.active || world.pvp) && pl.respawnTimer > 0) { $('p-warn').classList.add('on'); $('p-warn').textContent = world.pvp ? `Shot down — back in ${fmt(pl.respawnTimer)}s` : `Ship lost — respawning at base in ${fmt(pl.respawnTimer)}s`; }
 }
 
 // =====================================================================================
@@ -2115,16 +2179,16 @@ function rebuildModifiers() {
 const SECONDARIES = {
   homing: { name: 'Homing missiles', desc: 'Lock, then fire. Tracks the target until impact.', needsLock: true, label: 'Missiles',
     count: (S) => Math.max(0, Math.round(S.missiles.count)), interval: (S) => S.missiles.fireInterval,
-    fire(pl, world, t) { const M = pl.stats.missiles; const side = pl.missiles % 2 ? 1 : -1; const origin = _v[0].set(side * 2.2, -0.8, 0).applyQuaternion(pl.quat).add(pl.pos); const vel = _v[1].copy(pl.vel).addScaledVector(pl.forward(_v[2]), M.launchSpeed); world.spawnMissile(origin, vel, pl.quat, t, 'player', M); audio.missile(); world.stats.missilesFired++; } },
+    fire(pl, world, t) { const M = pl.stats.missiles; const side = pl.missiles % 2 ? 1 : -1; const origin = _v[0].set(side * 2.2, -0.8, 0).applyQuaternion(pl.quat).add(pl.pos); const vel = _v[1].copy(pl.vel).addScaledVector(pl.forward(_v[2]), M.launchSpeed); world.spawnMissile(origin, vel, pl.quat, t, 'player', M, pl); audio.missile(); world.stats.missilesFired++; } },
   rockets: { name: 'Dumbfire rockets', desc: 'No lock needed. Fast, heavy, straight. Lead them yourself.', needsLock: false, label: 'Rockets',
     count: (S) => CONFIG.secondaries.rockets.count + Math.round((S.missiles.count - CONFIG.missiles.count) * 2), interval: () => CONFIG.secondaries.rockets.fireInterval,
     fire(pl, world) { const R = CONFIG.secondaries.rockets; const S = pl.stats; const side = pl.missiles % 2 ? 1 : -1; const origin = _v[0].set(side * 2.4, -0.9, 0).applyQuaternion(pl.quat).add(pl.pos);
       const dir = _v[3].set(0, 0, -S.weapons.convergence).applyQuaternion(pl.quat).add(pl.pos).sub(origin).normalize(); randomUnit(_v[4]); dir.addScaledVector(_v[4], R.spread).normalize();
       const vel = _v[1].copy(pl.vel).addScaledVector(dir, R.launchSpeed); const cfg = { ...R, speed: R.speed, accel: 900, turnRate: 0, life: R.life, damage: R.damage * (S.missiles.damage / CONFIG.missiles.damage), fuseRadius: R.radius, radius: R.radius };
-      world.spawnMissile(origin, vel, pl.quat, null, 'player', cfg); audio.missile(); world.stats.missilesFired++; } },
+      world.spawnMissile(origin, vel, pl.quat, null, 'player', cfg, pl); audio.missile(); world.stats.missilesFired++; } },
   emp: { name: 'EMP burst', desc: 'Stuns every fighter within 360 m and strips shields. Three charges.', needsLock: false, label: 'EMP',
     count: (S) => CONFIG.secondaries.emp.count + Math.max(0, Math.round((S.missiles.count - CONFIG.missiles.count) / 2)), interval: () => CONFIG.secondaries.emp.fireInterval,
-    fire(pl, world) { const hit = world.empBurst(pl.pos, CONFIG.secondaries.emp); world.stats.missilesFired++; if (hit) world.stats.shotsHit += 0; } },
+    fire(pl, world) { const hit = world.empBurst(pl.pos, CONFIG.secondaries.emp, pl); world.stats.missilesFired++; if (hit) world.stats.shotsHit += 0; } },
 };
 const SECONDARY_ORDER = ['homing', 'rockets', 'emp'];
 
@@ -2492,14 +2556,15 @@ const BOSS_DEFS = {
 //  init / update / checkComplete / checkFail (+ statusText, hud, cleanup).
 //  ctx = mission context; ctx.o = this objective's own state; ctx.goal = entity enemies with target:'goal' attack.
 // =====================================================================================
-const OBJ_EL = {}; for (const id of ['obj-escort', 'obj-strike', 'obj-survive', 'obj-intercept', 'obj-boss', 'oe-name', 'oe-hull', 'oe-hull-n', 'oe-dist', 'os-list', 'ov-time', 'ov-sub', 'oi-through', 'oi-allowed', 'oi-inbound', 'ob-name', 'ob-phase', 'p-boss', 'pb-name', 'pb-phases', 'pb-hull', 'pb-hull-n', 'pb-shielded', 'pb-subs']) OBJ_EL[id] = $(id);
-const showObj = (id) => { for (const k of ['obj-escort', 'obj-strike', 'obj-survive', 'obj-intercept', 'obj-boss']) OBJ_EL[k].classList.toggle('on', k === id); OBJ_EL['p-boss'].classList.toggle('on', id === 'obj-boss'); };
-const placeCapital = (def, team, p, ctx) => { const ship = new CapitalShip(def, team); ship.place(_v[0].set(p.position.x, p.position.y, p.position.z), _v[1].set(p.facing?.x ?? 0, p.facing?.y ?? 0, p.facing?.z ?? 1).normalize(), ctx.world.player); if (team === 'friendly') ctx.world.addFriendly(ship); else ctx.world.addCapital(ship); return ship; };
+const OBJ_EL = {}; for (const id of ['obj-escort', 'obj-strike', 'obj-survive', 'obj-intercept', 'obj-boss', 'obj-versus', 'oe-name', 'oe-hull', 'oe-hull-n', 'oe-dist', 'os-list', 'ov-time', 'ov-sub', 'oi-through', 'oi-allowed', 'oi-inbound', 'ob-name', 'ob-phase', 'p-boss', 'pb-name', 'pb-phases', 'pb-hull', 'pb-hull-n', 'pb-shielded', 'pb-subs']) OBJ_EL[id] = $(id);
+const showObj = (id) => { for (const k of ['obj-escort', 'obj-strike', 'obj-survive', 'obj-intercept', 'obj-boss', 'obj-versus']) OBJ_EL[k].classList.toggle('on', k === id); OBJ_EL['p-boss'].classList.toggle('on', id === 'obj-boss'); };
+const MAP_SCALE = () => CONFIG.map.scale; // one knob stretches every descriptor's coordinates without touching the descriptors
+const placeCapital = (def, team, p, ctx) => { const S = p.noScale ? 1 : MAP_SCALE(); const ship = new CapitalShip(def, team); ship.place(_v[0].set(p.position.x * S, p.position.y * S, p.position.z * S), _v[1].set(p.facing?.x ?? 0, p.facing?.y ?? 0, p.facing?.z ?? 1).normalize(), ctx.world.player); if (team === 'friendly') ctx.world.addFriendly(ship); else ctx.world.addCapital(ship); return ship; };
 const subListHTML = (subs, sel) => subs.map(s => `<li class="${!s.alive ? 'dead' : s === sel ? 'sel' : s.strike ? 'hot' : ''}">${s.name}${s.alive ? `<span>${Math.round(s.health / s.maxHealth * 100)}%</span>` : '<span>destroyed</span>'}</li>`).join('');
 
 Object.assign(OBJECTIVE_HANDLERS, {
   escort: {
-    init(ctx, p) { const o = ctx.o; o.ship = placeCapital(BOSS_DEFS.escort(), 'friendly', p, ctx); o.ship.path = p.waypoints.map(w => V3(w.x, w.y, w.z)); o.waypoint = o.ship.path[o.ship.path.length - 1]; ctx.goal = o.ship; showObj('obj-escort'); OBJ_EL['oe-name'].textContent = o.ship.name; },
+    init(ctx, p) { const o = ctx.o; const S = MAP_SCALE(); o.ship = placeCapital(BOSS_DEFS.escort(), 'friendly', p, ctx); o.ship.path = p.waypoints.map(w => V3(w.x * S, w.y * S, w.z * S)); o.waypoint = o.ship.path[o.ship.path.length - 1]; ctx.goal = o.ship; showObj('obj-escort'); OBJ_EL['oe-name'].textContent = o.ship.name; },
     update(ctx, dt) {},
     checkComplete(ctx) { return ctx.o.ship.arrived; },
     checkFail(ctx) { return !ctx.o.ship.alive || ctx.world.allPlayersDown(); },
@@ -2653,9 +2718,10 @@ function planetTexture(def) {
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
 }
 function buildDebrisField() {
-  const n = 140; const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x4a4f57, roughness: 0.85, metalness: 0.5, flatShading: true }), n);
+  const n = 200; const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x4a4f57, roughness: 0.85, metalness: 0.5, flatShading: true }), n);
   const d = new THREE.Object3D();
-  for (let i = 0; i < n; i++) { randomUnit(_v[0]); _v[0].multiplyScalar(rand(300, 1800)); _v[0].y *= 0.35; _v[0].z -= 600; d.position.copy(_v[0]); d.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6)); d.scale.set(rand(4, 40), rand(1, 6), rand(6, 60)); d.updateMatrix(); mesh.setMatrixAt(i, d.matrix); }
+  const S = MAP_SCALE();
+  for (let i = 0; i < n; i++) { randomUnit(_v[0]); _v[0].multiplyScalar(rand(300, 1800) * S); _v[0].y *= 0.35; _v[0].z -= 600 * S; d.position.copy(_v[0]); d.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6)); d.scale.set(rand(4, 40), rand(1, 6), rand(6, 60)); d.updateMatrix(); mesh.setMatrixAt(i, d.matrix); }
   mesh.frustumCulled = false; mesh.visible = false; scene.add(mesh); env.debrisMesh = mesh;
 }
 function applyEnvironment(envDef) {
@@ -2774,30 +2840,34 @@ const net = {
   role: 'solo', peers: [], connected: false, status: 'Not connected.', pendingPeer: null,
   // guest side
   pc: null, ctl: null, game: null, mySlot: 0, lastSnapT: 0, prevSnapT: 0, inputAcc: 0, snapAcc: 0, pressedBits: 0, snapshotsSeen: 0,
-  buf: new ArrayBuffer(96 * 1024), cfg() { return { ship: game.selectedShip, secondary: game.loadout.secondary, mods: game.activeModifiers, name: SHIPS[game.selectedShip].name }; },
+  buf: new ArrayBuffer(96 * 1024), cfg() { return { ship: game.selectedShip, secondary: game.loadout.secondary, mods: game.activeModifiers, name: game.profile.name }; },
   get active() { return this.role !== 'solo' && this.connected; },
   setStatus(s) { this.status = s; const el = $('coop-status'); if (el) el.textContent = s; const b = $('b-coop-status'); if (b) b.textContent = this.role === 'solo' ? '' : `Co-op: ${s}`; },
   rtc() { const pc = new RTCPeerConnection({ iceServers: [{ urls: CONFIG.net.stun }] }); pc.oniceconnectionstatechange = () => { const s = pc.iceConnectionState; if (s === 'checking') this.setStatus('Connecting… (checking routes)'); else if (s === 'failed') this.setStatus('Connection failed: no route between the two networks. Try a different network or a mobile hotspot; some carrier NATs block direct links.'); else if (s === 'disconnected') this.setStatus('Connection dropped.'); }; return pc; },
   // ----- host -----
-  async hostInvite() {
-    if (this.role === 'guest') return; if (!this.rtcAvailable) { if (this.room) return this.roomHost(); throw new Error('this page cannot open peer connections here'); } this.role = 'host'; world.netEvents = true;
+  async hostInvite(opts = {}) {
+    if (this.role === 'guest') return null; if (!this.rtcAvailable) { if (this.room) return this.roomHost(); throw new Error('this page cannot open peer connections here'); } this.role = 'host'; world.netEvents = true;
     const pc = this.rtc(); const peer = { pc, ctl: pc.createDataChannel('ctl', { ordered: true }), game: pc.createDataChannel('game', { ordered: false, maxRetransmits: 0 }), slot: 0, input: makeRemoteInput(), cfg: null, open: 0, name: 'Wingmate' };
     peer.ctl.onopen = () => this.peerOpened(peer); peer.game.onopen = () => this.peerOpened(peer); peer.ctl.onmessage = (e) => this.hostCtl(peer, JSON.parse(e.data)); peer.game.onmessage = (e) => this.hostInput(peer, e.data); peer.ctl.onclose = () => this.dropPeer(peer);
     pc.onconnectionstatechange = () => { if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) this.dropPeer(peer); };
     const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await iceComplete(pc);
-    this.pendingPeer = peer; $('coop-offer').value = encodeSDP(pc.localDescription); $('coop-answer').value = ''; this.setStatus(`Invite ready — ${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} connected. Waiting for a reply code.`);
+    const code = encodeSDP(pc.localDescription); this.pendingPeer = peer; this.pending.push(peer);
+    if (!opts.silent) { $('coop-offer').value = code; $('coop-answer').value = ''; this.setStatus(`Invite ready — ${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} connected. Waiting for a reply code.`); }
+    return { peer, code };
   },
-  async hostAccept(text) { const peer = this.pendingPeer; if (!peer || !text.trim()) return; try { await peer.pc.setRemoteDescription(decodeSDP(text)); this.setStatus('Reply accepted — connecting…'); } catch (e) { this.setStatus('That reply code did not parse. Paste the whole code.'); } },
+  pending: [],
+  async hostAccept(text, peer = this.pendingPeer) { if (!peer || !text.trim()) return false; try { await peer.pc.setRemoteDescription(decodeSDP(text)); this.setStatus('Reply accepted — connecting…'); return true; } catch (e) { this.setStatus('That reply code did not parse. Paste the whole code.'); return false; } },
   peerOpened(peer) {
     peer.open++; if (peer.open < 2 || this.peers.includes(peer)) return;
-    peer.slot = this.peers.length + 1; this.peers.push(peer); this.connected = true; if (this.pendingPeer === peer) this.pendingPeer = null;
-    this.ensurePlayerSlot(peer.slot, peer.input); this.setStatus(`${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} connected. Host another with "Host a sortie", or continue.`); $('btn-coop-go').style.display = ''; audio.click(true);
-    this.sendCtl(peer, { t: 'hello', slot: peer.slot, mission: game.currentMission, screen: screen, credits: game.credits, ships: game.unlockedShips }); this.broadcastRoster();
+    peer.slot = this.peers.length + 1; this.peers.push(peer); this.connected = true; if (this.pendingPeer === peer) this.pendingPeer = null; const pi = this.pending.indexOf(peer); if (pi >= 0) this.pending.splice(pi, 1);
+    const p = this.ensurePlayerSlot(peer.slot, peer.input); if (screen === SCREEN.PLAYING) p.respawnTimer = 3; // joined mid-flight: drop in after a short beat
+    this.setStatus(`${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} connected. Continue when everyone is in.`); $('btn-coop-go').style.display = ''; audio.click(true);
+    this.sendCtl(peer, { t: 'hello', slot: peer.slot, mission: game.currentMission, screen: screen, credits: game.credits, ships: game.unlockedShips, mode: game.mode, host: game.profile.name }); this.broadcastRoster(); lobby.onNetChange();
   },
-  dropPeer(peer) { const i = this.peers.indexOf(peer); if (i < 0) return; this.peers.splice(i, 1); const p = world.players[peer.slot]; if (p) { p.alive = false; if (p.mesh) p.mesh.visible = false; } try { peer.pc.close(); } catch (e) {} this.setStatus(`${peer.name} disconnected. ${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} connected.`); this.broadcastRoster(); if (!this.peers.length) this.connected = false; },
+  dropPeer(peer) { const i = this.peers.indexOf(peer); if (i < 0) return; this.peers.splice(i, 1); const p = world.players[peer.slot]; if (p) { p.alive = false; if (p.mesh) p.mesh.visible = false; } try { peer.pc.close(); } catch (e) {} this.setStatus(`${peer.name} disconnected. ${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} connected.`); this.broadcastRoster(); if (!this.peers.length) this.connected = false; lobby.onNetChange(); },
   ensurePlayerSlot(slot, inp) { while (world.players.length <= slot) { const p = new PlayerShip(); p.slot = world.players.length; p.input = inp || makeRemoteInput(); p.alive = false; p.build(SHIPS.vanguard.tint); p.applyStats(derivedStats('vanguard', [])); p.reset(_v[0].set(0, 0, 400), _q[0].identity()); p.alive = false; p.mesh.visible = false; world.players.push(p); } const p = world.players[slot]; if (inp) p.input = inp; return p; },
   hostCtl(peer, m) {
-    if (m.t === 'cfg') { peer.cfg = m; peer.name = m.name || 'Wingmate'; const p = world.players[peer.slot]; if (p) { p.callsign = `${m.name} (${peer.slot + 1})`; p.shipId = SHIPS[m.ship] ? m.ship : 'vanguard'; p.build(SHIPS[p.shipId].tint, shipTemplateFor(p.shipId)); p.applyStats(derivedStats(p.shipId, m.mods || [])); p.secondary = SECONDARIES[m.secondary] ? m.secondary : 'homing'; if (screen !== SCREEN.PLAYING) { p.alive = false; p.mesh.visible = false; } } this.broadcastRoster(); }
+    if (m.t === 'cfg') { peer.cfg = m; peer.name = m.name || 'Wingmate'; const p = world.players[peer.slot]; if (p) { p.callsign = peer.name; p.shipId = SHIPS[m.ship] ? m.ship : 'vanguard'; p.build(SHIPS[p.shipId].tint, shipTemplateFor(p.shipId)); p.applyStats(derivedStats(p.shipId, m.mods || [])); p.secondary = SECONDARIES[m.secondary] ? m.secondary : 'homing'; if (screen !== SCREEN.PLAYING) { p.alive = false; p.mesh.visible = false; } } this.broadcastRoster(); }
   },
   hostInput(peer, data) {
     const dv = new DataView(data); const inp = peer.input; inp.mouseX = dv.getFloat32(0, true); inp.mouseY = dv.getFloat32(4, true); const bits = dv.getUint16(8, true); const f = dv.getUint8(10); const pr = dv.getUint16(11, true);
@@ -2806,8 +2876,9 @@ const net = {
   },
   sendCtl(peer, m) { try { if (peer.room) this.room.emit('ctl', { ...m, to: peer.id }); else if (peer.ctl.readyState === 'open') peer.ctl.send(JSON.stringify(m)); } catch (e) {} },
   broadcast(m) { if (this.transport === 'room') { if (this.role === 'host' && this.room) this.room.emit('ctl', m); return; } for (const p of this.peers) this.sendCtl(p, m); },
-  broadcastRoster() { this.broadcast({ t: 'roster', players: world.players.map((p, i) => ({ slot: i, ship: p.shipId, name: i === 0 ? SHIPS[game.selectedShip].name + ' (host)' : p.callsign })) }); },
-  broadcastScreen(s) { if (this.role !== 'host') return; this.broadcast({ t: 'screen', s, mission: game.currentMission }); if (this.transport === 'room' && this.room) this.room.presence({ screen: s, mission: game.currentMission }); },
+  broadcastRoster() { this.broadcast({ t: 'roster', players: world.players.map((p, i) => ({ slot: i, ship: p.shipId, name: i === 0 ? game.profile.name : p.callsign })) }); },
+  broadcastScreen(s) { if (this.role !== 'host') return; this.broadcast({ t: 'screen', s, mission: game.currentMission, mode: game.mode }); if (this.transport === 'room' && this.room) this.room.presence({ screen: s, mission: game.currentMission }); },
+  broadcastScore(o) { if (this.role !== 'host') return; this.broadcast({ t: 'score', rows: o.scores, timeLeft: o.timeLeft, feed: o.feed.slice(-4) }); },
   broadcastEnd(payload) { if (this.role === 'host') this.broadcast({ t: 'end', ...payload }); },
   hostFrame(dt) {
     if (this.role !== 'host' || !this.peers.length) return;
@@ -2816,19 +2887,22 @@ const net = {
     const buf = this.writeSnapshot(); for (const p of this.peers) { try { if (p.game.readyState === 'open' && p.game.bufferedAmount < 256 * 1024) p.game.send(buf); } catch (e) {} } world.events.length = 0;
   },
   // ----- guest -----
-  async guestAnswer(offerText) {
+  async guestAnswer(offerText, opts = {}) {
     if (!this.rtcAvailable) { if (this.room) return this.roomJoin(); throw new Error('this page cannot open peer connections here'); }
-    if (!offerText.trim()) return; this.role = 'guest'; const pc = this.pc = this.rtc();
-    pc.ondatachannel = (e) => { const ch = e.channel; if (ch.label === 'ctl') { this.ctl = ch; ch.onmessage = (ev) => this.guestCtl(JSON.parse(ev.data)); } else { this.game = ch; ch.binaryType = 'arraybuffer'; ch.onmessage = (ev) => this.readSnapshot(ev.data); } ch.onopen = () => { if (this.ctl?.readyState === 'open' && this.game?.readyState === 'open') { this.connected = true; this.setStatus('Connected to host. Waiting for the host to launch.'); $('btn-coop-go').style.display = ''; this.sendCfg(); audio.click(true); } }; ch.onclose = () => { this.connected = false; this.setStatus('Host disconnected.'); }; };
+    if (!offerText.trim()) return null; if (this.pc) { try { this.pc.close(); } catch (e) {} } this.role = 'guest'; const pc = this.pc = this.rtc();
+    pc.ondatachannel = (e) => { const ch = e.channel; if (ch.label === 'ctl') { this.ctl = ch; ch.onmessage = (ev) => this.guestCtl(JSON.parse(ev.data)); } else { this.game = ch; ch.binaryType = 'arraybuffer'; ch.onmessage = (ev) => this.readSnapshot(ev.data); } ch.onopen = () => { if (this.ctl?.readyState === 'open' && this.game?.readyState === 'open') { this.connected = true; this.setStatus('Connected to host. Waiting for the host to launch.'); $('btn-coop-go').style.display = ''; this.sendCfg(); audio.click(true); lobby.onNetChange(); } }; ch.onclose = () => { this.connected = false; this.setStatus('Host disconnected.'); lobby.onNetChange(); }; };
     pc.onconnectionstatechange = () => { if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) { this.connected = false; this.setStatus('Connection lost.'); } };
-    try { await pc.setRemoteDescription(decodeSDP(offerText)); } catch (e) { this.setStatus('That invite code did not parse. Paste the whole code.'); this.role = 'solo'; return; }
-    const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await iceComplete(pc); $('coop-answer-out').value = encodeSDP(pc.localDescription); this.setStatus('Reply code ready — send it to the host.');
+    try { await pc.setRemoteDescription(decodeSDP(offerText)); } catch (e) { this.setStatus('That invite code did not parse. Paste the whole code.'); this.role = 'solo'; return null; }
+    const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await iceComplete(pc); const code = encodeSDP(pc.localDescription);
+    if (!opts.silent) { $('coop-answer-out').value = code; this.setStatus('Reply code ready — send it to the host.'); }
+    return code;
   },
   sendCfg() { if (this.role !== 'guest') return; if (this.transport === 'room') { if (this.room) this.room.emit('ctl', { t: 'cfg', ...this.cfg() }); return; } if (this.ctl?.readyState === 'open') this.ctl.send(JSON.stringify({ t: 'cfg', ...this.cfg() })); },
   guestCtl(m) {
-    if (m.t === 'hello') { this.mySlot = m.slot; world.player.slot = m.slot; const arr = []; for (let i = 0; i <= m.slot; i++) arr[i] = i === m.slot ? world.player : null; world.players = arr; for (let i = 0; i < m.slot; i++) this.ensureMirror(i); game.credits = Math.max(game.credits, m.credits || 0); for (const s of m.ships || []) if (!game.unlockedShips.includes(s)) game.unlockedShips.push(s); game.currentMission = m.mission; }
+    if (m.t === 'hello') { game.mode = m.mode || 'coop'; this.hostName = m.host || 'Host'; this.mySlot = m.slot; world.player.slot = m.slot; const arr = []; for (let i = 0; i <= m.slot; i++) arr[i] = i === m.slot ? world.player : null; world.players = arr; for (let i = 0; i < m.slot; i++) this.ensureMirror(i); game.credits = Math.max(game.credits, m.credits || 0); for (const s of m.ships || []) if (!game.unlockedShips.includes(s)) game.unlockedShips.push(s); game.currentMission = m.mission; }
     else if (m.t === 'roster') { for (const r of m.players) { if (r.slot === this.mySlot) continue; const p = this.ensureMirror(r.slot); if (p.shipId !== r.ship || !p.mesh) { p.shipId = SHIPS[r.ship] ? r.ship : 'vanguard'; p.build(SHIPS[p.shipId].tint, shipTemplateFor(p.shipId)); p.applyStats(derivedStats(p.shipId, [])); p.mesh.visible = p.alive; } p.callsign = r.name; } }
-    else if (m.t === 'screen') { game.currentMission = m.mission; if (m.s === SCREEN.PLAYING && screen !== SCREEN.PAUSED) { game.currentMission = m.mission; } setScreen(m.s); }
+    else if (m.t === 'screen') { game.currentMission = m.mission; if (m.mode) game.mode = m.mode; setScreen(m.s); }
+    else if (m.t === 'score') { const o = mission.ctx?.o; if (o && mission.def?.versus) { o.scores = m.rows; o.timeLeft = m.timeLeft; o.feed = m.feed || []; } }
     else if (m.t === 'end') { game.credits += m.credits || 0; for (const s of m.ships || []) if (!game.unlockedShips.includes(s)) game.unlockedShips.push(s); if (m.completed && !game.missionsCompleted.includes(m.completed)) game.missionsCompleted.push(m.completed); game.currentMission = m.next ?? game.currentMission;
       if (m.result === 'complete') { $('d-title').textContent = m.title; $('d-dialogue').textContent = m.dialogue; $('d-stats').innerHTML = m.stats; $('d-bonus').textContent = m.bonus; $('d-unlock').textContent = m.unlock; $('d-credits').textContent = game.credits; } else { $('g-dialogue').textContent = m.dialogue; $('g-stats').innerHTML = m.stats; } }
   },
@@ -2886,14 +2960,14 @@ const net = {
   unb64(s) { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; },
   roomHost() {
     if (!this.room) return; this.role = 'host'; this.transport = 'room'; world.netEvents = true; this.connected = false;
-    this.roomUnsubs.push(this.room.on('ctl', (msg) => { if (msg.isMe) return; const m = msg.data || {}; if (m.t === 'join') { let peer = this.peers.find(p => p.id === msg.peer); if (!peer) { peer = { id: msg.peer, slot: this.peers.length + 1, input: makeRemoteInput(), cfg: null, name: m.name || 'Wingmate', room: true, open: 2 }; this.peers.push(peer); this.ensurePlayerSlot(peer.slot, peer.input); this.connected = true; $('btn-coop-go').style.display = ''; audio.click(true); } this.sendCtl(peer, { t: 'hello', slot: peer.slot, mission: game.currentMission, screen: screen, credits: game.credits, ships: game.unlockedShips, host: this.myPeer }); if (m.cfg) this.hostCtl(peer, { t: 'cfg', ...m.cfg }); this.broadcastRoster(); this.setStatus(`${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} joined. Continue when everyone is in.`); } else if (m.t === 'cfg') { const peer = this.peers.find(p => p.id === msg.peer); if (peer) this.hostCtl(peer, m); } }));
+    this.roomUnsubs.push(this.room.on('ctl', (msg) => { if (msg.isMe) return; const m = msg.data || {}; if (m.t === 'join') { let peer = this.peers.find(p => p.id === msg.peer); if (!peer) { peer = { id: msg.peer, slot: this.peers.length + 1, input: makeRemoteInput(), cfg: null, name: m.name || 'Wingmate', room: true, open: 2 }; this.peers.push(peer); this.ensurePlayerSlot(peer.slot, peer.input); this.connected = true; $('btn-coop-go').style.display = ''; audio.click(true); } this.sendCtl(peer, { t: 'hello', slot: peer.slot, mission: game.currentMission, screen: screen, credits: game.credits, ships: game.unlockedShips, hostPeer: this.myPeer, host: game.profile.name, mode: game.mode }); if (m.cfg) this.hostCtl(peer, { t: 'cfg', ...m.cfg }); this.broadcastRoster(); this.setStatus(`${this.peers.length} pilot${this.peers.length === 1 ? '' : 's'} joined. Continue when everyone is in.`); } else if (m.t === 'cfg') { const peer = this.peers.find(p => p.id === msg.peer); if (peer) this.hostCtl(peer, m); } }));
     this.roomUnsubs.push(this.room.onPeers((ch) => { const me = ch.peers.find(p => p.isMe && p.sameTab); if (me) this.myPeer = me.peer; for (const l of ch.left) { const peer = this.peers.find(p => p.id === l.peer); if (peer) this.dropPeer(peer); } }));
     this.room.presence({ role: 'host', screen, mission: game.currentMission }); this.setStatus('Hosting. Anyone with this page open can press "Join a sortie".');
   },
   roomJoin() {
     if (!this.room) return; this.role = 'guest'; this.transport = 'room'; this.connected = false;
-    this.roomUnsubs.push(this.room.on('ctl', (msg) => { if (msg.isMe) return; const m = msg.data || {}; if (m.to && m.to !== this.myPeer) return; if (m.t === 'hello') { this.hostPeer = m.host || msg.peer; this.connected = true; this.setStatus('Joined the host. Waiting for the host to launch.'); $('btn-coop-go').style.display = ''; audio.click(true); } this.guestCtl(m); }));
-    this.roomUnsubs.push(this.room.onPeers((ch) => { const me = ch.peers.find(p => p.isMe && p.sameTab); if (me && !this.myPeer) { this.myPeer = me.peer; this.room.emit('ctl', { t: 'join', name: SHIPS[game.selectedShip].name, cfg: this.cfg() }); }
+    this.roomUnsubs.push(this.room.on('ctl', (msg) => { if (msg.isMe) return; const m = msg.data || {}; if (m.to && m.to !== this.myPeer) return; if (m.t === 'hello') { this.hostPeer = m.hostPeer || msg.peer; this.connected = true; this.setStatus('Joined the host. Waiting for the host to launch.'); $('btn-coop-go').style.display = ''; audio.click(true); } this.guestCtl(m); }));
+    this.roomUnsubs.push(this.room.onPeers((ch) => { const me = ch.peers.find(p => p.isMe && p.sameTab); if (me && !this.myPeer) { this.myPeer = me.peer; this.room.emit('ctl', { t: 'join', name: game.profile.name, cfg: this.cfg() }); }
       for (const p of ch.peers) { if (p.presence?.role !== 'host' || p.isMe) continue; if (!this.hostPeer) this.hostPeer = p.peer; if (p.presence.snap && p.presence.snap !== this.lastSnapB64 && screen === SCREEN.PLAYING) { this.lastSnapB64 = p.presence.snap; try { this.readSnapshot(this.unb64(p.presence.snap)); } catch (e) {} } }
       if (this.connected && this.hostPeer && ch.left.some(l => l.peer === this.hostPeer)) { this.connected = false; this.setStatus('Host left the room.'); } }));
     this.room.presence({ role: 'guest' }); this.setStatus('Looking for a host in this room…');
@@ -2903,7 +2977,7 @@ const net = {
     for (const cap of [70, 24, 0]) { CONFIG.net.maxProjectiles = cap; b64 = this.b64(this.writeSnapshot()); if (b64.length < 3800) break; }
     CONFIG.net.maxProjectiles = saved; this.room.presence({ snap: b64 });
   },
-  disconnect() { for (const u of this.roomUnsubs) { try { u(); } catch (e) {} } this.roomUnsubs = []; if (this.room && this.transport === 'room') { try { this.room.presence({ role: null, snap: null, inp: null }); } catch (e) {} } this.transport = 'rtc'; this.myPeer = null; this.hostPeer = null; this.lastSnapB64 = null; for (const p of this.peers) { try { p.pc.close(); } catch (e) {} } this.peers = []; if (this.pc) { try { this.pc.close(); } catch (e) {} } this.pc = null; this.ctl = null; this.game = null; this.role = 'solo'; this.connected = false; this.pendingPeer = null; world.netEvents = false; this.setStatus('Not connected.'); for (const p of world.players) if (p && p !== world.player && p.mesh) { scene.remove(p.mesh); p.mesh = null; } world.players = [world.player]; world.player.slot = 0; },
+  disconnect() { for (const u of this.roomUnsubs) { try { u(); } catch (e) {} } this.roomUnsubs = []; if (this.room && this.transport === 'room') { try { this.room.presence({ role: null, snap: null, inp: null }); } catch (e) {} } this.transport = 'rtc'; this.myPeer = null; this.hostPeer = null; this.lastSnapB64 = null; for (const p of this.peers) { try { p.pc.close(); } catch (e) {} } this.peers = []; if (this.pc) { try { this.pc.close(); } catch (e) {} } this.pc = null; this.ctl = null; this.game = null; this.role = 'solo'; this.connected = false; this.pendingPeer = null; this.pending = []; world.netEvents = false; game.mode = 'coop'; this.setStatus('Not connected.'); lobby.onNetChange(); for (const p of world.players) if (p && p !== world.player && p.mesh) { scene.remove(p.mesh); p.mesh = null; } world.players = [world.player]; world.player.slot = 0; },
 };
 
 // =====================================================================================
@@ -2931,6 +3005,172 @@ const touch = {
 };
 
 // =====================================================================================
+//  Stage 4 — Versus (free-for-all dogfight), the live lobby (everyone online, by callsign,
+//  one-click join over Supabase Realtime presence + broadcast signalling), and nametags.
+// =====================================================================================
+
+// ---------- Versus: a mission descriptor like any other; its single objective is the scoreboard ----------
+const VERSUS_MISSION = {
+  id: 'versus_arena', name: 'Dogfight', versus: true, objectiveType: 'versus',
+  briefingText: `Free-for-all in the Kestrel belt. Every pilot in the sortie is a target. First to ${CONFIG.versus.killsToWin} kills wins; if the clock runs out, the top score takes it.\n\nDowned pilots respawn at the edge of the arena after a few seconds with full hull and shields. No wingmen, no base, no AI — only whoever joined from the lobby. Use the rocks.`,
+  dialogue: { briefing: ['RANGE CONTROL: Weapons are live on everything that is not you.', 'RANGE CONTROL: Missiles lock on pilots too. Break hard and keep the asteroids between you and the tone.'], debrief: [], fail: [] },
+  arenaBounds: { center: { x: 0, y: 0, z: 0 }, radius: 1500 },
+  environment: { skyboxTint: 0x4a2a7a, planet: { color: 0xc98a4b, bandColor: 0x7a5030, atmosphere: 0x5aa0ff, dir: { x: 0.4, y: -0.25, z: -0.85 } }, sun: { color: 0xfff4d6, size: 2200, dir: { x: -0.55, y: 0.33, z: -0.77 } }, hazards: ['asteroids', 'derelict'], asteroidDensity: 1.2 },
+  waves: [],
+  objectives: [{ type: 'versus', text: `Dogfight — first to ${CONFIG.versus.killsToWin} kills` }],
+  rewards: { baseCredits: CONFIG.versus.baseCredits, bonusConditions: [] },
+};
+/** Spawn a pilot on the arena ring, facing the centre (initial placement and every respawn). */
+function versusSpawn(p, index = -1) {
+  const R = world.arena.radius * CONFIG.versus.spawnRadius; const n = Math.max(2, world.players.length);
+  const a = index >= 0 ? (index / n) * Math.PI * 2 : rand(0, Math.PI * 2); const pos = _v[3].set(Math.cos(a) * R, rand(-0.15, 0.15) * R, Math.sin(a) * R).add(world.arena.center);
+  const face = _v[4].subVectors(world.arena.center, pos).normalize(); _m.lookAt(_v[5].set(0, 0, 0), _v[6].copy(face).negate(), WORLD_UP); _q[1].setFromRotationMatrix(_m);
+  p.reset(pos, _q[1]); p.alive = true; if (p.mesh) p.mesh.visible = true; p.respawnTimer = 0; if (p === world.player) cam.init = false; world.shockwaves.emit(p.pos, 20);
+}
+const VS_EL = {}; for (const id of ['obj-versus', 'vs-clock', 'vs-board', 'vs-feed']) VS_EL[id] = $(id);
+OBJECTIVE_HANDLERS.versus = {
+  init(ctx) {
+    const o = ctx.o; const w = ctx.world; w.pvp = true;
+    o.scores = w.players.map((p, i) => ({ slot: i, name: p.callsign || `Pilot ${i + 1}`, kills: 0, deaths: 0 })); o.timeLeft = CONFIG.versus.timeLimit; o.feed = []; o.boardTimer = 0; o.syncTimer = 0; o.winner = null;
+    const prev = w.onPlayerKilled;
+    w.onPlayerKilled = (victim, attacker) => {
+      if (prev) prev(victim, attacker);
+      const v = o.scores[victim.slot] || (o.scores[victim.slot] = { slot: victim.slot, name: victim.callsign, kills: 0, deaths: 0 }); v.deaths++; v.name = victim.callsign || v.name;
+      let line = `${victim.callsign} flew into a rock`;
+      if (attacker) { const a = o.scores[attacker.slot] || (o.scores[attacker.slot] = { slot: attacker.slot, name: attacker.callsign, kills: 0, deaths: 0 }); a.kills++; a.name = attacker.callsign || a.name; line = `${attacker.callsign} downed ${victim.callsign}`; }
+      o.feed.push(line); if (o.feed.length > 6) o.feed.shift(); victim.respawnTimer = CONFIG.versus.respawnDelay; mission.banner = 2; net.broadcastScore(o);
+    };
+    showObj('obj-versus');
+  },
+  update(ctx, dt) { const o = ctx.o; o.timeLeft = Math.max(0, o.timeLeft - dt); o.syncTimer -= dt; if (o.syncTimer <= 0) { o.syncTimer = 2; net.broadcastScore(o); } for (const s of o.scores) { const p = ctx.world.players[s.slot]; if (p && p.callsign) s.name = p.callsign; } },
+  leader(ctx) { return [...ctx.o.scores].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)[0]; },
+  checkComplete(ctx) { const o = ctx.o; if (ctx.elapsed < 3) return false; if (o.scores.some(s => s.kills >= CONFIG.versus.killsToWin)) return true; if (o.timeLeft <= 0) return true; return net.role === 'host' && !net.peers.length && ctx.elapsed > 8; }, // everyone else left
+  checkFail() { return false; },
+  statusText(ctx) { const l = this.leader(ctx); return `${fmtTime(ctx.o.timeLeft)} — ${l ? `${l.name} leads with ${l.kills}` : 'no kills yet'}`; },
+  hud(ctx) {
+    const o = ctx.o; o.boardTimer = (o.boardTimer || 0) - 1 / 60; if (o.boardTimer > 0) return; o.boardTimer = 0.25;
+    VS_EL['vs-clock'].textContent = fmtTime(o.timeLeft);
+    const rows = [...o.scores].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+    VS_EL['vs-board'].innerHTML = rows.map(s => `<li class="${s.slot === ctx.world.player.slot ? 'me' : ''}"><span>${s.name}</span><b>${s.kills}</b><i>${s.deaths}</i></li>`).join('');
+    VS_EL['vs-feed'].innerHTML = o.feed.slice(-3).map(l => `<div>${l}</div>`).join('');
+  },
+  cleanup(ctx) { ctx.world.pvp = false; showObj(null); },
+};
+/** Versus results: standings for everyone, credits for taking part and per kill; no campaign state is touched. */
+function finishVersus() {
+  const o = mission.ctx.o; const rows = [...o.scores].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths); const me = o.scores[world.player.slot];
+  const winner = rows[0]; const mine = (me ? me.kills : 0) * CONFIG.versus.creditsPerKill + CONFIG.versus.baseCredits; game.credits += mine; game.campaign.kills += me ? me.kills : 0;
+  const board = rows.map((s, i) => `<div><span>${i + 1}. ${s.name}</span><span>${s.kills} kills · ${s.deaths} down</span></div>`).join('');
+  const title = `Dogfight — ${winner && winner.kills > 0 ? `${winner.name} wins` : 'no winner'}`; const dialogue = `RANGE CONTROL: Range is cold. ${winner && winner.kills > 0 ? `${winner.name} takes it with ${winner.kills}.` : 'Nobody scored.'} Debrief when you have stopped shaking.`;
+  $('d-title').textContent = title; $('d-dialogue').textContent = dialogue; $('d-stats').innerHTML = board; $('d-bonus').textContent = `Payout: ${CONFIG.versus.baseCredits} for flying + ${CONFIG.versus.creditsPerKill} per kill`; $('d-unlock').textContent = ''; $('d-credits').textContent = game.credits; $('btn-continue').textContent = 'Back to lobby';
+  mission.handler.cleanup?.(mission.ctx);
+  for (const peer of net.peers) { const s = o.scores[peer.slot]; net.sendCtl(peer, { t: 'end', result: 'complete', title, dialogue, stats: board, bonus: $('d-bonus').textContent, unlock: '', credits: (s ? s.kills : 0) * CONFIG.versus.creditsPerKill + CONFIG.versus.baseCredits, ships: [], completed: null, next: game.currentMission }); }
+  setScreen(SCREEN.DEBRIEF);
+}
+
+// ---------- Nametags: a DOM label over every other pilot (callsign + hull), red for rivals ----------
+const tags = { root: null, els: new Map() };
+function updateNametags() {
+  if (!tags.root) tags.root = $('tags'); const show = screen === SCREEN.PLAYING || screen === SCREEN.PAUSED; const seen = new Set();
+  if (show) for (const p of world.players) {
+    if (!p || p === world.player || !p.alive || !p.mesh) continue; seen.add(p.slot);
+    let el = tags.els.get(p.slot); if (!el) { el = document.createElement('div'); el.className = 'tag3d'; el.innerHTML = '<span></span><div class="bar"><i></i></div>'; tags.root.appendChild(el); tags.els.set(p.slot, el); }
+    _v[7].copy(p.mesh.position).addScaledVector(WORLD_UP, 9); toScreen(_v[7], _scr);
+    if (!_scr.onScreen) { el.style.display = 'none'; continue; }
+    el.style.display = ''; el.style.transform = `translate(${_scr.x.toFixed(1)}px, ${_scr.y.toFixed(1)}px)`; el.classList.toggle('foe', !!world.pvp); el.classList.toggle('sel', world.player.target === p);
+    const name = el.firstChild; const label = `${p.callsign || 'Pilot'} · ${fmt(p.pos.distanceTo(world.player.pos))} m`; if (name.textContent !== label) name.textContent = label; setBar(el.lastChild.firstChild, p.hull / p.maxHull);
+  }
+  for (const [slot, el] of tags.els) if (!seen.has(slot)) el.style.display = 'none';
+}
+
+// ---------- Lobby: who is online (presence) + one-click join (signalling over broadcast); WebRTC still carries the game ----------
+const CALLSIGNS = ['Kestrel', 'Halcyon', 'Rook', 'Vesper', 'Talon', 'Sable', 'Onyx', 'Mirage', 'Cinder', 'Quill', 'Lumen', 'Harrow'];
+const lobby = {
+  client: null, ch: null, ready: false, myId: 'p' + Math.random().toString(36).slice(2, 10), peers: {}, status: 'Lobby offline.', joining: null, joinTimer: null, renderTimer: 0, lastTracked: '',
+  get available() { return !!(CONFIG.lobby.url && CONFIG.lobby.key) && net.rtcAvailable; },
+  defaultName() { return `${CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]}-${Math.floor(rand(10, 99))}`; },
+  setName(n) { const name = (n || '').trim().replace(/[<>&]/g, '').slice(0, 16) || this.defaultName(); game.profile.name = name; world.player.callsign = name; $('lobby-name').value = name; if (net.role === 'guest') net.sendCfg(); if (net.role === 'host') net.broadcastRoster(); this.track(); return name; },
+  setStatus(s) { this.status = s; const el = $('lobby-status'); if (el) el.textContent = s; },
+  async init() {
+    if (!game.profile.name) this.setName(this.defaultName());
+    if (!this.available) { this.setStatus(net.rtcAvailable ? 'Lobby not configured — manual codes only.' : 'This page cannot open peer connections; the live room (if any) is used instead.'); this.render(); return; }
+    try {
+      const L = CONFIG.lobby; const createClient = window.__createSupabaseClient || (await import(/* @vite-ignore */ L.lib)).createClient;
+      this.client = createClient(L.url, L.key, { realtime: { params: { eventsPerSecond: 20 } }, auth: { persistSession: false, autoRefreshToken: false } });
+      this.ch = this.client.channel(L.channel, { config: { presence: { key: this.myId }, broadcast: { self: false, ack: false } } });
+      this.ch.on('presence', { event: 'sync' }, () => this.onSync());
+      this.ch.on('broadcast', { event: 'sig' }, (msg) => this.onSignal(msg.payload || msg));
+      this.ch.subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') { this.ready = true; this.setStatus('Connected to the lobby.'); this.lastTracked = ''; this.track(); }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { this.ready = false; this.setStatus(`Lobby connection failed${err ? ': ' + (err.message || err) : ''}. Manual codes still work.`); }
+        else if (status === 'CLOSED') { this.ready = false; this.setStatus('Lobby connection closed.'); }
+        this.render();
+      });
+    } catch (e) { this.setStatus('Lobby unavailable: ' + (e.message || e) + '. Manual codes still work.'); this.render(); }
+  },
+  /** What everyone else sees about us. */
+  presence() {
+    const hosting = net.role === 'host'; const inSortie = net.role === 'guest' && net.connected;
+    return { name: game.profile.name, ship: SHIPS[game.selectedShip].name, mode: game.mode, status: hosting ? 'hosting' : inSortie ? 'joined' : 'idle', players: hosting ? 1 + net.peers.length : 1, max: CONFIG.lobby.maxPlayers, flying: screen === SCREEN.PLAYING || screen === SCREEN.PAUSED, host: inSortie ? net.hostName : null, t: Date.now() };
+  },
+  track() { if (!this.ready || !this.ch) return; const p = this.presence(); const key = JSON.stringify({ ...p, t: 0 }); if (key === this.lastTracked) return; this.lastTracked = key; this.ch.track(p).catch(() => {}); this.render(); },
+  onNetChange() { this.track(); this.render(); if (screen === SCREEN.BRIEFING) refreshScreen(); },
+  onSync() { const st = this.ch.presenceState(); const peers = {}; for (const [key, metas] of Object.entries(st)) { if (key === this.myId || !metas?.length) continue; peers[key] = metas[metas.length - 1]; } this.peers = peers; this.render(); },
+  send(to, payload) { if (!this.ready) return; this.ch.send({ type: 'broadcast', event: 'sig', payload: { ...payload, to, from: this.myId, name: game.profile.name } }).catch(() => {}); },
+  // --- host side: every join request gets its own peer connection; the offer/answer swap rides the lobby channel ---
+  host(mode) {
+    if (net.role === 'guest') net.disconnect();
+    game.mode = mode; net.role = 'host'; world.netEvents = true; $('btn-coop-go').style.display = ''; $('btn-leave').style.display = '';
+    net.setStatus(mode === 'versus' ? 'Hosting a dogfight. Pilots in the lobby can join you — launch from the briefing once at least one is in.' : 'Hosting co-op. Pilots in the lobby can join you; continue whenever you like.');
+    audio.click(true); this.track();
+  },
+  leave() { if (net.role !== 'solo') net.disconnect(); this.joining = null; clearTimeout(this.joinTimer); $('btn-coop-go').style.display = 'none'; $('btn-leave').style.display = 'none'; audio.click(); this.track(); },
+  async onSignal(m) {
+    if (!m || m.to !== this.myId) return;
+    try {
+      if (m.t === 'join') {
+        if (net.role !== 'host' || 1 + net.peers.length + net.pending.length >= CONFIG.lobby.maxPlayers) return this.send(m.from, { t: 'full' });
+        const r = await net.hostInvite({ silent: true }); if (!r) return; r.peer.lobbyId = m.from; r.peer.name = m.name || 'Pilot'; net.setStatus(`${r.peer.name} is joining…`); this.send(m.from, { t: 'offer', code: r.code, mode: game.mode });
+      } else if (m.t === 'offer') {
+        if (this.joining !== m.from) return; game.mode = m.mode || 'coop'; net.hostName = m.name || 'Host'; net.setStatus(`Connecting to ${net.hostName}…`);
+        const code = await net.guestAnswer(m.code, { silent: true }); if (code) this.send(m.from, { t: 'answer', code });
+      } else if (m.t === 'answer') {
+        const peer = net.pending.find(p => p.lobbyId === m.from); if (peer) await net.hostAccept(m.code, peer);
+      } else if (m.t === 'full') {
+        if (this.joining === m.from) { this.joining = null; clearTimeout(this.joinTimer); net.role = 'solo'; net.setStatus('That sortie is full.'); }
+      }
+    } catch (e) { net.setStatus('Signalling failed: ' + (e.message || e)); }
+    this.render();
+  },
+  // --- guest side ---
+  join(hostId) {
+    const h = this.peers[hostId]; if (!h) return; if (net.role !== 'solo') net.disconnect();
+    this.joining = hostId; net.role = 'guest'; net.setStatus(`Asking ${h.name} for a slot…`); $('btn-leave').style.display = ''; audio.click(true);
+    this.send(hostId, { t: 'join' });
+    clearTimeout(this.joinTimer); this.joinTimer = setTimeout(() => { if (this.joining === hostId && !net.connected) { this.joining = null; net.role = 'solo'; net.setStatus(`${h.name} did not answer. They may have left, or a firewall is blocking the direct link.`); this.render(); } }, CONFIG.lobby.joinTimeout * 1000);
+    this.track();
+  },
+  // --- DOM ---
+  render() {
+    const list = $('lobby-list'); if (!list) return;
+    $('lobby-status').textContent = this.status; $('lobby-me').textContent = `You: ${game.profile.name} · ${SHIPS[game.selectedShip].name}`;
+    const rows = Object.entries(this.peers).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
+    const roomRow = (!net.rtcAvailable && net.room) ? `<div class="item"><span class="tag">LIVE ROOM</span><div class="name">Room host</div><div class="desc">Someone hosting in this artifact's room</div><button data-roomjoin="1">Join</button></div>` : '';
+    list.innerHTML = roomRow + (rows.length ? rows.map(([id, p]) => {
+      const hosting = p.status === 'hosting'; const full = hosting && p.players >= p.max; const canJoin = hosting && !full && net.role !== 'host' && this.joining !== id;
+      const tag = hosting ? `${p.mode === 'versus' ? 'VERSUS' : 'CO-OP'} ${p.players}/${p.max}${p.flying ? ' · IN FLIGHT' : ''}` : p.status === 'joined' ? `IN ${p.host ? p.host.toUpperCase() + "'S" : 'A'} SORTIE` : 'IN LOBBY';
+      return `<div class="item ${hosting ? 'host' : ''}"><span class="tag">${tag}</span><div class="name">${p.name || 'Pilot'}</div><div class="desc">${p.ship || ''}${this.joining === id ? ' · joining…' : ''}</div>${canJoin ? `<button data-join="${id}">Join${p.flying ? ' (in progress)' : ''}</button>` : full ? '<span class="small">Full</span>' : ''}</div>`;
+    }).join('') : `<div class="small">${this.ready ? 'Nobody else is online right now. Host a sortie and they will see you here.' : 'Waiting for the lobby…'}</div>`);
+    // our own party
+    const party = $('lobby-party'); const names = [];
+    if (net.role === 'host') { names.push(`${game.profile.name} (host)`); for (const p of net.peers) names.push(p.name); for (const p of net.pending) if (p.lobbyId) names.push(`${p.name} (connecting)`); }
+    else if (net.role === 'guest') { names.push(`${net.hostName || 'Host'} (host)`); for (const p of world.players) if (p && p !== world.player && p.callsign) names.push(p.callsign); names.push(`${game.profile.name} (you)`); }
+    party.innerHTML = names.length ? `<div class="small">${game.mode === 'versus' ? 'Dogfight' : 'Co-op'} · ${names.length}/${CONFIG.lobby.maxPlayers}</div>` + names.map(n => `<div class="w">${n}</div>`).join('') : '<div class="small">Not in a sortie. Host one, or join someone above.</div>';
+    $('btn-host').disabled = $('btn-host-vs').disabled = net.role === 'guest' && net.connected;
+  },
+};
+
+// =====================================================================================
 //  Mission runner — sequential objectives, two wave tracks (mission-level + per-objective),
 //  targeting that cycles capital-ship subsystems, rewards, unlocks, hull carry-over.
 // =====================================================================================
@@ -2949,7 +3189,7 @@ function spawnWave(wave, ctx) {
   const pl = world.player;
   if (CONFIG.difficulty.refillSecondaryOnWave && pl.alive) { const sec = SECONDARIES[pl.secondary]; pl.missiles = Math.max(pl.missiles, sec.count(pl.stats)); } // fresh ordnance with every wave
   for (const s of wave.spawns) for (let i = 0; i < s.count; i++) {
-    const p = s.position; const pos = _v[0].set(p.x, p.y, p.z); if (p.spread) pos.add(randomUnit(_v[1]).multiplyScalar(rand(0, p.spread)));
+    const p = s.position; const S = MAP_SCALE(); const pos = _v[0].set(p.x * S, p.y * S, p.z * S); if (p.spread) pos.add(randomUnit(_v[1]).multiplyScalar(rand(0, p.spread * S)));
     const target = s.target === 'goal' && ctx?.goal ? ctx.goal : null; const face = _v[2].subVectors((target || pl).pos, pos).normalize();
     world.spawnEnemy(s.type, pos, face, target ? { target } : undefined);
   }
@@ -2958,24 +3198,27 @@ function spawnWave(wave, ctx) {
 function setupPlayerShip() {
   const pl = world.player; const id = SHIPS[game.selectedShip] ? game.selectedShip : 'vanguard';
   if (pl.shipId !== id || !pl.mesh || pl.template !== shipTemplateFor(id)) { pl.shipId = id; pl.build(SHIPS[id].tint, shipTemplateFor(id)); }
-  pl.callsign = SHIPS[id].name + (net.role === 'host' ? ' (host)' : '');
+  pl.callsign = game.profile.name || SHIPS[id].name;
   rebuildModifiers(); pl.applyStats(derivedStats(id, game.activeModifiers)); pl.secondary = SECONDARIES[game.loadout.secondary] ? game.loadout.secondary : 'homing';
 }
 function startMission(def) {
   if (mission.handler && mission.ctx) mission.handler.cleanup?.(mission.ctx);
   mission.def = def; mission.index = MISSIONS.indexOf(def); mission.campaignJustCompleted = false;
-  world.clearAll(); world.resetStats(); world.arena.center.set(def.arenaBounds.center.x, def.arenaBounds.center.y, def.arenaBounds.center.z); world.arena.radius = def.arenaBounds.radius;
+  const S = MAP_SCALE(); world.clearAll(); world.resetStats(); world.arena.center.set(def.arenaBounds.center.x * S, def.arenaBounds.center.y * S, def.arenaBounds.center.z * S); world.arena.radius = def.arenaBounds.radius * S; world.pvp = !!def.versus;
   applyEnvironment(def.environment);
   const pl = world.player; setupPlayerShip();
   pl.reset(_v[0].set(0, 0, 400), _q[0].identity()); pl.hull = Math.max(pl.maxHull * 0.15, pl.maxHull * game.hullFraction); pl.cockpit = false; pl.outsideArena = false; cam.init = false; cam.fov = CONFIG.render.fovChase;
   mission.ctx = { mission: def, world, objIndex: -1, o: null, goal: null, boss: null, mw: makeWaveTrack(def.waves, def.waveMode), ow: null, wavesDone: false, waveIndex: -1, elapsed: 0 };
   mission.endTimer = -1; mission.endState = null; mission.banner = 0;
-  // forward base + wingmen (every mission); guests mirror both from the host's snapshots
-  const bp = CONFIG.base.offset; world.base = placeCapital(BOSS_DEFS.base(), 'friendly', { position: { x: bp.x, y: bp.y, z: 400 + bp.z }, facing: { x: 0, y: 0, z: -1 } }, mission.ctx);
+  // forward base + wingmen (every co-op mission; none in a dogfight); guests mirror both from the host's snapshots
   world.allyStance = 'engage'; world.allyRespawn = []; world.onAllyKilled = () => { world.allyRespawn.push(CONFIG.allies.respawnDelay); };
-  if (net.role !== 'guest') for (let i = 0; i < CONFIG.allies.count; i++) spawnWingman(world, i);
-  // co-op: every connected pilot spawns beside the host
+  if (!def.versus) {
+    const bp = CONFIG.base.offset; world.base = placeCapital(BOSS_DEFS.base(), 'friendly', { position: { x: bp.x, y: bp.y, z: 400 + bp.z }, facing: { x: 0, y: 0, z: -1 }, noScale: true }, mission.ctx);
+    if (net.role !== 'guest') for (let i = 0; i < CONFIG.allies.count; i++) spawnWingman(world, i);
+  }
+  // co-op: every connected pilot spawns beside the host; versus: everyone starts spread around the arena ring
   for (const p of world.players) { if (p === pl) continue; p.respawnTimer = 0; if (net.role === 'host') { p.reset(_v[0].set((p.slot % 2 ? 1 : -1) * 40 * Math.ceil(p.slot / 2), 8 * p.slot, 400 + 30 * p.slot), _q[0].identity()); p.alive = true; p.mesh.visible = true; } else { p.alive = false; if (p.mesh) p.mesh.visible = false; } }
+  if (def.versus && net.role !== 'guest') world.players.forEach((p, i) => { if (p.alive) versusSpawn(p, i); });
   world.onEnemyKilled = () => { for (const q of world.players) if (q.target && !validTarget(q.target)) q.target = null; };
   world.onPlayerKilled = (p) => { if (p === pl) audio.engineOff(); if (net.active) p.respawnTimer = CONFIG.net.respawnDelay; };
   world.onSubsystemDestroyed = (sub) => { for (const q of world.players) if (q.target === sub) q.target = nextTarget(sub); };
@@ -2988,7 +3231,7 @@ function startObjective(i) {
   mission.handler = handler; ctx.o = {}; ctx.goal = null; handler.init(ctx, obj.params || {}); ctx.ow = makeWaveTrack(obj.waves, obj.waveMode);
   $('h-objective').textContent = obj.text || def.name; mission.banner = CONFIG.mission.waveBanner; mission.statusText = handler.statusText ? handler.statusText(ctx) : '';
 }
-function targetables(pl = world.player) { const list = world.liveEnemies(); list.sort((a, b) => a.pos.distanceToSquared(pl.pos) - b.pos.distanceToSquared(pl.pos)); for (const b of world.bosses) if (b.alive && !b.dying && b.team !== 'friendly') list.push(b); return list; }
+function targetables(pl = world.player) { const list = world.pvp ? world.rivalsOf(pl) : world.liveEnemies(); list.sort((a, b) => a.pos.distanceToSquared(pl.pos) - b.pos.distanceToSquared(pl.pos)); if (!world.pvp) for (const b of world.bosses) if (b.alive && !b.dying && b.team !== 'friendly') list.push(b); return list; }
 function bossCycle(b, pl = world.player) { const subs = b.subsystems.filter(s => s.alive && s.targetable !== false).sort((x, y) => x.pos.distanceToSquared(pl.pos) - y.pos.distanceToSquared(pl.pos)); if (b.hullVulnerable) subs.push(b); return subs.length ? subs : [b]; }
 function nextTarget(cur, pl = world.player) {
   const top = targetables(pl); if (!top.length) return null;
@@ -3011,17 +3254,18 @@ function missionUpdate(dt) {
     if (q.input.consume('Tab') && q.target) { const t = nextTarget(q.target, q); if (t && t !== q.target) { q.target = t; q.lockProgress = 0; if (q === pl) audio.click(); } }
     if (q.input.consume('KeyV')) { world.allyStance = world.allyStance === 'engage' ? 'regroup' : 'engage'; audio.click(true); }
     // co-op: downed pilots come back at the base while anyone is still flying
-    if (!q.alive && net.active && q.respawnTimer > 0 && !world.allPlayersDown()) { q.respawnTimer -= dt; if (q.respawnTimer <= 0) { const b = world.base; q.reset(_v[0].copy(b ? b.pos : world.arena.center).add(_v[1].set(0, 40, 120)), _q[0].identity()); q.alive = true; q.hull = q.maxHull; if (q.mesh) q.mesh.visible = true; if (q === pl) cam.init = false; world.shockwaves.emit(q.pos, 20); } }
+    if (!q.alive && (net.active || world.pvp) && q.respawnTimer > 0 && (world.pvp || !world.allPlayersDown())) { q.respawnTimer -= dt; if (q.respawnTimer <= 0) { if (world.pvp) versusSpawn(q); else { const b = world.base; q.reset(_v[0].copy(b ? b.pos : world.arena.center).add(_v[1].set(0, 40, 120)), _q[0].identity()); q.alive = true; q.hull = q.maxHull; if (q.mesh) q.mesh.visible = true; if (q === pl) cam.init = false; world.shockwaves.emit(q.pos, 20); } } }
   }
   if (input.consume('KeyC')) { pl.cockpit = !pl.cockpit; cam.init = false; audio.click(); }
   // completion / failure with a short beat so the last explosion plays out
   if (mission.endState == null) {
     if (mission.handler.checkFail(ctx)) { mission.endState = 'fail'; mission.endTimer = 2.2; }
     else if (mission.handler.checkComplete(ctx)) { if (ctx.objIndex < def.objectives.length - 1) { startObjective(ctx.objIndex + 1); audio.click(true); } else { mission.endState = 'complete'; mission.endTimer = 1.6; } }
-  } else { mission.endTimer -= dt; if (mission.endTimer <= 0) finishMission(mission.endState); }
+  } else if (mission.endState !== 'done') { mission.endTimer -= dt; if (mission.endTimer <= 0) { const r = mission.endState; mission.endState = 'done'; finishMission(r); } }
 }
 function nextIncompleteMission() { for (let i = 0; i < MISSIONS.length; i++) if (!game.missionsCompleted.includes(MISSIONS[i].id)) return i; return MISSIONS.length - 1; }
 function finishMission(result) {
+  if (mission.def?.versus) return finishVersus();
   const s = world.stats, def = mission.def, pl = world.player; const acc = s.shotsFired ? (s.shotsHit / s.shotsFired) * 100 : 0;
   game.campaign.missionsFlown++; game.campaign.kills += s.kills; game.campaign.shotsFired += s.shotsFired; game.campaign.shotsHit += s.shotsHit;
   const rows = [['Kills', s.kills], ['Accuracy', `${fmt(acc, 1)}%`], ['Shots fired', s.shotsFired], ['Secondaries fired', s.missilesFired], ['Damage taken', fmt(s.damageTaken)], ['Hull damage', fmt(s.hullDamageTaken)], ['Time', fmtTime(s.time)]];
@@ -3048,7 +3292,7 @@ function finishMission(result) {
 function abortMission() { if (mission.handler && mission.ctx) mission.handler.cleanup?.(mission.ctx); world.clearAll(); mission.endState = null; }
 /** Fresh campaign: every progression field back to defaults, no entities or listeners left behind. */
 function resetCampaign() {
-  abortMission(); const muted = game.muted; Object.assign(game, GAME_DEFAULTS()); game.muted = muted; rebuildModifiers();
+  abortMission(); const muted = game.muted, profile = game.profile; Object.assign(game, GAME_DEFAULTS()); game.muted = muted; game.profile = profile; rebuildModifiers();
   for (const a of world.allies.items) a.disposeMesh(); if (net.role !== 'solo') net.disconnect();
   const pl = world.player; pl.shipId = 'vanguard'; pl.build(SHIPS.vanguard.tint); pl.applyStats(derivedStats('vanguard', [])); pl.reset(_v[0].set(0, 0, 400), _q[0].identity()); pl.alive = false; pl.target = null;
   hangar.viewShip = 'vanguard'; hangar.branch = 'hull'; applyEnvironment(MISSIONS[0].environment); mission.campaignJustCompleted = false;
@@ -3137,10 +3381,13 @@ function renderPreview(dt) { const P = hangar.preview; if (!P) return; hangar.sp
 const SCREEN = { LOADING: 'LOADING', BRIEFING: 'BRIEFING', PLAYING: 'PLAYING', PAUSED: 'PAUSED', DEBRIEF: 'DEBRIEF', GAME_OVER: 'GAME_OVER', HANGAR: 'HANGAR', CAMPAIGN: 'CAMPAIGN', COOP: 'COOP' };
 const SCREEN_DOM = { LOADING: 's-loading', BRIEFING: 's-briefing', PAUSED: 's-paused', DEBRIEF: 's-debrief', GAME_OVER: 's-gameover', HANGAR: 's-hangar', CAMPAIGN: 's-campaign', COOP: 's-coop' };
 let screen = SCREEN.LOADING;
+/** The descriptor the next launch flies: the dogfight arena in versus, otherwise the selected campaign mission. */
+function currentMissionDef() { return game.mode === 'versus' ? VERSUS_MISSION : MISSIONS[clamp(game.currentMission, 0, MISSIONS.length - 1)]; }
+function refreshScreen() { SCREEN_HANDLERS[screen]?.enter?.(screen); }
 const SCREEN_HANDLERS = {
-  COOP: { enter() { net.setStatus(net.status); const roomMode = !net.rtcAvailable && !!net.room; $('coop-mode').textContent = roomMode ? 'This page uses the live room: anyone with this artifact open can host or join with one click, no codes.' : net.rtcAvailable ? 'Direct connection: swap invite and reply codes over any chat.' : 'Connections are blocked on this page and no live room is available.'; } },
-  BRIEFING: { enter() { const guest = net.role === 'guest'; $('btn-launch').disabled = guest; $('btn-launch').textContent = guest ? 'Waiting for host' : 'Launch'; if (guest) net.sendCfg(); const i = clamp(game.currentMission, 0, MISSIONS.length - 1); const d = MISSIONS[i]; $('b-name').textContent = `${i + 1}. ${d.name}`; $('b-sub').textContent = `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; audio.engineOff(); } },
-  PLAYING: { enter(from) { if (from !== SCREEN.PAUSED) startMission(MISSIONS[clamp(game.currentMission, 0, MISSIONS.length - 1)]); resetClock(); audio.resume(); if (net.role === 'guest') { net.lastSnapT = 0; net.prevSnapT = 0; } } },
+  COOP: { enter() { net.setStatus(net.status); const roomMode = !net.rtcAvailable && !!net.room; $('coop-mode').textContent = roomMode ? 'This page uses the live room: anyone with this artifact open can host or join with one click, no codes.' : net.rtcAvailable ? 'Joining opens a direct link between the two of you; the lobby only introduces you. Strict firewalls can block it — then use the codes.' : 'Connections are blocked on this page and no live room is available.'; $('lobby-name').value = game.profile.name; lobby.render(); lobby.track(); } },
+  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; audio.engineOff(); } },
+  PLAYING: { enter(from) { if (from !== SCREEN.PAUSED) startMission(currentMissionDef()); resetClock(); audio.resume(); if (net.role === 'guest') { net.lastSnapT = 0; net.prevSnapT = 0; } } },
   PAUSED: { enter() { audio.suspend(); }, exit() { resetClock(); } },
   DEBRIEF: { enter() { audio.engineOff(); } },
   GAME_OVER: { enter() { audio.engineOff(); } },
@@ -3158,21 +3405,26 @@ function setScreen(next) {
   for (const [k, id] of Object.entries(SCREEN_DOM)) $(id).classList.toggle('on', k === next);
   H.hud.classList.toggle('visible', next === SCREEN.PLAYING || next === SCREEN.PAUSED);
   SCREEN_HANDLERS[next]?.enter?.(prev);
-  net.broadcastScreen(next);
+  net.broadcastScreen(next); lobby.track();
 }
 $('btn-launch').onclick = () => { if (net.role === 'guest') return; audio.init(); audio.click(true); setScreen(SCREEN.PLAYING); };
 $('btn-b-coop').onclick = () => { audio.init(); audio.click(); setScreen(SCREEN.COOP); };
-$('btn-host').onclick = () => { audio.click(true); const codes = net.rtcAvailable; $('coop-host').style.display = codes ? '' : 'none'; $('coop-guest').style.display = 'none'; net.hostInvite().catch(e => net.setStatus('Could not host: ' + e.message)); };
-$('btn-join').onclick = () => { audio.click(true); if (!net.rtcAvailable) { $('coop-guest').style.display = 'none'; if (net.room) net.roomJoin(); else net.setStatus('This page cannot open connections here. Use the standalone index.html for code-based co-op.'); return; } $('coop-guest').style.display = ''; $('coop-host').style.display = 'none'; net.setStatus('Paste the invite code, then generate your reply.'); };
+const hostSortie = (mode) => { audio.init(); if (!net.rtcAvailable) { if (net.room) { game.mode = mode; net.roomHost(); $('btn-leave').style.display = ''; } else net.setStatus('This page cannot open connections here.'); return; } lobby.host(mode); };
+$('btn-host').onclick = () => hostSortie('coop'); $('btn-host-vs').onclick = () => hostSortie('versus');
+$('btn-name').onclick = () => { audio.init(); audio.click(); lobby.setName($('lobby-name').value); }; $('lobby-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-name').onclick(); e.stopPropagation(); }); $('lobby-name').addEventListener('keyup', (e) => e.stopPropagation());
+$('btn-leave').onclick = () => lobby.leave();
+$('lobby-list').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; audio.init(); if (b.dataset.join) lobby.join(b.dataset.join); else if (b.dataset.roomjoin) { net.roomJoin(); $('btn-leave').style.display = ''; } });
+$('btn-manual-host').onclick = () => { audio.init(); audio.click(true); if (net.role === 'guest') net.disconnect(); $('coop-host').style.display = ''; $('coop-guest').style.display = 'none'; net.hostInvite().then(() => { $('btn-leave').style.display = ''; lobby.track(); }).catch(e => net.setStatus('Could not host: ' + e.message)); };
+$('btn-join').onclick = () => { audio.init(); audio.click(true); if (!net.rtcAvailable) { $('coop-guest').style.display = 'none'; if (net.room) net.roomJoin(); else net.setStatus('This page cannot open connections here. Use the standalone index.html for code-based co-op.'); return; } $('coop-guest').style.display = ''; $('coop-host').style.display = 'none'; net.setStatus('Paste the invite code, then generate your reply.'); };
 $('btn-coop-accept').onclick = () => { audio.click(); net.hostAccept($('coop-answer').value); };
-$('btn-coop-answer').onclick = () => { audio.click(); net.guestAnswer($('coop-offer-in').value).catch(e => net.setStatus('Could not join: ' + e.message)); };
+$('btn-coop-answer').onclick = () => { audio.click(); net.guestAnswer($('coop-offer-in').value).then(() => { $('btn-leave').style.display = ''; }).catch(e => net.setStatus('Could not join: ' + e.message)); };
 $('btn-coop-back').onclick = () => { audio.click(); setScreen(SCREEN.BRIEFING); };
 $('btn-coop-go').onclick = () => { audio.click(true); setScreen(net.role === 'guest' ? SCREEN.HANGAR : SCREEN.BRIEFING); };
 $('btn-b-hangar').onclick = () => { audio.init(); audio.click(); setScreen(SCREEN.HANGAR); };
 $('btn-resume').onclick = () => { if (net.role === 'guest') return; audio.click(); setScreen(SCREEN.PLAYING); };
 $('btn-abort').onclick = () => { audio.click(); abortMission(); if (net.role === 'guest') net.disconnect(); setScreen(SCREEN.HANGAR); };
-$('btn-continue').onclick = () => { audio.click(true); setScreen(mission.campaignJustCompleted ? SCREEN.CAMPAIGN : SCREEN.HANGAR); };
-$('btn-again').onclick = $('btn-retry').onclick = () => { if (net.role === 'guest') return; audio.click(true); game.currentMission = mission.index; setScreen(SCREEN.PLAYING); };
+$('btn-continue').onclick = () => { if (net.role === 'guest') return; audio.click(true); setScreen(mission.def?.versus ? SCREEN.COOP : mission.campaignJustCompleted ? SCREEN.CAMPAIGN : SCREEN.HANGAR); };
+$('btn-again').onclick = $('btn-retry').onclick = () => { if (net.role === 'guest') return; audio.click(true); if (!mission.def?.versus) game.currentMission = mission.index; setScreen(SCREEN.PLAYING); };
 $('btn-g-hangar').onclick = () => { audio.click(); abortMission(); setScreen(SCREEN.HANGAR); };
 $('btn-c-hangar').onclick = () => { audio.click(); setScreen(SCREEN.HANGAR); };
 $('btn-newcampaign').onclick = () => { audio.click(true); resetCampaign(); setScreen(SCREEN.BRIEFING); };
@@ -3208,7 +3460,7 @@ function render(alpha, dt) {
   const pl = world.player;
   if (pl.stats) { updateCamera(dt, alpha); world.syncRender(alpha, dt); shake.update(dt); if (screen === SCREEN.PLAYING || screen === SCREEN.PAUSED) { updateHUD(dt, alpha); if (mission.handler?.hud) mission.handler.hud(mission.ctx); } }
   if (pl.alive && screen === SCREEN.PLAYING) { audio.engineUpdate(pl.throttle, clamp(pl.speed / pl.stats.flight.maxSpeed, 0, 1.5), pl.boosting, dt); audio.lockUpdate(pl.lockProgress, pl.locked, dt); }
-  if (screen === SCREEN.PLAYING || screen === SCREEN.PAUSED) updateSquadHUD(dt);
+  if (screen === SCREEN.PLAYING || screen === SCREEN.PAUSED) { updateSquadHUD(dt); updateNametags(); } else if (tags.els.size) updateNametags();
   if (env.beacon) env.beacon.material.opacity = 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
   grainPass.uniforms.time.value = (performance.now() % 100000) * 0.001;
   renderer.info.reset(); composer.render(); // autoReset is off so the count covers the whole composer chain
@@ -3237,14 +3489,14 @@ async function boot() {
   $('loading-text').textContent = 'Loading ship';
   await loadShipTemplate(); await loadShipTemplate(MODEL_URL_DROPSHIP, MODEL_INLINE_DROPSHIP, dropshipTemplate, CONFIG.ship.length * CONFIG.ship.dropshipLength, CONFIG.ship.dropshipForwardAxis);
   if (!dropshipTemplate.fromModel) { dropshipTemplate.root = shipTemplate.root; dropshipTemplate.size.copy(shipTemplate.size); dropshipTemplate.engineAnchors = shipTemplate.engineAnchors; }
-  touch.init(); net.roomInit(); rebuildModifiers(); world.player.shipId = 'vanguard'; world.player.build(SHIPS.vanguard.tint);
+  touch.init(); net.roomInit(); lobby.init(); rebuildModifiers(); world.player.shipId = 'vanguard'; world.player.build(SHIPS.vanguard.tint);
   world.player.applyStats(derivedStats('vanguard', game.activeModifiers));
   world.player.reset(_v[0].set(0, 0, 400), _q[0].identity()); world.player.alive = false; world.clearAll(); applyEnvironment(m0.environment);
   verifyLeadSolver();
   setScreen(SCREEN.BRIEFING); resetClock(); requestAnimationFrame(frame);
 }
 // Hooks for tooling / tests (not used by gameplay)
-window.__game = { updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, UPGRADES, MODULES, SECONDARIES, buyUpgrade, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene };
+window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, UPGRADES, MODULES, SECONDARIES, buyUpgrade, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
 </script>
 </body>

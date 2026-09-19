@@ -4,7 +4,9 @@ Browser space-combat game (Three.js r170, single-file). Open `index.html` from a
 
 - Six-mission campaign, four bosses, seven playable ships, hangar upgrades
 - Wingmen, forward base, touch controls
-- Up to 4-player co-op over WebRTC (Host → share code → Join)
+- Live lobby: everyone online is listed by callsign; one click to host or join
+- Up to 4 players: co-op campaign or free-for-all versus dogfight (first to 10)
+- Nametags over other pilots, bigger arenas, touch controls
 
 Deployed automatically to GitHub Pages on every push to `main`.
 
