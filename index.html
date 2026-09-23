@@ -18,8 +18,8 @@
     --glass: linear-gradient(165deg, rgba(10, 24, 36, 0.62), rgba(4, 10, 16, 0.38));
     --glass-strong: linear-gradient(168deg, rgba(9, 22, 34, 0.92), rgba(3, 8, 14, 0.86));
     --panel-shadow: 0 6px 28px rgba(0, 0, 0, 0.4), inset 0 0 24px rgba(95, 242, 255, 0.045);
-    --glow-c: 0 0 9px rgba(95, 242, 255, 0.4);
-    --glow-a: 0 0 9px rgba(255, 179, 71, 0.4);
+    --glow-c: 0 0 8px rgba(95, 242, 255, 0.25);
+    --glow-a: 0 0 8px rgba(255, 179, 71, 0.25);
     --line: 1px;
     --mono: "SF Mono", "JetBrains Mono", "Fira Mono", Consolas, "Courier New", monospace;
   }
@@ -40,7 +40,7 @@
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; display: none; }
   #hud.visible { display: block; }
   .panel { position: absolute; padding: 9px 12px; border: var(--line) solid var(--cyan-faint); background: var(--glass); backdrop-filter: blur(6px) saturate(1.25); -webkit-backdrop-filter: blur(6px) saturate(1.25); box-shadow: var(--panel-shadow); border-radius: 2px; }
-  .panel::before, .panel::after { content: ""; position: absolute; width: 9px; height: 9px; pointer-events: none; opacity: 0.9; }
+  .panel::before, .panel::after { content: ""; position: absolute; width: 8px; height: 8px; pointer-events: none; opacity: 0.5; }
   .panel::before { left: -1px; top: -1px; border-left: 2px solid var(--cyan); border-top: 2px solid var(--cyan); }
   .panel::after { right: -1px; bottom: -1px; border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); }
   #p-objective, #p-radar, #p-sys, #p-obj, #p-warn { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
@@ -49,13 +49,13 @@
   .panel .label { font-size: 10px; color: var(--cyan-dim); margin-bottom: 4px; }
   .panel .value { font-size: 20px; line-height: 1; text-shadow: var(--glow-c); }
   .bar { position: relative; height: 6px; width: 160px; border: var(--line) solid var(--cyan-faint); margin-top: 4px; background: rgba(95, 242, 255, 0.05); }
-  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: linear-gradient(90deg, rgba(95, 242, 255, 0.65), var(--cyan)); box-shadow: 0 0 7px rgba(95, 242, 255, 0.5); transform-origin: left center; transform: scaleX(1); }
-  .bar.amber { border-color: rgba(255, 179, 71, 0.28); background: rgba(255, 179, 71, 0.05); } .bar.amber > i { background: linear-gradient(90deg, rgba(255, 179, 71, 0.65), var(--amber)); box-shadow: 0 0 7px rgba(255, 179, 71, 0.5); }
-  .bar.red > i { background: linear-gradient(90deg, rgba(255, 90, 90, 0.65), var(--red)); box-shadow: 0 0 7px rgba(255, 90, 90, 0.5); }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: linear-gradient(90deg, rgba(95, 242, 255, 0.65), var(--cyan)); box-shadow: 0 0 5px rgba(95, 242, 255, 0.35); transform-origin: left center; transform: scaleX(1); }
+  .bar.amber { border-color: rgba(255, 179, 71, 0.28); background: rgba(255, 179, 71, 0.05); } .bar.amber > i { background: linear-gradient(90deg, rgba(255, 179, 71, 0.65), var(--amber)); box-shadow: 0 0 5px rgba(255, 179, 71, 0.35); }
+  .bar.red > i { background: linear-gradient(90deg, rgba(255, 90, 90, 0.65), var(--red)); box-shadow: 0 0 5px rgba(255, 90, 90, 0.35); }
   .row { display: flex; align-items: baseline; gap: 10px; }
   .row .label { margin: 0; width: 64px; }
 
-  #p-speed { left: 24px; top: 24px; min-width: 150px; }
+  #p-speed { left: 24px; top: 24px; width: 216px; }
   #p-status { left: 24px; bottom: 24px; }
   #p-weapons { right: 24px; bottom: 24px; }
   #p-target { right: 24px; top: 24px; min-width: 190px; }
@@ -253,12 +253,13 @@
   body.sandbox #p-sys { display: block; }
   #sys-name { font-size: 15px; } #sys-sub { font-size: 10px; color: var(--cyan-dim); margin-top: 2px; max-width: 240px; }
   body.sandbox #p-wing, body.sandbox #p-peer { display: none !important; }
-  #h-armor-row, #p-cap, #mod-rack, #p-overview, #toasts { display: none; }
-  body.sandbox #h-armor-row { display: flex; }
-  body.sandbox #p-cap, body.sandbox #toasts { display: block; }
+  #h-armor-row, .sbxrow, #mod-rack, #p-overview, #toasts { display: none; }
+  body.sandbox #h-armor-row, body.sandbox .sbxrow { display: flex; }
+  body.sandbox #toasts { display: block; }
   body.sandbox #mod-rack { display: flex; }
   body.sandbox #p-overview { display: flex; }
-  #p-cap { right: 24px; bottom: 150px; min-width: 190px; }
+  body.sandbox #p-objective { display: none; } /* system + ISK already live in the top-left panel */
+  #p-target.idle { display: none; }
   #mod-rack { position: absolute; left: 50%; bottom: 215px; transform: translateX(-50%); gap: 6px; pointer-events: auto; }
   .modslot { position: relative; width: 44px; height: 44px; border: var(--line) solid var(--cyan-faint); background: linear-gradient(165deg, rgba(10, 24, 36, 0.72), rgba(4, 10, 16, 0.55)); cursor: pointer; text-align: center; border-radius: 2px; transition: border-color 0.12s, box-shadow 0.12s; }
   .modslot:hover { border-color: var(--cyan-dim); box-shadow: 0 0 8px rgba(95, 242, 255, 0.2); }
@@ -266,19 +267,20 @@
   .modslot span { position: absolute; left: 0; right: 0; bottom: 2px; font-size: 8px; color: var(--cyan-dim); overflow: hidden; }
   .modslot.on { border-color: var(--amber); background: rgba(255,179,71,0.12); box-shadow: 0 0 10px rgba(255, 179, 71, 0.35), inset 0 0 8px rgba(255, 179, 71, 0.12); }
   .modslot i { position: absolute; inset: 2px; border-radius: 50%; -webkit-mask: radial-gradient(closest-side, transparent 60%, #000 63%); mask: radial-gradient(closest-side, transparent 60%, #000 63%); }
-  #p-overview { right: 24px; top: 200px; bottom: 240px; width: 250px; flex-direction: column; pointer-events: auto; padding: 6px 8px; }
+  #p-overview { right: 24px; top: 200px; bottom: 240px; width: 268px; flex-direction: column; pointer-events: auto; padding: 8px 10px; }
   #ov-sort { display: flex; gap: 4px; margin-bottom: 4px; }
   #ov-sort button, #ov-actions button { pointer-events: auto; cursor: pointer; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); background: transparent; border: var(--line) solid var(--cyan-dim); padding: 3px 7px; }
   #ov-actions { margin: 4px 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   #ov-list { overflow-y: auto; flex: 1; }
-  .ovrow { display: flex; gap: 6px; font-size: 10px; padding: 2px 2px; cursor: pointer; align-items: baseline; }
-  .ovrow:hover { background: rgba(95,242,255,0.08); }
-  .ovrow.sel { outline: 1px solid var(--cyan); }
-  .ovrow .k { width: 52px; color: inherit; opacity: 0.7; text-transform: uppercase; font-size: 8px; }
+  .ovrow { display: flex; gap: 6px; font-size: 11px; padding: 3px 4px; cursor: pointer; align-items: baseline; }
+  .ovrow:nth-child(even) { background: rgba(95, 242, 255, 0.03); }
+  .ovrow:hover { background: rgba(95,242,255,0.09); }
+  .ovrow.sel { outline: 1px solid var(--cyan); background: rgba(95, 242, 255, 0.07); }
+  .ovrow .k { width: 56px; color: inherit; opacity: 0.65; text-transform: uppercase; font-size: 9px; }
   .ovrow .n { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .ovrow .d { font-variant-numeric: tabular-nums; }
   .ovrow button { margin-left: 4px; font-size: 9px; padding: 1px 6px; pointer-events: auto; cursor: pointer; background: transparent; color: var(--cyan); border: var(--line) solid var(--cyan-dim); }
-  #toasts { position: absolute; left: 24px; top: 34%; max-width: 300px; font-size: 11px; color: #ffd9a8; text-transform: none; letter-spacing: 0.04em; }
+  #toasts { position: absolute; left: 24px; top: 46%; max-width: 280px; font-size: 11px; color: #ffd9a8; text-transform: none; letter-spacing: 0.04em; }
   #toasts div { margin-bottom: 4px; border-left: 2px solid var(--amber); padding: 4px 8px; background: linear-gradient(90deg, rgba(255, 179, 71, 0.1), transparent); animation: toastin 0.25s ease-out; }
   @keyframes toastin { from { opacity: 0; transform: translateX(-10px); } }
   #storage-warn { position: fixed; left: 50%; top: 0; transform: translateX(-50%); background: rgba(120,20,20,0.9); color: #ffd9d9; font-family: var(--mono); font-size: 11px; padding: 4px 14px; z-index: 40; display: none; }
@@ -312,7 +314,7 @@
   #sb-loss h1 { color: var(--red); }
 
   /* ---------- Stage 4: fleet panel, scanner, skill dots ---------- */
-  #p-fleet { left: 24px; top: 200px; min-width: 200px; display: none; pointer-events: auto; }
+  #p-fleet { left: 24px; top: 200px; width: 216px; display: none; pointer-events: auto; }
   body.sandbox #p-fleet.on { display: block; }
   #p-fleet .w { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; margin-top: 3px; }
   #p-fleet .w.dead { color: var(--cyan-dim); text-decoration: line-through; }
@@ -348,10 +350,8 @@
     <div class="row"><div class="label">Shield</div><div class="bar"><i id="h-shield"></i></div><span id="h-shield-n">100</span></div>
     <div class="row" id="h-armor-row"><div class="label">Armor</div><div class="bar" style="border-color:rgba(217,201,160,0.5)"><i id="h-armor" style="background:#d9c9a0"></i></div><span id="h-armor-n">0</span></div>
     <div class="row"><div class="label">Hull</div><div class="bar amber"><i id="h-hull"></i></div><span id="h-hull-n">100</span></div>
-  </div>
-  <div class="panel" id="p-cap">
-    <div class="row"><div class="label">Capacitor</div><div class="bar"><i id="h-cap"></i></div><span id="h-cap-t">--</span></div>
-    <div class="row"><div class="label">Cargo</div><div class="bar amber"><i id="h-cargo"></i></div><span id="h-cargo-t">--</span></div>
+    <div class="row sbxrow"><div class="label">Capacitor</div><div class="bar"><i id="h-cap"></i></div><span id="h-cap-t">--</span></div>
+    <div class="row sbxrow"><div class="label">Cargo</div><div class="bar amber"><i id="h-cargo"></i></div><span id="h-cargo-t">--</span></div>
   </div>
   <div class="panel" id="p-sys"><div id="sys-name">--</div><div id="sys-sub"></div></div>
   <div id="mod-rack"></div>
@@ -2301,6 +2301,8 @@ function updateHUD(dt, alpha) {
     H['h-missiles'].textContent = String(pl.missiles); H['h-lock-t'].textContent = SECONDARIES[pl.secondary].needsLock ? (pl.locked ? 'LOCK' : pl.lockProgress > 0 ? 'ACQ' : '--') : 'FREE'; H['h-sec-label'].textContent = SECONDARIES[pl.secondary].label;
     const sp = SHIPS[pl.shipId]?.special; H['h-dash-row'].style.display = sp ? 'flex' : 'none'; if (sp) { setBar(H['h-dash'], pl.dash.active > 0 ? 1 : 1 - pl.dash.cooldown / sp.cooldown); H['h-dash-t'].textContent = pl.dash.active > 0 ? 'PHASE' : pl.dash.cooldown > 0 ? fmt(pl.dash.cooldown, 1) : 'RDY'; }
     H['h-tname'].textContent = t ? (t.isPlayer ? t.callsign || t.name : t.name).toUpperCase() : 'NONE'; H['h-trange'].textContent = t ? `${fmt(t.pos.distanceTo(pl.pos))} m` : '--';
+    $('p-target').classList.toggle('idle', !t); // an empty target box is noise — show it only when something is locked up
+    const noSec = !!pl.sbx && pl.missiles === 0; H['h-missiles'].parentElement.style.display = noSec ? 'none' : 'flex'; H['h-lock'].parentElement.parentElement.style.display = noSec ? 'none' : 'flex';
     H['h-hostiles'].textContent = String(world.pvp ? world.rivalsOf(pl).length : world.countEnemies()); H['h-wave'].textContent = mission.statusText;
     H['p-warn'].classList.toggle('on', !!pl.outsideArena); if (pl.outsideArena) H['p-warn'].textContent = 'Return to combat zone';
     if (CONFIG.render.showFps) { H.fps.classList.add('on'); fpsAcc += dt; fpsN++; if (fpsAcc >= 0.5) { H.fps.textContent = `${Math.round(fpsN / fpsAcc)} fps · ${renderer.info.render.calls} calls`; fpsAcc = 0; fpsN = 0; } } else H.fps.classList.remove('on');
