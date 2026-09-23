@@ -3519,10 +3519,14 @@ function sbxLoad() {
   catch (e) { console.warn('[sbx] save load failed:', e.message); return false; }
 }
 function sbxStorageWarn() { const b = $('storage-warn'); if (b) b.classList.toggle('on', !SBX.storageOk); }
-function sbxExportSave() {
-  const data = JSON.stringify(sbxGatherState(), null, 0);
+async function sbxExportSave() {
+  const data = JSON.stringify(sbxGatherState(), null, 0); const filename = `vector-save-${Date.now()}.json`;
+  try { // inside the claude.ai viewer, plain download links do nothing — the downloads capability mediates the save
+    const dl = window.claude?.use ? await claude.use('downloads') : null;
+    if (dl) { try { await dl.save({ filename, data }); sbxToast('Save exported.'); } catch (e) { /* viewer declined */ } return; }
+  } catch (e) { /* fall through to the plain link */ }
   const blob = new Blob([data], { type: 'application/json' }); const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `vector-save-${Date.now()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 function sbxImportSave(file, onDone) {
   const r = new FileReader();
