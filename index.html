@@ -3595,6 +3595,30 @@ const SBX_HULLS = {
     hp: { shield: 200, armor: 180, hull: 300 }, cap: { pool: 1.9, tau: 1.5 },
     resists: { shield: [0.0, 0.2, 0.4, 0.5], armor: [0.5, 0.35, 0.25, 0.1], hull: [0, 0, 0, 0] },
     flight: [{ stat: 'flight.maxSpeed', add: -50 }, { stat: 'flight.pitchRate', mul: 0.55 }, { stat: 'flight.yawRate', mul: 0.55 }, { stat: 'flight.responsiveness', mul: 0.6 }] },
+  h_lumen: { name: 'Lumen', cls: 'Exploration Frigate', price: 95000, model: 'fighter', tint: 0xc98cff, scale: 0.95,
+    desc: 'A sensor suite with wings. Resolves signatures other hulls cannot even hear, and outruns what it wakes up.',
+    slots: { high: 2, mid: 3, low: 2, rig: 2 }, pg: 26, cpu: 150, cargo: 160, mass: 0.95, scanBonus: 1.6,
+    hp: { shield: 90, armor: 70, hull: 90 }, cap: { pool: 1.1, tau: 0.95 },
+    resists: { shield: [0.0, 0.2, 0.4, 0.5], armor: [0.5, 0.35, 0.25, 0.1], hull: [0, 0, 0, 0] },
+    flight: [{ stat: 'flight.maxSpeed', add: 30 }, { stat: 'flight.pitchRate', mul: 1.25 }, { stat: 'flight.yawRate', mul: 1.25 }] },
+  h_bastion: { name: 'Bastion', cls: 'Battlecruiser', price: 2100000, model: 'dropship', tint: 0xff9a5a, scale: 1.6,
+    desc: 'The null-sec workhorse. Enough rack to break a camp and enough plate to argue with an incursion.',
+    slots: { high: 6, mid: 4, low: 5, rig: 2 }, pg: 300, cpu: 340, cargo: 550, mass: 4.2,
+    hp: { shield: 620, armor: 580, hull: 700 }, cap: { pool: 4.2, tau: 2.1 },
+    resists: { shield: [0.0, 0.25, 0.45, 0.55], armor: [0.55, 0.4, 0.3, 0.15], hull: [0, 0, 0, 0] },
+    flight: [{ stat: 'flight.maxSpeed', add: -35 }, { stat: 'flight.pitchRate', mul: 0.55 }, { stat: 'flight.yawRate', mul: 0.55 }, { stat: 'flight.responsiveness', mul: 0.65 }] },
+  h_sovereign: { name: 'Sovereign', cls: 'Battleship', price: 7500000, model: 'dropship', tint: 0x8fb3d9, scale: 1.95,
+    desc: 'A capital investment that moves like a station and hits like a verdict. Losing one is a career event.',
+    slots: { high: 7, mid: 5, low: 6, rig: 3 }, pg: 620, cpu: 460, cargo: 800, mass: 6.5,
+    hp: { shield: 1250, armor: 1150, hull: 1400 }, cap: { pool: 7.5, tau: 3.0 },
+    resists: { shield: [0.0, 0.3, 0.5, 0.6], armor: [0.6, 0.45, 0.3, 0.2], hull: [0, 0, 0, 0] },
+    flight: [{ stat: 'flight.maxSpeed', add: -60 }, { stat: 'flight.pitchRate', mul: 0.4 }, { stat: 'flight.yawRate', mul: 0.4 }, { stat: 'flight.responsiveness', mul: 0.5 }] },
+  h_atlas: { name: 'Atlas', cls: 'Freighter', price: 4200000, model: 'dropship', tint: 0xd9c9a0, scale: 2.1,
+    desc: 'Eleven thousand cubic metres and not a single gun. Every camp on the route already knows your schedule.',
+    slots: { high: 0, mid: 2, low: 2, rig: 3 }, pg: 70, cpu: 200, cargo: 11000, mass: 8.0,
+    hp: { shield: 500, armor: 600, hull: 1500 }, cap: { pool: 3.0, tau: 2.4 },
+    resists: { shield: [0.0, 0.25, 0.45, 0.55], armor: [0.55, 0.4, 0.3, 0.15], hull: [0, 0, 0, 0] },
+    flight: [{ stat: 'flight.maxSpeed', add: -70 }, { stat: 'flight.pitchRate', mul: 0.32 }, { stat: 'flight.yawRate', mul: 0.32 }, { stat: 'flight.responsiveness', mul: 0.4 }] },
 };
 
 // ---------- Modules — items in inventory: bought, fitted, lost with the ship. ----------
@@ -4020,7 +4044,7 @@ const SKILLS = {
   gunnery:    { name: 'Gunnery',           group: 'Combat',     baseMin: 4,  desc: '+4% turret damage per level. Gates advanced weapons.', bonus: { gunDamageMul: 0.04 } },
   shieldOps:  { name: 'Shield operation',  group: 'Combat',     baseMin: 4,  desc: '+4% shield capacity per level.', bonus: { shieldMul: 0.04 } },
   navigation: { name: 'Navigation',        group: 'Navigation', baseMin: 3,  desc: '+3% top speed per level. Gates the microwarpdrive.', bonus: { speedMul: 0.03 } },
-  command:    { name: 'Ship command',      group: 'Navigation', baseMin: 6,  desc: 'Gates hulls: L1 frigates, L2 destroyers, L3 cruisers, L4 barges and industrials.', bonus: {} },
+  command:    { name: 'Ship command',      group: 'Navigation', baseMin: 6,  desc: 'Gates hulls: L1 frigates, L2 destroyers, L3 cruisers, L4 barges, industrials and battlecruisers, L5 battleships and freighters.', bonus: {} },
   production: { name: 'Production',        group: 'Industry',   baseMin: 5,  desc: '+1 manufacturing slot and −8% job time per level.', bonus: { jobTimeMul: -0.08, slots: 1 } },
   science:    { name: 'Science',           group: 'Industry',   baseMin: 8,  desc: 'Gates blueprint research; −8% research time per level.', bonus: { researchTimeMul: -0.08 } },
   trade:      { name: 'Trade',             group: 'Trade',      baseMin: 5,  desc: '+1 market order slot and −0.4% broker fee per level.', bonus: { orders: 1, brokerAdd: -0.004 } },
@@ -4033,7 +4057,7 @@ const skillLvl = (id) => SBX.profile?.skills?.levels[id] || 0;
 const skillTrainMs = (id, toLvl) => SKILLS[id].baseMin * 60000 * Math.pow(CONFIG.sbx4.skill.lvlMul, toLvl - 1);
 function skillBonus(key) { let v = 0; for (const id of SKILL_ORDER) { const b = SKILLS[id].bonus[key]; if (b) v += b * skillLvl(id); } return v; }
 /** Gates: hulls need Ship command; some modules need a specific skill level. */
-const HULL_SKILL_REQ = { h_wisp: 0, h_kestrel: 1, h_talon: 2, h_aurora: 3, h_burrow: 4, h_mule: 4 };
+const HULL_SKILL_REQ = { h_wisp: 0, h_kestrel: 1, h_talon: 2, h_lumen: 2, h_aurora: 3, h_burrow: 4, h_mule: 4, h_bastion: 4, h_sovereign: 5, h_atlas: 5 };
 const MODULE_SKILL_REQ = { w_beam: ['gunnery', 2], w_launcher: ['gunnery', 1], m_mwd: ['navigation', 2], w_miner2: ['mining', 2], l_rep: ['production', 0], probe: ['science', 1] };
 function hullSkillOk(hullId) { return skillLvl('command') >= (HULL_SKILL_REQ[hullId] ?? 0); }
 function moduleSkillReq(modId) { const r = MODULE_SKILL_REQ[modId]; return r && skillLvl(r[0]) < r[1] ? `needs ${SKILLS[r[0]].name} ${r[1]} (trained ${skillLvl(r[0])})` : null; }
@@ -4055,6 +4079,10 @@ const RECIPES = {
   kit_h_talon:  { mats: { min_ferrite: 4200, min_silica: 1100, min_nobelium: 90 }, timeMin: 38 },
   kit_h_mule:   { mats: { min_ferrite: 9000, min_silica: 2200, min_nobelium: 200 }, timeMin: 55, standing: ['guild', 1] },
   kit_h_aurora: { mats: { min_ferrite: 15000, min_silica: 5200, min_nobelium: 700 }, timeMin: 75, standing: ['combine', 2] },
+  kit_h_lumen:  { mats: { min_ferrite: 2600, min_silica: 950, min_nobelium: 45 }, timeMin: 30 },
+  kit_h_bastion:{ mats: { min_ferrite: 52000, min_silica: 16000, min_nobelium: 2400 }, timeMin: 150, standing: ['authority', 2] },
+  kit_h_atlas:  { mats: { min_ferrite: 95000, min_silica: 26000, min_nobelium: 3200 }, timeMin: 190, standing: ['guild', 2] },
+  kit_h_sovereign: { mats: { min_ferrite: 175000, min_silica: 60000, min_nobelium: 9500 }, timeMin: 300, standing: ['combine', 3] },
 };
 // blueprint items: originals (reusable, expensive) and copies (limited runs, found exploring)
 for (const [prod, r] of Object.entries(RECIPES)) {
@@ -4556,12 +4584,13 @@ const scanUI = { open: false, rangeIdx: 0, last: null };
 function sbxScanPulse() {
   const pl = world.player; const state = sbxSysState();
   const sig = (state.sigs || []).find(s => !s.resolved); if (!sig) { scanUI.last = { none: true }; return; }
-  const range = CONFIG.sbx4.explore.scanRanges[scanUI.rangeIdx];
+  const sensor = SBX_HULLS[SBX.ship()?.hull]?.scanBonus || 1; // exploration hulls hear further and resolve sooner
+  const range = CONFIG.sbx4.explore.scanRanges[scanUI.rangeIdx] * sensor;
   const d = _v[0].set(sig.pos.x, sig.pos.y, sig.pos.z).distanceTo(pl.pos);
   let strength;
   if (d > range) strength = Math.round(clamp(22 * range / d, 2, 40));
   else strength = Math.round(clamp(100 - 75 * d / range, 40, 99));
-  const resolved = range <= 1000 && d < CONFIG.sbx4.explore.resolveDist;
+  const resolved = scanUI.rangeIdx === CONFIG.sbx4.explore.scanRanges.length - 1 && d < CONFIG.sbx4.explore.resolveDist * sensor;
   const dir = _v[0].set(sig.pos.x - pl.pos.x, sig.pos.y - pl.pos.y, sig.pos.z - pl.pos.z);
   const hint = `${dir.z < 0 ? 'N' : 'S'}${dir.x < 0 ? 'W' : 'E'}${dir.y > 200 ? ' +up' : dir.y < -200 ? ' +down' : ''}`;
   if (resolved) {
@@ -4622,7 +4651,7 @@ function sbxSpawnGateCamps(sys) {
   if (!inc && Math.random() > 0.45) return;
   const gates = SBX.points.filter(p => p.kind === 'gate'); if (!gates.length) return;
   const gate = gates[Math.floor(Math.random() * gates.length)];
-  const cls = SBX_HULLS[SBX.ship().hull].cls; const juicy = cls === 'Industrial' || cls === 'Mining Barge';
+  const cls = SBX_HULLS[SBX.ship().hull].cls; const juicy = cls === 'Industrial' || cls === 'Mining Barge' || cls === 'Freighter';
   const n = (inc ? 3 : 2) + (juicy ? 1 : 0);
   for (let i = 0; i < n; i++) {
     const e = sbxSpawnNPC('pirate', i === 0 && (juicy || inc) ? 'ace' : 'interceptor', _v[6].copy(gate.pos).add(_v[7].set(rand(-1, 1), rand(-0.2, 0.2), rand(-1, 1)).normalize().multiplyScalar(rand(200, 500))));
@@ -5025,6 +5054,7 @@ function ecoCatalog(st) {
   const sys = SBX.systemOfStation(st.id);
   if (sys.sec < 0.5) list.push('ore_vexcry', 'tg_luxuries');
   if (st.services.fitting) list.push(...Object.keys(SBX_MODULES));
+  if (st.services.fitting) list.push(...Object.keys(ITEMS).filter(id => id.startsWith('bpo_'))); // originals: buy where you fit
   if (st.services.hulls) list.push(...Object.keys(ITEMS).filter(id => ITEMS[id].cat === 'hull'));
   return list;
 }
@@ -5035,7 +5065,7 @@ function ecoStation(stId) {
   e = ECO.stations[stId] = { stock: {}, eq: {}, prod: {}, cons: {}, hist: {} };
   for (const id of ecoCatalog(st)) {
     const it = ITEMS[id];
-    const eq = it.cat === 'hull' ? 2 + Math.floor(rng() * 3) : it.cat === 'module' ? 4 + Math.floor(rng() * 8) : 40 + Math.floor(rng() * 160);
+    const eq = it.cat === 'hull' ? 2 + Math.floor(rng() * 3) : it.cat === 'blueprint' ? 1 + Math.floor(rng() * 2) : it.cat === 'module' ? 4 + Math.floor(rng() * 8) : 40 + Math.floor(rng() * 160);
     e.eq[id] = eq; e.stock[id] = Math.max(0, Math.round(eq * (0.5 + rng()))); e.hist[id] = [];
     // production / consumption profiles create the price spreads that make hauling pay
     if (st.faction === 'combine' && it.cat === 'mineral') e.prod[id] = 2 + rng() * 3;
@@ -5783,7 +5813,7 @@ const SBXNET = {
     const root = new THREE.Group();
     const body = instantiateShip(tint.getHex(), TEMPLATES.fighter);
     const cls = SBX_HULLS[peer.hull]?.cls;
-    const scl = { Frigate: 1, Destroyer: 1.35, Cruiser: 1.7, 'Mining Barge': 1.7, Industrial: 2.0 }[cls] || 1;
+    const scl = { Frigate: 1, 'Exploration Frigate': 0.95, Destroyer: 1.35, Cruiser: 1.7, 'Mining Barge': 1.7, Industrial: 2.0, Battlecruiser: 2.2, Battleship: 2.7, Freighter: 2.9 }[cls] || 1;
     root.scale.setScalar(scl); root.add(body);
     const eng = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0x66ccff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     eng.position.set(0, 0, (shipTemplate.size.z || 8) * 0.5); eng.scale.set(2.4, 2.4, 1); root.add(eng);
