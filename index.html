@@ -410,7 +410,7 @@
     <div>Space — airbrake / drift</div><div>Q — ship special (Revenant)</div>
     <div>Esc — pause</div><div>M — mute &nbsp; V — wingmen engage / regroup</div>
   </div>
-  <div class="actions"><button id="btn-launch">Launch</button><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><button id="btn-sandbox" style="display:none;border-color:#7dffb0;color:#7dffb0">Sandbox</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
+  <div class="actions"><button id="btn-launch">Launch</button><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><button id="btn-sandbox" style="border-color:#7dffb0;color:#7dffb0">Sandbox</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
   <div class="small" id="b-coop-status"></div>
   <div class="foot">Ship: <span id="b-ship">Vanguard</span> &nbsp;·&nbsp; Credits: <span id="b-credits">0</span></div>
 </div></div>
@@ -4528,7 +4528,8 @@ function sbxInitProfile() {
   SBX.profile = sbxDefaultProfile();
   SBX.profile.name = game.profile.name || 'Pilot';
   const s = sbxStarterShip('station'); SBX.profile.activeShip = s.uid;
-  if (game.missionsCompleted.length >= MISSIONS.length) { SBX.profile.tutorialDone = true; SBX.profile.isk += CONFIG.sbx.tutorialIsk + game.credits * CONFIG.sbx.iskPerCredit; }
+  SBX.profile.tutorialDone = true;                                    // entering at all marks the arc done — the campaign stays available as the tutorial
+  if (game.missionsCompleted.length >= MISSIONS.length) SBX.profile.isk += CONFIG.sbx.tutorialIsk + game.credits * CONFIG.sbx.iskPerCredit;
   sbxSave('init');
 }
 function sbxUnlocked() { return (SBX.profile && SBX.profile.tutorialDone) || game.missionsCompleted.length >= MISSIONS.length || sbxSavedTutorialDone(); }
@@ -4933,7 +4934,7 @@ function currentMissionDef() { return game.mode === 'versus' ? VERSUS_MISSION : 
 function refreshScreen() { SCREEN_HANDLERS[screen]?.enter?.(screen); }
 const SCREEN_HANDLERS = {
   COOP: { enter() { net.setStatus(net.status); const roomMode = !net.rtcAvailable && !!net.room; $('coop-mode').textContent = roomMode ? 'This page uses the live room: anyone with this artifact open can host or join with one click, no codes.' : net.rtcAvailable ? 'Joining opens a direct link between the two of you; the lobby only introduces you. Strict firewalls can block it — then use the codes.' : 'Connections are blocked on this page and no live room is available.'; $('lobby-name').value = game.profile.name; lobby.render(); lobby.track(); } },
-  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; $('btn-sandbox').style.display = sbxUnlocked() ? '' : 'none'; audio.engineOff(); } },
+  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; $('btn-sandbox').textContent = sbxUnlocked() ? 'Sandbox' : 'Sandbox (skip tutorial)'; audio.engineOff(); } },
   PLAYING: { enter(from) { if (from !== SCREEN.PAUSED && game.mode !== 'sandbox') startMission(currentMissionDef()); resetClock(); audio.resume(); if (net.role === 'guest') { net.lastSnapT = 0; net.prevSnapT = 0; } } },
   PAUSED: { enter() { audio.suspend(); $('btn-abort').textContent = game.mode === 'sandbox' ? 'Save & leave sandbox' : 'Abort mission'; }, exit() { resetClock(); } },
   DEBRIEF: { enter() { audio.engineOff(); } },
@@ -4969,7 +4970,7 @@ $('btn-coop-answer').onclick = () => { audio.click(); net.guestAnswer($('coop-of
 $('btn-coop-back').onclick = () => { audio.click(); setScreen(SCREEN.BRIEFING); };
 $('btn-coop-go').onclick = () => { audio.click(true); setScreen(net.role === 'guest' ? SCREEN.HANGAR : SCREEN.BRIEFING); };
 $('btn-b-hangar').onclick = () => { audio.init(); audio.click(); setScreen(SCREEN.HANGAR); };
-$('btn-sandbox').onclick = () => { audio.init(); audio.click(true); sbxEnter(); };
+$('btn-sandbox').onclick = () => { audio.init(); audio.click(true); if (!sbxUnlocked() && !confirm('The six-mission campaign is the tutorial for the open universe. Skip it and jump straight into the sandbox?')) return; sbxEnter(); };
 $('btn-resume').onclick = () => { if (net.role === 'guest') return; audio.click(); setScreen(SCREEN.PLAYING); };
 $('btn-abort').onclick = () => { audio.click(); if (game.mode === 'sandbox') { sbxExit(); return; } abortMission(); if (net.role === 'guest') net.disconnect(); setScreen(SCREEN.HANGAR); };
 $('btn-continue').onclick = () => { if (net.role === 'guest') return; audio.click(true); setScreen(mission.def?.versus ? SCREEN.COOP : mission.campaignJustCompleted ? SCREEN.CAMPAIGN : SCREEN.HANGAR); };
