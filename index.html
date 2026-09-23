@@ -274,6 +274,21 @@
   #sb-map label { font-size: 11px; color: var(--cyan-dim); cursor: pointer; }
   #sb-loss .sb-card { width: min(640px, 92vw); border-color: var(--red); }
   #sb-loss h1 { color: var(--red); }
+
+  /* ---------- Stage 4: fleet panel, scanner, skill dots ---------- */
+  #p-fleet { left: 24px; top: 200px; min-width: 200px; display: none; pointer-events: auto; }
+  body.sandbox #p-fleet.on { display: block; }
+  #p-fleet .w { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; margin-top: 3px; }
+  #p-fleet .w.dead { color: var(--cyan-dim); text-decoration: line-through; }
+  #p-fleet .bar { width: 60px; height: 4px; margin-top: 4px; }
+  #fleet-cmds { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+  #fleet-cmds button, .scan-btns button, #scan-range button { pointer-events: auto; cursor: pointer; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); background: transparent; border: var(--line) solid var(--cyan-dim); padding: 3px 7px; }
+  #scan-range button.on { border-color: var(--amber); color: var(--amber); }
+  #scan-panel { left: 50%; top: 24%; transform: translateX(-50%); width: 280px; display: none; pointer-events: auto; background: rgba(4,10,16,0.75); }
+  body.sandbox #scan-panel.on { display: block; }
+  #scan-range { display: flex; gap: 4px; margin: 6px 0; }
+  #scan-out { min-height: 30px; font-size: 12px; margin: 4px 0; text-transform: none; }
+  .tiers i.queued { background: rgba(255,179,71,0.35); }
 </style>
 </head>
 <body>
@@ -304,6 +319,8 @@
   </div>
   <div class="panel" id="p-sys"><div id="sys-name">--</div><div id="sys-sub"></div></div>
   <div id="mod-rack"></div>
+  <div class="panel" id="p-fleet"><div class="label">Fleet</div><div id="fleet-list"></div><div id="fleet-cmds"><button data-cmd="engage">Engage</button><button data-cmd="defend">Defend</button><button data-cmd="mine">Mine</button><button data-cmd="hold">Hold</button><button data-cmd="deploy">Anchor [B]</button></div></div>
+  <div class="panel" id="scan-panel"><div class="label">Probe scanner [P]</div><div class="small" id="scan-sigs"></div><div id="scan-range"></div><div id="scan-out"></div><div class="scan-btns"><button id="scan-pulse">Pulse</button><button id="scan-close">Close</button></div></div>
   <div class="panel" id="p-overview">
     <div id="ov-sort"><span class="label" style="flex:1">Overview</span><button data-sort="dist">Dist</button><button data-sort="type">Type</button><button data-sort="name">Name</button><button id="btn-ov-map">Map [N]</button></div>
     <div id="ov-actions"></div>
@@ -367,6 +384,10 @@
     <button data-stab="fitting" data-svc="fitting">Fitting</button>
     <button data-stab="hangar">Hangar</button>
     <button data-stab="inventory">Inventory</button>
+    <button data-stab="skills">Skills</button>
+    <button data-stab="industry" data-svc="fitting">Industry</button>
+    <button data-stab="trade" data-svc="market">Trade</button>
+    <button data-stab="fleet">Fleet</button>
     <button data-stab="agents" data-svc="agents">Agents</button>
     <button data-stab="repair" data-svc="repair">Repair</button>
     <button data-stab="insurance">Insurance</button>
@@ -2871,12 +2892,18 @@ class AllyShip extends EnemyShip {
     const p = _v[8].copy(pos); _m.lookAt(_v[9].set(0, 0, 0), _v[10].copy(faceDir).negate(), WORLD_UP); _q[0].setFromRotationMatrix(_m); this.placeAt(p, _q[0]); this.speed = def.speed * 0.5; this.vel.copy(faceDir).multiplyScalar(this.speed);
     this.player = ctx.player; this.world = ctx.world; this.target = ctx.player; this.goal = null; this.neighbors = ctx.world.allies.items; this.obstacles = ctx.obstacles; this.arena = ctx.arena;
     this.alive = true; this.age = 0; this.sinceHit = 99; this.shieldFlash = this.hullFlash = 0; this.orbitSign = this.index % 2 ? 1 : -1; this.evadeCooldown = 0; this.visualRoll = 0; this.bank = 0; this.rollSpin = 0; this.stun = 0; this.repairing = null; this.arrived = false; this.targeted = false; this.enemy = null;
+    this.contract = null; this.fixedGoal = null; this.holdPos = null;   // Stage 4: hired-fleet state
     this.burstLeft = def.weapon.burst; this.pauseTimer = rand(0.3, 1); this.fireTimer = 0; this.aimNoise.set(0, 0, 0); this.retarget = 0;
     if (!this.mesh) { this.mesh = new THREE.Group(); this.mesh.add(instantiateShip(0x9fe8c8, dropshipTemplate.root ? dropshipTemplate : shipTemplate)); const t = dropshipTemplate.root ? dropshipTemplate : shipTemplate; for (const a of t.engineAnchors) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0x7dffb0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.position.copy(a); s.scale.set(2.4, 2.4, 1); this.mesh.add(s); } scene.add(this.mesh); }
     this.mesh.visible = true; this.mode = null; this.setMode(this.arch.initial);
   }
   sense(dt) {
     const w = this.world; this.stance = w.allyStance || 'engage'; this.player = w.nearestPlayer(this.pos) || this.player;
+    if (this.fixedGoal) {                                              // fleet orders: mine / hold park the ship on a point
+      this.enemy = null; this.target = this.fixedGoal; this.player = this.fixedGoal;
+      const to = _v[0].subVectors(this.fixedGoal.pos, this.pos); this.dist = to.length(); this.closing = false;
+      this.evadeCooldown = 0; this.beingLed = false; this.targeted = false; return;
+    }
     let best = null, bd = Infinity; for (const e of w.enemies.items) { if (!e.active || !e.alive) continue; const d = e.pos.distanceToSquared(this.pos); if (d < bd) { bd = d; best = e; } }
     this.enemyDist = Math.sqrt(bd); this.enemy = best && this.enemyDist < this.def.engageRange * 1.3 ? best : null;
     this.target = (this.stance === 'engage' && this.enemy) ? this.enemy : this.player;
@@ -3458,6 +3485,14 @@ function generateUniverse(seed = CONFIG.sbx.seed) {
     // gate anchor positions in-system (one per connected system, on a ring)
     s.gatePos = s.gates.map((g, k) => { const a = (k / s.gates.length) * Math.PI * 2 + rng(); return { to: g, x: Math.cos(a) * 8500, y: (rng() - 0.5) * 900, z: Math.sin(a) * 8500 }; });
   }
+  // wormhole space: rich, gateless, only reachable through scanned holes (Stage 4)
+  for (let k = 0; k < 3; k++) {
+    const sys = { id: 'wh' + k, name: 'J-' + (1140 + Math.floor(rng() * 800)), region: 2, wh: true, sec: 0.0, gates: [], gatePos: [],
+      pos: { x: 900 + k * 60, y: 60 + k * 120 }, stations: [], belts: [] };
+    for (let b = 0; b < 3; b++) sys.belts.push({ id: `whbelt_${k}_${b}`, name: `${sys.name} belt ${b + 1}`, mix: { ore_auberite: 0.35, ore_vexcry: 0.65 }, pos: { x: (rng() - 0.5) * 8000, y: (rng() - 0.5) * 1400, z: (rng() - 0.5) * 8000 } });
+    sys.env = { skyboxTint: 0x3a8a7a, planetHue: rng(), sunHue: rng(), hasPlanet: false, asteroidDensity: 0.9, fog: true };
+    systems.push(sys);
+  }
   return systems;
 }
 
@@ -3473,6 +3508,11 @@ function sbxDefaultProfile() {
     stats: { kills: 0, mined: 0, traded: 0, jumps: 0 },
   };
 }
+/** Every fresh or loaded profile passes through the v2 migration (defined in part19). */
+
+const _sbxDefaultProfileRaw = sbxDefaultProfile;
+// eslint-disable-next-line no-func-assign
+sbxDefaultProfile = function () { return sbxMigrateProfile(_sbxDefaultProfileRaw()); };
 function sbxNewShip(hullId, location) {
   const p = SBX.profile; const h = SBX_HULLS[hullId];
   const ship = { uid: p.nextShipId++, hull: hullId, name: h.name + '-' + String(p.nextShipId).padStart(2, '0'), fit: { high: [], mid: [], low: [], rig: [] }, cargo: {}, insured: false, location };
@@ -3504,13 +3544,13 @@ function sbxApplyState(s) {
   if (s.v > CONFIG.sbx.saveVersion) throw new Error(`save version ${s.v} is newer than this build`);
   const p = { ...sbxDefaultProfile(), ...s.profile };               // older saves: missing fields get defaults
   p.standings = { ...sbxDefaultProfile().standings, ...(s.profile.standings || {}) };
-  SBX.profile = p;
+  SBX.profile = sbxMigrateProfile(p);                                 // v1 → v2: skills, industry, orders, structures, fleet — no data loss
   if (p.seed !== CONFIG.sbx.seed || !SBX.systems) SBX.systems = generateUniverse(p.seed);
   SBX.sysState = s.sysState || {};
   ecoDeserialize(s.eco);
 }
 function sbxSave(reason = '') {
-  if (!SBX.profile) return false; SBX.dirty = false;
+  if (!SBX.profile) return false; SBX.dirty = false; SBX.profile.lastSeen = Date.now();
   try { localStorage.setItem(CONFIG.sbx.saveKey, JSON.stringify(sbxGatherState())); SBX.storageOk = true; return true; }
   catch (e) { SBX.storageOk = false; sbxStorageWarn(); return false; }
 }
@@ -3567,6 +3607,11 @@ function sbxFitStats(ship) {
     if (d.launcher) S.launcher += d.launcher.count;
     if (d.mine) S.mineYield += d.mine.yield;
   }
+  if (typeof skillBonus === 'function' && SBX.profile) {              // Stage 4: trained skills multiply in
+    S.gunDamageMul *= 1 + skillBonus('gunDamageMul');
+    S.shield *= 1 + skillBonus('shieldMul');
+    S.mineMul *= 1 + skillBonus('mineMul');
+  }
   S.gun.damage *= S.gunDamageMul; S.mineYield *= S.mineMul;
   S.valid = S.pgUsed <= S.pg + 1e-6 && S.cpuUsed <= S.cpu + 1e-6;
   // headline numbers for the fitting screen
@@ -3585,6 +3630,7 @@ function sbxCanFit(ship, moduleId, slot, index) {
   const d = SBX_MODULES[moduleId]; if (!d) return 'unknown module';
   if (d.slot !== slot) return `needs a ${d.slot} slot`;
   if (index >= ship.fit[slot].length) return 'no such slot';
+  if (typeof moduleSkillReq === 'function') { const sk = moduleSkillReq(moduleId); if (sk) return sk; }
   const test = JSON.parse(JSON.stringify(ship)); test.fit[slot][index] = moduleId;
   const S = sbxFitStats(test);
   if (S.pgUsed > S.pg) return `powergrid: needs ${S.pgUsed.toFixed(0)} of ${S.pg} MW`;
@@ -3601,6 +3647,7 @@ function sbxApplyFit() {
   const runMods = [];                                                 // active propulsion while running
   for (const rt of pl.sbx?.actives || []) if (rt.on && rt.def.run) { if (rt.def.run.speedAdd) { runMods.push({ stat: 'flight.maxSpeed', add: rt.def.run.speedAdd }); runMods.push({ stat: 'flight.speedCap', add: rt.def.run.speedAdd }); } if (rt.def.run.capPoolMul) { /* handled at cap level */ } }
   if (S.speedMul) runMods.push({ stat: 'flight.maxSpeed', mul: S.speedMul });
+  if (typeof skillBonus === 'function' && SBX.profile && skillBonus('speedMul')) runMods.push({ stat: 'flight.maxSpeed', mul: 1 + skillBonus('speedMul') });
   const stats = applyModifiers({ ...CONFIG.ship, flight: CONFIG.flight, weapons: CONFIG.weapons, missiles: CONFIG.missiles }, [...h.flight, ...runMods]);
   stats.hull = S.hp; stats.shield = S.shield; stats.shieldRegenRate = 8 + S.shield * 0.03; stats.shieldRegenDelay = 4; stats.radius = CONFIG.ship.radius * (h.scale || 1);
   stats.weapons.damage = S.gun.damage; stats.weapons.heatPerShot = CONFIG.weapons.heatPerShot * S.gun.heatMul * (0.55 + 0.25 * S.gun.guns);
@@ -3737,6 +3784,676 @@ const assist = {
 };
 
 // =====================================================================================
+//  Stage 6 (spec "Stage 4") — the long game. part19: data + the offline progression engine.
+//  Everything here runs on REAL wall-clock time and advances through ONE pass,
+//  sbxAdvance(ms) — called with the elapsed absence on load and with ~1s slices online.
+// =====================================================================================
+CONFIG.sbx.saveVersion = 2;
+CONFIG.sbx4 = {
+  // skills — minutes per level 1; each level multiplies by lvlMul
+  skill: { lvlMul: 3.2, maxLvl: 5 },
+  industry: { baseSlots: 2, researchMul: 7, bpcRuns: 10, mePerLvl: 0.05, tePerLvl: 0.06, meMax: 5 },
+  orders: { brokerFee: 0.03, durationH: 24, fillPerTick: 3, maxOrders: 4 },
+  structures: {
+    anchorMin: 15, attackMinMin: 22, attackMaxMin: 48, reinforceMin: 30, storageLossFrac: 0.5,
+    shieldRegenPerMin: 120, deployStanding: ['combine', 1], sec: 0.0,
+  },
+  fleet: { contractMin: 60, upkeepFree: true, respawnNever: true },
+  explore: { sigsMin: 0, sigsMax: 2, respawnMin: 25, whLifetimeMin: 25, whSystems: 3, scanRanges: [8000, 4000, 2000, 1000], resolveDist: 800 },
+  incursion: { baseIntervalMin: 90, worthUnit: 1.5e6, minIntervalMin: 12, strengthPerM: 4, durationMin: 45, killsToRepel: 8, payoutPerStrength: 2600 },
+  ecoCatchupTicks: 240,
+};
+
+// ---------- Skills — offline progression is the retention engine ----------
+const SKILLS = {
+  gunnery:    { name: 'Gunnery',           group: 'Combat',     baseMin: 4,  desc: '+4% turret damage per level. Gates advanced weapons.', bonus: { gunDamageMul: 0.04 } },
+  shieldOps:  { name: 'Shield operation',  group: 'Combat',     baseMin: 4,  desc: '+4% shield capacity per level.', bonus: { shieldMul: 0.04 } },
+  navigation: { name: 'Navigation',        group: 'Navigation', baseMin: 3,  desc: '+3% top speed per level. Gates the microwarpdrive.', bonus: { speedMul: 0.03 } },
+  command:    { name: 'Ship command',      group: 'Navigation', baseMin: 6,  desc: 'Gates hulls: L1 frigates, L2 destroyers, L3 cruisers, L4 barges and industrials.', bonus: {} },
+  production: { name: 'Production',        group: 'Industry',   baseMin: 5,  desc: '+1 manufacturing slot and −8% job time per level.', bonus: { jobTimeMul: -0.08, slots: 1 } },
+  science:    { name: 'Science',           group: 'Industry',   baseMin: 8,  desc: 'Gates blueprint research; −8% research time per level.', bonus: { researchTimeMul: -0.08 } },
+  trade:      { name: 'Trade',             group: 'Trade',      baseMin: 5,  desc: '+1 market order slot and −0.4% broker fee per level.', bonus: { orders: 1, brokerAdd: -0.004 } },
+  mining:     { name: 'Mining',            group: 'Mining',     baseMin: 4,  desc: '+6% mining yield per level. Gates the Mining laser II.', bonus: { mineMul: 0.06 } },
+  refining:   { name: 'Refining',          group: 'Mining',     baseMin: 6,  desc: '+2% refine yield per level (station cap 100%).', bonus: { refineAdd: 0.02 } },
+  leadership: { name: 'Leadership',        group: 'Leadership', baseMin: 7,  desc: '+1 fleet member and +3% fleet damage and yield per level.', bonus: { fleetCap: 1, fleetMul: 0.03 } },
+};
+const SKILL_ORDER = Object.keys(SKILLS);
+const skillLvl = (id) => SBX.profile?.skills?.levels[id] || 0;
+const skillTrainMs = (id, toLvl) => SKILLS[id].baseMin * 60000 * Math.pow(CONFIG.sbx4.skill.lvlMul, toLvl - 1);
+function skillBonus(key) { let v = 0; for (const id of SKILL_ORDER) { const b = SKILLS[id].bonus[key]; if (b) v += b * skillLvl(id); } return v; }
+/** Gates: hulls need Ship command; some modules need a specific skill level. */
+const HULL_SKILL_REQ = { h_wisp: 0, h_kestrel: 1, h_talon: 2, h_aurora: 3, h_burrow: 4, h_mule: 4 };
+const MODULE_SKILL_REQ = { w_beam: ['gunnery', 2], w_launcher: ['gunnery', 1], m_mwd: ['navigation', 2], w_miner2: ['mining', 2], l_rep: ['production', 0], probe: ['science', 1] };
+function hullSkillOk(hullId) { return skillLvl('command') >= (HULL_SKILL_REQ[hullId] ?? 0); }
+function moduleSkillReq(modId) { const r = MODULE_SKILL_REQ[modId]; return r && skillLvl(r[0]) < r[1] ? `needs ${SKILLS[r[0]].name} ${r[1]} (trained ${skillLvl(r[0])})` : null; }
+
+// ---------- Blueprints & manufacturing recipes ----------
+//  mats in minerals; timeMin is the unmodified build time in real minutes.
+const RECIPES = {
+  ammo_cells:   { mats: { min_ferrite: 3 }, timeMin: 3, batch: 10 },
+  w_gatling:    { mats: { min_ferrite: 40, min_silica: 6 }, timeMin: 6 },
+  w_autocannon: { mats: { min_ferrite: 180, min_silica: 40 }, timeMin: 10 },
+  w_pulse:      { mats: { min_ferrite: 150, min_silica: 80 }, timeMin: 10 },
+  w_beam:       { mats: { min_ferrite: 300, min_silica: 220, min_nobelium: 30 }, timeMin: 16 },
+  m_ab:         { mats: { min_ferrite: 160, min_silica: 40 }, timeMin: 9 },
+  m_extender:   { mats: { min_ferrite: 260, min_silica: 60 }, timeMin: 11 },
+  l_plate:      { mats: { min_ferrite: 420 }, timeMin: 11 },
+  l_rep:        { mats: { min_ferrite: 240, min_silica: 120, min_nobelium: 12 }, timeMin: 14 },
+  probe:        { mats: { min_silica: 160, min_nobelium: 20 }, timeMin: 12 },
+  kit_h_kestrel:{ mats: { min_ferrite: 1600, min_silica: 380 }, timeMin: 26 },
+  kit_h_talon:  { mats: { min_ferrite: 4200, min_silica: 1100, min_nobelium: 90 }, timeMin: 38 },
+  kit_h_mule:   { mats: { min_ferrite: 9000, min_silica: 2200, min_nobelium: 200 }, timeMin: 55, standing: ['guild', 1] },
+  kit_h_aurora: { mats: { min_ferrite: 15000, min_silica: 5200, min_nobelium: 700 }, timeMin: 75, standing: ['combine', 2] },
+};
+// blueprint items: originals (reusable, expensive) and copies (limited runs, found exploring)
+for (const [prod, r] of Object.entries(RECIPES)) {
+  const pname = ITEMS[prod]?.name || prod;
+  ITEMS['bpo_' + prod] = { name: pname + ' blueprint', cat: 'blueprint', vol: 1, base: Math.round((itemValue(prod) || 500) * (r.batch ? 30 : 12)), bp: { product: prod, runs: Infinity, original: true } };
+  ITEMS['bpc_' + prod] = { name: pname + ' blueprint copy', cat: 'blueprint', vol: 1, base: Math.round((itemValue(prod) || 500) * 1.5), bp: { product: prod, runs: CONFIG.sbx4.industry.bpcRuns, original: false } };
+}
+ITEMS.probe = { name: 'Probe launcher', cat: 'module', vol: 4, base: 22000, module: 'probe' };
+SBX_MODULES.probe = { name: 'Probe launcher', slot: 'high', pg: 2, cpu: 20, vol: 4, price: 22000, scanner: true };
+ITEMS.gas_mist = { name: 'Aurorae gas', cat: 'trade', vol: 4, base: 520 };
+
+// ---------- Deployable structures ----------
+const STRUCTURE_DEFS = {
+  refinery: { name: 'Refinery array', desc: 'Refines stored ore at 95% yield, better than any station, and skims a service fee as passive ISK.', mats: { min_ferrite: 9000, min_silica: 2600, min_nobelium: 240 }, hp: { shield: 2600, armor: 2200 }, incomePerMin: 140, refineYield: 0.95, storage: 20000 },
+  array:    { name: 'Manufacturing array', desc: '+3 manufacturing slots, 25% faster jobs, and licensing income while it stands.', mats: { min_ferrite: 11000, min_silica: 3600, min_nobelium: 320 }, hp: { shield: 2400, armor: 2400 }, incomePerMin: 180, jobSlots: 3, jobTimeMul: 0.75, storage: 8000 },
+  depot:    { name: 'Cargo depot', desc: 'A deep-space hangar. Your mining fleet delivers here; half of what is inside dies with it.', mats: { min_ferrite: 6000, min_silica: 1400 }, hp: { shield: 2200, armor: 1800 }, incomePerMin: 60, storage: 60000 },
+};
+
+// ---------- Save v2: new profile fields + migration from v1 (no data loss) ----------
+function sbxV2Defaults() {
+  return {
+    lastSeen: Date.now(),
+    skills: { levels: {}, queue: [] },                                  // queue: [{id, toLvl, remainMs}]
+    industry: { jobs: [], research: [] },                               // jobs: [{id, station, product, bp, runs, endT, structure?}]
+    bpResearch: {},                                                     // product → {me, te}
+    orders: [], orderSeq: 1,                                            // [{id, kind:'buy'|'sell', station, item, qty, remaining, price, expiresT, escrow}]
+    structures: [], structSeq: 1,                                       // [{id, type, sys, pos, state, onlineT, shield, armor, storage, reinforceUntil, nextAttackT, income}]
+    fleet: [], fleetSeq: 1,                                             // [{id, name, role, hull, price, hp, state, hold, endT}]
+    explore: { found: [] },                                             // resolved signature ids
+    incursions: [], nextIncursionT: 0, incursionKills: {},
+    stats4: { built: 0, repelled: 0, structuresLost: 0, fleetLost: 0 },
+  };
+}
+function sbxMigrateProfile(p) {
+  const d = sbxV2Defaults();
+  for (const [k, v] of Object.entries(d)) if (p[k] === undefined) p[k] = v;
+  p.skills.levels = p.skills.levels || {}; p.skills.queue = p.skills.queue || [];
+  p.v = CONFIG.sbx.saveVersion;
+  return p;
+}
+
+// ---------- Net worth — the score ----------
+function sbxNetWorth() {
+  const p = SBX.profile; if (!p) return 0;
+  let w = p.isk;
+  for (const s of p.ships) { w += fitValue(s) + cargoValue(s); }
+  for (const hg of Object.values(p.hangars)) for (const [id, q] of Object.entries(hg)) w += itemValue(id) * q;
+  for (const st of p.structures) { w += Object.entries(STRUCTURE_DEFS[st.type].mats).reduce((a, [id, q]) => a + itemValue(id) * q, 0) * 0.9; for (const [id, q] of Object.entries(st.storage || {})) w += itemValue(id) * q; }
+  for (const o of p.orders) w += o.kind === 'sell' ? itemValue(o.item) * o.remaining : o.escrow;
+  for (const f of p.fleet) w += f.price * 0.5;
+  return Math.round(w);
+}
+
+// =====================================================================================
+//  THE offline progression engine. One pass advances everything time-driven:
+//  skills → industry → research → market orders → structures → incursions → economy.
+//  Called with the whole absence on load, and with ~1000ms slices while playing.
+// =====================================================================================
+function sbxAdvance(ms, opts = {}) {
+  const p = SBX.profile; if (!p || ms <= 0) return null;
+  const now = Date.now(); const report = { skills: [], jobs: [], research: [], fills: 0, income: 0, structEvents: [], incursions: 0 };
+  // 1) skills — consume the queue front-first
+  let left = ms;
+  while (left > 0 && p.skills.queue.length) {
+    const q = p.skills.queue[0];
+    if (q.remainMs > left) { q.remainMs -= left; left = 0; }
+    else { left -= q.remainMs; p.skills.levels[q.id] = q.toLvl; report.skills.push(`${SKILLS[q.id].name} ${q.toLvl}`); p.skills.queue.shift(); }
+  }
+  // 2) manufacturing + research complete on wall-clock deadlines
+  for (const job of [...p.industry.jobs]) if (job.endT <= now) {
+    const hg = SBX.hangar(job.station); const out = RECIPES[job.product].batch || 1;
+    hg[job.product] = (hg[job.product] || 0) + out * job.runs; p.stats4.built += job.runs;
+    report.jobs.push(`${job.runs * out}× ${ITEMS[job.product].name}`);
+    p.industry.jobs.splice(p.industry.jobs.indexOf(job), 1);
+  }
+  for (const rj of [...p.industry.research]) if (rj.endT <= now) {
+    const r = p.bpResearch[rj.product] = p.bpResearch[rj.product] || { me: 0, te: 0 };
+    r[rj.kind] = Math.min(CONFIG.sbx4.industry.meMax, (r[rj.kind] || 0) + 1);
+    report.research.push(`${ITEMS[rj.product].name} ${rj.kind.toUpperCase()} ${r[rj.kind]}`);
+    p.industry.research.splice(p.industry.research.indexOf(rj), 1);
+  }
+  // 3) market orders — fill from NPC demand on the economy's own cadence
+  ECO.t += ms / 1000;
+  let ticks = 0; while (ECO.t >= CONFIG.sbx.eco.tick && ticks < CONFIG.sbx4.ecoCatchupTicks) { ECO.t -= CONFIG.sbx.eco.tick; ticks++; }
+  if (ticks >= CONFIG.sbx4.ecoCatchupTicks) ECO.t = 0;
+  for (const o of [...p.orders]) {
+    if (o.expiresT <= now) { sbxOrderExpire(o); continue; }
+    const e = ecoStation(o.station); if (!e || e.eq[o.item] == null) continue;
+    for (let t = 0; t < ticks && o.remaining > 0; t++) {
+      const mkt = ecoPrice(o.station, o.item);
+      const attractive = o.kind === 'sell' ? o.price <= mkt * 1.04 : o.price >= mkt * CONFIG.sbx.eco.sellFactor * 0.96;
+      if (!attractive) continue;
+      const fill = Math.min(o.remaining, 1 + Math.floor(Math.random() * CONFIG.sbx4.orders.fillPerTick));
+      o.remaining -= fill; report.fills += fill;
+      if (o.kind === 'sell') { p.isk += fill * o.price; e.stock[o.item] = Math.max(0, e.stock[o.item] - 0); }
+      else { const hg = SBX.hangar(o.station); hg[o.item] = (hg[o.item] || 0) + fill; o.escrow -= fill * o.price; }
+    }
+    if (o.remaining <= 0) { if (o.kind === 'buy' && o.escrow > 0) { p.isk += o.escrow; } p.orders.splice(p.orders.indexOf(o), 1); }
+  }
+  // 4) structures — anchoring, passive income, refining, and abstract attacks while away
+  for (const st of [...p.structures]) sbxStructureAdvance(st, ms, now, report, opts);
+  // 5) incursions — spawn pressure scales with net worth; expire old ones
+  for (const inc of [...p.incursions]) if (inc.endT <= now) { p.incursions.splice(p.incursions.indexOf(inc), 1); }
+  if (!p.nextIncursionT) p.nextIncursionT = now + sbxIncursionInterval();
+  while (p.nextIncursionT <= now) {
+    sbxSpawnIncursion(); report.incursions++;
+    p.nextIncursionT += sbxIncursionInterval();
+  }
+  // 6) economy drift for the whole universe — same tick count the order fills saw
+  for (let t = 0; t < ticks; t++) ecoTick();
+  p.lastSeen = now; SBX.dirty = true;
+  return report;
+}
+function sbxIncursionInterval() {
+  const C = CONFIG.sbx4.incursion; const worth = sbxNetWorth();
+  const mins = Math.max(C.minIntervalMin, C.baseIntervalMin / (1 + worth / C.worthUnit));
+  return mins * 60000 * (0.75 + Math.random() * 0.5);
+}
+function sbxSpawnIncursion() {
+  const p = SBX.profile; const C = CONFIG.sbx4.incursion;
+  // prefer systems where the player has assets, then low/null space
+  const owned = p.structures.map(s => s.sys);
+  const cands = SBX.systems.map((s, i) => i).filter(i => SBX.systems[i].sec < 0.5 && !p.incursions.some(x => x.sys === i));
+  if (!cands.length) return;
+  const sys = owned.find(i => cands.includes(i)) ?? cands[Math.floor(Math.random() * cands.length)];
+  const strength = Math.max(1, Math.round(1 + sbxNetWorth() / 1e6 * C.strengthPerM / 4));
+  p.incursions.push({ sys, strength, endT: Date.now() + C.durationMin * 60000, kills: 0 });
+  sbxToast(`Verge incursion reported in ${SBX.systems[sys].name} — services degraded until it is repelled.`);
+}
+const sbxIncursionAt = (sysIdx) => SBX.profile?.incursions.find(i => i.sys === sysIdx);
+
+/** One structure's share of the offline pass: anchor timers, income, refining, attacks, reinforcement. */
+function sbxStructureAdvance(st, ms, now, report, opts) {
+  const p = SBX.profile; const def = STRUCTURE_DEFS[st.type];
+  if (st.state === 'anchoring') { if (now >= st.onlineT) { st.state = 'online'; st.nextAttackT = now + sbxAttackDelay(st); report.structEvents.push(`${def.name} online in ${SBX.systems[st.sys].name}`); } return; }
+  // passive income + refinery conversion
+  const mins = ms / 60000;
+  st.income = (st.income || 0) + def.incomePerMin * mins;
+  if (st.income >= 1) { const take = Math.floor(st.income); p.isk += take; report.income += take; st.income -= take; }
+  if (def.refineYield) for (const [id, q] of Object.entries({ ...st.storage })) {
+    const it = ITEMS[id]; if (!it?.refine || q <= 0) continue;
+    for (const [mid, per] of Object.entries(it.refine)) st.storage[mid] = (st.storage[mid] || 0) + Math.floor(q * per * def.refineYield);
+    delete st.storage[id];
+  }
+  // shields recover between attacks
+  if (st.state === 'online') st.shield = Math.min(def.hp.shield, st.shield + CONFIG.sbx4.structures.shieldRegenPerMin * mins);
+  // reinforcement expiry: still hostile pressure → the structure dies
+  if (st.state === 'reinforced' && now >= st.reinforceUntil) {
+    if (sbxIncursionAt(st.sys) || Math.random() < 0.75) return sbxStructureDestroyed(st, report);
+    st.state = 'online'; st.armor = Math.max(st.armor, def.hp.armor * 0.25); st.nextAttackT = now + sbxAttackDelay(st);
+  }
+  // scheduled NPC attack — live when the player is on grid, abstract otherwise
+  if (st.state === 'online' && now >= st.nextAttackT) {
+    const live = SBX.active && p.systemId === st.sys && !p.docked && opts.live !== false;
+    if (live && typeof sbxBeginStructureAttack === 'function') { sbxBeginStructureAttack(st); st.nextAttackT = now + sbxAttackDelay(st); }
+    else {
+      const dmg = (0.5 + Math.random() * 0.6) * def.hp.shield * (sbxIncursionAt(st.sys) ? 1.6 : 1);
+      let rem = dmg; const sTake = Math.min(st.shield, rem); st.shield -= sTake; rem -= sTake;
+      if (rem > 0) { st.armor -= rem; }
+      if (st.armor <= 0) { st.state = 'reinforced'; st.armor = 0; st.reinforceUntil = now + CONFIG.sbx4.structures.reinforceMin * 60000; report.structEvents.push(`${def.name} in ${SBX.systems[st.sys].name} is REINFORCED — defend it within ${CONFIG.sbx4.structures.reinforceMin} min or lose it`); }
+      else report.structEvents.push(`${def.name} in ${SBX.systems[st.sys].name} was raided (shields ${Math.round(st.shield)}/${def.hp.shield})`);
+      st.nextAttackT = now + sbxAttackDelay(st);
+    }
+  }
+}
+const sbxAttackDelay = (st) => { const C = CONFIG.sbx4.structures; const inc = sbxIncursionAt(st.sys) ? 0.4 : 1; return (C.attackMinMin + Math.random() * (C.attackMaxMin - C.attackMinMin)) * 60000 * inc; };
+function sbxStructureDestroyed(st, report) {
+  const p = SBX.profile; const def = STRUCTURE_DEFS[st.type];
+  const lost = {}; for (const [id, q] of Object.entries(st.storage || {})) { const gone = Math.round(q * CONFIG.sbx4.structures.storageLossFrac); lost[id] = gone; st.storage[id] = q - gone; }
+  // survivors drop to a wreck record in that system
+  const sysState = SBX.sysState[st.sys] || (SBX.sysState[st.sys] = { belts: {}, wrecks: [], pirateT: 0 });
+  const salvage = {}; for (const [id, q] of Object.entries(st.storage || {})) if (q > 0) salvage[id] = q;
+  if (Object.keys(salvage).length) sysState.wrecks.push({ x: st.pos[0], y: st.pos[1], z: st.pos[2], items: salvage });
+  p.structures.splice(p.structures.indexOf(st), 1); p.stats4.structuresLost++;
+  p.totalLost += Object.entries(lost).reduce((a, [id, q]) => a + itemValue(id) * q, 0) + 200000;
+  report?.structEvents.push(`${def.name} in ${SBX.systems[st.sys].name} was DESTROYED — half its stores went with it`);
+  if (SBX.active && SBX.profile.systemId === st.sys) sbxRebuildStructures?.();
+}
+function sbxOrderExpire(o) {
+  const p = SBX.profile;
+  if (o.kind === 'buy') p.isk += o.escrow;                              // refund what never filled
+  else { const hg = SBX.hangar(o.station); hg[o.item] = (hg[o.item] || 0) + o.remaining; }
+  p.orders.splice(p.orders.indexOf(o), 1);
+}
+
+// ---------- Skill queue ops ----------
+function sbxQueueSkill(id) {
+  const p = SBX.profile; const cur = skillLvl(id);
+  const queued = p.skills.queue.filter(q => q.id === id).length;
+  const toLvl = cur + queued + 1;
+  if (toLvl > CONFIG.sbx4.skill.maxLvl) return 'already at maximum';
+  if (p.skills.queue.length >= 8) return 'the queue is full';
+  p.skills.queue.push({ id, toLvl, remainMs: skillTrainMs(id, toLvl) });
+  SBX.dirty = true; sbxSave('skill'); return null;
+}
+function sbxSkillEta() { return SBX.profile.skills.queue.reduce((a, q) => a + q.remainMs, 0); }
+const fmtDur = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); if (s < 90) return s + 's'; const m = Math.round(s / 60); if (m < 90) return m + 'm'; const h = Math.floor(m / 60); return `${h}h ${m % 60}m`; };
+
+// =====================================================================================
+//  part20 — Stage 4 runtime: industry job ops, player market orders, trade routes,
+//  live structures (anchor / defend / reinforce / lose), the hired fleet,
+//  exploration scanning + sites + wormholes, incursions and gate camps.
+// =====================================================================================
+
+// ---------- Industry ops ----------
+function sbxJobSlots(facility) {
+  let n = CONFIG.sbx4.industry.baseSlots + skillLvl('production');
+  if (facility?.startsWith('struct:')) { const st = SBX.profile.structures.find(s => 'struct:' + s.id === facility); if (st && STRUCTURE_DEFS[st.type].jobSlots) n += STRUCTURE_DEFS[st.type].jobSlots; }
+  return n;
+}
+function sbxJobsAt(facility) { return SBX.profile.industry.jobs.filter(j => j.station === facility); }
+function sbxJobTime(product, facility) {
+  const r = RECIPES[product]; const res = SBX.profile.bpResearch[product] || { me: 0, te: 0 };
+  let t = r.timeMin * 60000 * (1 - CONFIG.sbx4.industry.tePerLvl * (res.te || 0)) * Math.max(0.4, 1 + skillBonus('jobTimeMul'));
+  if (facility?.startsWith('struct:')) { const st = SBX.profile.structures.find(s => 'struct:' + s.id === facility); if (st && STRUCTURE_DEFS[st.type].jobTimeMul) t *= STRUCTURE_DEFS[st.type].jobTimeMul; }
+  return Math.max(20000, Math.round(t));
+}
+function sbxJobMats(product, runs) {
+  const r = RECIPES[product]; const res = SBX.profile.bpResearch[product] || { me: 0 };
+  const out = {}; for (const [id, q] of Object.entries(r.mats)) out[id] = Math.ceil(q * runs * (1 - CONFIG.sbx4.industry.mePerLvl * (res.me || 0)));
+  return out;
+}
+/** Start a manufacturing job at the docked station (or an owned array via 'struct:<id>'). Consumes mats + blueprint runs now. */
+function sbxStartJob(bpItemId, runs, facility) {
+  const p = SBX.profile; facility = facility || p.stationId;
+  const bp = ITEMS[bpItemId]?.bp; if (!bp) return 'that is not a blueprint';
+  const product = bp.product; const r = RECIPES[product]; if (!r) return 'no recipe';
+  if (r.standing && (p.standings[r.standing[0]] || 0) < r.standing[1]) return `${FACTIONS[r.standing[0]].name} standing ${r.standing[1]} required for this blueprint`;
+  if (sbxJobsAt(facility).length >= sbxJobSlots(facility)) return 'no free job slot here — train Production or build a manufacturing array';
+  runs = clamp(runs | 0, 1, bp.original ? 50 : CONFIG.sbx4.industry.bpcRuns);
+  const store = facility.startsWith('struct:') ? SBX.profile.structures.find(s => 'struct:' + s.id === facility)?.storage : SBX.hangar(facility);
+  if (!store) return 'no storage here';
+  const hg = SBX.hangar(p.stationId);
+  if (!bp.original) { if ((hg[bpItemId] || 0) < 1) return 'blueprint copy not in this hangar'; }
+  else if ((hg[bpItemId] || 0) < 1) return 'blueprint original not in this hangar';
+  const mats = sbxJobMats(product, runs);
+  for (const [id, q] of Object.entries(mats)) if ((store[id] || 0) < q) return `short ${q - (store[id] || 0)}× ${ITEMS[id].name}`;
+  for (const [id, q] of Object.entries(mats)) { store[id] -= q; if (store[id] <= 0) delete store[id]; }
+  if (!bp.original) { hg[bpItemId]--; if (hg[bpItemId] <= 0) delete hg[bpItemId]; }
+  const job = { id: Date.now() + Math.random(), station: facility, product, runs, startT: Date.now(), endT: Date.now() + sbxJobTime(product, facility) * runs };
+  p.industry.jobs.push(job); SBX.dirty = true; sbxSave('job');
+  return null;
+}
+function sbxStartResearch(bpItemId, kind) {
+  const p = SBX.profile; const bp = ITEMS[bpItemId]?.bp;
+  if (!bp || !bp.original) return 'research needs an original blueprint';
+  if (skillLvl('science') < 1) return 'train Science I first';
+  const hg = SBX.hangar(p.stationId); if ((hg[bpItemId] || 0) < 1) return 'blueprint not in this hangar';
+  const res = p.bpResearch[bp.product] || { me: 0, te: 0 };
+  if ((res[kind] || 0) >= CONFIG.sbx4.industry.meMax) return 'fully researched';
+  if (p.industry.research.length >= 2) return 'both research slots are busy';
+  const t = RECIPES[bp.product].timeMin * 60000 * CONFIG.sbx4.industry.researchMul * ((res[kind] || 0) + 1) * Math.max(0.4, 1 + skillBonus('researchTimeMul'));
+  p.industry.research.push({ id: Date.now() + Math.random(), product: bp.product, kind, startT: Date.now(), endT: Date.now() + Math.round(t) });
+  SBX.dirty = true; sbxSave('research'); return null;
+}
+
+// ---------- Player market orders — fill over time from NPC demand ----------
+function sbxBrokerFee() { return Math.max(0.005, CONFIG.sbx4.orders.brokerFee + skillBonus('brokerAdd')); }
+function sbxOrderSlots() { return CONFIG.sbx4.orders.maxOrders + skillLvl('trade'); }
+function sbxPlaceOrder(kind, item, qty, price) {
+  const p = SBX.profile; qty = Math.max(1, qty | 0); price = Math.max(1, Math.round(price));
+  if (!ITEMS[item]) return 'unknown item';
+  if (p.orders.length >= sbxOrderSlots()) return `order limit reached (${sbxOrderSlots()}) — train Trade`;
+  const fee = Math.ceil(qty * price * sbxBrokerFee());
+  if (kind === 'sell') {
+    const ship = SBX.ship(); const hg = SBX.hangar(p.stationId); let have = (ship.cargo[item] || 0) + (hg[item] || 0);
+    if (have < qty) return `you only have ${have}`;
+    let rest = qty - SBX.removeCargo(ship, item, qty); if (rest > 0) { hg[item] -= rest; if (hg[item] <= 0) delete hg[item]; }
+    if (p.isk < fee) return 'cannot cover the broker fee';
+    p.isk -= fee;
+  } else {
+    const escrow = qty * price; if (p.isk < escrow + fee) return `needs ${fmtIsk(escrow + fee)} ISK (escrow + fee)`;
+    p.isk -= escrow + fee;
+  }
+  p.orders.push({ id: p.orderSeq++, kind, station: p.stationId, item, qty, remaining: qty, price, escrow: kind === 'buy' ? qty * price : 0, expiresT: Date.now() + CONFIG.sbx4.orders.durationH * 3600000 });
+  SBX.dirty = true; sbxSave('order'); return null;
+}
+function sbxCancelOrder(id) { const o = SBX.profile.orders.find(x => x.id === id); if (o) sbxOrderExpire(o); SBX.dirty = true; }
+
+// ---------- Trade route planner — profit with risk shown, not hidden ----------
+function sbxTradeRoutes() {
+  const p = SBX.profile; const visited = p.visited || []; if (visited.length < 2) return [];
+  const ship = SBX.ship(); const hold = SBX.cargoCapacity(ship) - SBX.cargoVolume(ship);
+  const out = [];
+  for (const src of visited) for (const dst of visited) {
+    if (src === dst) continue;
+    const sSys = SBX.systems.indexOf(SBX.systemOfStation(src)), dSys = SBX.systems.indexOf(SBX.systemOfStation(dst));
+    const route = sbxRoute(sSys, dSys, 'shortest'); if (!route) continue;
+    const jumps = route.length - 1; const minSec = Math.min(...route.map(i => SBX.systems[i].sec));
+    const risk = minSec >= 0.5 ? 0.98 : minSec > 0 ? 0.8 : 0.62;         // expected fraction of trips that arrive
+    const eSrc = ecoStation(src), eDst = ecoStation(dst); if (!eSrc || !eDst) continue;
+    for (const item of Object.keys(eSrc.eq)) {
+      if (eDst.eq[item] == null || ITEMS[item].cat === 'hull') continue;
+      const buy = ecoPrice(src, item), sell = ecoSellPrice(dst, item);
+      const perUnit = sell - buy; if (perUnit <= 0) continue;
+      const units = Math.min(Math.floor(hold / ITEMS[item].vol), Math.floor(eSrc.stock[item]));
+      if (units < 1) continue;
+      const profit = perUnit * units; const ev = profit * risk - (1 - risk) * buy * units;
+      out.push({ item, src, dst, buy, sell, units, jumps, minSec, profit: Math.round(profit), ev: Math.round(ev) });
+    }
+  }
+  return out.sort((a, b) => b.ev - a.ev).slice(0, 10);
+}
+
+// ---------- Structures — live entities that can be defended and lost ----------
+class StructureEntity extends Ship {
+  constructor(st) {
+    super(); this.st = st; this.isCapital = true; this.team = 'friendly'; this.dying = false; this.gone = false;
+    const def = STRUCTURE_DEFS[st.type];
+    this.name = def.name; this.radius = 120; this.maxShield = def.hp.shield; this.maxHull = def.hp.armor;
+    this.shield = st.shield; this.hull = st.armor; this.shieldRegenRate = 2; this.shieldRegenDelay = 12;
+    this.pos.set(st.pos[0], st.pos[1], st.pos[2]); this.prevPos.copy(this.pos); this.alive = true; this.active = true;
+    this.subsystems = []; this.hullSpheres = [{ pos: this.pos, radius: 110, owner: this }];
+    this.mesh = this.buildMesh(st); scene.add(this.mesh); this.mesh.position.copy(this.pos);
+  }
+  buildMesh(st) {
+    const grp = new THREE.Group(); const anchoring = st.state === 'anchoring';
+    const mat = new THREE.MeshStandardMaterial({ color: st.type === 'refinery' ? 0xb8a565 : st.type === 'array' ? 0x8fb3d9 : 0x9e8f7a, roughness: 0.7, metalness: 0.5, flatShading: true, transparent: anchoring, opacity: anchoring ? 0.45 : 1 });
+    const parts = [new THREE.CylinderGeometry(44, 60, 90, 6), new THREE.TorusGeometry(78, 8, 6, 18)];
+    parts[1].rotateX(Math.PI / 2); parts.push(new THREE.CylinderGeometry(3, 3, 190, 5));
+    grp.add(new THREE.Mesh(mergeGeometries(parts.map(g => g.index ? g.toNonIndexed() : g), false), mat));
+    const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: st.state === 'reinforced' ? 0xff5a5a : 0xffd166, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); beacon.scale.set(50, 50, 1); beacon.position.y = 100; grp.add(beacon);
+    this.beacon = beacon; return grp;
+  }
+  update(dt, w) { this.updateShields(dt); this.st.shield = this.shield; if (this.beacon) this.beacon.material.color.setHex(this.st.state === 'reinforced' ? 0xff5a5a : this.st.state === 'anchoring' ? 0x9fe8ff : 0xffd166); }
+  sweptTest(a, b, r, out) { return sweptHit(a, b, this.pos, this.radius + r, out) ? this : null; }
+  takeDamage(amount, hitPoint) {
+    const st = this.st; const now = Date.now();
+    if (st.state === 'anchoring') return { blocked: true };
+    if (st.state === 'reinforced' && now < st.reinforceUntil) { this.shieldFlash = 1; return { blocked: true, shieldHit: true }; } // invulnerable while the timer runs
+    const r = Ship.prototype.takeDamage.call(this, amount, hitPoint);
+    st.shield = this.shield; st.armor = this.hull;
+    return r;
+  }
+  onDestroyed(w) {
+    const st = this.st;
+    if (st.state === 'online') {                                        // armor gone → reinforcement window, not death
+      st.state = 'reinforced'; st.armor = 0; st.reinforceUntil = Date.now() + CONFIG.sbx4.structures.reinforceMin * 60000;
+      this.alive = true; this.hull = 1;                                 // stay on grid, invulnerable
+      sbxToast(`${this.name} is REINFORCED — ${CONFIG.sbx4.structures.reinforceMin} minutes to break the siege or lose it.`);
+      sbxEndStructureAttack(st);
+    } else {                                                            // reinforcement expired and they came back
+      this.alive = false; this.gone = true; w.explode(this.pos, 3, 0xffa040);
+      sbxStructureDestroyed(st, null); sbxToast(`${this.name} destroyed.`);
+    }
+  }
+  syncRender(alpha, dt) { if (this.mesh) { this.mesh.position.copy(this.pos); this.mesh.rotation.y += dt * 0.05; } }
+  destroyMesh() { if (this.mesh) { sbxDispose(this.mesh); this.mesh = null; } }
+}
+function sbxDeployStructure(type) {
+  const p = SBX.profile; const def = STRUCTURE_DEFS[type]; if (!def) return 'unknown structure';
+  if (SBX.sys.sec !== 0) return 'structures anchor only in null security space';
+  if (SBX.sys.wh) return 'wormhole space will not hold an anchor';
+  const [fac, lvl] = CONFIG.sbx4.structures.deployStanding;
+  if ((p.standings[fac] || 0) < lvl) return `${FACTIONS[fac].name} standing ${lvl} required for deployment rights (yours: ${(p.standings[fac] || 0).toFixed(1)})`;
+  const ship = SBX.ship(); const pl0 = world.player;
+  const depot = SBX.structEntities?.find(e => e.alive && e.st.state === 'online' && e.pos.distanceTo(pl0.pos) < 2500 && STRUCTURE_DEFS[e.st.type].storage >= 20000);
+  const avail = (id) => (ship.cargo[id] || 0) + (depot ? depot.st.storage[id] || 0 : 0);
+  for (const [id, q] of Object.entries(def.mats)) if (avail(id) < q) return `short ${q - avail(id)}× ${ITEMS[id].name} (cargo${depot ? ' + nearby depot' : ''} — stage minerals in a depot for the big anchors)`;
+  for (const [id, q] of Object.entries(def.mats)) { const fromCargo = SBX.removeCargo(ship, id, q); const rest = q - fromCargo; if (rest > 0) { depot.st.storage[id] -= rest; if (depot.st.storage[id] <= 0) delete depot.st.storage[id]; } }
+  const pl = world.player;
+  const st = { id: p.structSeq++, type, sys: p.systemId, pos: [pl.pos.x, pl.pos.y, pl.pos.z], state: 'anchoring', onlineT: Date.now() + CONFIG.sbx4.structures.anchorMin * 60000, shield: def.hp.shield, armor: def.hp.armor, storage: {}, reinforceUntil: 0, nextAttackT: 0, income: 0 };
+  p.structures.push(st); sbxRebuildStructures(); SBX.dirty = true; sbxSave('deploy');
+  return null;
+}
+/** (Re)build structure entities + overview points for the current system. */
+function sbxRebuildStructures() {
+  for (const e of SBX.structEntities || []) { const i = world.friendlies.indexOf(e); if (i >= 0) world.friendlies.splice(i, 1); e.destroyMesh(); world.obstacles = world.obstacles.filter(o => o.owner !== e); }
+  SBX.structEntities = []; SBX.points = SBX.points.filter(pt => pt.kind !== 'structure');
+  for (const st of SBX.profile.structures) {
+    if (st.sys !== SBX.profile.systemId) continue;
+    const e = new StructureEntity(st); SBX.structEntities.push(e); world.friendlies.push(e);
+    world.obstacles.push({ pos: e.pos, radius: 130, owner: e });
+    SBX.points.push({ kind: 'structure', name: `${STRUCTURE_DEFS[st.type].name}${st.state === 'anchoring' ? ' (anchoring)' : st.state === 'reinforced' ? ' (REINFORCED)' : ''}`, pos: e.pos, st, ent: e });
+  }
+}
+function sbxBeginStructureAttack(st) {
+  const ent = SBX.structEntities?.find(e => e.st === st); if (!ent) return;
+  const n = 3 + (sbxIncursionAt(st.sys) ? 2 : 0);
+  for (let i = 0; i < n; i++) {
+    const e = sbxSpawnNPC('pirate', i === 0 ? 'bomber' : i === 1 ? 'gunship' : 'interceptor', _v[6].copy(ent.pos).add(_v[7].set(rand(-1, 1), rand(-0.2, 0.4), rand(-1, 1)).normalize().multiplyScalar(2400)), { target: ent });
+    if (e) { e.npc.raid = st.id; e.goal = ent; }
+  }
+  sbxToast(`${STRUCTURE_DEFS[st.type].name} under attack — raiders on grid!`);
+}
+function sbxEndStructureAttack(st) { world.enemies.forEachActive(e => { if (e.npc?.raid === st.id) { e.alive = false; world.enemies.release(e); } }); }
+function sbxStructureRaidStep() {
+  // bombers that reach the structure detonate against it (same pattern as the campaign intercept handler)
+  world.enemies.forEachActive(e => {
+    if (!e.alive || !e.npc?.raid || e.type !== 'bomber' || !e.arrived) return;
+    const ent = SBX.structEntities?.find(x => x.st.id === e.npc.raid);
+    e.alive = false; world.explode(e.pos, 1.6, 0xff6a2a); world.enemies.release(e);
+    if (ent) world.hitShip(ent, 320, ent.pos, 'npc');
+  });
+}
+function sbxStructureNear() { const pl = world.player; return SBX.structEntities?.find(e => e.alive && e.pos.distanceTo(pl.pos) < 500) || null; }
+function sbxStructureRepair(ent) {
+  const ship = SBX.ship(); const def = STRUCTURE_DEFS[ent.st.type];
+  const need = Math.ceil((def.hp.armor - ent.st.armor) / 2); if (need <= 0) return sbxToast('Armor is intact.');
+  const spend = Math.min(need, ship.cargo.min_ferrite || 0); if (!spend) return sbxToast('Armor repairs need Ferrite in the cargo hold (1 Ferrite : 2 armor).');
+  SBX.removeCargo(ship, 'min_ferrite', spend); ent.st.armor = Math.min(def.hp.armor, ent.st.armor + spend * 2); ent.hull = ent.st.armor;
+  if (ent.st.state === 'reinforced' && ent.st.armor > def.hp.armor * 0.5) { ent.st.state = 'online'; ent.st.nextAttackT = Date.now() + sbxAttackDelay(ent.st); sbxToast('Siege broken — the structure is back online.'); }
+  else sbxToast(`Repaired ${spend * 2} armor.`);
+  SBX.dirty = true;
+}
+
+// ---------- Hired fleet ----------
+const FLEET_CONTRACTS = {
+  escort:  { name: 'Escort pilot',  role: 'combat', price: 45000,  desc: 'A Kestrel with autocannons. Fights what you fight.', hull: 'Kestrel', dmgMul: 1.0, hullMul: 1.0 },
+  veteran: { name: 'Veteran gun',   role: 'combat', price: 140000, desc: 'An ex-Authority ace in a Talon. Hits twice as hard.', hull: 'Talon', dmgMul: 2.0, hullMul: 1.6 },
+  miner:   { name: 'Mining pilot',  role: 'miner',  price: 60000,  desc: 'A Burrow that chews rocks near any belt. 600 m³ hold, delivered when you dock.', hull: 'Burrow', yield: 3.5, hold: 600 },
+  hauler:  { name: 'Fleet hauler',  role: 'hauler', price: 80000,  desc: 'Flushes your miners\' holds to your depot or next dock — keeps the ore flowing.', hull: 'Mule', hold: 4000 },
+};
+function sbxFleetCap() { return Math.min(4, 2 + skillLvl('leadership')); } // pool holds four wingmates
+function sbxHirePilot(kind) {
+  const p = SBX.profile; const c = FLEET_CONTRACTS[kind]; if (!c) return 'unknown contract';
+  if (p.fleet.length >= sbxFleetCap()) return `fleet is full (${sbxFleetCap()}) — train Leadership`;
+  if (p.isk < c.price) return 'not enough ISK';
+  p.isk -= c.price;
+  p.fleet.push({ id: p.fleetSeq++, kind, name: `${c.name} ${p.fleetSeq}`, price: c.price, hold: 0, order: c.role === 'miner' ? 'mine' : 'defend' });
+  SBX.dirty = true; sbxSave('hire'); sbxSpawnFleet(); return null;
+}
+/** Put the hired pilots on grid around the player (called on undock, system load, warp exit). */
+function sbxSpawnFleet() {
+  if (!SBX.active || SBX.profile.docked) return;
+  const p = SBX.profile; const pl = world.player;
+  const lead = 1 + skillBonus('fleetMul');
+  for (const f of p.fleet) {
+    let a = world.allies.items.find(x => x.active && x.contract === f);
+    if (!a) {
+      a = world.spawnAlly(_v[6].copy(pl.pos).add(_v[7].set(rand(-1, 1), rand(-0.3, 0.3), rand(-1, 1)).normalize().multiplyScalar(rand(120, 220))), _v[8].set(0, 0, -1), pl);
+      if (!a) continue; a.contract = f; a.callsign = f.name;
+      const c = FLEET_CONTRACTS[f.kind];
+      a.maxHull = a.hull = CONFIG.allies.wingman.hull * (c.hullMul || 1) * (c.role === 'miner' ? 1.4 : c.role === 'hauler' ? 2 : 1);
+      a.maxShield = a.shield = CONFIG.allies.wingman.shield * (c.hullMul || 1);
+      a.def = { ...a.def, weapon: { ...a.def.weapon, damage: a.def.weapon.damage * (c.dmgMul || 0.2) * lead } };
+    }
+  }
+}
+function sbxDismiss(f) { const p = SBX.profile; const a = world.allies.items.find(x => x.active && x.contract === f); if (a) { a.alive = false; world.allies.release(a); } p.fleet.splice(p.fleet.indexOf(f), 1); SBX.dirty = true; }
+function sbxFleetCommand(order) {
+  for (const f of SBX.profile.fleet) if (order !== 'mine' || FLEET_CONTRACTS[f.kind].role === 'miner') f.order = order;
+  world.allyStance = order === 'engage' ? 'engage' : 'regroup';
+  sbxToast(`Fleet: ${order === 'engage' ? 'engage my target' : order === 'defend' ? 'defend me' : order === 'hold' ? 'hold position' : order}.`);
+}
+function sbxFleetStep(dt) {
+  const p = SBX.profile; if (!p.fleet.length) return;
+  const lead = 1 + skillBonus('fleetMul');
+  const belt = SBX.points.find(x => x.kind === 'belt');
+  const hasHauler = p.fleet.some(f => FLEET_CONTRACTS[f.kind].role === 'hauler');
+  for (const f of [...p.fleet]) {
+    const a = world.allies.items.find(x => x.active && x.contract === f);
+    const c = FLEET_CONTRACTS[f.kind];
+    if (a && a.alive && c.role === 'miner' && f.order === 'mine' && belt) {
+      // park on the belt and chew — economics are abstract, the ship is real and killable
+      a.fixedGoal = a.fixedGoal || { pos: belt.pos, vel: new THREE.Vector3(), alive: true, active: true, radius: 500 };
+      if (a.pos.distanceTo(belt.pos) < 1400) {
+        f.hold = Math.min(c.hold, f.hold + c.yield * lead * dt);
+        if (f.hold >= c.hold && hasHauler) sbxFleetFlush(f);            // hauler keeps the loop running without docking
+      }
+    } else if (a && a.alive && f.order === 'hold') { if (!a.fixedGoal || !a.holdPos) { a.holdPos = a.pos.clone(); a.fixedGoal = { pos: a.holdPos, vel: new THREE.Vector3(), alive: true, active: true, radius: 60 }; } }
+    else if (a && a.alive) { a.fixedGoal = null; a.holdPos = null; }
+  }
+}
+function sbxFleetFlush(f) {
+  const p = SBX.profile; const units = Math.floor(f.hold / ITEMS.ore_cindrite.vol); if (units <= 0) return;
+  const depot = p.structures.find(s => s.sys === p.systemId && s.state === 'online' && STRUCTURE_DEFS[s.type].storage >= 20000);
+  const ore = SBX.sys.sec === 0 ? 'ore_vexcry' : SBX.sys.sec > 0 ? 'ore_auberite' : 'ore_cindrite';
+  const mix = SBX.sys.sec === 0 ? 'ore_auberite' : 'ore_cindrite';
+  const target = depot ? depot.storage : SBX.hangar(p.stationId);
+  target[ore] = (target[ore] || 0) + Math.ceil(units * 0.4); target[mix] = (target[mix] || 0) + Math.floor(units * 0.6);
+  f.hold = 0; SBX.dirty = true;
+}
+/** Docking banks every miner's hold into this station's hangar. */
+function sbxFleetDeliverOnDock() { for (const f of SBX.profile.fleet) if (f.hold > 0) { sbxFleetFlush(f); } }
+function sbxOnFleetMemberKilled(a) {
+  const p = SBX.profile; const f = a.contract; if (!f || !p.fleet.includes(f)) return;
+  p.fleet.splice(p.fleet.indexOf(f), 1); p.stats4.fleetLost++; p.totalLost += f.price;
+  sbxToast(`${f.name} is gone — the ship, the contract, and ${fmtIsk(f.price)} ISK of hull with it.`);
+  SBX.dirty = true;
+}
+
+// ---------- Exploration: probe scanning, sites, wormholes ----------
+function sbxEnsureSignatures(sysIdx) {
+  const state = sbxSysState(sysIdx); const sys = SBX.systems[sysIdx];
+  state.sigs = (state.sigs || []).filter(s => !s.expiresT || s.expiresT > Date.now());
+  state.sigRespawnT = state.sigRespawnT ?? 0;
+  const want = sys.wh ? 1 : sys.sec >= 0.5 ? 1 : 2;
+  if (state.sigs.length < want && Date.now() >= state.sigRespawnT) {
+    const kinds = sys.wh ? ['wormhole'] : sys.sec >= 0.5 ? ['relic', 'gas'] : ['relic', 'gas', 'wormhole', 'hideout'];
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    const sig = { id: 'sig' + Date.now() + Math.floor(Math.random() * 999), kind, resolved: false,
+      pos: { x: rand(-7000, 7000), y: rand(-900, 900), z: rand(-7000, 7000) }, spawned: false };
+    if (kind === 'wormhole') { const whs = SBX.systems.map((s, i) => i).filter(i => sys.wh ? !SBX.systems[i].wh : SBX.systems[i].wh); sig.to = whs[Math.floor(Math.random() * whs.length)]; sig.expiresT = Date.now() + CONFIG.sbx4.explore.whLifetimeMin * 60000; }
+    state.sigs.push(sig); state.sigRespawnT = Date.now() + CONFIG.sbx4.explore.respawnMin * 60000;
+  }
+}
+const scanUI = { open: false, rangeIdx: 0, last: null };
+function sbxScanPulse() {
+  const pl = world.player; const state = sbxSysState();
+  const sig = (state.sigs || []).find(s => !s.resolved); if (!sig) { scanUI.last = { none: true }; return; }
+  const range = CONFIG.sbx4.explore.scanRanges[scanUI.rangeIdx];
+  const d = _v[0].set(sig.pos.x, sig.pos.y, sig.pos.z).distanceTo(pl.pos);
+  let strength;
+  if (d > range) strength = Math.round(clamp(22 * range / d, 2, 40));
+  else strength = Math.round(clamp(100 - 75 * d / range, 40, 99));
+  const resolved = range <= 1000 && d < CONFIG.sbx4.explore.resolveDist;
+  const dir = _v[0].set(sig.pos.x - pl.pos.x, sig.pos.y - pl.pos.y, sig.pos.z - pl.pos.z);
+  const hint = `${dir.z < 0 ? 'N' : 'S'}${dir.x < 0 ? 'W' : 'E'}${dir.y > 200 ? ' +up' : dir.y < -200 ? ' +down' : ''}`;
+  if (resolved) {
+    sig.resolved = true;
+    SBX.points.push(sbxSigPoint(sig));
+    scanUI.last = { strength: 100, resolvedName: sig.kind, hint: '' };
+    sbxToast(`Signature resolved: ${sig.kind}. It is on your overview now.`);
+  } else scanUI.last = { strength, hint: d > range ? 'weak return — widen isn\'t it, MOVE toward ' + hint : 'strong — tighten the range and close ' + hint };
+  audio.click(true); sbxScanRender();
+}
+function sbxSigPoint(sig) {
+  const names = { relic: 'Relic site', gas: 'Gas cloud', wormhole: 'Wormhole', hideout: 'Pirate hideout' };
+  return { kind: sig.kind === 'wormhole' ? 'wormhole' : 'deadspace', name: names[sig.kind], pos: V3(sig.pos.x, sig.pos.y, sig.pos.z), sig };
+}
+/** Arriving on a resolved site springs it (called from warp exit like the mission deadspace). */
+function sbxSiteArrive(pt) {
+  const sig = pt.sig; if (!sig || sig.spawned) return; sig.spawned = true;
+  if (sig.kind === 'relic') {
+    const loot = {}; const bpcs = Object.keys(ITEMS).filter(id => id.startsWith('bpc_'));
+    loot[bpcs[Math.floor(Math.random() * bpcs.length)]] = 1;
+    if (Math.random() < 0.5) loot[['l_gyro', 'm_capre', 'r_cargo', 'r_mining'][Math.floor(Math.random() * 4)]] = 1;
+    loot.min_nobelium = 20 + Math.floor(Math.random() * 60);
+    const w = sbxSpawnWreck(pt.pos.clone(), loot); w.name = 'Relic cache';
+    if (Math.random() < 0.6) for (let i = 0; i < 2; i++) sbxSpawnNPC('pirate', 'interceptor', _v[6].copy(pt.pos).add(_v[7].set(rand(-600, 600), 100, rand(-600, 600))));
+  } else if (sig.kind === 'gas') {
+    const w = sbxSpawnWreck(pt.pos.clone(), { gas_mist: 60 + Math.floor(Math.random() * 90) }); w.name = 'Gas pocket';
+  } else if (sig.kind === 'hideout') {
+    sig.wave = 1; for (let i = 0; i < 3; i++) sbxSpawnNPC('pirate', 'interceptor', _v[6].copy(pt.pos).add(_v[7].set(rand(-700, 700), rand(-150, 150), rand(-700, 700))));
+    sbxToast('Hideout stirred — expect escalating waves.');
+  }
+}
+function sbxHideoutStep() {
+  for (const state of [sbxSysState()]) for (const sig of state.sigs || []) {
+    if (sig.kind !== 'hideout' || !sig.spawned || sig.cleared) continue;
+    let alive = 0; world.enemies.forEachActive(e => { if (e.npc?.kind === 'pirate') alive++; });
+    if (alive === 0) {
+      sig.wave = (sig.wave || 1) + 1;
+      if (sig.wave > 3) { sig.cleared = true; const loot = { min_nobelium: 120, tg_luxuries: 6 }; loot[Object.keys(ITEMS).filter(i => i.startsWith('bpc_'))[Math.floor(Math.random() * 5)]] = 1; const w = sbxSpawnWreck(V3(sig.pos.x, sig.pos.y, sig.pos.z), loot); w.name = 'Hideout vault'; sbxToast('Hideout cleared — the vault is yours.'); }
+      else { for (let i = 0; i < 2 + sig.wave; i++) sbxSpawnNPC('pirate', sig.wave === 3 ? 'ace' : 'gunship', _v[6].set(sig.pos.x, sig.pos.y, sig.pos.z).add(_v[7].set(rand(-800, 800), 100, rand(-800, 800)))); sbxToast(`Hideout wave ${sig.wave} inbound.`); }
+    }
+  }
+}
+function sbxWormholeTransit(pt) {
+  const sig = pt.sig; if (!sig || sig.to == null) return;
+  if (sig.expiresT && sig.expiresT < Date.now()) { sbxToast('The wormhole shivers and is gone.'); return; }
+  const from = SBX.profile.systemId;
+  // the far side gets a return hole on the same clock
+  const farState = sbxSysState(sig.to); farState.sigs = farState.sigs || [];
+  farState.sigs.push({ id: 'sig' + Date.now(), kind: 'wormhole', resolved: true, spawned: true, to: from, expiresT: sig.expiresT, pos: { x: rand(-3000, 3000), y: rand(-500, 500), z: rand(-3000, 3000) } });
+  sbxLoadSystem(sig.to, null);
+  sbxToast(`Transit complete — ${SBX.systems[sig.to].name}. The hole collapses ${fmtDur(sig.expiresT - Date.now())} from now.`);
+}
+
+// ---------- Gate camps + incursion in-system pressure ----------
+function sbxSpawnGateCamps(sys) {
+  if (sys.sec >= 0.5) return;
+  const inc = sbxIncursionAt(SBX.profile.systemId);
+  if (!inc && Math.random() > 0.45) return;
+  const gates = SBX.points.filter(p => p.kind === 'gate'); if (!gates.length) return;
+  const gate = gates[Math.floor(Math.random() * gates.length)];
+  const cls = SBX_HULLS[SBX.ship().hull].cls; const juicy = cls === 'Industrial' || cls === 'Mining Barge';
+  const n = (inc ? 3 : 2) + (juicy ? 1 : 0);
+  for (let i = 0; i < n; i++) {
+    const e = sbxSpawnNPC('pirate', i === 0 && (juicy || inc) ? 'ace' : 'interceptor', _v[6].copy(gate.pos).add(_v[7].set(rand(-1, 1), rand(-0.2, 0.2), rand(-1, 1)).normalize().multiplyScalar(rand(200, 500))));
+    if (e) { e.npc.camp = true; e.goal = e.target = { pos: gate.pos, vel: _v[11].set(0, 0, 0), alive: true, active: true, radius: 600 }; }
+  }
+  if (juicy) sbxToast('Gate camp on scan — they can smell a full hold.');
+}
+function sbxIncursionKill(sysIdx) {
+  const inc = sbxIncursionAt(sysIdx); if (!inc) return;
+  inc.kills++;
+  const need = CONFIG.sbx4.incursion.killsToRepel + inc.strength * 2;
+  if (inc.kills >= need) {
+    const pay = inc.strength * CONFIG.sbx4.incursion.payoutPerStrength;
+    SBX.profile.isk += pay; SBX.profile.stats4.repelled++;
+    SBX.profile.incursions.splice(SBX.profile.incursions.indexOf(inc), 1);
+    SBX.profile.standings.authority = Math.min(10, SBX.profile.standings.authority + 0.5);
+    sbxToast(`Incursion repelled! The Authority pays ${fmtIsk(pay)} ISK.`);
+  } else sbxToast(`Incursion: ${need - inc.kills} more hostiles to break it.`);
+}
+
+/** E near an owned structure: everything mineable moves from the hold into its storage. */
+function sbxStructureDeposit(ent) {
+  if (!ent) return; const ship = SBX.ship(); let moved = 0;
+  for (const [id, q] of Object.entries({ ...ship.cargo })) {
+    const cat = ITEMS[id]?.cat; if (cat !== 'ore' && cat !== 'mineral' && id !== 'gas_mist') continue;
+    SBX.removeCargo(ship, id, q); ent.st.storage[id] = (ent.st.storage[id] || 0) + q; moved += q;
+  }
+  sbxToast(moved ? `Deposited ${moved} units into the ${ent.name}.` : 'Nothing in the hold that the structure stores (ore, minerals, gas).');
+  SBX.dirty = true;
+}
+function sbxStructureWithdraw(ent) {
+  if (!ent) return; const ship = SBX.ship(); let moved = 0;
+  for (const [id, q] of Object.entries({ ...ent.st.storage })) {
+    if (q <= 0) continue; const fit = SBX.addCargo(ship, id, q);
+    ent.st.storage[id] -= fit; if (ent.st.storage[id] <= 0) delete ent.st.storage[id]; moved += fit;
+    if (fit < q) break;                                                 // hold is full
+  }
+  sbxToast(moved ? `Withdrew ${moved} units.` : 'Hold full or storage empty.');
+  SBX.dirty = true;
+}
+
+// =====================================================================================
 //  part15 — The current system at full fidelity: stations, jump gates, minable belts,
 //  ambient NPC traffic, warp drive, autopilot routing, mining, wrecks, and the police.
 // =====================================================================================
@@ -3779,7 +4496,7 @@ SBX.sceneObjs = []; SBX.points = []; SBX.rocks = []; SBX.wrecks = []; SBX.npcMet
 function sbxDispose(obj) { scene.remove(obj); obj.traverse?.((o) => { if (o.isMesh) { o.geometry?.dispose?.(); for (const m of (Array.isArray(o.material) ? o.material : [o.material])) m?.dispose?.(); } if (o.isSprite) o.material?.dispose?.(); }); }
 function sbxClearScene() {
   for (const o of SBX.sceneObjs) sbxDispose(o); SBX.sceneObjs = [];
-  SBX.points = []; SBX.rocks = []; SBX.wrecks = []; SBX.rockMesh = null;
+  SBX.points = []; SBX.rocks = []; SBX.wrecks = []; SBX.rockMesh = null; SBX.structEntities = [];
 }
 function sbxStationMesh(st) {
   const grp = new THREE.Group(); const fc = { authority: 0x8b95a1, combine: 0xb8a565, guild: 0x8fa98f, syndicate: 0x9e6a5a }[st.faction] || 0x8b95a1;
@@ -3862,12 +4579,18 @@ function sbxLoadSystem(sysIdx, entryPos) {
   for (const w of state.wrecks) sbxSpawnWreck(V3(w.x, w.y, w.z), w.items, w);
   // deadspace points for active recovery missions in this system
   for (const ms of SBX.profile.missions) if (ms.tpl === 'recovery' && ms.sys === sysIdx && !ms.looted) SBX.points.push({ kind: 'deadspace', name: 'Recovery site', pos: V3(ms.pos.x, ms.pos.y, ms.pos.z), ms });
+  // Stage 4: cosmic signatures (resolved ones return to the overview) + player structures
+  sbxEnsureSignatures(sysIdx);
+  for (const sig of sbxSysState(sysIdx).sigs || []) if (sig.resolved && (!sig.expiresT || sig.expiresT > Date.now())) SBX.points.push(sbxSigPoint(sig));
+  sbxRebuildStructures();
   // ambient population
   sbxPopulate(sys);
   // player placement
   const pl = world.player; sbxApplyFit();
   pl.reset(entryPos || _v[0].set(0, 100, 3000), _q[0].identity()); pl.target = null; cam.init = false;
   SBX.police = { responding: false, timer: -1, aggressed: false };
+  sbxSpawnGateCamps(sys); sbxSpawnFleet();
+  (SBX.profile.visitedSys = SBX.profile.visitedSys || []).includes(sysIdx) || SBX.profile.visitedSys.push(sysIdx);
   if (sys.sec >= 0.5 && SBX.profile.secStatus <= CONFIG.sbx.police.secStatusHostile) { SBX.police.timer = 4; SBX.police.responding = true; } // outlaws are hunted on sight in high sec
   SBX.dirty = true;
 }
@@ -3888,7 +4611,9 @@ function sbxSpawnNPC(kind, type, pos, opts = {}) {
 }
 function sbxPopulate(sys) {
   const rng = makeRng(Date.now() % 1e9);
-  const nPirates = sys.sec >= 0.5 ? 0 : sys.sec > 0 ? 2 + Math.floor(rng() * 2) : 4 + Math.floor(rng() * 2);
+  let nPirates = sys.sec >= 0.5 ? 0 : sys.sec > 0 ? 2 + Math.floor(rng() * 2) : 4 + Math.floor(rng() * 2);
+  if (sys.wh) nPirates += 2;
+  if (typeof sbxIncursionAt === 'function' && sbxIncursionAt(SBX.profile.systemId)) { nPirates += 3; sbxToast('Incursion fleet holds this system — services down until it breaks.'); }
   for (let i = 0; i < nPirates; i++) {
     const belt = sys.belts[i % sys.belts.length]; const type = sys.sec === 0 && i === 0 ? 'ace' : rng() < 0.7 ? 'interceptor' : 'gunship';
     sbxSpawnNPC('pirate', type, _v[6].set(belt.pos.x + rand(-600, 600), belt.pos.y + rand(-200, 200), belt.pos.z + rand(-600, 600)));
@@ -4030,8 +4755,11 @@ function sbxWarpExit(msg) {
   const pl = world.player; const wd = SBX.warpDrive; wd.state = null; pl.warping = false; pl.apSteer = false;
   pl.vel.setLength(Math.min(pl.vel.length(), pl.stats.flight.maxSpeed)); pl.speed = pl.vel.length(); shake.add(0.2);
   if (msg) sbxToast(msg);
+  // exploration sites spring on arrival; the hired fleet lands with you
+  for (const p of SBX.points) if (p.sig && !p.sig.spawned && p.sig.kind !== 'wormhole' && pl.pos.distanceTo(p.pos) < 1500) sbxSiteArrive(p);
+  world.allies.forEachActive(a => { if (a.contract && a.alive) { a.placeAt(_v[6].copy(pl.pos).add(_v[7].set(rand(-1, 1), rand(-0.3, 0.3), rand(-1, 1)).normalize().multiplyScalar(rand(150, 260))), pl.quat); a.vel.copy(pl.vel).multiplyScalar(0.2); } });
   // deadspace: arriving on grid springs the site
-  for (const p of SBX.points) if (p.kind === 'deadspace' && !p.ms.spawned && pl.pos.distanceTo(p.pos) < 1500) {
+  for (const p of SBX.points) if (p.kind === 'deadspace' && p.ms && !p.ms.spawned && pl.pos.distanceTo(p.pos) < 1500) {
     p.ms.spawned = true;
     for (let i = 0; i < 3; i++) sbxSpawnNPC('pirate', i === 0 ? 'ace' : 'interceptor', _v[6].copy(p.pos).add(_v[7].set(rand(-500, 500), rand(-150, 150), rand(-500, 500))));
     const w = sbxSpawnWreck(p.pos.clone(), { [p.ms.item]: p.ms.qty }); w.name = 'Mission container';
@@ -4103,12 +4831,20 @@ function ecoStation(stId) {
   }
   return e;
 }
+function sbxStationSysIdx(stId) {
+  if (!SBX.systems) return null;
+  if (SBX._stSysRef !== SBX.systems) { SBX._stSys = {}; SBX.systems.forEach((s, i) => s.stations.forEach(st => { SBX._stSys[st.id] = i; })); SBX._stSysRef = SBX.systems; }
+  return SBX._stSys[stId];
+}
+const sbxStationSieged = (stId) => typeof sbxIncursionAt === 'function' && SBX.profile ? !!sbxIncursionAt(sbxStationSysIdx(stId)) : false;
 function ecoPrice(stId, id) {
   const e = ecoStation(stId); if (!e || e.eq[id] == null) return null;
   const C = CONFIG.sbx.eco;
-  return ITEMS[id].base * clamp(Math.pow((e.eq[id] + 1) / (e.stock[id] + 1), C.elasticity), C.priceMin, C.priceMax);
+  let v = ITEMS[id].base * clamp(Math.pow((e.eq[id] + 1) / (e.stock[id] + 1), C.elasticity), C.priceMin, C.priceMax);
+  if (sbxStationSieged(stId)) v *= 1.3;                                // incursions choke supply lines
+  return v;
 }
-const ecoSellPrice = (stId, id) => { const p = ecoPrice(stId, id); return p == null ? null : p * CONFIG.sbx.eco.sellFactor; };
+const ecoSellPrice = (stId, id) => { const p = ecoPrice(stId, id); return p == null ? null : p * CONFIG.sbx.eco.sellFactor * (sbxStationSieged(stId) ? 0.5 : 1); };
 /** One coarse economy tick for every station in the universe — other systems keep living. */
 function ecoTick() {
   const C = CONFIG.sbx.eco;
@@ -4154,14 +4890,15 @@ function sbxSell(id, qty) {
 function sbxRefineAll() {
   const p = SBX.profile; const st = SBX.station(); if (!st.services.refine) return 'no refinery here';
   const ship = SBX.ship(); const hg = SBX.hangar(p.stationId); let did = 0;
+  const yieldRate = Math.min(1, st.refineYield + (typeof skillBonus === 'function' ? skillBonus('refineAdd') : 0));
   for (const src of [ship.cargo, hg]) for (const [id, q] of Object.entries({ ...src })) {
     const it = ITEMS[id]; if (!it?.refine || q <= 0) continue;
-    for (const [mid, per] of Object.entries(it.refine)) { const out = Math.floor(q * per * st.refineYield); if (out > 0) hg[mid] = (hg[mid] || 0) + out; }
+    for (const [mid, per] of Object.entries(it.refine)) { const out = Math.floor(q * per * yieldRate); if (out > 0) hg[mid] = (hg[mid] || 0) + out; }
     if (src === ship.cargo) SBX.removeCargo(ship, id, q); else { delete hg[id]; }
     did += q;
   }
   SBX.dirty = true; if (did) sbxSave('refine');
-  return did ? { refined: did, yield: st.refineYield } : 'no ore to refine';
+  return did ? { refined: did, yield: yieldRate } : 'no ore to refine';
 }
 
 // ---------- Agents & generated missions — registered into the Stage 2 dispatch table ----------
@@ -4251,6 +4988,7 @@ function sbxOnEnemyKilled(e, source) {
       p.secStatus = Math.min(P.maxSec, p.secStatus + P.pirateKillGain); p.standings.syndicate = Math.max(-10, p.standings.syndicate - 0.05);
       for (const ms of p.missions) if (ms.tpl === 'bounty' && ms.sys === p.systemId) ms.count = (ms.count || 0) + 1;
       sbxToast(`Bounty paid: ${fmtIsk(bounty)} ISK.`);
+      if (typeof sbxIncursionKill === 'function') sbxIncursionKill(p.systemId);
     } else {
       // killing civilians or the law is what security status is for
       p.secStatus = Math.max(P.minSec, p.secStatus - (e.npc.kind === 'police' ? P.aggressionHit * 2 : P.aggressionHit));
@@ -4341,7 +5079,7 @@ function sbxOverviewEntries() {
   if (SBX.ovSort === 'dist') out.sort((a, b) => a.dist - b.dist); else if (SBX.ovSort === 'name') out.sort((a, b) => a.name.localeCompare(b.name)); else out.sort((a, b) => a.kind.localeCompare(b.kind) || a.dist - b.dist);
   return out;
 }
-const OV_COLOR = { station: '#9fe8ff', gate: '#c9d4ff', belt: '#d9c9a0', rock: '#d9c9a0', wreck: '#ffd166', deadspace: '#ff9a5a' };
+const OV_COLOR = { station: '#9fe8ff', gate: '#c9d4ff', belt: '#d9c9a0', rock: '#d9c9a0', wreck: '#ffd166', deadspace: '#ff9a5a', wormhole: '#c98cff', structure: '#ffd166' };
 function sbxOverviewRender() {
   const list = $('ov-list'); if (!list) return;
   const entries = sbxOverviewEntries(); const sel = SBX.selected;
@@ -4358,6 +5096,8 @@ function sbxOverviewRender() {
   if (sel.kind === 'station' && d < CONFIG.sbx.dock.radius * 1.2) html += btn('dock', 'Dock [E]');
   if (sel.kind === 'gate' && d < CONFIG.sbx.gate.jumpDist * 1.2) html += btn('jump', 'Jump [J]');
   if (sel.kind === 'wreck' && d < 450) html += btn('loot', 'Loot [E]');
+  if (sel.kind === 'wormhole' && d < 400) html += btn('enter', 'Enter [E]');
+  if (sel.kind === 'structure' && d < 500 && sel.ref.st.state !== 'anchoring') html += btn('deposit', 'Deposit [E]') + btn('withdraw', 'Withdraw') + btn('repairst', 'Repair');
   a.innerHTML = `<div class="small">${sel.name} — ${d > 10000 ? (d / 1000).toFixed(1) + ' km' : fmt(d) + ' m'}</div>` + html;
 }
 function sbxSelect(entry) {
@@ -4374,6 +5114,10 @@ function sbxOvAction(id) {
   else if (id === 'dock') sbxTryDock();
   else if (id === 'jump') sbxTryJump();
   else if (id === 'loot') sbxLootWreck(sel.ref);
+  else if (id === 'enter') sbxWormholeTransit(sel.ref);
+  else if (id === 'deposit') sbxStructureDeposit(sel.ref.ent);
+  else if (id === 'withdraw') sbxStructureWithdraw(sel.ref.ent);
+  else if (id === 'repairst') sbxStructureRepair(sel.ref.ent);
 }
 
 // ---------- Station interior ----------
@@ -4382,7 +5126,7 @@ function sbxShowStation(show) { $('sb-station').classList.toggle('on', show); if
 function sbxRenderStation() {
   const p = SBX.profile; const st = SBX.station(); if (!st) return;
   $('sb-title').textContent = st.name; $('sb-sub').textContent = `${FACTIONS[st.faction].name} · ${SBX.sys.name} ${SBX.sys.sec.toFixed(1)} · standing ${(p.standings[st.faction] || 0).toFixed(2)}`;
-  $('sb-isk').textContent = fmtIsk(p.isk) + ' ISK';
+  $('sb-isk').textContent = `${fmtIsk(p.isk)} ISK · net worth ${fmtIsk(sbxNetWorth())}`;
   for (const b of document.querySelectorAll('#sb-tabs button')) { const on = b.dataset.stab === stationUI.tab; b.classList.toggle('on', on); const svc = b.dataset.svc; b.style.display = !svc || st.services[svc] ? '' : 'none'; }
   const C = $('sb-content'); const tab = stationUI.tab;
   if (tab === 'market') C.innerHTML = renderMarket(st);
@@ -4393,6 +5137,7 @@ function sbxRenderStation() {
   else if (tab === 'repair') C.innerHTML = renderRepair(st);
   else if (tab === 'insurance') C.innerHTML = renderInsurance();
   else if (tab === 'save') C.innerHTML = renderSaveTab();
+  else if (SBX4_TABS[tab]) C.innerHTML = SBX4_TABS[tab](st);
 }
 function spark(hist) {
   if (!hist || hist.length < 2) return '<svg class="spark" viewBox="0 0 60 16"></svg>';
@@ -4412,7 +5157,7 @@ function renderMarket(st) {
     let best = ''; for (const vid of p.visited) { if (vid === st.id) continue; const pr = ecoPrice(vid, id); if (pr != null) { const sp = ecoSellPrice(vid, id); if (!best || sp > best[0]) best = [sp, SBX.station(vid)?.name]; } }
     const own = (ship.cargo[id] || 0) + (hg[id] || 0);
     html += `<tr><td>${it.name}<span class="small"> ${it.vol} m³</span></td><td>${e.stock[id].toFixed(0)}</td><td>${fmtIsk(buy)}</td><td>${fmtIsk(sell)}</td><td>${spark(e.hist[id])}</td><td class="small">${best ? `${fmtIsk(best[0])} @ ${best[1]}` : '--'}</td><td>${own || ''}</td>` +
-      `<td><button data-buy="${id}" data-q="1">Buy</button><button data-buy="${id}" data-q="10">×10</button><button data-sell="${id}" data-q="1" ${own ? '' : 'disabled'}>Sell</button><button data-sell="${id}" data-q="10" ${own >= 10 ? '' : 'disabled'}>×10</button></td></tr>`;
+      `<td><button data-buy="${id}" data-q="1">Buy</button><button data-buy="${id}" data-q="10">×10</button><button data-sell="${id}" data-q="1" ${own ? '' : 'disabled'}>Sell</button><button data-sell="${id}" data-q="10" ${own >= 10 ? '' : 'disabled'}>×10</button><button data-sellorder="${id}" ${own ? '' : 'disabled'}>Sell order</button><button data-buyorder="${id}">Buy order</button></td></tr>`;
   }
   return html + '</table><p class="small">Buying into a shortage moves the price against you — stock and price recover over time. Sell where the sparkline is high.</p>';
 }
@@ -4466,6 +5211,7 @@ function renderAgents(st) {
 }
 function renderRepair(st) {
   const pl = world.player; const sb = pl.sbx; if (!st.services.repair) return '<p class="small">No repair bay here.</p>';
+  if (sbxIncursionAt(SBX.profile.systemId)) return '<p class="small" style="color:var(--red)">Incursion in system — the repair bay is dark until it is repelled.</p>';
   const need = (pl.maxHull - pl.hull) + (sb.armorMax - sb.armor); const cost = Math.ceil(need * 2.2);
   return `<p>Hull ${fmt(pl.hull)} / ${fmt(pl.maxHull)} · Armor ${fmt(sb.armor)} / ${fmt(sb.armorMax)}</p><div class="actions"><button data-repairall="1" ${need > 0.5 && SBX.profile.isk >= cost ? '' : 'disabled'}>Repair everything (${fmtIsk(cost)} ISK)</button></div>`;
 }
@@ -4477,7 +5223,10 @@ function renderInsurance() {
     SBX.profile.killmails.slice(0, 8).map(km => `<div class="item"><span class="tag">-${fmtIsk(km.value - km.payout)} ISK</span><div class="name">${km.ship} — ${km.system} (${km.sec.toFixed(1)})</div><div class="desc">Killed by ${km.killer}. Lost: ${km.modules.join(', ') || 'nothing fitted'}.${km.payout ? ` Insurance paid ${fmtIsk(km.payout)}.` : ''}</div></div>`).join('');
 }
 function renderSaveTab() {
-  return `<p class="small">${SBX.storageOk ? 'Autosaving to this browser every ' + CONFIG.sbx.autosaveInterval + 's and on every dock and trade.' : '<b style="color:var(--red)">Browser storage unavailable — progress lives in memory only. Export a save file.</b>'}</p>` +
+  const p = SBX.profile; const s4 = p.stats4;
+  return `<h3>Net worth — the score</h3><p><b style="color:var(--amber);font-size:15px">${fmtIsk(sbxNetWorth())} ISK</b> <span class="small">across hulls, fits, cargo, hangars, structures, escrow and wallet</span></p>` +
+    `<p class="small">Built ${s4.built} items · incursions repelled ${s4.repelled} · structures lost ${s4.structuresLost} · fleet pilots lost ${s4.fleetLost} · lifetime losses <b style="color:var(--red)">${fmtIsk(p.totalLost)}</b></p>` +
+    `<p class="small">${SBX.storageOk ? 'Autosaving to this browser every ' + CONFIG.sbx.autosaveInterval + 's and on every dock and trade.' : '<b style="color:var(--red)">Browser storage unavailable — progress lives in memory only. Export a save file.</b>'}</p>` +
     `<div class="actions"><button data-export="1">Export save (JSON)</button><button data-import="1">Import save</button><input type="file" id="sb-import-file" accept=".json" style="display:none"></div>` +
     `<h3>Danger</h3><div class="actions"><button data-wipe="1" class="amber">Wipe sandbox and start over</button></div>`;
 }
@@ -4496,11 +5245,14 @@ function sbxDrawMap() {
   if (SBX.route && SBX.route.length > 1) { g.strokeStyle = '#ffd166'; g.lineWidth = 5; g.beginPath(); SBX.route.forEach((id, i) => { const s = SBX.systems[id]; i ? g.lineTo(X(s.pos.x), Y(s.pos.y)) : g.moveTo(X(s.pos.x), Y(s.pos.y)); }); g.stroke(); }
   smap.nodes = [];
   SBX.systems.forEach((s, i) => {
+    if (s.wh && i !== SBX.profile.systemId) return;                    // wormhole space is off the chart until you are in it
     const x = X(s.pos.x), y = Y(s.pos.y); smap.nodes.push({ x: x / 2, y: y / 2, i });
     g.fillStyle = s.sec >= 0.5 ? '#4dd97a' : s.sec > 0 ? '#ffb347' : '#ff5a5a';
     g.beginPath(); g.arc(x, y, i === SBX.profile.systemId ? 14 : 9, 0, Math.PI * 2); g.fill();
     if (i === SBX.profile.systemId) { g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 20, 0, Math.PI * 2); g.stroke(); }
     if (smap.sel === i) { g.strokeStyle = '#ffd166'; g.lineWidth = 3; g.strokeRect(x - 22, y - 22, 44, 44); }
+    if (typeof sbxIncursionAt === 'function' && sbxIncursionAt(i)) { g.strokeStyle = '#ff5a5a'; g.lineWidth = 4; g.beginPath(); g.arc(x, y, 26 + Math.sin(Date.now() * 0.004) * 3, 0, Math.PI * 2); g.stroke(); g.fillStyle = '#ff5a5a'; g.fillText('INCURSION', x, y - 32); }
+    if (SBX.profile.structures.some(st2 => st2.sys === i)) { g.fillStyle = '#ffd166'; g.fillRect(x - 26, y - 4, 8, 8); }
     // known pirate activity: null/low systems marked
     if (s.sec < 0.5) { g.fillStyle = 'rgba(255,90,90,0.7)'; g.fillText('✕', x + 22, y - 12); }
     g.fillStyle = '#bfe9ee'; g.fillText(`${s.name} ${s.sec.toFixed(1)}`, x, y + 36);
@@ -4516,6 +5268,147 @@ function sbxShowLoss(km) {
     <div><span>Value lost</span><span style="color:var(--red)">${fmtIsk(km.value - km.payout)} ISK</span></div><div><span>Lifetime losses</span><span style="color:var(--red)">${fmtIsk(SBX.profile.totalLost)} ISK</span></div></div>
     <p class="small">Fitted modules lost: ${km.modules.join(', ') || 'none'}. Part of the cargo survives in a wreck at the kill site — if you dare go back for it.</p>`;
   $('sb-loss').classList.add('on');
+}
+
+// =====================================================================================
+//  part21 — Stage 4 UI: skills / industry / trade / fleet station tabs, the fleet HUD
+//  panel, the scanning panel, structure interactions, and map incursion overlays.
+// =====================================================================================
+function renderSkills() {
+  const p = SBX.profile; const q = p.skills.queue;
+  let html = '<div class="hgrid"><div>';
+  let group = '';
+  for (const id of SKILL_ORDER) {
+    const s = SKILLS[id]; const lvl = skillLvl(id); const queued = q.filter(x => x.id === id).length;
+    if (s.group !== group) { group = s.group; html += `<h3>${group}</h3>`; }
+    const dots = Array.from({ length: 5 }, (_, i) => `<i class="${i < lvl ? 'own' : i < lvl + queued ? 'queued' : ''}"></i>`).join('');
+    const next = lvl + queued + 1;
+    html += `<div class="item"><span class="tag">${next <= 5 ? fmtDur(skillTrainMs(id, next)) : 'MAX'}</span><div class="name">${s.name} <span class="tiers" style="display:inline-flex;vertical-align:middle">${dots}</span></div><div class="desc">${s.desc}</div>${next <= 5 ? `<button data-train="${id}">Train ${next}</button>` : ''}</div>`;
+  }
+  html += '</div><div><h3>Training queue</h3>';
+  html += q.length ? q.map((x, i) => `<div class="ovrow"><span class="n">${i + 1}. ${SKILLS[x.id].name} ${x.toLvl}</span><span class="d">${fmtDur(x.remainMs)}</span>${i === q.length - 1 ? `<button data-unqueue="${i}">×</button>` : ''}</div>`).join('') + `<p class="small">Queue completes in ${fmtDur(sbxSkillEta())}. Training continues in real time — even with the game closed.</p>` : '<p class="small">Queue a skill and log off. It trains on the wall clock, not the play clock.</p>';
+  return html + '</div></div>';
+}
+function renderIndustry(st) {
+  const p = SBX.profile; const hg = SBX.hangar(p.stationId);
+  const facilities = [[p.stationId, st.name]];
+  for (const s of p.structures) if (s.state === 'online' && STRUCTURE_DEFS[s.type].jobSlots) facilities.push(['struct:' + s.id, `${STRUCTURE_DEFS[s.type].name} (${SBX.systems[s.sys].name})`]);
+  stationUI.facility = facilities.some(f => f[0] === stationUI.facility) ? stationUI.facility : p.stationId;
+  const fac = stationUI.facility;
+  let html = `<div class="small">Facility: <select id="ind-fac">${facilities.map(f => `<option value="${f[0]}" ${f[0] === fac ? 'selected' : ''}>${f[1]}</option>`).join('')}</select> · slots ${sbxJobsAt(fac).length}/${sbxJobSlots(fac)} · Production ${skillLvl('production')}, Science ${skillLvl('science')}</div>`;
+  html += '<div class="hgrid"><div><h3>Blueprints in this hangar</h3>';
+  const bps = Object.keys(hg).filter(id => ITEMS[id]?.bp && hg[id] > 0);
+  html += bps.length ? bps.map(id => {
+    const bp = ITEMS[id].bp; const r = RECIPES[bp.product]; const res = p.bpResearch[bp.product] || { me: 0, te: 0 };
+    const mats = sbxJobMats(bp.product, 1); const matsTxt = Object.entries(mats).map(([m, q]) => `${q} ${ITEMS[m].name}`).join(', ');
+    const outQty = r.batch || 1; const val = (ecoPrice(p.stationId, bp.product) || itemValue(bp.product)) * outQty;
+    const cost = Object.entries(mats).reduce((a, [m, q]) => a + (ecoPrice(p.stationId, m) || itemValue(m)) * q, 0);
+    return `<div class="item"><span class="tag">${bp.original ? 'ORIGINAL · ME' + (res.me || 0) + ' TE' + (res.te || 0) : hg[id] + '× COPY'}</span><div class="name">${ITEMS[id].name}</div>` +
+      `<div class="desc">${matsTxt} → ${outQty}× ${ITEMS[bp.product].name} in ${fmtDur(sbxJobTime(bp.product, fac))}/run. Output ≈ ${fmtIsk(val)} vs mats ≈ ${fmtIsk(cost)} per run.</div>` +
+      `<button data-job="${id}" data-runs="1">Run ×1</button><button data-job="${id}" data-runs="5">×5</button>` +
+      (bp.original ? `<button data-research="${id}" data-kind="me">Research ME</button><button data-research="${id}" data-kind="te">Research TE</button>` : '') + '</div>';
+  }).join('') : '<p class="small">No blueprints here. Buy originals on the market, or pull copies out of relic sites.</p>';
+  html += '</div><div><h3>Jobs running</h3>';
+  const now = Date.now();
+  html += p.industry.jobs.length ? p.industry.jobs.map(j => { const total = j.endT - j.startT; const frac = clamp(1 - (j.endT - now) / total, 0, 1); const outV = (ecoPrice(p.stationId, j.product) || itemValue(j.product)) * (RECIPES[j.product].batch || 1) * j.runs; return `<div class="item"><span class="tag">${j.endT <= now ? 'DONE' : fmtDur(j.endT - now)}</span><div class="name">${j.runs}× ${ITEMS[j.product].name}</div><div class="bar amber" style="width:100%"><i style="transform:scaleX(${frac.toFixed(2)})"></i></div><div class="small">at ${j.station.startsWith('struct:') ? 'your array' : SBX.station(j.station)?.name} · output ≈ ${fmtIsk(outV)}</div></div>`; }).join('') : '<p class="small">No jobs. A job keeps running while you fly, dock, or close the game.</p>';
+  html += '<h3>Research</h3>';
+  html += p.industry.research.length ? p.industry.research.map(rj => `<div class="ovrow"><span class="n">${ITEMS[rj.product].name} ${rj.kind.toUpperCase()}</span><span class="d">${fmtDur(rj.endT - now)}</span></div>`).join('') : '<p class="small">Research an original to cut its material use (ME) or build time (TE). It takes far longer than building.</p>';
+  return html + '</div></div>';
+}
+function renderTrade(st) {
+  const p = SBX.profile; const routes = sbxTradeRoutes();
+  let html = '<h3>Trade routes (from stations you have visited)</h3>';
+  html += routes.length ? '<table class="stats mkt"><tr><td>Item</td><td>Buy at</td><td>Sell at</td><td>Units</td><td>Jumps</td><td>Route sec</td><td>Profit</td><td>Expected value</td></tr>' +
+    routes.map(r => `<tr><td>${ITEMS[r.item].name}</td><td>${SBX.station(r.src)?.name} @ ${fmtIsk(r.buy)}</td><td>${SBX.station(r.dst)?.name} @ ${fmtIsk(r.sell)}</td><td>${r.units}</td><td>${r.jumps}</td><td style="color:${r.minSec >= 0.5 ? '#7dffb0' : r.minSec > 0 ? 'var(--amber)' : 'var(--red)'}">${r.minSec.toFixed(1)}</td><td>${fmtIsk(r.profit)}</td><td>${fmtIsk(r.ev)}</td></tr>`).join('') + '</table><p class="small">Expected value prices in the chance of losing the hold on the way. Low and null routes pay because sometimes you do not arrive.</p>'
+    : '<p class="small">Visit more markets — the planner compares every station you have docked at.</p>';
+  html += `<h3>My orders (${p.orders.length}/${sbxOrderSlots()}) · broker fee ${(sbxBrokerFee() * 100).toFixed(1)}%</h3>`;
+  html += p.orders.length ? p.orders.map(o => `<div class="ovrow"><span class="k">${o.kind}</span><span class="n">${o.remaining}/${o.qty}× ${ITEMS[o.item].name} @ ${fmtIsk(o.price)} — ${SBX.station(o.station)?.name}</span><span class="d">${fmtDur(o.expiresT - Date.now())}</span><button data-cancelorder="${o.id}">Cancel</button></div>`).join('')
+    : '<p class="small">Place standing orders from the Market tab ("Sell order" / "Buy order"). They fill over time from passing traffic — even while you are gone.</p>';
+  return html;
+}
+function renderFleetTab(st) {
+  const p = SBX.profile;
+  let html = `<h3>Your fleet (${p.fleet.length}/${sbxFleetCap()}) — Leadership ${skillLvl('leadership')}</h3>`;
+  html += p.fleet.length ? p.fleet.map(f => { const c = FLEET_CONTRACTS[f.kind]; return `<div class="item"><span class="tag">${c.role.toUpperCase()}${f.hold ? ` · ${fmt(f.hold)} m³ held` : ''}</span><div class="name">${f.name} — ${c.hull}</div><div class="desc">${c.desc}</div><button data-dismiss="${f.id}">Dismiss</button></div>`; }).join('') : '<p class="small">Nobody flies with you yet. A hired hull is a real ship: it fights, it mines, and when it dies it is gone with its contract.</p>';
+  html += '<h3>Contracts on offer</h3>';
+  html += Object.entries(FLEET_CONTRACTS).map(([k, c]) => `<div class="item"><span class="tag">${fmtIsk(c.price)} ISK</span><div class="name">${c.name} — ${c.hull}</div><div class="desc">${c.desc}</div><button data-hire="${k}">Hire</button></div>`).join('');
+  html += `<h3>Deployable structures — null sec only, ${FACTIONS[CONFIG.sbx4.structures.deployStanding[0]].name} standing ${CONFIG.sbx4.structures.deployStanding[1]}+</h3>`;
+  html += Object.entries(STRUCTURE_DEFS).map(([k, d]) => `<div class="item"><span class="tag">${Object.entries(d.mats).map(([m, q]) => `${q} ${ITEMS[m].name.split(' ')[0]}`).join(' · ')}</span><div class="name">${d.name}</div><div class="desc">${d.desc} Haul the minerals in your cargo hold to a null-sec system and press B on grid to anchor (${CONFIG.sbx4.structures.anchorMin} min).</div></div>`).join('');
+  if (p.structures.length) html += '<h3>Standing structures</h3>' + p.structures.map(s => { const d = STRUCTURE_DEFS[s.type]; return `<div class="ovrow"><span class="n">${d.name} — ${SBX.systems[s.sys].name}</span><span class="d">${s.state}${s.state === 'reinforced' ? ' ' + fmtDur(s.reinforceUntil - Date.now()) : ''} · ${Math.round(s.shield)}/${d.hp.shield}s ${Math.round(s.armor)}/${d.hp.armor}a</span></div>`; }).join('');
+  return html;
+}
+
+// ---------- station tab plumbing (extends the Stage 3 switch) ----------
+const SBX4_TABS = { skills: renderSkills, industry: renderIndustry, trade: renderTrade, fleet: renderFleetTab };
+$('sb-content').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const p = SBX.profile;
+  let acted = true;
+  if (d.train) { const err = sbxQueueSkill(d.train); sbxToast(err ? 'Cannot train: ' + err : `${SKILLS[d.train].name} queued.`); }
+  else if (d.unqueue != null) { p.skills.queue.splice(+d.unqueue, 1); }
+  else if (d.job) { const err = sbxStartJob(d.job, +d.runs, stationUI.facility); sbxToast(err ? 'Cannot start job: ' + err : 'Job started. It runs on the wall clock.'); }
+  else if (d.research) { const err = sbxStartResearch(d.research, d.kind); sbxToast(err ? 'Cannot research: ' + err : 'Research started. Come back much later.'); }
+  else if (d.cancelorder) { sbxCancelOrder(+d.cancelorder); sbxToast('Order cancelled; escrow returned.'); }
+  else if (d.hire) { const err = sbxHirePilot(d.hire); sbxToast(err ? 'Cannot hire: ' + err : 'Contract signed. They undock when you do.'); }
+  else if (d.dismiss) { const f = p.fleet.find(x => x.id === +d.dismiss); if (f) { sbxFleetFlush(f); sbxDismiss(f); sbxToast('Contract ended.'); } }
+  else if (d.sellorder || d.buyorder) {
+    const item = d.sellorder || d.buyorder; const kind = d.sellorder ? 'sell' : 'buy';
+    const mkt = kind === 'sell' ? ecoSellPrice(p.stationId, item) : ecoPrice(p.stationId, item);
+    const price = parseFloat(prompt(`${kind === 'sell' ? 'Sell' : 'Buy'} order price per unit for ${ITEMS[item].name}? (market ${kind === 'sell' ? 'pays' : 'asks'} ${fmtIsk(mkt)})`, Math.round(mkt))); if (!price) return;
+    const qty = parseInt(prompt('Quantity?', '20')); if (!qty) return;
+    const err = sbxPlaceOrder(kind, item, qty, price); sbxToast(err ? 'Order rejected: ' + err : 'Order placed. It fills over time — check the Trade tab.');
+  }
+  else acted = false;
+  if (acted) { audio.click(); sbxRenderStation(); }
+});
+$('sb-content').addEventListener('change', (e) => { if (e.target.id === 'ind-fac') { stationUI.facility = e.target.value; sbxRenderStation(); } });
+
+// ---------- Fleet HUD panel ----------
+let fleetHudT = 0;
+function sbxFleetHUD(dt) {
+  const el = $('p-fleet'); const p = SBX.profile;
+  fleetHudT -= dt; if (fleetHudT > 0) return; fleetHudT = 0.3;
+  const show = p.fleet.length > 0 && !p.docked; el.classList.toggle('on', show); if (!show) return;
+  $('fleet-list').innerHTML = p.fleet.map(f => {
+    const a = world.allies.items.find(x => x.active && x.contract === f);
+    const hp = a && a.alive ? clamp(a.hull / a.maxHull, 0, 1) : 0;
+    return `<div class="w ${a && a.alive ? '' : 'dead'}"><span>${f.name}${f.hold ? ` (${fmt(f.hold)}m³)` : ''}</span><div class="bar green"><i style="transform:scaleX(${hp.toFixed(2)})"></i></div></div>`;
+  }).join('');
+}
+$('fleet-cmds').addEventListener('click', (e) => { const b = e.target.closest('[data-cmd]'); if (!b) return; audio.click(); if (b.dataset.cmd === 'deploy') sbxDeployPrompt(); else sbxFleetCommand(b.dataset.cmd); });
+function sbxDeployPrompt() {
+  const keys = Object.keys(STRUCTURE_DEFS);
+  const pick = prompt('Anchor which structure here?\n' + keys.map((k, i) => `${i + 1}. ${STRUCTURE_DEFS[k].name}`).join('\n'), '1');
+  const type = keys[(parseInt(pick) || 0) - 1]; if (!type) return;
+  const err = sbxDeployStructure(type); sbxToast(err ? 'Cannot anchor: ' + err : `${STRUCTURE_DEFS[type].name} anchoring — online in ${CONFIG.sbx4.structures.anchorMin} minutes. Guard it.`);
+}
+
+// ---------- Scanning panel ----------
+function sbxScanToggle() {
+  const fitted = fitModules(SBX.ship()).some(m => m.def.scanner);
+  if (!fitted) return sbxToast('Fit a Probe launcher (high slot) to scan for signatures.');
+  scanUI.open = !scanUI.open; $('scan-panel').classList.toggle('on', scanUI.open); if (scanUI.open) { scanUI.last = null; sbxScanRender(); }
+}
+function sbxScanRender() {
+  const sigs = (sbxSysState().sigs || []); const un = sigs.filter(s => !s.resolved).length;
+  $('scan-sigs').textContent = `${sigs.length} signature${sigs.length === 1 ? '' : 's'} in system · ${un} unresolved`;
+  $('scan-range').innerHTML = CONFIG.sbx4.explore.scanRanges.map((r, i) => `<button data-range="${i}" class="${i === scanUI.rangeIdx ? 'on' : ''}">${r / 1000}km</button>`).join('');
+  const L = scanUI.last;
+  $('scan-out').innerHTML = !L ? '<span class="small">Pulse to listen.</span>' : L.none ? '<span class="small">Nothing unresolved out here.</span>' : L.resolvedName ? `<b style="color:#7dffb0">RESOLVED — ${L.resolvedName}</b>` : `<b>${L.strength}%</b> <span class="small">${L.hint}</span>`;
+}
+$('scan-panel').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; audio.click(); if (b.dataset.range != null) { scanUI.rangeIdx = +b.dataset.range; sbxScanRender(); } else if (b.id === 'scan-pulse') sbxScanPulse(); else if (b.id === 'scan-close') sbxScanToggle(); });
+
+// ---------- offline digest ----------
+function sbxOfflineDigest(rep, awayMs) {
+  if (!rep) return;
+  const lines = [];
+  if (rep.skills.length) lines.push(`Trained: ${rep.skills.join(', ')}`);
+  if (rep.jobs.length) lines.push(`Built: ${rep.jobs.join(', ')}`);
+  if (rep.research.length) lines.push(`Research done: ${rep.research.join(', ')}`);
+  if (rep.fills) lines.push(`Market orders filled ${rep.fills} units`);
+  if (rep.income) lines.push(`Structures earned ${fmtIsk(rep.income)} ISK`);
+  lines.push(...rep.structEvents);
+  if (rep.incursions) lines.push(`${rep.incursions} incursion${rep.incursions > 1 ? 's' : ''} flared while you were away`);
+  if (lines.length) { sbxToast(`While you were gone (${fmtDur(awayMs)}):`); for (const l of lines.slice(0, 5)) sbxToast(l); }
 }
 
 // =====================================================================================
@@ -4562,7 +5455,10 @@ function sbxEnter() {
   world.onEnemyKilled = (e, source) => { for (const q of world.players) if (q.target === e) q.target = null; if (SBX.selected?.ref === e) SBX.selected = null; sbxOnEnemyKilled(e, source); };
   world.onEnemyHit = sbxOnEnemyHit;
   world.onPlayerKilled = (pl2) => { if (pl2 === world.player) { SBX.deathT = 1.4; assist.cancel(true); SBX.warpDrive.state = null; } };
-  world.onAllyKilled = null; world.npcHostile = sbxNPCHostile;
+  world.onAllyKilled = (a) => sbxOnFleetMemberKilled(a); world.npcHostile = sbxNPCHostile; world.onFriendlyKilled = null; world.onBossKilled = null; world.onSubsystemDestroyed = null;
+  // the offline pass: everything time-driven catches up in one sweep before the system loads
+  const away = Date.now() - (p.lastSeen || Date.now());
+  if (away > 15000) { const rep = sbxAdvance(away, { live: false }); sbxOfflineDigest(rep, away); }
   sbxBoardVisual();
   const entry = p.docked || !p.pos ? null : _v[0].set(p.pos[0], p.pos[1], p.pos[2]);
   sbxLoadSystem(clamp(p.systemId, 0, SBX.systems.length - 1), entry);
@@ -4592,18 +5488,19 @@ function sbxTryDock() {
 function sbxEnterDock(announce) {
   const pl = world.player; const p = SBX.profile; p.docked = true; pl.hangared = true; pl.vel.set(0, 0, 0);
   assist.cancel(true); SBX.warpDrive.state = null; pl.warping = false; SBX.ship().location = 'station:' + p.stationId;
-  sbxRecordDamage(); SBX.offersFor = null; sbxShowStation(true); sbxSave('dock');
+  sbxRecordDamage(); SBX.offersFor = null; sbxFleetDeliverOnDock(); sbxShowStation(true); sbxSave('dock');
   if (announce) { audio.click(true); sbxToast(`Docked at ${SBX.station().name}.`); }
 }
 function sbxUndock() {
   const p = SBX.profile; const ship = SBX.ship(); const S = sbxFitStats(ship);
   if (!S.valid) return sbxToast('This fit exceeds powergrid or CPU — it will not activate. Strip something.');
+  if (!hullSkillOk(ship.hull)) return sbxToast(`You own this ${SBX_HULLS[ship.hull].cls} but cannot fly it — train Ship command ${HULL_SKILL_REQ[ship.hull]}.`);
   const st = SBX.station(); const pt = SBX.points.find(x => x.kind === 'station' && x.st === st);
   p.docked = false; world.player.hangared = false; sbxShowStation(false);
   const pl = world.player; sbxBoardVisual();
   const out = _v[0].copy(pt.pos).add(_v[1].set(0, 40, 480)); _m.lookAt(_v[2].set(0, 0, 0), _v[3].subVectors(pt.pos, out).normalize().negate(), WORLD_UP); _q[0].setFromRotationMatrix(_m);
   pl.placeAt(out, _q[0]); pl.alive = true; pl.mesh.visible = true; pl.vel.set(0, 0, 0); pl.speed = 60; pl.shield = pl.maxShield; pl.sbx.cap = pl.sbx.capMax; cam.init = false;
-  sbxSave('undock'); audio.click(true);
+  sbxSpawnFleet(); sbxSave('undock'); audio.click(true);
 }
 
 // ---------- Death flow ----------
@@ -4632,8 +5529,16 @@ function sbxStep(dt) {
     const near = nearestPoint('station', CONFIG.sbx.dock.radius); const dockEl = $('p-dock');
     dockEl.classList.toggle('on', !!near); if (near) dockEl.textContent = `${near.name} — press E to dock`;
   }
-  // economy always ticks, everywhere
-  ECO.t += dt; if (ECO.t >= CONFIG.sbx.eco.tick) { ECO.t = 0; ecoTick(); if (p.docked && stationUI.tab === 'market' && $('sb-station').classList.contains('on')) sbxRenderStation(); }
+  // the ONE progression engine ticks every second — the same pass that runs the offline catch-up
+  SBX.advAcc = (SBX.advAcc || 0) + dt * 1000;
+  if (SBX.advAcc >= 1000) {
+    const chunk = SBX.advAcc; SBX.advAcc = 0;
+    const rep = sbxAdvance(chunk, { live: true });
+    if (rep) { for (const j of rep.jobs) sbxToast(`Job complete: ${j}.`); for (const sname of rep.skills) sbxToast(`Skill trained: ${sname}.`); for (const ev of rep.structEvents) sbxToast(ev); }
+    if (p.docked && $('sb-station').classList.contains('on') && (stationUI.tab === 'market' || (rep && (rep.jobs.length || rep.skills.length)))) sbxRenderStation();
+  }
+  sbxFleetStep(dt); sbxStructureRaidStep(); sbxFleetHUD(dt);
+  SBX.hideT = (SBX.hideT || 0) - dt; if (SBX.hideT <= 0) { SBX.hideT = 2; sbxHideoutStep(); }
   SBX.msnT = (SBX.msnT || 0) - dt; if (SBX.msnT <= 0) { SBX.msnT = 1; sbxMissionStep(); }
   SBX.autosaveT = (SBX.autosaveT || 0) + dt;
   if (SBX.autosaveT >= CONFIG.sbx.autosaveInterval) { SBX.autosaveT = 0; sbxRecordDamage(); if (!p.docked) p.pos = [pl.pos.x, pl.pos.y, pl.pos.z]; sbxSave('auto'); }
@@ -4641,7 +5546,16 @@ function sbxStep(dt) {
 }
 function sbxKeys() {
   const pl = world.player;
-  if (input.consume('KeyE')) { const w = SBX.wrecks.find(x => x.pos.distanceTo(pl.pos) < 450); if (nearestPoint('station', CONFIG.sbx.dock.radius)) sbxTryDock(); else if (w) sbxLootWreck(w); }
+  if (input.consume('KeyE')) {
+    const wh = SBX.points.find(x => x.kind === 'wormhole' && x.sig && x.pos.distanceTo(pl.pos) < 400);
+    const stn = sbxStructureNear();
+    if (nearestPoint('station', CONFIG.sbx.dock.radius)) sbxTryDock();
+    else if (wh) sbxWormholeTransit(wh);
+    else if (stn && stn.st.state !== 'anchoring') sbxStructureDeposit(stn);
+    else { const w = SBX.wrecks.find(x => x.pos.distanceTo(pl.pos) < 450); if (w) sbxLootWreck(w); }
+  }
+  if (input.consume('KeyP')) sbxScanToggle();
+  if (input.consume('KeyB')) sbxDeployPrompt();
   if (input.consume('KeyJ')) sbxTryJump();
   if (input.consume('KeyR')) { if (SBX.selected) sbxWarpTo(SBX.selected.pos, SBX.selected.name); else sbxToast('Select a destination in the overview first.'); }
   if (input.consume('KeyN')) sbxShowMap(!smap.open);
@@ -4692,7 +5606,7 @@ $('sb-content').addEventListener('click', (e) => {
   else if (d.preset != null) { p.presets = p.presets || {}; const hull = SBX.ship().hull;
     if (d.preset === 'save') { (p.presets[hull] = p.presets[hull] || []).splice(2); p.presets[hull].push({ name: 'Preset ' + ((p.presets[hull].length || 0) + 1), fit: JSON.parse(JSON.stringify(SBX.ship().fit)) }); }
     else { const pr = p.presets[hull][+d.preset]; if (pr) sbxLoadPreset(pr); } sbxSave('preset'); }
-  else if (d.activate) { const ship = p.ships.find(s => s.uid === +d.activate); if (ship) { sbxRecordDamage(); SBX.ship().location = 'station:' + p.stationId; p.activeShip = ship.uid; sbxBoardVisual(); sbxSave('board'); } }
+  else if (d.activate) { const ship = p.ships.find(s => s.uid === +d.activate); if (ship) { if (!hullSkillOk(ship.hull)) { sbxToast(`Train Ship command ${HULL_SKILL_REQ[ship.hull]} to board a ${SBX_HULLS[ship.hull].cls}.`); return; } sbxRecordDamage(); SBX.ship().location = 'station:' + p.stationId; p.activeShip = ship.uid; sbxBoardVisual(); sbxSave('board'); } }
   else if (d.assemble) { const hg = SBX.hangar(p.stationId); if (hg[d.assemble] > 0) { hg[d.assemble]--; if (hg[d.assemble] <= 0) delete hg[d.assemble]; sbxNewShip(ITEMS[d.assemble].hull, 'station:' + p.stationId); sbxSave('assemble'); } }
   else if (d.move) { const [where, id] = d.move.split(':'); const hg = SBX.hangar(p.stationId); const ship = SBX.ship();
     if (where === 'cargo') { const q = ship.cargo[id]; SBX.removeCargo(ship, id, q); hg[id] = (hg[id] || 0) + q; } else { const q = hg[id]; const fit = SBX.addCargo(ship, id, q); hg[id] -= fit; if (hg[id] <= 0) delete hg[id]; if (fit < q) sbxToast('Hold full — some stayed in the hangar.'); } }
@@ -5047,7 +5961,8 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast };
+  SBX, sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
+  sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
 </script>
 </body>
