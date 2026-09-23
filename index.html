@@ -327,6 +327,15 @@
   #scan-range { display: flex; gap: 4px; margin: 6px 0; }
   #scan-out { min-height: 30px; font-size: 12px; margin: 4px 0; text-transform: none; }
   .tiers i.queued { background: rgba(255,179,71,0.35); }
+
+  /* ---------- Stage 5: surface HUD ---------- */
+  #p-speed .srow { display: none; }
+  body.surface #p-speed .srow { display: flex; }
+  body.surface #p-overview { display: none !important; } /* the overview lists space objects — meaningless downstairs */
+  #p-rover { left: 24px; top: 330px; width: 216px; display: none; }
+  body.surface #p-rover.on { display: block; }
+  #orb-info h3 { font-size: 12px; color: var(--amber); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 8px; }
+  #orb-info .ovrow { cursor: default; }
 </style>
 </head>
 <body>
@@ -345,6 +354,8 @@
     <div class="value" id="h-speed">0</div>
     <div class="row"><div class="label">Throttle</div><div class="bar"><i id="h-throttle"></i></div></div>
     <div class="row"><div class="label">Boost</div><div class="bar amber"><i id="h-boost"></i></div></div>
+    <div class="row srow"><div class="label">Alt</div><span class="value" id="h-alt" style="font-size:15px">--</span></div>
+    <div class="row srow"><div class="label">V/S</div><span id="h-vsi">--</span></div>
   </div>
   <div class="panel" id="p-status">
     <div class="row"><div class="label">Shield</div><div class="bar"><i id="h-shield"></i></div><span id="h-shield-n">100</span></div>
@@ -357,6 +368,11 @@
   <div id="mod-rack"></div>
   <div class="panel" id="p-fleet"><div class="label">Fleet</div><div id="fleet-list"></div><div id="fleet-cmds"><button data-cmd="engage">Engage</button><button data-cmd="defend">Defend</button><button data-cmd="mine">Mine</button><button data-cmd="hold">Hold</button><button data-cmd="deploy">Anchor [B]</button></div></div>
   <div class="panel" id="scan-panel"><div class="label">Probe scanner [P]</div><div class="small" id="scan-sigs"></div><div id="scan-range"></div><div id="scan-out"></div><div class="scan-btns"><button id="scan-pulse">Pulse</button><button id="scan-close">Close</button></div></div>
+  <div class="panel" id="p-rover"><div class="label">Rover</div>
+    <div class="row"><div class="label">Hull</div><div class="bar amber"><i id="rv-hull"></i></div></div>
+    <div class="row"><div class="label">Power</div><div class="bar"><i id="rv-power"></i></div></div>
+    <div class="small" id="rv-info" style="text-transform:none"></div>
+  </div>
   <div class="panel" id="p-overview">
     <div id="ov-sort"><span class="label" style="flex:1">Overview</span><button data-sort="dist">Dist</button><button data-sort="type">Type</button><button data-sort="name">Name</button><button id="btn-ov-map">Map [N]</button></div>
     <div id="ov-actions"></div>
@@ -438,6 +454,14 @@
     <label><input type="radio" name="routepref" value="shortest" checked> Shortest route</label>
     <label><input type="radio" name="routepref" value="safest"> Safest route (prefers high sec)</label>
     <button id="btn-map-route">Set route</button><button id="btn-map-ap" class="amber">Autopilot</button><button id="btn-map-close">Close [N]</button>
+  </div>
+</div></div>
+<div class="sb-overlay" id="sb-planet"><div class="sb-card">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><h1 id="orb-title">Orbital survey</h1><button id="btn-orb-close" class="amber">Close</button></div>
+  <div class="small" id="orb-hint" style="margin:6px 0 10px"></div>
+  <div class="hgrid" style="grid-template-columns: 1.4fr 1fr">
+    <canvas id="planetcanvas" style="width:100%;height:420px;border:var(--line) solid var(--cyan-faint);background:#02050b;cursor:grab"></canvas>
+    <div id="orb-info"></div>
   </div>
 </div></div>
 <div class="sb-overlay" id="sb-loss"><div class="sb-card">
@@ -2096,7 +2120,7 @@ class World {
     for (const p of this.players) p.snapshot(); this.allies.forEachActive(a => a.snapshot()); this.enemies.forEachActive(e => e.snapshot());
     this.projectiles.forEachActive(p => p.prevPos.copy(p.pos)); this.missiles.forEachActive(m => m.prevPos.copy(m.pos));
     for (const b of this.bosses) b.snapshot(); for (const f of this.friendlies) f.snapshot();
-    for (const p of this.players) { p.firedTick = false; if (p.alive && !p.hangared && !p.warping) p.update(dt, this); }
+    for (const p of this.players) { p.firedTick = false; if (p.alive && !p.hangared && !p.warping && !p.parked) p.update(dt, this); }
     this.enemies.forEachActive(e => { if (e.alive) e.update(dt, this); });
     this.allies.forEachActive(a => { if (a.alive) a.update(dt, this); });
     for (const b of this.bosses) if (b.alive || b.dying) b.update(dt, this);
@@ -2213,6 +2237,9 @@ function sweptHit(a, b, c, r, out) {
 const cam = { pos: V3(), vel: V3(), fov: CONFIG.render.fovChase, init: false, cockpitBlend: 0 };
 function updateCamera(dt, alpha) {
   const pl = world.player; const C = CONFIG.camera; const F = pl.stats.flight;
+  // Stage 5: the surface owns the camera during the descent cinematic and while driving
+  if (SRF.active && SRF.cine) { SRF.cineCamera(dt); camera.updateMatrixWorld(); camera.matrixWorldInverse.copy(camera.matrixWorld).invert(); return; }
+  if (SRF.active && SRF.mode === 'rover' && SRF.rover) { SRF.roverCamera(dt); camera.updateMatrixWorld(); camera.matrixWorldInverse.copy(camera.matrixWorld).invert(); return; }
   pl.interp(alpha, _v[0], _q[0]); const shipPos = _v[0], shipQuat = _q[0];
   const sdt = Math.min(dt, 1 / 30);
   let fovTarget;
@@ -2237,6 +2264,7 @@ function updateCamera(dt, alpha) {
   // shake in camera-local space
   _v[6].copy(shake.offset).applyQuaternion(camera.quaternion); camera.position.add(_v[6]);
   _q[1].setFromAxisAngle(_v[7].set(0, 0, 1), shake.rot); camera.quaternion.multiply(_q[1]);
+  if (SRF.active) SRF.clampCamera(); // never dip the chase camera below the terrain
   cam.fov = damp(cam.fov, fovTarget, CONFIG.render.fovEase, dt);
   if (Math.abs(camera.fov - cam.fov) > 0.01) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
   camera.updateMatrixWorld(); camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
@@ -2338,7 +2366,7 @@ function drawRadar(pl) {
 }
 
 function drawSpeedLines(pl, dt) {
-  const target = pl.boosting || pl.warping ? 1 : 0; speedLineAlpha = damp(speedLineAlpha, target, 6, dt);
+  const target = pl.boosting || pl.warping ? 1 : (SRF.active && SRF.cine ? SRF.fxHeat : 0); speedLineAlpha = damp(speedLineAlpha, target, 6, dt);
   const w = fxCanvas.width, h = fxCanvas.height; fxCtx.clearRect(0, 0, w, h);
   if (speedLineAlpha < 0.02) return;
   const cx = w / 2, cy = h / 2, n = CONFIG.fx.speedLines, tt = performance.now() * 0.001;
@@ -3556,6 +3584,12 @@ const ITEMS = {
   tg_medical:    { name: 'Medical supplies', cat: 'trade', vol: 4, base: 260 },
   tg_luxuries:   { name: 'Verge luxuries', cat: 'trade', vol: 2,  base: 700 },
   ammo_cells:    { name: 'Ammunition cells', cat: 'trade', vol: 1.5, base: 30 },
+  // Stage 5 — surface-only ores, the mineral they carry, artifacts, and the rover itself
+  ore_thorite:   { name: 'Thorite ore',    cat: 'ore', vol: 12, base: 260, refine: { min_iridium: 2, min_ferrite: 1 } },
+  ore_cryolite:  { name: 'Cryolite ore',   cat: 'ore', vol: 8,  base: 170, refine: { min_silica: 2, min_nobelium: 1 } },
+  min_iridium:   { name: 'Iridium',        cat: 'mineral', vol: 0.8, base: 210 },
+  art_relic:     { name: 'Surface artifact', cat: 'trade', vol: 2, base: 5200 },
+  rover_mk1:     { name: 'Rover Mk1',      cat: 'vehicle', vol: 40, base: 60000 },
 };
 // module + hull items are appended to ITEMS below so one market/cargo/price path handles everything
 
@@ -3657,6 +3691,10 @@ const SBX_MODULES = {
   r_cargo:     { name: 'Cargo rig',        slot: 'rig', pg: 0, cpu: 0, vol: 3, price: 20000, fit: { cargoMul: 1.2 } },
   r_mining:    { name: 'Mining rig',       slot: 'rig', pg: 0, cpu: 0, vol: 3, price: 30000, fit: { mineMul: 1.25 } },
   r_cap:       { name: 'Capacitor rig',    slot: 'rig', pg: 0, cpu: 0, vol: 3, price: 24000, fit: { capPoolMul: 1.2 } },
+  // Stage 5 — planetary operations
+  surveyor:    { name: 'Surface surveyor', slot: 'high', pg: 3, cpu: 22, vol: 4, price: 21000, active: { cycle: 7, cap: 12 }, survey: true },
+  l_thermal:   { name: 'Thermal shielding', slot: 'low', pg: 4, cpu: 8, vol: 4, price: 17000, fit: {}, thermal: true },
+  l_pressure:  { name: 'Pressure hull',    slot: 'low', pg: 6, cpu: 8, vol: 5, price: 19000, fit: { massAdd: 0.2 }, pressure: true },
   r_trimark:   { name: 'Trimark rig',      slot: 'rig', pg: 0, cpu: 0, vol: 3, price: 26000, fit: { armorMul: 1.15 } },
 };
 // fold modules + hull kits into the item db so cargo volume and market pricing are uniform
@@ -3946,6 +3984,7 @@ function sbxCapUpdate(dt) {
       // cycle END: apply per-cycle effects, then pay for the next cycle or shut down
       if (rt.def.repair) { sb.armor = Math.min(sb.armorMax, sb.armor + rt.def.repair.armor); world.sparks(pl.pos, 4, 0xffb060); }
       if (rt.def.mine) sbxMineCycle(rt);
+      if (rt.def.survey) srfSurveyCycle();
       if (sb.cap >= rt.def.active.cap) { sb.cap -= rt.def.active.cap; rt.cycleT = rt.def.active.cycle; }
       else { rt.on = false; rt.cycleT = 0; refit = true; if (pl === world.player) audio.click(); } // capacitor dry — module drops offline
     }
@@ -4060,7 +4099,7 @@ const skillTrainMs = (id, toLvl) => SKILLS[id].baseMin * 60000 * Math.pow(CONFIG
 function skillBonus(key) { let v = 0; for (const id of SKILL_ORDER) { const b = SKILLS[id].bonus[key]; if (b) v += b * skillLvl(id); } return v; }
 /** Gates: hulls need Ship command; some modules need a specific skill level. */
 const HULL_SKILL_REQ = { h_wisp: 0, h_kestrel: 1, h_talon: 2, h_lumen: 2, h_aurora: 3, h_burrow: 4, h_mule: 4, h_bastion: 4, h_sovereign: 5, h_atlas: 5 };
-const MODULE_SKILL_REQ = { w_beam: ['gunnery', 2], w_launcher: ['gunnery', 1], m_mwd: ['navigation', 2], w_miner2: ['mining', 2], l_rep: ['production', 0], probe: ['science', 1] };
+const MODULE_SKILL_REQ = { w_beam: ['gunnery', 2], w_launcher: ['gunnery', 1], m_mwd: ['navigation', 2], w_miner2: ['mining', 2], l_rep: ['production', 0], probe: ['science', 1], surveyor: ['science', 1] };
 function hullSkillOk(hullId) { return skillLvl('command') >= (HULL_SKILL_REQ[hullId] ?? 0); }
 function moduleSkillReq(modId) { const r = MODULE_SKILL_REQ[modId]; return r && skillLvl(r[0]) < r[1] ? `needs ${SKILLS[r[0]].name} ${r[1]} (trained ${skillLvl(r[0])})` : null; }
 
@@ -4084,7 +4123,11 @@ const RECIPES = {
   kit_h_lumen:  { mats: { min_ferrite: 2600, min_silica: 950, min_nobelium: 45 }, timeMin: 30 },
   kit_h_bastion:{ mats: { min_ferrite: 52000, min_silica: 16000, min_nobelium: 2400 }, timeMin: 150, standing: ['authority', 2] },
   kit_h_atlas:  { mats: { min_ferrite: 95000, min_silica: 26000, min_nobelium: 3200 }, timeMin: 190, standing: ['guild', 2] },
-  kit_h_sovereign: { mats: { min_ferrite: 175000, min_silica: 60000, min_nobelium: 9500 }, timeMin: 300, standing: ['combine', 3] },
+  kit_h_sovereign: { mats: { min_ferrite: 175000, min_silica: 60000, min_nobelium: 9500, min_iridium: 400 }, timeMin: 300, standing: ['combine', 3] },
+  rover_mk1:    { mats: { min_ferrite: 900, min_silica: 260, min_nobelium: 20 }, timeMin: 18 },
+  l_thermal:    { mats: { min_ferrite: 260, min_silica: 90, min_iridium: 10 }, timeMin: 12 },
+  l_pressure:   { mats: { min_ferrite: 340, min_silica: 110, min_iridium: 14 }, timeMin: 13 },
+  surveyor:     { mats: { min_silica: 240, min_nobelium: 30 }, timeMin: 14 },
 };
 // blueprint items: originals (reusable, expensive) and copies (limited runs, found exploring)
 for (const [prod, r] of Object.entries(RECIPES)) {
@@ -4229,6 +4272,18 @@ function sbxStructureAdvance(st, ms, now, report, opts) {
     for (const [mid, per] of Object.entries(it.refine)) st.storage[mid] = (st.storage[mid] || 0) + Math.floor(q * per * def.refineYield);
     delete st.storage[id];
   }
+  // surface extractor: works its deposit over real time — the deposit is finite and stays worked-out
+  if (def.surface && st.srf && st.state !== 'anchoring') {
+    const siteSt = p.planets?.[st.srf.pk]?.sites?.[st.srf.site];
+    if (siteSt) {
+      const rem = siteSt.dep[st.srf.di] ?? st.srf.units0;
+      const vol = ITEMS[st.srf.ore]?.vol || 1;
+      const used = Object.entries(st.storage).reduce((a, [id, q]) => a + (ITEMS[id]?.vol || 1) * q, 0);
+      const room = Math.max(0, (def.storage - used) / vol);
+      const take = Math.min(rem, CONFIG.srf.extractor.unitsPerMin * mins, room);
+      if (take > 0) { siteSt.dep[st.srf.di] = rem - take; st.storage[st.srf.ore] = (st.storage[st.srf.ore] || 0) + take; }
+    }
+  }
   // shields recover between attacks
   if (st.state === 'online') st.shield = Math.min(def.hp.shield, st.shield + CONFIG.sbx4.structures.shieldRegenPerMin * mins);
   // reinforcement expiry: still hostile pressure → the structure dies
@@ -4238,8 +4293,10 @@ function sbxStructureAdvance(st, ms, now, report, opts) {
   }
   // scheduled NPC attack — live when the player is on grid, abstract otherwise
   if (st.state === 'online' && now >= st.nextAttackT) {
-    const live = SBX.active && p.systemId === st.sys && !p.docked && opts.live !== false;
-    if (live && typeof sbxBeginStructureAttack === 'function') { sbxBeginStructureAttack(st); st.nextAttackT = now + sbxAttackDelay(st); }
+    const onSite = def.surface ? (typeof SRF !== 'undefined' && SRF.active && SRF.planet?.key === st.srf?.pk && SRF.site?.i === st.srf?.site) : false;
+    const live = def.surface ? (onSite && opts.live !== false) : (SBX.active && p.systemId === st.sys && !p.docked && opts.live !== false);
+    if (live && def.surface) { SRF.beginOutpostRaid(st); st.nextAttackT = now + sbxAttackDelay(st); }
+    else if (live && typeof sbxBeginStructureAttack === 'function') { sbxBeginStructureAttack(st); st.nextAttackT = now + sbxAttackDelay(st); }
     else {
       const dmg = (0.5 + Math.random() * 0.6) * def.hp.shield * (sbxIncursionAt(st.sys) ? 1.6 : 1);
       let rem = dmg; const sTake = Math.min(st.shield, rem); st.shield -= sTake; rem -= sTake;
@@ -4455,7 +4512,7 @@ function sbxRebuildStructures() {
   for (const e of SBX.structEntities || []) { const i = world.friendlies.indexOf(e); if (i >= 0) world.friendlies.splice(i, 1); e.destroyMesh(); world.obstacles = world.obstacles.filter(o => o.owner !== e); }
   SBX.structEntities = []; SBX.points = SBX.points.filter(pt => pt.kind !== 'structure');
   for (const st of SBX.profile.structures) {
-    if (st.sys !== SBX.profile.systemId) continue;
+    if (st.sys !== SBX.profile.systemId || STRUCTURE_DEFS[st.type].surface) continue; // surface outposts render on their site, not in space
     const e = new StructureEntity(st); SBX.structEntities.push(e); world.friendlies.push(e);
     world.obstacles.push({ pos: e.pos, radius: 130, owner: e });
     SBX.points.push({ kind: 'structure', name: `${STRUCTURE_DEFS[st.type].name}${st.state === 'anchoring' ? ' (anchoring)' : st.state === 'reinforced' ? ' (REINFORCED)' : ''}`, pos: e.pos, st, ent: e });
@@ -4782,10 +4839,14 @@ function sbxEnvFor(sys) {
 /** Tear down the previous system, build this one, place the player at `entry` ({pos} or gate index). */
 function sbxLoadSystem(sysIdx, entryPos) {
   const sys = SBX.systems[sysIdx]; SBX.sys = sys; SBX.profile.systemId = sysIdx;
+  if (SRF.active) SRF.abort(); // any route back to space tears the surface down first
   world.clearAll(); if (!world.stats) world.resetStats(); sbxClearScene(); assist.cancel(true); SBX.warpDrive.state = null;
   world.arena.center.set(0, 0, 0); world.arena.radius = 1e8; world.base = null; world.pvp = false;
   applyEnvironment(sbxEnvFor(sys));
   const state = sbxSysState(sysIdx);
+  // the planet is a real destination now: warp to it, hold orbit, survey, descend
+  const planet = sbxPlanetOf(sysIdx);
+  if (planet) SBX.points.push({ kind: 'planet', name: `${planet.name} (orbit)`, pos: env.planet.position.clone().multiplyScalar(0.55), planet }); // just above the cloud tops — the planet fills the view
   // stations
   for (const st of sys.stations) {
     const mesh = sbxStationMesh(st); SBX.sceneObjs.push(mesh);
@@ -5057,7 +5118,7 @@ function ecoCatalog(st) {
   if (sys.sec < 0.5) list.push('ore_vexcry', 'tg_luxuries');
   if (st.services.fitting) list.push(...Object.keys(SBX_MODULES));
   if (st.services.fitting) list.push(...Object.keys(ITEMS).filter(id => id.startsWith('bpo_'))); // originals: buy where you fit
-  if (st.services.hulls) list.push(...Object.keys(ITEMS).filter(id => ITEMS[id].cat === 'hull'));
+  if (st.services.hulls) list.push(...Object.keys(ITEMS).filter(id => ITEMS[id].cat === 'hull' || ITEMS[id].cat === 'vehicle'));
   return list;
 }
 function ecoStation(stId) {
@@ -5067,7 +5128,7 @@ function ecoStation(stId) {
   e = ECO.stations[stId] = { stock: {}, eq: {}, prod: {}, cons: {}, hist: {} };
   for (const id of ecoCatalog(st)) {
     const it = ITEMS[id];
-    const eq = it.cat === 'hull' ? 2 + Math.floor(rng() * 3) : it.cat === 'blueprint' ? 1 + Math.floor(rng() * 2) : it.cat === 'module' ? 4 + Math.floor(rng() * 8) : 40 + Math.floor(rng() * 160);
+    const eq = it.cat === 'hull' || it.cat === 'vehicle' ? 2 + Math.floor(rng() * 3) : it.cat === 'blueprint' ? 1 + Math.floor(rng() * 2) : it.cat === 'module' ? 4 + Math.floor(rng() * 8) : 40 + Math.floor(rng() * 160);
     e.eq[id] = eq; e.stock[id] = Math.max(0, Math.round(eq * (0.5 + rng()))); e.hist[id] = [];
     // production / consumption profiles create the price spreads that make hauling pay
     if (st.faction === 'combine' && it.cat === 'mineral') e.prod[id] = 2 + rng() * 3;
@@ -5330,7 +5391,7 @@ function sbxOverviewEntries() {
   if (SBX.ovSort === 'dist') out.sort((a, b) => a.dist - b.dist); else if (SBX.ovSort === 'name') out.sort((a, b) => a.name.localeCompare(b.name)); else out.sort((a, b) => a.kind.localeCompare(b.kind) || a.dist - b.dist);
   return out;
 }
-const OV_COLOR = { station: '#9fe8ff', gate: '#c9d4ff', belt: '#d9c9a0', rock: '#d9c9a0', wreck: '#ffd166', deadspace: '#ff9a5a', wormhole: '#c98cff', structure: '#ffd166', pilot: '#ffd27a' };
+const OV_COLOR = { station: '#9fe8ff', gate: '#c9d4ff', belt: '#d9c9a0', rock: '#d9c9a0', wreck: '#ffd166', deadspace: '#ff9a5a', wormhole: '#c98cff', structure: '#ffd166', pilot: '#ffd27a', planet: '#7dc8ff' };
 function sbxOverviewRender() {
   const list = $('ov-list'); if (!list) return;
   const entries = sbxOverviewEntries(); const sel = SBX.selected;
@@ -5348,6 +5409,7 @@ function sbxOverviewRender() {
   if (sel.kind === 'gate' && d < CONFIG.sbx.gate.jumpDist * 1.2) html += btn('jump', 'Jump [J]');
   if (sel.kind === 'wreck' && d < 450) html += btn('loot', 'Loot [E]');
   if (sel.kind === 'wormhole' && d < 400) html += btn('enter', 'Enter [E]');
+  if (sel.kind === 'planet' && d < 2600) html += btn('survey', 'Survey [E]');
   if (sel.kind === 'structure' && d < 500 && sel.ref.st.state !== 'anchoring') html += btn('deposit', 'Deposit [E]') + btn('withdraw', 'Withdraw') + btn('repairst', 'Repair');
   a.innerHTML = `<div class="small">${sel.name} — ${d > 10000 ? (d / 1000).toFixed(1) + ' km' : fmt(d) + ' m'}</div>` + html;
 }
@@ -5366,6 +5428,7 @@ function sbxOvAction(id) {
   else if (id === 'jump') sbxTryJump();
   else if (id === 'loot') sbxLootWreck(sel.ref);
   else if (id === 'enter') sbxWormholeTransit(sel.ref);
+  else if (id === 'survey') srfOpenOrbital(sel.ref.planet);
   else if (id === 'deposit') sbxStructureDeposit(sel.ref.ent);
   else if (id === 'withdraw') sbxStructureWithdraw(sel.ref.ent);
   else if (id === 'repairst') sbxStructureRepair(sel.ref.ent);
@@ -5844,6 +5907,1206 @@ const SBXNET = {
 };
 
 // =====================================================================================
+//  part23 — Stage 5 data: planets, landing sites, biomes, the height field, save v3.
+//  A landing site is a bounded ~8 km zone generated from a stable seed; everything a
+//  site remembers (deposits, anomalies, bases, weather) lives in profile.planets.
+// =====================================================================================
+CONFIG.sbx.saveVersion = 3;
+CONFIG.srf = {
+  world: 8192, chunk: 1024, grid: 8, seg: 48,       // terrain: 8×8 chunks of 1 km, 48 segments at LOD0
+  boundary: 3800, boundaryPush: 30,                  // soft edge of the zone
+  descentMin: 8, descentMax: 16, handoffAlt: 500, handoffSpeed: 150, escapeAlt: 900,
+  thrust: 14, loadK: 1.5,                            // TW = thrust / ((1 + loadK·loadFrac) · g)
+  land: { safeV: 12, hardV: 22, fatalV: 34, minNy: 0.93, hint: 40 },
+  rover: { accel: 30, maxSpeed: 34, turn: 2.2, brake: 55, hull: 120, cargo: 80, gunDmg: 5.5, gunInterval: 0.24, gunRange: 420, range: 1500, drainSec: 60, selfRightCd: 6, wheelbase: 4.6, track: 3.4 },
+  deposit: { cycle: 3, yield: 14, reach: 55 },
+  extractor: { unitsPerMin: 3 },
+  prospect: { radius: 1100, ping: 1.6 },
+  dayLength: 480,                                    // seconds of real time per local day
+  weatherPeriod: 300,                                // seconds per weather roll
+};
+
+// ---------- Biomes: the site's whole personality in one row ----------
+const BIOMES = {
+  barren:   { name: 'Barren rock', sky: 0x07080c, fog: [0x0a0c12, 0.00032], sun: 0xfff2e0, sunI: 2.6, ambS: 0x2c3240, ambG: 0x14100c, g: 3.2, atmo: 0.08, amp: 130, ridge: 0.15, plateau: 0, craters: 9, stars: true,
+    pal: { low: 0x4a463f, mid: 0x6b6459, high: 0x8d867a, steep: 0x38342d }, props: ['rock', 'spire'], haz: null, ore: ['ore_thorite', 'ore_cindrite'], weather: 'dust' },
+  ice:      { name: 'Ice', sky: 0x9fc0d8, fog: [0x9fc0d8, 0.00050], sun: 0xeaf6ff, sunI: 2.0, ambS: 0x9db8cc, ambG: 0x4a6070, g: 5.0, atmo: 0.5, amp: 95, ridge: 0.55, plateau: 0.3, craters: 0, stars: false,
+    pal: { low: 0xb2cddc, mid: 0xd4e8f2, high: 0xf0f8fd, steep: 0x6d8ba0 }, props: ['shard', 'rock'], haz: 'cold', ore: ['ore_cryolite', 'ore_auberite'], weather: 'blizzard' },
+  volcanic: { name: 'Volcanic', sky: 0x1c0d08, fog: [0x2e1109, 0.00058], sun: 0xff8a50, sunI: 1.7, ambS: 0x502010, ambG: 0x180a06, g: 7.0, atmo: 0.7, amp: 280, ridge: 1.0, plateau: 0, craters: 0, stars: false, lava: -55,
+    pal: { low: 0x1e1310, mid: 0x3e2c21, high: 0x584238, steep: 0x241611 }, props: ['spire', 'rock'], haz: 'heat', ore: ['ore_thorite', 'ore_vexcry'], weather: 'ash', gate: 'l_thermal' },
+  toxic:    { name: 'Toxic', sky: 0x4c5a34, fog: [0x54613a, 0.00125], sun: 0xd8e090, sunI: 1.4, ambS: 0x5c6a40, ambG: 0x262e16, g: 9.0, atmo: 1.6, amp: 60, ridge: 0, plateau: 0.5, craters: 0, stars: false,
+    pal: { low: 0x3f4a2c, mid: 0x596440, high: 0x788457, steep: 0x2b321d }, props: ['blob', 'crystal'], haz: 'corrosive', ore: ['ore_cryolite', 'ore_vexcry'], weather: 'spore', fauna: 'skitter', gate: 'l_pressure' },
+  temperate:{ name: 'Temperate', sky: 0x8fc4e8, fog: [0xa8cce0, 0.00028], sun: 0xfff6dc, sunI: 2.3, ambS: 0x9cc0da, ambG: 0x33452e, g: 6.0, atmo: 1.0, amp: 150, ridge: 0.35, plateau: 0, craters: 0, stars: false, water: -18,
+    pal: { low: 0x8a7c50, mid: 0x4f7a3c, high: 0x8fa08c, steep: 0x6b6152 }, props: ['tree', 'rock'], haz: null, ore: ['ore_auberite', 'ore_cryolite'], weather: 'rain', fauna: 'stalker', civ: true },
+};
+const smooth01 = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+
+// ---------- Planets: one per system that has one; sites seeded from planet + index ----------
+function sbxPlanetOf(sysIdx) {
+  const sys = SBX.systems?.[sysIdx]; if (!sys?.env?.hasPlanet) return null;
+  const rng = makeRng(CONFIG.sbx.seed ^ (sysIdx * 7717 + 11));
+  const pool = sys.sec >= 0.5 ? ['temperate', 'barren', 'ice'] : sys.sec > 0 ? ['barren', 'ice', 'volcanic', 'temperate'] : ['volcanic', 'toxic', 'barren', 'ice'];
+  return { key: 'p' + sysIdx, sys: sysIdx, name: sys.name + ' I', g: +(2.5 + rng() * 8).toFixed(1), nSites: 3 + Math.floor(rng() * 6), pool, hue: sys.env.planetHue, faction: sys.stations[0]?.faction || 'authority' };
+}
+function srfSiteDef(planet, i) {
+  const rng = makeRng(CONFIG.sbx.seed ^ ((planet.sys * 131 + i) * 2657 + 5));
+  const biome = planet.pool[Math.floor(rng() * planet.pool.length)];
+  const B = BIOMES[biome];
+  const hazard = clamp(1 + Math.floor(rng() * 3) + (B.gate ? 2 : 0), 1, 5);
+  return {
+    i, biome, hazard, seed: (CONFIG.sbx.seed ^ ((planet.sys * 131 + i) * 92821 + 7)) >>> 0,
+    lat: (rng() - 0.5) * 130, lon: rng() * 360, ore: B.ore[Math.floor(rng() * B.ore.length)],
+    gateMod: B.gate || null, standingReq: hazard >= 4 ? 1 : 0,
+    name: `${planet.name} · ${['LZ', 'Basin', 'Rift', 'Mesa', 'Verge', 'Field', 'Scar', 'Reach'][i % 8]}-${i + 1}`,
+    nDeposits: 6 + Math.floor(rng() * 5), nAnoms: 2 + Math.floor(rng() * 3), hasBase: hazard >= 3 && rng() < 0.8,
+  };
+}
+function srfPState(planet) { const P = SBX.profile; P.planets = P.planets || {}; return P.planets[planet.key] || (P.planets[planet.key] = { scanned: 0, sites: {} }); }
+function srfSiteState(planet, i) { const ps = srfPState(planet); return ps.sites[i] || (ps.sites[i] = { visited: false, dep: {}, an: {}, bases: {}, wx: Math.floor(Math.random() * 1e9) }); }
+
+// Deposits and anomalies are pure functions of the site seed — a revisited site is identical.
+function srfDeposits(site) {
+  const rng = makeRng(site.seed ^ 0xd0d0); const out = [];
+  for (let i = 0; i < site.nDeposits; i++) {
+    const a = rng() * Math.PI * 2, r = 500 + rng() * 3000;
+    out.push({ i, x: Math.cos(a) * r, z: Math.sin(a) * r, ore: rng() < 0.75 ? site.ore : BIOMES[site.biome].ore[1] || site.ore, units0: 400 + Math.floor(rng() * 500), cave: false });
+  }
+  return out;
+}
+function srfAnomalies(site) {
+  const rng = makeRng(site.seed ^ 0xa11a); const out = [];
+  const kinds = ['crashed', 'ruins', 'cave', 'beacon'];
+  for (let i = 0; i < site.nAnoms; i++) {
+    const a = rng() * Math.PI * 2, r = 900 + rng() * 2600;
+    out.push({ i, kind: kinds[Math.floor(rng() * kinds.length)], x: Math.cos(a) * r, z: Math.sin(a) * r, roll: rng() });
+  }
+  return out;
+}
+
+// ---------- Thrust-to-weight: the mass mechanic that makes gravity wells real ----------
+function srfLoadFrac() { return SBX.cargoVolume() / Math.max(1, SBX.cargoCapacity()); }
+function srfTW(g) { return CONFIG.srf.thrust / ((1 + CONFIG.srf.loadK * srfLoadFrac()) * g); }
+function srfDescendCheck(planet, site) {
+  const ship = SBX.ship(); if (!ship) return 'no ship';
+  const mods = fitModules(ship).map(m => m.id);
+  if (site.gateMod && !mods.includes(site.gateMod)) return `${SBX_MODULES[site.gateMod].name} must be fitted to survive ${BIOMES[site.biome].name.toLowerCase()} descent`;
+  if (site.standingReq && (SBX.profile.standings[planet.faction] || 0) < site.standingReq) return `${FACTIONS[planet.faction].name} restricts this site — standing ${site.standingReq} required`;
+  if (srfTW(planet.g) < 1.05) return `too heavy for ${planet.g} g — you would never climb out. Lighten the hold.`;
+  return null;
+}
+
+// ---------- Height field: layered value noise with per-biome shape, craters, LZ flattening ----------
+function srfMakeHeight(site) {
+  const B = BIOMES[site.biome]; const s = site.seed;
+  const n1 = skyNoise(s), n2 = skyNoise(s * 3 + 7), n3 = skyNoise(s * 7 + 13);
+  const craters = []; const crng = makeRng(s ^ 0xbeef);
+  for (let i = 0; i < (B.craters || 0); i++) craters.push({ x: (crng() - 0.5) * 7000, z: (crng() - 0.5) * 7000, r: 180 + crng() * 520, d: 22 + crng() * 60 });
+  const W = CONFIG.srf.world;
+  return (x, z) => {
+    const u = x / W + 17.31, v = z / W + 9.47;
+    let h = 0, a = 1, f = 1, sum = 0;
+    for (let o = 0; o < 4; o++) {
+      let n = n1(u * f, v * f);
+      if (B.ridge) { const r = 1 - Math.abs(n * 2 - 1); n = lerp(n, r * r, B.ridge); }
+      h += n * a; sum += a; a *= 0.5; f *= 2.03;
+    }
+    h = (h / sum - 0.5) * 2 * B.amp + (n2(u * 0.47 + 3.1, v * 0.47 + 1.7) - 0.5) * B.amp * 1.7;
+    if (B.plateau) { const p = B.amp * 0.5; if (h > p) h = p + (h - p) * (1 - B.plateau); }
+    for (const c of craters) { const d = Math.hypot(x - c.x, z - c.z) / c.r; if (d < 1.35) { const bowl = d < 1 ? Math.cos(d * Math.PI) * 0.5 + 0.5 : 0; const rim = Math.exp(-(d - 1) * (d - 1) * 16) * 0.35; h += (rim - bowl) * c.d; } }
+    if (site.hasBase) { const d = Math.hypot(x - 1500, z - 1100); if (d < 260) h = lerp(h * 0.2 + 4, h, smooth01(d / 260)); } // base sits on a graded pad
+    const d0 = Math.hypot(x, z); if (d0 < 420) h = lerp(h * 0.12, h, smooth01(d0 / 420));   // the LZ is always survivable
+    // detail
+    h += (n3(u * 16.1, v * 16.1) - 0.5) * B.amp * 0.06;
+    return h;
+  };
+}
+
+// ---------- Save v3: per-planet surface state + resume-on-surface ----------
+const _mig3base = sbxMigrateProfile;
+sbxMigrateProfile = function (p) {
+  p = _mig3base(p);
+  if (!p.planets) p.planets = {};
+  if (p.surface === undefined) p.surface = null;   // { sys, site, pos:[x,y,z] } when saved on the ground
+  p.v = CONFIG.sbx.saveVersion;
+  return p;
+};
+
+// ---------- Surface extraction outposts extend the Stage 4 structure system ----------
+STRUCTURE_DEFS.extractor = {
+  name: 'Extraction outpost', surface: true,
+  desc: 'Anchors on a surface deposit and works it over real time. Collect on return visits; planetary pirates raid it like any structure.',
+  mats: { min_ferrite: 4200, min_silica: 900 }, hp: { shield: 1600, armor: 1400 }, incomePerMin: 0, storage: 16000,
+};
+// wind loop for atmosphere (lazy nodes on the shared audio context)
+audio.windUpdate = function (level) {
+  if (!this.ready) return;
+  if (!this.wind) {
+    const src = this.ctx.createBufferSource(); src.buffer = this.noise; src.loop = true;
+    const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400; lp.Q.value = 0.4;
+    const g = this.ctx.createGain(); g.gain.value = 0; src.connect(lp); lp.connect(g); g.connect(this.master); src.start();
+    this.wind = { g, lp };
+  }
+  const t = this.ctx.currentTime;
+  this.wind.g.gain.setTargetAtTime(clamp(level, 0, 1) * 0.4, t, 0.25);
+  this.wind.lp.frequency.setTargetAtTime(240 + clamp(level, 0, 1) * 900, t, 0.3);
+};
+
+// =====================================================================================
+//  part24 — Stage 5 terrain engine. Everything here is allocated ONCE and reused for
+//  every site visit: chunk geometries, prop instancing, weather particles, fauna.
+//  Chunks are full-resolution vertex grids; LOD is an index-buffer swap, never a rebuild.
+//  Collision never touches these meshes — SRF samples the height function directly.
+// =====================================================================================
+function detailTexture() {
+  const S = 256; const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  g.fillStyle = '#808080'; g.fillRect(0, 0, S, S);
+  const img = g.getImageData(0, 0, S, S), d = img.data;
+  const n = skyNoise(0xfeed), n2 = skyNoise(0xfade);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const i = (y * S + x) * 4;
+    const t = n(x / S * 4, y / S * 4) * 0.6 + n2(x / S * 13, y / S * 13) * 0.4;
+    const vv = 96 + t * 128; d[i] = d[i + 1] = d[i + 2] = vv; d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+}
+
+const TERRA = {
+  built: false, group: null, chunks: [], mat: null, idxLod: [], scratch: null,
+  liquid: null, pad: null, props: {}, weatherPts: null, faunaMesh: null,
+  H: null, B: null, queue: [], ready: false,
+
+  init() {
+    if (this.built) return; this.built = true;
+    const { chunk: CH, grid: G, seg: SEG } = CONFIG.srf; const N1 = SEG + 1;
+    this.group = new THREE.Group(); this.group.visible = false; scene.add(this.group);
+    // shared LOD index buffers over the full vertex grid (strides 1 / 2 / 4)
+    for (const s of [1, 2, 4]) {
+      const n = SEG / s; const idx = new Uint32Array(n * n * 6); let k = 0;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const a = (y * s) * N1 + x * s, b = a + s, c2 = a + s * N1, d2 = c2 + s;
+        idx[k++] = a; idx[k++] = c2; idx[k++] = b; idx[k++] = b; idx[k++] = c2; idx[k++] = d2;
+      }
+      this.idxLod.push(new THREE.BufferAttribute(idx, 1));
+    }
+    this.scratch = new Float32Array((SEG + 3) * (SEG + 3)); // height grid incl. 1-cell apron for normals
+    // terrain material: hemisphere ambient + sun lambert + vertex-color splat + triplanar detail
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: {
+        sunDir: { value: new THREE.Vector3(0.4, 0.8, 0.2) }, sunCol: { value: new THREE.Color(1, 0.95, 0.85) },
+        ambS: { value: new THREE.Color(0x33404e) }, ambG: { value: new THREE.Color(0x14100c) },
+        detail: { value: detailTexture() },
+        fogColor: { value: new THREE.Color() }, fogDensity: { value: 0.0004 },
+      },
+      vertexColors: true, fog: false,
+      vertexShader: `
+        varying vec3 vN; varying vec3 vC; varying vec3 vW; varying float vD;
+        void main(){ vN = normal; vC = color; vW = position;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0); vD = -mv.z;
+          gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `
+        uniform vec3 sunDir, sunCol, ambS, ambG, fogColor; uniform float fogDensity; uniform sampler2D detail;
+        varying vec3 vN; varying vec3 vC; varying vec3 vW; varying float vD;
+        void main(){
+          vec3 N = normalize(vN);
+          vec3 w = abs(N); w /= (w.x + w.y + w.z);
+          float s = 0.045;
+          float d = texture2D(detail, vW.yz * s).r * w.x + texture2D(detail, vW.xz * s).r * w.y + texture2D(detail, vW.xy * s).r * w.z;
+          vec3 amb = mix(ambG, ambS, N.y * 0.5 + 0.5);
+          float dl = max(dot(N, sunDir), 0.0);
+          vec3 col = vC * (amb + sunCol * dl) * (0.72 + 0.56 * d);
+          float f = 1.0 - exp(-fogDensity * fogDensity * vD * vD * 2.2);
+          gl_FragColor = vec4(mix(col, fogColor, clamp(f, 0.0, 1.0)), 1.0);
+        }`,
+    });
+    for (let cz = 0; cz < G; cz++) for (let cx = 0; cx < G; cx++) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N1 * N1 * 3), 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(N1 * N1 * 3), 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N1 * N1 * 3), 3));
+      geo.setIndex(this.idxLod[2]); geo.boundingSphere = new THREE.Sphere();
+      const mesh = new THREE.Mesh(geo, this.mat); mesh.frustumCulled = true; mesh.receiveShadow = false; mesh.castShadow = false;
+      this.group.add(mesh);
+      this.chunks.push({ mesh, geo, ox: (cx - G / 2) * CH, oz: (cz - G / 2) * CH, lod: -1, builtFor: null });
+    }
+    // liquid plane (water or lava), landing pad, prop pools, weather, fauna
+    this.liquid = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.srf.world, CONFIG.srf.world).rotateX(-Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x2a5a8a, transparent: true, opacity: 0.82, roughness: 0.25, metalness: 0.1, emissive: 0x000000 }));
+    this.liquid.visible = false; this.group.add(this.liquid);
+    this.pad = new THREE.Mesh(new THREE.CylinderGeometry(26, 28, 2.5, 24),
+      new THREE.MeshStandardMaterial({ color: 0x59636e, roughness: 0.6, metalness: 0.5 }));
+    this.pad.visible = false; this.group.add(this.pad);
+    const propGeos = {
+      rock: asteroidGeometry(1),
+      spire: new THREE.ConeGeometry(1, 4.5, 6),
+      shard: new THREE.ConeGeometry(0.7, 5, 4),
+      crystal: new THREE.OctahedronGeometry(1.4, 0),
+      blob: new THREE.SphereGeometry(1.4, 7, 5),
+      tree: mergeGeometries([new THREE.CylinderGeometry(0.22, 0.34, 3, 5).translate(0, 1.5, 0).toNonIndexed(), new THREE.ConeGeometry(1.7, 4.6, 7).translate(0, 5.2, 0).toNonIndexed()], false),
+    };
+    for (const [k, g] of Object.entries(propGeos)) {
+      const m = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0.05, flatShading: true }), 240);
+      m.count = 0; m.frustumCulled = false; this.group.add(m); this.props[k] = m;
+    }
+    const wN = 700; const wPos = new Float32Array(wN * 3);
+    const wGeo = new THREE.BufferGeometry(); wGeo.setAttribute('position', new THREE.BufferAttribute(wPos, 3).setUsage(THREE.DynamicDrawUsage));
+    this.weatherPts = new THREE.Points(wGeo, new THREE.PointsMaterial({ map: TEX.particle, color: 0xffffff, size: 2.2, transparent: true, opacity: 0.5, depthWrite: false, sizeAttenuation: true, alphaTest: 0.03 }));
+    this.weatherPts.frustumCulled = false; this.weatherPts.visible = false; this.group.add(this.weatherPts);
+    this.faunaMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1.6, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, flatShading: true }), 12);
+    this.faunaMesh.count = 0; this.faunaMesh.frustumCulled = false; this.group.add(this.faunaMesh);
+  },
+
+  /** Point the engine at a site: queue every chunk for a budgeted rebuild. */
+  begin(site, H) {
+    this.init(); this.H = H; this.B = BIOMES[site.biome]; this.ready = false;
+    this.queue = this.chunks.slice(); for (const c of this.chunks) { c.builtFor = site.seed; c.lod = -1; }
+    const B = this.B;
+    this.mat.uniforms.ambS.value.setHex(B.ambS); this.mat.uniforms.ambG.value.setHex(B.ambG);
+    this.mat.uniforms.sunCol.value.setHex(B.sun); this.mat.uniforms.fogColor.value.setHex(B.fog[0]);
+    this.mat.uniforms.fogDensity.value = B.fog[1];
+    const lvl = B.water ?? B.lava;
+    this.liquid.visible = lvl != null; if (lvl != null) {
+      this.liquid.position.y = lvl;
+      const lm = this.liquid.material; const isLava = B.lava != null;
+      lm.color.setHex(isLava ? 0x3a0e04 : 0x2a5a8a); lm.emissive.setHex(isLava ? 0xff5a18 : 0x000000);
+      lm.emissiveIntensity = isLava ? 1.2 : 0; lm.opacity = isLava ? 1 : 0.82; lm.roughness = isLava ? 0.8 : 0.25;
+    }
+    this.pad.visible = !!B.civ; if (B.civ) this.pad.position.set(60, H(60, -80) + 1.4, -80);
+    this.scatterProps(site);
+    this.group.visible = true;
+  },
+
+  /** Build queued chunks within a millisecond budget. Returns true when everything is built. */
+  buildBudget(ms = 6) {
+    const t0 = performance.now();
+    while (this.queue.length && performance.now() - t0 < ms) this.buildChunk(this.queue.pop());
+    this.ready = this.queue.length === 0; return this.ready;
+  },
+  buildChunk(c) {
+    const { chunk: CH, seg: SEG } = CONFIG.srf; const N1 = SEG + 1, step = CH / SEG;
+    const H = this.H, B = this.B, S = this.scratch, SW = SEG + 3;
+    for (let gy = 0; gy < SW; gy++) for (let gx = 0; gx < SW; gx++) S[gy * SW + gx] = H(c.ox + (gx - 1) * step, c.oz + (gy - 1) * step);
+    const pos = c.geo.attributes.position.array, nor = c.geo.attributes.normal.array, col = c.geo.attributes.color.array;
+    const pal = B.pal; const cLow = _c.setHex(pal.low).clone(), cMid = new THREE.Color(pal.mid), cHigh = new THREE.Color(pal.high), cSteep = new THREE.Color(pal.steep), cc = new THREE.Color();
+    let hMin = 1e9, hMax = -1e9;
+    for (let gy = 0; gy < N1; gy++) for (let gx = 0; gx < N1; gx++) {
+      const i = gy * N1 + gx, si = (gy + 1) * SW + (gx + 1);
+      const h = S[si]; if (h < hMin) hMin = h; if (h > hMax) hMax = h;
+      pos[i * 3] = c.ox + gx * step; pos[i * 3 + 1] = h; pos[i * 3 + 2] = c.oz + gy * step;
+      const dx = (S[si + 1] - S[si - 1]) / (2 * step), dz = (S[si + SW] - S[si - SW]) / (2 * step);
+      const inv = 1 / Math.sqrt(dx * dx + dz * dz + 1);
+      nor[i * 3] = -dx * inv; nor[i * 3 + 1] = inv; nor[i * 3 + 2] = -dz * inv;
+      const ny = inv, altF = clamp((h + B.amp) / (2.4 * B.amp), 0, 1);
+      if (ny < 0.78) cc.copy(cSteep);
+      else if (altF < 0.38) cc.copy(cLow).lerp(cMid, altF / 0.38 * 0.5);
+      else if (altF < 0.62) cc.copy(cLow).lerp(cMid, (altF - 0.3) / 0.32);
+      else cc.copy(cMid).lerp(cHigh, clamp((altF - 0.62) / 0.3, 0, 1));
+      const j = ((gx * 7 + gy * 13 + (c.ox | 0)) % 17) / 17 * 0.12 - 0.06; // cheap dither, no allocation
+      col[i * 3] = clamp(cc.r + j, 0, 1); col[i * 3 + 1] = clamp(cc.g + j, 0, 1); col[i * 3 + 2] = clamp(cc.b + j, 0, 1);
+    }
+    c.geo.attributes.position.needsUpdate = true; c.geo.attributes.normal.needsUpdate = true; c.geo.attributes.color.needsUpdate = true;
+    c.geo.boundingSphere.center.set(c.ox + CH / 2, (hMin + hMax) / 2, c.oz + CH / 2);
+    c.geo.boundingSphere.radius = Math.hypot(CH * 0.71, (hMax - hMin) / 2) + 4;
+  },
+  /** LOD = index swap by camera distance. Free. */
+  lod(camPos) {
+    for (const c of this.chunks) {
+      const d = Math.hypot(camPos.x - c.geo.boundingSphere.center.x, camPos.z - c.geo.boundingSphere.center.z);
+      const l = d < 1500 ? 0 : d < 3000 ? 1 : 2;
+      if (l !== c.lod) { c.lod = l; c.geo.setIndex(this.idxLod[l]); }
+    }
+  },
+  scatterProps(site) {
+    const B = this.B, H = this.H; const rng = makeRng(site.seed ^ 0x9e37);
+    const dummy = new THREE.Object3D();
+    for (const [k, m] of Object.entries(this.props)) {
+      const want = B.props.includes(k) ? (k === B.props[0] ? 200 : 110) : 0;
+      m.count = want;
+      const baseC = { rock: 0x7d7468, spire: 0x5c4a3c, shard: 0xcfe6f2, crystal: 0x9fe0c8, blob: 0x6d7a4a, tree: 0x3e6a34 }[k];
+      for (let i = 0; i < want; i++) {
+        const x = (rng() - 0.5) * 7200, z = (rng() - 0.5) * 7200; const y = H(x, z);
+        if ((B.water != null && y < B.water) || (B.lava != null && y < B.lava)) { dummy.scale.setScalar(0.0001); } else dummy.scale.setScalar((k === 'tree' ? 1.2 : 1) * (0.7 + rng() * (k === 'spire' ? 6 : 2.2)));
+        dummy.position.set(x, y, z); dummy.rotation.set(k === 'rock' ? rng() * 3 : 0, rng() * 6.3, k === 'rock' ? rng() * 3 : (rng() - 0.5) * 0.12);
+        dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix);
+        m.setColorAt(i, _c.setHex(baseC).offsetHSL(0, 0, (rng() - 0.5) * 0.12));
+      }
+      m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
+  },
+  hide() { if (this.group) this.group.visible = false; this.weatherPts.visible = false; },
+};
+
+// =====================================================================================
+//  part25 — Stage 5 runtime: orbit → elastic descent cinematic → atmospheric flight →
+//  manual landing → rover → deposits / anomalies / outposts / ground bases → takeoff.
+//  Death down here is the same permanent loss as death in space.
+// =====================================================================================
+const SRF = {
+  active: false, cine: null, planet: null, site: null, siteSt: null, B: null, H: null,
+  mode: 'ship', landed: false, gearOk: true, hover: false, vspd: 0, alt: 0, groundNy: 1,
+  rover: null, deposits: [], anoms: [], depMeshes: [], anomMeshes: [], outposts: [], base: null,
+  fauna: [], objs: null, fog: null, warnT: 0, hazT: 0, wx: { type: null, int: 0 }, wxRoll: -1,
+  lights: null, prospect: false, prospectT: 0, drillT: 0, sunEl: 1, overT: 0, deadHandled: false,
+  saved: { sunPos: new THREE.Vector3(), sunI: 2.2, hemiI: 0.55 },
+  fxHeat: 0,
+
+  groundY(x, z) {
+    let h = this.H(x, z);
+    if (this.B.water != null) h = Math.max(h, this.B.water - 0.4);
+    if (this.B.lava != null) h = Math.max(h, this.B.lava - 0.4);
+    return h;
+  },
+
+  // ---------------- descent ----------------
+  descend(planet, site) {
+    const why = srfDescendCheck(planet, site); if (why) { sbxToast('Landing denied: ' + why); return false; }
+    const pl = world.player;
+    this.planet = planet; this.site = site; this.B = BIOMES[site.biome]; this.siteSt = srfSiteState(planet, site.i);
+    this.H = srfMakeHeight(site); this.siteSt.visited = true;
+    SBX.profile.surface = { sys: planet.sys, site: site.i, pos: null };
+    this.enterScene();
+    // scripted, elastic: progress cannot outrun terrain generation
+    this.cine = { t: 0, dur: CONFIG.srf.descentMin + Math.random() * 2, p: 0 };
+    pl.apSteer = true; pl.warping = false; assist.cancel(true); SBX.warpDrive.state = null;
+    pl.placeAt(_v[0].set(-900, 3400, -900), _q[0].setFromAxisAngle(_v[1].set(1, 0, 0), -0.32));
+    pl.vel.set(120, -180, 120);
+    this.active = true; this.mode = 'ship'; this.landed = false; this.hover = false; this.vspd = 0; this.deadHandled = false;
+    sbxToast(`Entry interface — ${site.name} (${this.B.name}, ${planet.g} g).`);
+    sbxSave('descent');
+    return true;
+  },
+  /** Resume a save made on the ground: same pipeline, no cinematic. */
+  resume(planet, site, pos) {
+    this.planet = planet; this.site = site; this.B = BIOMES[site.biome]; this.siteSt = srfSiteState(planet, site.i);
+    this.H = srfMakeHeight(site);
+    this.enterScene();
+    TERRA.begin(this.site, this.H);
+    while (!TERRA.buildBudget(50)) {} // resume builds in one burst behind the loading screen
+    this.spawnSiteObjects();
+    const pl = world.player; this.active = true; this.mode = 'ship'; this.deadHandled = false;
+    const x = pos?.[0] ?? 0, z = pos?.[2] ?? 0; const y = this.groundY(x, z) + 2.2;
+    pl.placeAt(_v[0].set(x, y, z), _q[0].identity()); pl.vel.set(0, 0, 0);
+    this.setLanded(true); cam.init = false;
+    sbxToast(`On the ground at ${site.name}.`);
+  },
+  enterScene() {
+    world.clearAll(); sbxClearScene(); world.obstacles = [];
+    $('p-dock').classList.remove('on');
+    this.saved.sunPos.copy(sun.position); this.saved.sunI = sun.intensity; this.saved.hemiI = hemi.intensity;
+    for (const s of env.nebulae) s.visible = false;
+    env.planet.visible = env.atmo.visible = env.atmoShell.visible = env.ring.visible = false;
+    env.sunStreak.visible = false; env.asteroidMesh.count = 0; env.asteroidMesh.visible = false;
+    if (env.station) env.station.visible = false; if (env.debrisMesh) env.debrisMesh.visible = false;
+    env.stars.visible = !!this.B.stars;
+    this.fog = this.fog || new THREE.FogExp2(0x000000, 0.0004);
+    this.fog.color.setHex(this.B.fog[0]); this.fog.density = this.B.fog[1]; scene.fog = this.fog;
+    scene.background = new THREE.Color(this.B.sky);
+    if (!this.lights) {
+      this.lights = new THREE.SpotLight(0xcfe8ff, 0, 320, 0.5, 0.45, 1.2); this.lights.visible = false;
+      scene.add(this.lights); scene.add(this.lights.target);
+    }
+    TERRA.begin(this.site, this.H);
+    if (!this.objs) { this.objs = new THREE.Group(); scene.add(this.objs); }
+    this.wxRoll = -1;
+    world.onBossKilled = (b) => this.baseKilled(b);
+  },
+  cineStep(dt) {
+    const C = this.cine, pl = world.player;
+    TERRA.buildBudget(7);
+    // elastic clock: the reveal cannot pass 70% until every chunk is built
+    let tFrac = C.t / C.dur;
+    if (!TERRA.ready) tFrac = Math.min(tFrac, 0.68);
+    else C.t += dt;
+    if (!TERRA.ready && C.t / C.dur < 0.68) C.t += dt;
+    C.p = smooth01(tFrac);
+    const p = C.p;
+    // ship path: high entry arc down to the handoff altitude
+    const alt = lerp(3400, CONFIG.srf.handoffAlt, p);
+    const along = lerp(-900, 600, p);
+    pl.pos.set(along, this.groundY(along, along) + alt, along); pl.prevPos.copy(pl.pos);
+    _q[0].setFromEuler(SRF_EULER.set(lerp(-0.55, -0.12, p), Math.PI * 0.25, 0, 'YXZ'));
+    pl.quat.copy(_q[0]); pl.prevQuat.copy(_q[0]);
+    pl.vel.set(90, -60, 90);
+    // heat, buffet, wind
+    this.fxHeat = p < 0.55 ? smooth01(p / 0.25) * (1 - smooth01((p - 0.3) / 0.25)) + 0.35 : Math.max(0, 0.7 - p);
+    shake.add(dt * (0.5 + this.fxHeat * 1.6) * 0.4);
+    audio.windUpdate(0.2 + this.fxHeat * 0.8 * this.B.atmo + p * 0.3);
+    if (Math.random() < this.fxHeat * 0.9) { _v[0].set(rand(-4, 4), rand(-1, 1), rand(-4, 4)); world.particles.emit(pl.pos, _v[0], 0.5, rand(3, 7), 0xff9a50, 0.4); }
+    if (C.t >= C.dur && TERRA.ready) this.handoff();
+  },
+  handoff() {
+    this.cine = null; const pl = world.player;
+    this.spawnSiteObjects();
+    pl.apSteer = false; pl.throttle = 0.55;
+    this.vspd = -8;
+    pl.forward(_v[0]); _v[0].y = 0; _v[0].normalize().multiplyScalar(CONFIG.srf.handoffSpeed); pl.vel.copy(_v[0]);
+    cam.init = false; this.fxHeat = 0; this.lastY = pl.pos.y;
+    sbxToast('You have the ship. Kill vertical speed before the ground does it for you.');
+  },
+  cineCamera() { // exterior framing during entry, drifting from ahead-of to behind the ship
+    const pl = world.player; const p = this.cine.p;
+    const back = lerp(-46, 34, smooth01((p - 0.15) / 0.6)); const side = lerp(30, 12, p);
+    _v[0].set(side, lerp(6, 10, p), back).applyQuaternion(pl.quat).add(pl.pos);
+    camera.position.copy(_v[0]);
+    camera.lookAt(_v[1].copy(pl.pos).addScaledVector(pl.vel, 0.15));
+    camera.position.add(shake.offset);
+  },
+
+  // ---------------- per-frame surface simulation ----------------
+  step(dt) {
+    const pl = world.player;
+    if (this.cine) { this.cineStep(dt); return; }
+    if (!pl.alive) { if (!this.deadHandled) { this.deadHandled = true; SBX.profile.surface = null; } return; }
+    this.dayNight(dt); this.weather(dt);
+    sbxCapUpdate(dt);
+    this.keys(dt);
+    const g = this.planet.g;
+    if (this.mode === 'rover' && this.rover) this.roverStep(dt);
+    if (!this.landed) {
+      // gravity + atmosphere on top of the arcade flight model
+      const atmo = this.B.atmo;
+      if (this.hover) { const want = -this.vspd * 3; this.vspd += clamp(want, -g * 2, g * 2) * dt; }
+      else this.vspd += -g * dt;
+      this.vspd *= 1 / (1 + (0.35 + atmo * 0.5) * dt);
+      pl.pos.y += this.vspd * dt;
+      const cap = pl.stats.flight.maxSpeed * (1.35 - atmo * 0.45) + (pl.boosting ? 120 : 0);
+      if (pl.vel.length() > cap) pl.vel.setLength(cap);
+      // an overloaded hull cannot climb out of the well
+      const tw = srfTW(g);
+      if (tw <= 1 && pl.pos.y > this.lastY) pl.pos.y = this.lastY;
+      this.lastY = pl.pos.y;
+      const gy = this.groundY(pl.pos.x, pl.pos.z);
+      this.alt = pl.pos.y - gy;
+      const e = 6; const ny = 1 / Math.hypot((this.H(pl.pos.x + e, pl.pos.z) - this.H(pl.pos.x - e, pl.pos.z)) / (2 * e), 1, (this.H(pl.pos.x, pl.pos.z + e) - this.H(pl.pos.x, pl.pos.z - e)) / (2 * e));
+      this.groundNy = ny;
+      this.gearOk = this.alt < 160 && pl.vel.length() < 130;
+      if (this.alt <= 2) this.touchdown(pl, gy, ny);
+      // escape: climb past the ceiling and you are back in orbit
+      if (pl.pos.y - gy > CONFIG.srf.escapeAlt && this.vspd + pl.vel.y > 0) return this.exitToOrbit();
+    } else {
+      this.alt = 0;
+      // takeoff: boost while parked
+      if (pl.input.keys?.has('ShiftLeft') || input.keys.has('ShiftLeft')) {
+        if (this.mode !== 'ship') sbxToast('Board the ship first (E beside it).');
+        else if (srfTW(this.planet.g) <= 1.02) { if (this.overT < performance.now() - 4000) { this.overT = performance.now(); sbxToast(`Too heavy to lift at ${this.planet.g} g — dump or transfer cargo.`); } }
+        else { this.setLanded(false); this.vspd = 14; pl.vel.set(0, 6, 0); pl.throttle = 0.8; sbxToast('Dust off. Climb past ' + CONFIG.srf.escapeAlt + ' m to make orbit.'); }
+      }
+    }
+    this.boundary(pl, dt);
+    this.hazards(dt);
+    this.interactables(dt);
+    this.faunaStep(dt);
+    this.baseStep(dt);
+    this.projectilesVsSurface(dt);
+    TERRA.lod(camera.position);
+    srfHUD(dt);
+    audio.windUpdate(this.B.atmo * (0.12 + Math.min(1, pl.vel.length() / 300) * 0.5 + this.wx.int * 0.5) * (this.landed && this.mode === 'ship' ? 0.3 : 1));
+    // persist ground position for resume
+    if (this.landed) SBX.profile.surface = { sys: this.planet.sys, site: this.site.i, pos: [pl.pos.x, pl.pos.y, pl.pos.z] };
+  },
+  touchdown(pl, gy, ny) {
+    const v = this.vspd + Math.min(0, pl.vel.y);
+    const L = CONFIG.srf.land;
+    const onPad = TERRA.pad.visible && Math.hypot(pl.pos.x - TERRA.pad.position.x, pl.pos.z - TERRA.pad.position.z) < 30;
+    pl.pos.y = gy + 2;
+    if (!onPad && (-v > L.fatalV || (pl.vel.length() > 95 && -v > L.hardV))) { // nose-in: everything dies here
+      world.explode(pl.pos, 2.5); pl.lastAttacker = 'the ground';
+      world.hitShip(pl, 99999, pl.pos, 'enemy', { name: 'the ground' });
+      return;
+    }
+    if (!onPad && -v > L.safeV) {
+      const dmg = (-v - L.safeV) * 9;
+      pl.lastAttacker = 'a hard landing';
+      sbxDamagePlayer(pl, dmg, pl.pos, [0, 0.2, 0.6, 0.2]); shake.add(0.5); audio.explosion(0.6);
+      if (pl.hull <= 0) { world.hitShip(pl, 9, pl.pos, 'enemy', { name: 'the ground' }); return; }
+      if (-v > L.hardV) { const mods = fitModules(SBX.ship()); if (mods.length && Math.random() < 0.6) { const m = mods[Math.floor(Math.random() * mods.length)]; sbxUnfitDestroy(m); sbxToast(`Impact sheared off the ${SBX_MODULES[m.id].name}.`); } }
+      sbxToast(`Hard landing — ${Math.round(-v)} m/s.`);
+    }
+    if (!onPad && ny < L.minNy) { // too steep: grind and slide off (throttled — and grinding can kill you)
+      if (performance.now() - (this.slideT || 0) > 800) {
+        this.slideT = performance.now();
+        const r = sbxDamagePlayer(pl, 8, pl.pos, [0, 0, 1, 0]); sbxToast('Slope too steep — find flatter ground.');
+        if (r?.killed) { pl.lastAttacker = 'the ground'; world.hitShip(pl, 9, pl.pos, 'enemy', { name: 'the ground' }); return; }
+      }
+      this.vspd = 4; pl.vel.multiplyScalar(0.6); return;
+    }
+    this.setLanded(true);
+  },
+  setLanded(on) {
+    const pl = world.player;
+    this.landed = on; pl.parked = on;
+    if (on) {
+      this.vspd = 0; pl.vel.set(0, 0, 0); pl.throttle = 0;
+      _q[0].setFromEuler(SRF_EULER.set(0, Math.atan2(pl.forward(_v[0]).x, pl.forward(_v[0]).z) + Math.PI, 0, 'YXZ')); // settle flat, keep heading
+      pl.quat.slerp(_q[0], 0.4); pl.prevQuat.copy(pl.quat); pl.prevPos.copy(pl.pos);
+      sbxToast('Touchdown. R deploys the rover · Shift lifts off · B anchors an outpost by a deposit.');
+      sbxSave('landed');
+    } else { SBX.profile.surface = { sys: this.planet.sys, site: this.site.i, pos: null }; this.lastY = pl.pos.y; }
+  },
+  boundary(pl, dt) {
+    const R = CONFIG.srf.boundary;
+    for (const o of [pl, this.rover]) {
+      if (!o || (o === pl && this.landed)) continue;
+      const d = Math.hypot(o.pos.x, o.pos.z);
+      if (d > R) {
+        _v[0].set(-o.pos.x / d, 0, -o.pos.z / d);
+        o.vel.addScaledVector(_v[0], CONFIG.srf.boundaryPush * dt * (d - R) * 0.02);
+        if (this.warnT < performance.now() - 5000) { this.warnT = performance.now(); sbxToast('Edge of the survey zone — nothing out there but haze.'); }
+      }
+    }
+  },
+  hazards(dt) {
+    const pl = world.player; this.hazT += dt; if (this.hazT < 1) return; this.hazT = 0;
+    const mods = fitModules(SBX.ship()).map(m => m.id);
+    const rate = this.B.haz === 'heat' ? (mods.includes('l_thermal') ? 0.5 : 4) : this.B.haz === 'corrosive' ? (mods.includes('l_pressure') ? 0.5 : 4) : 0;
+    const wxDmg = (this.wx.type === 'ash' || this.wx.type === 'blizzard') && this.wx.int > 0.4 && !mods.includes('l_thermal') ? 1.6 * this.wx.int : 0;
+    const lava = this.B.lava != null && (this.landed || this.alt < 4) && this.H(pl.pos.x, pl.pos.z) < this.B.lava ? 26 : 0;
+    const total = rate + wxDmg + lava;
+    if (total > 0 && pl.alive) { const r = sbxDamagePlayer(pl, total, pl.pos, [0, 1, 0, 0]); if (r?.killed) { pl.lastAttacker = 'the planet'; world.hitShip(pl, 9, pl.pos, 'enemy', { name: 'the planet' }); } }
+    if (this.rover && rate + wxDmg > 0) this.damageRover((rate + wxDmg) * 0.4, 'the elements');
+  },
+
+  // ---------------- day / night, weather ----------------
+  dayNight(dt) {
+    const f = ((Date.now() / 1000 + (this.siteSt.wx % 1000)) / CONFIG.srf.dayLength) % 1;
+    const el = Math.sin(f * Math.PI * 2); this.sunEl = el;
+    const az = f * Math.PI * 2 + 1.1;
+    const k = clamp(el, 0.02, 1);
+    sun.position.set(Math.cos(az) * 4000, Math.max(el, 0.06) * 4000, Math.sin(az) * 4000);
+    sun.intensity = this.B.sunI * Math.max(el, 0) + 0.06; sun.color.setHex(this.B.sun);
+    hemi.intensity = 0.16 + k * 0.5;
+    TERRA.mat.uniforms.sunDir.value.copy(sun.position).normalize();
+    TERRA.mat.uniforms.sunCol.value.setHex(this.B.sun).multiplyScalar(Math.max(el, 0) * 1.1 + 0.04);
+    scene.background.setHex(this.B.sky).multiplyScalar(0.06 + Math.max(el, 0) * 0.94);
+    TERRA.mat.uniforms.fogColor.value.setHex(this.B.fog[0]).multiplyScalar(0.08 + Math.max(el, 0) * 0.92);
+    this.fog.color.copy(TERRA.mat.uniforms.fogColor.value);
+    env.sunSprite.visible = env.sunCore.visible = el > 0.02;
+    if (el > 0.02) { env.sunSprite.position.copy(sun.position).setLength(8000); env.sunCore.position.copy(env.sunSprite.position); }
+    env.stars.visible = !!this.B.stars || el < 0.08;
+    // headlights
+    const night = el < 0.06;
+    const veh = this.mode === 'rover' && this.rover ? this.rover : world.player;
+    this.lights.visible = night && !!veh.mesh;
+    if (this.lights.visible) {
+      this.lights.intensity = 2600;
+      this.lights.position.copy(veh.pos ?? veh.mesh.position).add(_v[0].set(0, 3, 0));
+      const fwd = veh === this.rover ? _v[1].set(Math.sin(this.rover.yaw), -0.15, Math.cos(this.rover.yaw)) : world.player.forward(_v[1]);
+      this.lights.target.position.copy(this.lights.position).addScaledVector(fwd, 60);
+    }
+  },
+  weather(dt) {
+    const roll = Math.floor(Date.now() / 1000 / CONFIG.srf.weatherPeriod);
+    if (roll !== this.wxRoll) {
+      this.wxRoll = roll;
+      const r = makeRng((this.siteSt.wx ^ roll) >>> 0)();
+      this.wx.type = r < (this.B.weather ? 0.42 : 0) ? this.B.weather : null;
+      this.wx.int = this.wx.type ? 0.5 + r : 0;
+      if (this.wx.type) sbxToast({ dust: 'Dust storm rolling in.', blizzard: 'Blizzard closing — watch your hull.', ash: 'Ash fall — thermal shielding earns its fit.', rain: 'Rain moving through.', spore: 'Spore bloom thickening the air.' }[this.wx.type]);
+      this.fog.density = this.B.fog[1] * (1 + (this.wx.int || 0) * 2.2);
+      TERRA.mat.uniforms.fogDensity.value = this.fog.density;
+      TERRA.weatherPts.visible = !!this.wx.type;
+      if (this.wx.type) TERRA.weatherPts.material.color.setHex({ dust: 0xc8a060, blizzard: 0xf0f8ff, ash: 0x3a3a3a, rain: 0x9ab8cc, spore: 0xaacf70 }[this.wx.type]);
+    }
+    if (!this.wx.type) return;
+    const arr = TERRA.weatherPts.geometry.attributes.position.array;
+    const c = camera.position; const fall = { dust: 8, blizzard: 26, ash: 12, rain: 60, spore: 5 }[this.wx.type];
+    const drift = { dust: 40, blizzard: 30, ash: 6, rain: 8, spore: 4 }[this.wx.type];
+    for (let i = 0; i < arr.length; i += 3) {
+      if (arr[i] === 0 && arr[i + 1] === 0 && arr[i + 2] === 0) { arr[i] = c.x + rand(-120, 120); arr[i + 1] = c.y + rand(-60, 90); arr[i + 2] = c.z + rand(-120, 120); }
+      arr[i] += drift * dt; arr[i + 1] -= fall * dt;
+      if (arr[i + 1] < c.y - 70 || Math.abs(arr[i] - c.x) > 130 || Math.abs(arr[i + 2] - c.z) > 130) {
+        arr[i] = c.x + rand(-120, 120); arr[i + 1] = c.y + rand(20, 90); arr[i + 2] = c.z + rand(-120, 120);
+      }
+    }
+    TERRA.weatherPts.geometry.attributes.position.needsUpdate = true;
+  },
+
+  // ---------------- site objects: deposits, anomalies, outposts, base ----------------
+  spawnSiteObjects() {
+    while (this.objs.children.length) { const o = this.objs.children.pop(); this.objs.remove(o); }
+    this.deposits = srfDeposits(this.site); this.anoms = srfAnomalies(this.site);
+    this.depMeshes = []; this.anomMeshes = []; this.outposts = []; this.base = null; this.fauna.length = 0;
+    SRF_DEP_GEO.computeBoundingSphere?.();
+    for (const d of this.deposits) {
+      const rem = this.siteSt.dep[d.i] ?? d.units0;
+      const m = new THREE.Mesh(SRF_DEP_GEO, SRF_DEP_MATS[d.ore] || SRF_DEP_MATS.ore_cindrite);
+      const y = this.groundY(d.x, d.z); m.position.set(d.x, y, d.z);
+      m.scale.setScalar(Math.max(0.15, rem / d.units0) * 3.2); m.visible = rem > 0;
+      this.objs.add(m); this.depMeshes.push(m);
+    }
+    for (const a of this.anoms) {
+      const looted = this.siteSt.an[a.i];
+      const y = this.groundY(a.x, a.z);
+      const grp = buildParts({ crashed: [{ g: 'box', size: [3, 2, 9], pos: [0, 1, 0], rot: [0.15, 0.4, 0.3], mat: 'dark' }, { g: 'box', size: [8, 0.4, 2.4], pos: [1, 1.6, 1], rot: [0, 0.4, 0.25] }],
+        ruins: [{ g: 'box', size: [1.2, 6, 1.2], pos: [-3, 3, 0], mat: 'dark' }, { g: 'box', size: [1.2, 4.5, 1.2], pos: [3, 2.2, 1], mat: 'dark' }, { g: 'box', size: [7, 0.8, 1.4], pos: [0, 6.2, 0.4], mat: 'accent' }],
+        cave: [{ g: 'torus', size: [5, 1.6, 6, 12], pos: [0, 1.5, 0], rot: [0, 0, 0], mat: 'dark' }],
+        beacon: [{ g: 'cyl', size: [0.4, 0.6, 7, 6], pos: [0, 3.5, 0], mat: 'dark' }, { g: 'sphere', size: [0.9, 8, 6], pos: [0, 7.3, 0], mat: looted ? 'dark' : 'glowAmber' }] }[a.kind]);
+      grp.position.set(a.x, y, a.z); this.objs.add(grp); this.anomMeshes.push(grp);
+    }
+    // player outposts anchored on this site
+    for (const st of SBX.profile.structures) {
+      if (st.type !== 'extractor' || st.srf?.pk !== this.planet.key || st.srf?.site !== this.site.i) continue;
+      const g = buildParts([{ g: 'cyl', size: [4.5, 5.5, 3, 10], pos: [0, 1.5, 0] }, { g: 'cyl', size: [0.7, 0.7, 9, 6], pos: [0, 6, 0], mat: 'dark' }, { g: 'box', size: [7, 1.2, 3], pos: [0, 0.9, 5], mat: 'dark' }]);
+      const d = this.deposits[st.srf.di]; g.position.set(d.x + 12, this.groundY(d.x + 12, d.z), d.z);
+      this.objs.add(g); this.outposts.push({ st, mesh: g });
+    }
+    // pirate ground base — the Stage 2 subsystem system, planted in the dirt
+    if (this.site.hasBase && !this.siteSt.bases[0]) {
+      const def = srfBaseDef();
+      const base = new CapitalShip(def, 'enemy');
+      const bx = 1500, bz = 1100; const by = this.H(bx, bz);
+      base.place(_v[0].set(bx, by + 2, bz), _v[1].set(-1, 0, -0.6), world.player);
+      world.bosses.push(base); this.base = base;
+    }
+    this.spawnFauna();
+  },
+  spawnFauna() {
+    const kind = this.B.fauna; if (!kind) return;
+    const rng = makeRng(this.site.seed ^ 0xfa0a);
+    for (let i = 0; i < 6; i++) {
+      const a = rng() * Math.PI * 2, r = 700 + rng() * 2400;
+      this.fauna.push({ on: true, kind, hp: 30, x: Math.cos(a) * r, z: Math.sin(a) * r, vx: 0, vz: 0, mode: 'wander', t: rng() * 5, phase: rng() * 6 });
+    }
+  },
+
+  // ---------------- interactions: mining, prospecting, anomalies, outposts, transfer ----------------
+  interactables(dt) {
+    const veh = this.mode === 'rover' && this.rover ? this.rover : null;
+    // rover drill: park beside a deposit and it cycles on its own
+    if (veh && !veh.flipped) {
+      const d = this.nearestDeposit(veh.pos, CONFIG.srf.deposit.reach);
+      if (d && Math.hypot(veh.vx ?? 0, veh.vz ?? 0) < 2 && veh.vel.length() < 2.5) {
+        this.drillT += dt;
+        if (this.drillT >= CONFIG.srf.deposit.cycle) {
+          this.drillT = 0;
+          const rem = this.siteSt.dep[d.i] ?? this.deposits[d.i].units0;
+          const roverVol = Object.entries(veh.cargo).reduce((a, [id, q]) => a + (ITEMS[id]?.vol || 1) * q, 0);
+          const room = Math.floor((CONFIG.srf.rover.cargo - roverVol) / (ITEMS[d.ore]?.vol || 1));
+          const take = Math.min(rem, CONFIG.srf.deposit.yield, room);
+          if (take <= 0) { if (room <= 0) sbxToast('Rover hold is full — run it back to the ship.'); }
+          else {
+            this.siteSt.dep[d.i] = rem - take; veh.cargo[d.ore] = (veh.cargo[d.ore] || 0) + take;
+            const m = this.depMeshes[d.i]; m.scale.setScalar(Math.max(0.15, (rem - take) / this.deposits[d.i].units0) * 3.2); if (rem - take <= 0) m.visible = false;
+            world.sparks(m.position, 6, 0xffd9a0); audio.click();
+            if (rem - take <= 0) sbxToast(`${ITEMS[d.ore].name} deposit worked out — for good.`);
+          }
+        }
+      } else this.drillT = 0;
+    }
+    // prospecting pings
+    if (veh && this.prospect) {
+      this.prospectT += dt;
+      if (this.prospectT > CONFIG.srf.prospect.ping) { this.prospectT = 0; srfProspectPing(veh); }
+    }
+  },
+  nearestDeposit(pos, radius) {
+    let best = null, bd = radius;
+    for (const d of this.deposits) { const rem = this.siteSt.dep[d.i] ?? d.units0; if (rem <= 0) continue; const dist = Math.hypot(pos.x - d.x, pos.z - d.z); if (dist < bd) { bd = dist; best = d; } }
+    return best;
+  },
+  nearestAnom(pos, radius) {
+    let best = null, bd = radius;
+    for (const a of this.anoms) { if (this.siteSt.an[a.i]) continue; const dist = Math.hypot(pos.x - a.x, pos.z - a.z); if (dist < bd) { bd = dist; best = a; } }
+    return best;
+  },
+  lootAnomaly(a, veh) {
+    const cargo = veh === this.rover ? this.rover.cargo : SBX.ship().cargo;
+    this.siteSt.an[a.i] = 1; const m = this.anomMeshes[a.i];
+    const give = (id, q) => { cargo[id] = (cargo[id] || 0) + q; };
+    if (a.kind === 'crashed') {
+      const mods = Object.keys(SBX_MODULES).filter(k => SBX_MODULES[k].price < 30000);
+      give(mods[Math.floor(a.roll * mods.length)], 1); give('min_ferrite', 40 + Math.floor(a.roll * 80));
+      sbxToast('Salvaged the wreck — a module and scrap recovered.');
+    } else if (a.kind === 'ruins') {
+      give('art_relic', 1 + (a.roll < 0.3 ? 1 : 0));
+      SBX.profile.standings[this.planet.faction] = (SBX.profile.standings[this.planet.faction] || 0) + 0.3;
+      if (a.roll > 0.7) { const bpcs = Object.keys(ITEMS).filter(id => id.startsWith('bpc_')); give(bpcs[Math.floor(a.roll * 977) % bpcs.length], 1); sbxToast('Ruins yielded artifacts and a blueprint copy.'); }
+      else sbxToast('Ruins yielded artifacts. The ' + FACTIONS[this.planet.faction].name + ' will want these.');
+    } else if (a.kind === 'cave') {
+      give(this.site.ore, 60); give('min_iridium', 6 + Math.floor(a.roll * 8));
+      if (this.mode === 'rover') this.damageRover(8, 'a cave-in'); sbxToast('Cave ore vein stripped — dense haul.');
+    } else if (a.kind === 'beacon') {
+      if (m?.children) for (const ch of m.children) if (ch.material === CAP_MATS.glowAmber) ch.material = CAP_MATS.dark;
+      if (a.roll < 0.5) { sbxToast('The beacon was bait.'); for (let i = 0; i < 3; i++) this.fauna.push({ on: true, kind: 'defender', hp: 45, x: a.x + rand(-80, 80), z: a.z + rand(-80, 80), vx: 0, vz: 0, mode: 'hunt', t: 0, phase: rand(0, 6) }); }
+      else { SBX.profile.isk += 15000; SBX.profile.standings[this.planet.faction] = (SBX.profile.standings[this.planet.faction] || 0) + 0.4; sbxToast('Survivors recovered — 15.0k ISK bounty and gratitude.'); }
+    }
+    sbxSave('anomaly');
+  },
+  deployExtractor() {
+    const pl = world.player; if (!this.landed) return sbxToast('Land first, then anchor beside a deposit.');
+    const near = this.nearestDeposit(pl.pos, 90); if (!near) return sbxToast('No workable deposit within 90 m.');
+    if (this.outposts.some(o => o.st.srf.di === near.i)) return sbxToast('That deposit already has an outpost on it.');
+    const def = STRUCTURE_DEFS.extractor; const cargo = SBX.ship().cargo;
+    for (const [id, q] of Object.entries(def.mats)) if ((cargo[id] || 0) < q) return sbxToast(`Needs ${q}× ${ITEMS[id].name} in the ship's hold.`);
+    for (const [id, q] of Object.entries(def.mats)) { cargo[id] -= q; if (!cargo[id]) delete cargo[id]; }
+    const st = { id: 'x' + (SBX.profile.structSeq = (SBX.profile.structSeq || 0) + 1), type: 'extractor', sys: this.planet.sys, pos: { x: near.x, y: 0, z: near.z }, state: 'anchoring',
+      onlineT: Date.now() + 8 * 60000, shield: def.hp.shield, armor: def.hp.armor, storage: {}, nextAttackT: 0,
+      srf: { pk: this.planet.key, site: this.site.i, di: near.i, ore: near.ore, units0: near.units0 } };
+    SBX.profile.structures.push(st);
+    this.spawnSiteObjects(); sbxSave('outpost');
+    sbxToast(`${def.name} anchoring on the ${ITEMS[near.ore].name} deposit — online in 8 min.`);
+  },
+  collectOutpost(o) {
+    const cargo = SBX.ship().cargo; let moved = 0;
+    for (const [id, q] of Object.entries(o.st.storage)) { const n = Math.floor(q); if (n > 0) { cargo[id] = (cargo[id] || 0) + n; o.st.storage[id] -= n; moved += n; } }
+    sbxToast(moved ? `Collected ${moved} units from the outpost.` : 'Outpost stores are empty.');
+  },
+
+  // ---------------- the rover ----------------
+  deployRover() {
+    const pl = world.player; const cargo = SBX.ship().cargo;
+    if (this.rover) { // stow if it is close
+      if (this.rover.pos.distanceTo(pl.pos) > 60) return sbxToast('Bring the rover within 60 m of the ship to stow it.');
+      const rv = Object.entries(this.rover.cargo).reduce((a, [id, q]) => a + (ITEMS[id]?.vol || 1) * q, 0);
+      if (SBX.cargoVolume() + rv > SBX.cargoCapacity() + 0.01 && rv > 0) return sbxToast('Ship hold cannot take the rover cargo — make room first.');
+      for (const [id, q] of Object.entries(this.rover.cargo)) cargo[id] = (cargo[id] || 0) + q;
+      cargo.rover_mk1 = (cargo.rover_mk1 || 0) + 1;
+      scene.remove(this.rover.mesh); this.rover = null; this.mode = 'ship';
+      return sbxToast('Rover stowed, cargo transferred.');
+    }
+    if (!(cargo.rover_mk1 > 0)) return sbxToast('No rover in the hold — buy or build a Rover Mk1.');
+    cargo.rover_mk1--; if (!cargo.rover_mk1) delete cargo.rover_mk1;
+    const r = CONFIG.srf.rover;
+    const mesh = srfRoverMesh();
+    pl.forward(_v[0]); _v[0].y = 0; _v[0].normalize();
+    const x = pl.pos.x + _v[0].x * 14, z = pl.pos.z + _v[0].z * 14;
+    this.rover = { pos: V3(x, this.groundY(x, z) + 1.2, z), vel: V3(), yaw: Math.atan2(_v[0].x, _v[0].z), hull: r.hull, power: 100, cargo: {}, mesh, flipped: false, srCd: 0, gunT: 0, pitch: 0, roll: 0, alive: true, name: 'rover' };
+    scene.add(mesh); this.mode = 'rover'; this.prospect = false; cam.init = false;
+    sbxToast('Rover away. P prospects · park by a deposit to drill · E salvages / transfers · X self-rights.');
+  },
+  boardShip() {
+    if (!this.rover) return; if (this.rover.pos.distanceTo(world.player.pos) > 60) return sbxToast('Walk it back — the rover must be beside the ship to board.');
+    this.mode = 'ship'; cam.init = false; sbxToast('Back in the cockpit. The rover waits where you left it.');
+  },
+  roverStep(dt) {
+    const rv = this.rover, R = CONFIG.srf.rover, g = this.planet.g;
+    rv.srCd = Math.max(0, rv.srCd - dt);
+    const gy = this.groundY(rv.pos.x, rv.pos.z);
+    const grounded = rv.pos.y - gy < 1.6;
+    if (!rv.flipped) {
+      const thr = (input.keys.has('KeyW') ? 1 : 0) - (input.keys.has('KeyS') ? 0.6 : 0);
+      const steer = clamp(input.mouseX * 2.2, -1, 1);
+      const spd = Math.hypot(rv.vel.x, rv.vel.z);
+      rv.yaw -= steer * R.turn * dt * clamp(spd / 8 + 0.25, 0.3, 1);
+      const fx = Math.sin(rv.yaw), fz = Math.cos(rv.yaw);
+      if (grounded) {
+        rv.vel.x += fx * thr * R.accel * dt; rv.vel.z += fz * thr * R.accel * dt;
+        // grip: kill lateral velocity, keep forward
+        const along = rv.vel.x * fx + rv.vel.z * fz;
+        const latX = rv.vel.x - fx * along, latZ = rv.vel.z - fz * along;
+        const grip = input.keys.has('Space') ? 1.2 : 6;
+        rv.vel.x -= latX * Math.min(1, grip * dt); rv.vel.z -= latZ * Math.min(1, grip * dt);
+        const drag = input.keys.has('Space') ? 2.5 : 0.35;
+        rv.vel.x *= 1 / (1 + drag * dt); rv.vel.z *= 1 / (1 + drag * dt);
+        const cap = R.maxSpeed * (1 - this.B.atmo * 0.12);
+        const s2 = Math.hypot(rv.vel.x, rv.vel.z); if (s2 > cap) { rv.vel.x *= cap / s2; rv.vel.z *= cap / s2; }
+        // rollover on hard lateral load over steep ground
+        const e = 3; const ny = 1 / Math.hypot((this.H(rv.pos.x + e, rv.pos.z) - this.H(rv.pos.x - e, rv.pos.z)) / (2 * e), 1, (this.H(rv.pos.x, rv.pos.z + e) - this.H(rv.pos.x, rv.pos.z - e)) / (2 * e));
+        if (ny < 0.72 && Math.abs(latX * fx + latZ * fz) + Math.abs(steer) * spd > 18 && spd > 14) { rv.flipped = true; sbxToast('Rover rolled! X to self-right.'); }
+      }
+      // rover gun: fire at whatever the camera looks at
+      rv.gunT -= dt;
+      if (input.fire && rv.gunT <= 0 && grounded) {
+        rv.gunT = R.gunInterval;
+        camera.getWorldDirection(_v[0]); _v[0].y += 0.03;
+        _v[1].copy(rv.pos).add(_v[2].set(0, 2.2, 0));
+        world.spawnProjectile(_v[1], _v[0].multiplyScalar(360), 'player', R.gunDmg, R.gunRange / 360, 0.5, rv);
+        audio.cannon();
+      }
+    } else { rv.vel.x *= 1 / (1 + 3 * dt); rv.vel.z *= 1 / (1 + 3 * dt); }
+    // vertical: gravity + terrain clamp (heightmap sampling, no raycasts)
+    rv.vel.y -= g * 2 * dt;
+    rv.pos.addScaledVector(rv.vel, dt);
+    const floor = this.groundY(rv.pos.x, rv.pos.z) + 1.1;
+    if (rv.pos.y < floor) { if (rv.vel.y < -22) this.damageRover((-rv.vel.y - 20) * 2, 'terrain'); rv.pos.y = floor; rv.vel.y = 0; }
+    // lava / hazard contact
+    if (this.B.lava != null && this.H(rv.pos.x, rv.pos.z) < this.B.lava) this.damageRover(30 * dt, 'lava');
+    // range and power: stray too far and the batteries pay for it
+    const shipD = rv.pos.distanceTo(world.player.pos);
+    if (shipD > R.range) {
+      rv.power = Math.max(0, rv.power - (100 / R.drainSec) * dt * clamp((shipD - R.range) / 400 + 0.5, 0.5, 3));
+      if (this.warnT < performance.now() - 6000) { this.warnT = performance.now(); sbxToast(`Beyond tether range — rover power ${Math.round(rv.power)}%.`); }
+      if (rv.power <= 0) return this.loseRover('Rover batteries flat — it is not coming back.');
+    } else rv.power = Math.min(100, rv.power + 6 * dt);
+    // suspension pose (visual): pitch/roll follow the terrain with lean
+    const wb = R.wheelbase / 2, tk = R.track / 2, fx2 = Math.sin(rv.yaw), fz2 = Math.cos(rv.yaw), rx = fz2, rz = -fx2;
+    const hf = this.groundY(rv.pos.x + fx2 * wb, rv.pos.z + fz2 * wb), hb = this.groundY(rv.pos.x - fx2 * wb, rv.pos.z - fz2 * wb);
+    const hl = this.groundY(rv.pos.x - rx * tk, rv.pos.z - rz * tk), hr = this.groundY(rv.pos.x + rx * tk, rv.pos.z + rz * tk);
+    const tPitch = Math.atan2(hb - hf, R.wheelbase), tRoll = Math.atan2(hl - hr, R.track) + clamp(-input.mouseX * Math.hypot(rv.vel.x, rv.vel.z) * 0.012, -0.18, 0.18);
+    rv.pitch = lerp(rv.pitch, rv.flipped ? Math.PI * 0.9 : tPitch, 1 - Math.exp(-8 * dt));
+    rv.roll = lerp(rv.roll, rv.flipped ? Math.PI : tRoll, 1 - Math.exp(-(rv.flipped ? 3 : 8) * dt));
+    rv.mesh.position.copy(rv.pos);
+    rv.mesh.quaternion.setFromEuler(SRF_EULER.set(rv.pitch, rv.yaw, rv.roll, 'YXZ'));
+    // wheels: visible compression + spin
+    const wheels = rv.mesh.userData.wheels; const hs = [hf, hf, hb, hb];
+    for (let i = 0; i < 4; i++) {
+      const w = wheels[i]; const comp = clamp((rv.pos.y - 1.1 - hs[i]) * 0.5, -0.35, 0.35);
+      w.position.y = -0.55 - comp;
+      w.rotation.x += (rv.vel.x * fx2 + rv.vel.z * fz2) * dt * 1.4;
+    }
+    if (rv.hull <= 0) this.loseRover('Rover destroyed.');
+  },
+  selfRight() {
+    const rv = this.rover; if (!rv || !rv.flipped) return;
+    if (rv.srCd > 0) return sbxToast(`Self-right recharging — ${rv.srCd.toFixed(0)}s.`);
+    rv.flipped = false; rv.srCd = CONFIG.srf.rover.selfRightCd; rv.pos.y += 1.4; sbxToast('Back on the wheels.');
+  },
+  damageRover(dmg, from) {
+    const rv = this.rover; if (!rv) return; rv.hull -= dmg;
+    world.sparks(rv.pos, 4, 0xffaa60);
+    if (rv.hull <= 0) this.loseRover(`Rover destroyed by ${from}.`);
+  },
+  loseRover(msg) {
+    if (!this.rover) return;
+    world.explode(this.rover.pos, 1.2); scene.remove(this.rover.mesh);
+    this.rover = null; this.mode = 'ship'; cam.init = false;
+    sbxToast(msg + ' The chassis and everything in it are gone.');
+  },
+  roverCamera(dt) {
+    const rv = this.rover; if (!rv) return;
+    _v[0].set(Math.sin(rv.yaw), 0, Math.cos(rv.yaw));
+    _v[1].copy(rv.pos).addScaledVector(_v[0], -13); _v[1].y = Math.max(rv.pos.y + 5.5, this.groundY(_v[1].x, _v[1].z) + 2.5);
+    camera.position.lerp(_v[1], 1 - Math.exp(-6 * dt));
+    camera.lookAt(_v[2].copy(rv.pos).addScaledVector(_v[0], 14).add(_v[3].set(0, 2 - input.mouseY * 6, 0)));
+  },
+  clampCamera() {
+    const gy = this.H ? this.groundY(camera.position.x, camera.position.z) : -1e9;
+    if (camera.position.y < gy + 1.6) camera.position.y = gy + 1.6;
+  },
+
+  // ---------------- fauna + ground defenders ----------------
+  faunaStep(dt) {
+    const rv = this.rover; let count = 0; const dummy = SRF_DUMMY;
+    for (const f of this.fauna) {
+      if (!f.on) continue;
+      f.t -= dt;
+      const tgt = f.kind === 'defender' ? (this.mode === 'rover' && rv ? rv.pos : (this.landed ? world.player.pos : null)) : (rv && !rv.flipped ? rv.pos : null);
+      const td = tgt ? Math.hypot(tgt.x - f.x, tgt.z - f.z) : 1e9;
+      if (tgt && td < (f.kind === 'defender' ? 700 : 160)) f.mode = 'hunt'; else if (f.t < 0) { f.mode = 'wander'; f.t = 3 + Math.random() * 4; f.wa = Math.random() * Math.PI * 2; }
+      const sp = f.kind === 'defender' ? 14 : 11;
+      if (f.mode === 'hunt' && tgt) { const inv = 1 / Math.max(1, td); f.vx = (tgt.x - f.x) * inv * sp; f.vz = (tgt.z - f.z) * inv * sp; }
+      else { f.vx = Math.sin(f.wa || 0) * 3; f.vz = Math.cos(f.wa || 0) * 3; }
+      f.x += f.vx * dt; f.z += f.vz * dt;
+      // bites / shots
+      if (f.mode === 'hunt' && tgt && td < 10 && rv && tgt === rv.pos) this.damageRover((f.kind === 'defender' ? 9 : 6) * dt, f.kind === 'defender' ? 'a pirate rover' : 'surface fauna');
+      if (f.kind === 'defender' && tgt && td < 320 && td > 12) { f.gt = (f.gt || 0) - dt; if (f.gt <= 0) { f.gt = 1.1; _v[0].set(f.x, this.groundY(f.x, f.z) + 2, f.z); _v[1].set(tgt.x - f.x, 0, tgt.z - f.z).normalize().multiplyScalar(300); _v[1].y = 2; world.spawnProjectile(_v[0], _v[1], 'enemy', 5, 1.4, 0.6, f); } }
+      const y = this.groundY(f.x, f.z);
+      dummy.position.set(f.x, y + 1.4 + Math.abs(Math.sin(performance.now() * 0.006 + f.phase)) * (f.kind === 'defender' ? 0 : 1.2), f.z);
+      dummy.scale.set(1.3, f.kind === 'defender' ? 0.8 : 0.9, f.kind === 'defender' ? 1.8 : 1.3);
+      dummy.rotation.set(0, Math.atan2(f.vx, f.vz), 0); dummy.updateMatrix();
+      TERRA.faunaMesh.setMatrixAt(count, dummy.matrix);
+      TERRA.faunaMesh.setColorAt(count, _c.setHex(f.kind === 'defender' ? 0x8c3a2a : f.kind === 'skitter' ? 0x7a8c3a : 0x6a5a8c));
+      count++; if (count >= 12) break;
+    }
+    TERRA.faunaMesh.count = count;
+    if (count) { TERRA.faunaMesh.instanceMatrix.needsUpdate = true; if (TERRA.faunaMesh.instanceColor) TERRA.faunaMesh.instanceColor.needsUpdate = true; }
+  },
+  projectilesVsSurface(dt) {
+    const rv = this.rover;
+    world.projectiles.forEachActive(p => {
+      if (p.team === 'player') {
+        for (const f of this.fauna) { if (!f.on) continue; _v[0].set(f.x, this.groundY(f.x, f.z) + 1.5, f.z); if (sweptHit(p.prevPos, p.pos, _v[0], 2.6 + p.radius, _v[1])) { f.hp -= p.damage; world.sparks(_v[1], 5, 0xaadd77); if (f.hp <= 0) { f.on = false; world.explode(_v[0], 0.5); } return world.projectiles.release(p); } }
+      } else if (rv && sweptHit(p.prevPos, p.pos, rv.pos, 3.4 + p.radius, _v[1])) {
+        this.damageRover(p.damage, 'weapons fire'); world.sparks(_v[1], 6, 0xffe0a0); return world.projectiles.release(p);
+      }
+      // bolts bury themselves in the dirt
+      if (p.pos.y < this.groundY(p.pos.x, p.pos.z)) { world.sparks(p.pos, 3, 0xc0a080); return world.projectiles.release(p); }
+    });
+  },
+  baseStep(dt) {
+    if (!this.base || !this.base.alive) return;
+    // turrets track whichever vehicle the pilot is in
+    this.base.player = this.mode === 'rover' && this.rover ? this.rover : world.player;
+  },
+  baseKilled(b) {
+    if (b !== this.base) return;
+    this.siteSt.bases[0] = 1;
+    const cargo = { min_ferrite: 300, art_relic: 1 }; if (Math.random() < 0.4) { const bpcs = Object.keys(ITEMS).filter(id => id.startsWith('bpc_')); cargo[bpcs[Math.floor(Math.random() * bpcs.length)]] = 1; }
+    this.baseLoot = cargo;
+    SBX.profile.standings[this.planet.faction] = (SBX.profile.standings[this.planet.faction] || 0) + 0.6;
+    SBX.profile.secStatus = Math.min(5, SBX.profile.secStatus + 0.3);
+    sbxToast('Ground base destroyed — salvage waits on the pad (E). Standing up.');
+    sbxSave('base');
+  },
+
+  // ---------------- outpost raids on this site (live version of the abstract pass) ----------------
+  beginOutpostRaid(st) {
+    sbxToast('Raiders inbound on your outpost — they will chew through it if you stand off.');
+    const d = this.deposits[st.srf.di];
+    for (let i = 0; i < 3; i++) this.fauna.push({ on: true, kind: 'defender', hp: 45, x: d.x + rand(-500, 500), z: d.z + rand(-500, 500), vx: 0, vz: 0, mode: 'raid', t: 0, phase: rand(0, 6), raidSt: st });
+  },
+  raidStep(dt) { // raiders chew the outpost while alive
+    for (const f of this.fauna) {
+      if (!f.on || f.mode !== 'raid' || !f.raidSt) continue;
+      const st = f.raidSt; const d = this.deposits[st.srf.di];
+      const td = Math.hypot(d.x - f.x, d.z - f.z);
+      if (td > 30) { const inv = 1 / td; f.vx = (d.x - f.x) * inv * 14; f.vz = (d.z - f.z) * inv * 14; f.x += f.vx * dt; f.z += f.vz * dt; }
+      else {
+        const dps = 26 * dt;
+        if (st.shield > 0) st.shield = Math.max(0, st.shield - dps);
+        else { st.armor -= dps; if (st.armor <= 0 && st.state === 'online') { st.state = 'reinforced'; st.armor = 0; st.reinforceUntil = Date.now() + CONFIG.sbx4.structures.reinforceMin * 60000; sbxToast('Outpost REINFORCED — clear the raiders or lose it.'); } }
+      }
+    }
+  },
+
+  // ---------------- keys (the sandbox key handler defers to this on the surface) ----------------
+  keys(dt) {
+    const pl = world.player;
+    if (input.consume('KeyR')) { if (this.landed || (this.rover && this.mode === 'rover')) this.mode === 'rover' ? this.boardShip() : this.deployRover(); else sbxToast('Deploying the rover needs the ship on the ground.'); }
+    if (input.consume('KeyE')) this.useKey();
+    if (input.consume('KeyH')) { if (!this.landed) { this.hover = !this.hover; sbxToast(this.hover ? 'Hover hold on.' : 'Hover hold off.'); } }
+    if (input.consume('KeyB')) this.deployExtractor();
+    if (input.consume('KeyP')) { if (this.mode === 'rover') { this.prospect = !this.prospect; srfScanPanel(this.prospect); } else sbxToast('The prospector rides on the rover.'); }
+    if (input.consume('KeyX')) this.selfRight();
+    if (input.consume('KeyL')) { /* headlights are automatic at night; manual toggle */ this.lights.visible = !this.lights.visible; }
+    for (let i = 1; i <= 8; i++) if (input.consume('Digit' + i)) { const rt = pl.sbx?.actives.find(r => r.key === i); if (rt) sbxToggleModule(rt); }
+    if (input.consume('Tab')) { const hostiles = []; world.enemies.forEachActive(en => { if (en.alive) hostiles.push(en); }); if (this.base?.alive) for (const s of this.base.subsystems) if (s.alive && s.targetable) hostiles.push(s); hostiles.sort((a, b) => a.pos.distanceToSquared(pl.pos) - b.pos.distanceToSquared(pl.pos)); if (hostiles.length) { const i = hostiles.indexOf(pl.target); pl.target = hostiles[(i + 1) % hostiles.length]; audio.click(); } }
+    this.raidStep(dt);
+  },
+  useKey() {
+    const veh = this.mode === 'rover' && this.rover ? this.rover : world.player;
+    const a = this.nearestAnom(veh === this.rover ? veh.pos : veh.pos, 60);
+    if (a) return this.lootAnomaly(a, veh);
+    if (this.baseLoot && this.base && Math.hypot(veh.pos.x - this.base.pos.x, veh.pos.z - this.base.pos.z) < 160) {
+      const cargo = veh === this.rover ? this.rover.cargo : SBX.ship().cargo;
+      for (const [id, q] of Object.entries(this.baseLoot)) cargo[id] = (cargo[id] || 0) + q;
+      this.baseLoot = null; return sbxToast('Base stores stripped.');
+    }
+    for (const o of this.outposts) if (Math.hypot(veh.pos.x - o.mesh.position.x, veh.pos.z - o.mesh.position.z) < 60) return this.collectOutpost(o);
+    if (this.mode === 'rover' && this.rover && this.rover.pos.distanceTo(world.player.pos) < 60) { // transfer rover → ship without stowing
+      const cargo = SBX.ship().cargo; let moved = 0;
+      for (const [id, q] of Object.entries(this.rover.cargo)) { cargo[id] = (cargo[id] || 0) + q; moved += q; delete this.rover.cargo[id]; }
+      return sbxToast(moved ? `Transferred ${moved} units to the ship.` : 'Rover hold is empty.');
+    }
+    sbxToast('Nothing in reach.');
+  },
+
+  // ---------------- leaving ----------------
+  exitToOrbit() {
+    const pl = world.player; const sysIdx = this.planet.sys;
+    if (this.rover) { sbxToast('The rover was left on the surface — stranded, and gone.'); scene.remove(this.rover.mesh); this.rover = null; }
+    this.shutdownVisuals();
+    SBX.profile.surface = null; this.active = false;
+    sbxLoadSystem(sysIdx, null);
+    const pp = SBX.points.find(p => p.kind === 'planet');
+    if (pp) { pl.placeAt(_v[0].copy(pp.pos).add(_v[1].set(600, 300, 600)), _q[0].identity()); pl.vel.set(0, 0, 0); }
+    pl.parked = false; this.landed = false; cam.init = false;
+    audio.windUpdate(0);
+    sbxToast(`Orbit re-established over ${this.planet.name}.`);
+    sbxSave('orbit');
+  },
+  abort() { // death or forced exit: hide the surface, flags off; the caller rebuilds space
+    this.shutdownVisuals();
+    if (this.rover) { scene.remove(this.rover.mesh); this.rover = null; }
+    this.active = false; this.cine = null; this.landed = false; this.mode = 'ship';
+    world.player.parked = false; SBX.profile.surface = null; audio.windUpdate(0);
+  },
+  shutdownVisuals() {
+    TERRA.hide();
+    if (this.objs) while (this.objs.children.length) this.objs.remove(this.objs.children[this.objs.children.length - 1]);
+    if (this.lights) this.lights.visible = false;
+    scene.fog = null;
+    sun.position.copy(this.saved.sunPos); sun.intensity = this.saved.sunI; hemi.intensity = this.saved.hemiI;
+    for (const s of env.nebulae) s.visible = true;
+    env.stars.visible = true; env.sunSprite.visible = env.sunCore.visible = env.sunStreak.visible = true;
+    this.base = null; this.baseLoot = null; this.fauna.length = 0; this.outposts = []; this.prospect = false; srfScanPanel(false);
+    world.onBossKilled = null;
+  },
+};
+const SRF_DUMMY = new THREE.Object3D();
+const SRF_EULER = new THREE.Euler();
+const SRF_DEP_GEO = mergeGeometries([
+  new THREE.ConeGeometry(1, 3.2, 5).translate(0, 1.6, 0).toNonIndexed(),
+  new THREE.ConeGeometry(0.7, 2.2, 5).translate(1.1, 1.1, 0.4).toNonIndexed(),
+  new THREE.ConeGeometry(0.6, 1.8, 5).translate(-0.9, 0.9, -0.5).toNonIndexed(),
+], false);
+const SRF_DEP_MATS = {
+  ore_thorite: new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.4, metalness: 0.6, emissive: 0x882200, emissiveIntensity: 0.25, flatShading: true }),
+  ore_cryolite: new THREE.MeshStandardMaterial({ color: 0xbfe8f4, roughness: 0.2, metalness: 0.1, emissive: 0x2266aa, emissiveIntensity: 0.2, flatShading: true }),
+  ore_cindrite: new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.8, flatShading: true }),
+  ore_auberite: new THREE.MeshStandardMaterial({ color: 0xc9a35a, roughness: 0.6, metalness: 0.3, flatShading: true }),
+  ore_vexcry: new THREE.MeshStandardMaterial({ color: 0x9fe0c8, roughness: 0.2, emissive: 0x116644, emissiveIntensity: 0.35, flatShading: true }),
+};
+function srfRoverMesh() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 4.6), new THREE.MeshStandardMaterial({ color: 0xc9b08a, roughness: 0.55, metalness: 0.45, flatShading: true }));
+  body.position.y = 0.4; grp.add(body);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 1.6), new THREE.MeshStandardMaterial({ color: 0x1d3f5a, roughness: 0.2, metalness: 0.7, emissive: 0x0a2a44, emissiveIntensity: 0.5 }));
+  cab.position.set(0, 1.3, -0.9); grp.add(cab);
+  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0x3a4652, flatShading: true }));
+  gun.position.set(0, 1.9, -0.6); grp.add(gun);
+  const wheels = []; const wg = new THREE.CylinderGeometry(0.75, 0.75, 0.6, 10).rotateZ(Math.PI / 2);
+  const wm = new THREE.MeshStandardMaterial({ color: 0x22262c, roughness: 0.95, flatShading: true });
+  for (const [x, z] of [[-1.7, -2.3], [1.7, -2.3], [-1.7, 2.3], [1.7, 2.3]]) { const w = new THREE.Mesh(wg, wm); w.position.set(x, -0.55, z); grp.add(w); wheels.push(w); }
+  grp.userData.wheels = wheels;
+  return grp;
+}
+function srfBaseDef() {
+  const gw = { interval: 0.6, damage: 6, speed: 460, spread: 0.035, range: 560, aimError: 0.22 };
+  const aa = { interval: 0.9, damage: 10, speed: 680, spread: 0.02, range: 1500, aimError: 0.12 };
+  return {
+    id: 'groundbase', name: 'Pirate surface base', cfg: { rotateTime: 3 }, hull: 2400, credits: 900, radius: 95, speed: 0,
+    movement: { type: 'static' },
+    parts: [
+      { g: 'box', size: [70, 6, 70], pos: [0, 3, 0], mat: 'dark' }, { g: 'sphere', size: [16, 10, 8], pos: [0, 10, 0] },
+      { g: 'box', size: [22, 10, 22], pos: [-30, 8, 24], mat: 'accent' }, { g: 'cyl', size: [3, 3, 34, 6], pos: [26, 20, -22], mat: 'dark' },
+      { g: 'box', size: [26, 3, 16], pos: [30, 5, 26], mat: 'hull' },
+    ],
+    hullSpheres: [{ pos: [0, 8, 0], r: 40 }, { pos: [-30, 8, 24], r: 18 }],
+    subsystems: [
+      { id: 'sg_a', name: 'Shield generator A', kind: 'shield', pos: [-16, 14, -16], normal: [0, 1, 0], radius: 7, health: 150, credits: 150 },
+      { id: 'sg_b', name: 'Shield generator B', kind: 'shield', pos: [16, 14, 16], normal: [0, 1, 0], radius: 7, health: 150, credits: 150 },
+      { id: 'aa1', name: 'AA turret 1', kind: 'turret', pos: [-26, 9, -26], normal: [0, 1, 0], radius: 6, health: 110, weapon: aa, arc: 1.25, arcDir: [0, 1, 0], credits: 80 },
+      { id: 'aa2', name: 'AA turret 2', kind: 'turret', pos: [30, 9, -12], normal: [0, 1, 0], radius: 6, health: 110, weapon: aa, arc: 1.25, arcDir: [0, 1, 0], credits: 80 },
+      { id: 'g1', name: 'Perimeter gun 1', kind: 'gun', pos: [0, 8, 34], normal: [0, 1, 0], radius: 5, health: 90, weapon: gw, arc: 2.9, arcDir: [0, 0.15, 1], credits: 60 },
+      { id: 'g2', name: 'Perimeter gun 2', kind: 'gun', pos: [-34, 8, 0], normal: [0, 1, 0], radius: 5, health: 90, weapon: gw, arc: 2.9, arcDir: [-1, 0.15, 0], credits: 60 },
+    ],
+    phases: [],
+  };
+}
+/** The Surface surveyor module reveals landing sites while the ship holds orbit. */
+function srfSurveyCycle() {
+  const pp = SBX.points.find(p => p.kind === 'planet' && p.pos.distanceTo(world.player.pos) < 2600);
+  if (!pp) { sbxToast('Surveyor idle — hold orbit within 2.6 km of a planet.'); return; }
+  const planet = pp.planet; const ps = srfPState(planet);
+  if (ps.scanned >= planet.nSites) { sbxToast('Survey complete — every site on ' + planet.name + ' is mapped.'); return; }
+  ps.scanned++;
+  const site = srfSiteDef(planet, ps.scanned - 1);
+  sbxToast(`Site resolved: ${site.name} — ${BIOMES[site.biome].name}, hazard ${site.hazard}, ${ITEMS[site.ore].name} signature.`);
+  if ($('sb-planet').classList.contains('on')) srfRenderOrbital();
+}
+function sbxUnfitDestroy(m) { // a hard landing shears a module off the fit entirely (slot arrays are fixed length)
+  const ship = SBX.ship(); if (ship.fit[m.slot] && ship.fit[m.slot][m.index] === m.id) ship.fit[m.slot][m.index] = null;
+  sbxApplyFit();
+}
+
+// =====================================================================================
+//  part26 — Stage 5 UI: the orbital survey globe, the surface HUD, the prospector panel.
+// =====================================================================================
+const ORB = { open: false, planet: null, yaw: 0.6, sel: null, drag: null };
+function srfOpenOrbital(planet) {
+  ORB.open = true; ORB.planet = planet; ORB.sel = null;
+  $('sb-planet').classList.add('on');
+  srfRenderOrbital();
+}
+function srfCloseOrbital() { ORB.open = false; $('sb-planet').classList.remove('on'); }
+function srfRenderOrbital() {
+  const p = ORB.planet; if (!p) return;
+  const ps = srfPState(p);
+  const cv = $('planetcanvas'); const g = cv.getContext('2d');
+  const W = cv.width = cv.clientWidth || 640, H = cv.height = 420;
+  g.clearRect(0, 0, W, H);
+  const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.4;
+  // the globe
+  const grd = g.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R);
+  const hue = Math.round(p.hue * 360);
+  grd.addColorStop(0, `hsl(${hue},38%,46%)`); grd.addColorStop(0.75, `hsl(${hue},42%,26%)`); grd.addColorStop(1, `hsl(${hue},45%,10%)`);
+  g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(95,242,255,0.16)'; g.lineWidth = 1;
+  for (let lat = -60; lat <= 60; lat += 30) { const r = Math.cos(lat * Math.PI / 180) * R, y = cy - Math.sin(lat * Math.PI / 180) * R * 0.999; g.beginPath(); g.ellipse(cx, y, r, r * 0.16, 0, 0, Math.PI * 2); g.stroke(); }
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  // site markers (front hemisphere only)
+  ORB.markers = [];
+  const BIOME_COL = { barren: '#9a9184', ice: '#bfe4f4', volcanic: '#ff7a45', toxic: '#a8c860', temperate: '#7dffb0' };
+  for (let i = 0; i < ps.scanned; i++) {
+    const s = srfSiteDef(p, i); const st = srfSiteState(p, i);
+    const la = s.lat / 2 * Math.PI / 180, lo = s.lon * Math.PI / 180 + ORB.yaw;
+    const px = Math.cos(la) * Math.sin(lo), py = Math.sin(la), pz = Math.cos(la) * Math.cos(lo);
+    if (pz < 0.05) continue;
+    const x = cx + px * R, y = cy - py * R;
+    const col = BIOME_COL[s.biome];
+    g.fillStyle = col; g.strokeStyle = col; g.lineWidth = ORB.sel === i ? 2.5 : 1.2;
+    g.beginPath(); g.arc(x, y, 5 + s.hazard, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill();
+    if (st.visited) { g.beginPath(); g.arc(x, y, 9 + s.hazard, 0, Math.PI * 2); g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1; g.stroke(); }
+    g.fillStyle = 'rgba(230,246,255,0.85)'; g.font = '10px monospace'; g.fillText(s.name.split('· ')[1] || s.name, x + 10, y + 3);
+    ORB.markers.push({ i, x, y });
+  }
+  $('orb-title').textContent = `${p.name} — ${p.g} g · ${ps.scanned}/${p.nSites} sites surveyed`;
+  $('orb-hint').textContent = ps.scanned < p.nSites ? 'Cycle a fitted Surface surveyor in orbit to resolve more sites. Drag to rotate.' : 'Fully surveyed. Drag to rotate.';
+  // detail card for the selection
+  const sel = ORB.sel != null ? srfSiteDef(p, ORB.sel) : null;
+  const el = $('orb-info');
+  if (!sel) el.innerHTML = '<p class="small">Select a surveyed site.</p>';
+  else {
+    const st = srfSiteState(p, sel.i);
+    const why = srfDescendCheck(p, sel);
+    el.innerHTML = `<h3>${sel.name}</h3>
+      <div class="ovrow"><span class="k">Biome</span><span class="n" style="color:${BIOME_COL[sel.biome]}">${BIOMES[sel.biome].name}</span></div>
+      <div class="ovrow"><span class="k">Hazard</span><span class="n">${'▮'.repeat(sel.hazard)}${'▯'.repeat(5 - sel.hazard)}</span></div>
+      <div class="ovrow"><span class="k">Signature</span><span class="n">${ITEMS[sel.ore].name}</span></div>
+      <div class="ovrow"><span class="k">Gravity</span><span class="n">${p.g} g · thrust margin ${(srfTW(p.g) * 100 - 100).toFixed(0)}%</span></div>
+      <div class="ovrow"><span class="k">Status</span><span class="n">${st.visited ? 'VISITED' : 'unvisited'}${sel.hasBase && !st.bases[0] ? ' · hostile signals' : ''}</span></div>
+      ${sel.gateMod ? `<div class="ovrow"><span class="k">Requires</span><span class="n">${SBX_MODULES[sel.gateMod].name}</span></div>` : ''}
+      ${why ? `<p class="small" style="color:var(--red)">${why}</p>` : ''}
+      <div class="actions"><button id="btn-descend" class="amber" ${why ? 'disabled' : ''}>Begin descent</button></div>`;
+    const b = $('btn-descend'); if (b) b.onclick = () => { audio.click(true); const site = srfSiteDef(ORB.planet, ORB.sel); srfCloseOrbital(); SRF.descend(ORB.planet, site); };
+  }
+}
+function srfOrbitalBind() {
+  const cv = $('planetcanvas');
+  cv.addEventListener('pointerdown', (e) => { ORB.drag = { x: e.clientX, yaw: ORB.yaw, moved: false }; });
+  cv.addEventListener('pointermove', (e) => { if (!ORB.drag) return; const dx = e.clientX - ORB.drag.x; if (Math.abs(dx) > 3) ORB.drag.moved = true; ORB.yaw = ORB.drag.yaw + dx * 0.01; srfRenderOrbital(); });
+  cv.addEventListener('pointerup', (e) => {
+    const wasDrag = ORB.drag?.moved; ORB.drag = null; if (wasDrag) return;
+    const r = cv.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top;
+    let best = null, bd = 22;
+    for (const m of ORB.markers || []) { const d = Math.hypot(mx - m.x, my - m.y); if (d < bd) { bd = d; best = m; } }
+    if (best) { ORB.sel = best.i; audio.click(); srfRenderOrbital(); }
+  });
+  $('btn-orb-close').onclick = () => srfCloseOrbital();
+}
+
+// ---------------- surface HUD: altitude / v-speed / hover / gear + the rover panel ----------------
+let srfHudT = 0;
+function srfHUD(dt) {
+  srfHudT -= dt; if (srfHudT > 0) return; srfHudT = 0.1;
+  document.body.classList.toggle('surface', SRF.active);
+  if (!SRF.active) return;
+  const alt = $('h-alt'), vsi = $('h-vsi');
+  if (alt) {
+    alt.textContent = SRF.landed ? 'LANDED' : `${fmt(Math.max(0, SRF.alt))} m`;
+    const v = SRF.vspd + Math.min(0, world.player.vel.y);
+    vsi.textContent = SRF.landed ? '--' : `${v > 0 ? '+' : ''}${fmt(v)} m/s ${SRF.hover ? '· HOVER' : ''}${SRF.gearOk && !SRF.landed && SRF.alt < 200 ? ' · GEAR' : ''}`;
+    vsi.style.color = v < -CONFIG.srf.land.fatalV ? 'var(--red)' : v < -CONFIG.srf.land.safeV ? 'var(--amber)' : 'var(--cyan)';
+  }
+  const pr = $('p-rover');
+  if (pr) {
+    const rv = SRF.rover;
+    pr.classList.toggle('on', !!rv);
+    if (rv) {
+      const vol = Object.entries(rv.cargo).reduce((a, [id, q]) => a + (ITEMS[id]?.vol || 1) * q, 0);
+      const d = rv.pos.distanceTo(world.player.pos);
+      setBar($('rv-hull'), rv.hull / CONFIG.srf.rover.hull); setBar($('rv-power'), rv.power / 100);
+      $('rv-power').parentElement.classList.toggle('red', rv.power < 35);
+      $('rv-info').textContent = `${fmt(vol)}/${CONFIG.srf.rover.cargo} m³ · tether ${fmt(d)} m${d > CONFIG.srf.rover.range ? ' — DRAINING' : ''}${rv.flipped ? ' · FLIPPED [X]' : ''}`;
+    }
+  }
+  // objective line doubles as the site readout
+  $('h-objective').textContent = `${SRF.site.name} · ${SRF.B.name}${SRF.wx.type ? ' · ' + SRF.wx.type.toUpperCase() : ''}`;
+}
+
+// ---------------- prospector: signal strength, not map pins ----------------
+function srfScanPanel(on) {
+  const el = $('scan-panel'); if (!el) return;
+  el.classList.toggle('on', !!on && SRF.active);
+  if (on) { $('scan-sigs').textContent = 'Prospector live — drive toward a rising signal.'; $('scan-out').innerHTML = ''; $('scan-range').innerHTML = ''; }
+}
+function srfProspectPing(veh) {
+  const d = SRF.nearestDeposit(veh.pos, CONFIG.srf.prospect.radius);
+  const a = SRF.nearestAnom(veh.pos, CONFIG.srf.prospect.radius);
+  const line = (label, obj, col) => {
+    if (!obj) return `<div class="small">${label}: no signal</div>`;
+    const dist = Math.hypot(veh.pos.x - obj.x, veh.pos.z - obj.z);
+    const sig = clamp(1 - dist / CONFIG.srf.prospect.radius, 0, 1);
+    const hint = `${obj.z - veh.pos.z < 0 ? 'N' : 'S'}${obj.x - veh.pos.x < 0 ? 'W' : 'E'}`;
+    return `<div><span class="small">${label} · ${hint}</span><div class="bar" style="width:180px"><i style="transform:scaleX(${sig.toFixed(2)});background:${col}"></i></div></div>`;
+  };
+  $('scan-out').innerHTML = line('MINERAL', d, 'var(--amber)') + line('ANOMALY', a, '#c98cff');
+  audio.click();
+}
+
+// =====================================================================================
 //  part18 — Sandbox controller: enter/exit, docking, the per-tick step, input, hooks
 //  into the shared world, and every DOM binding for the sandbox UI.
 // =====================================================================================
@@ -5896,12 +7159,19 @@ function sbxEnter() {
   sbxLoadSystem(clamp(p.systemId, 0, SBX.systems.length - 1), entry);
   if (p.docked && SBX.station(p.stationId) && SBX.systemOfStation(p.stationId) === SBX.sys) sbxEnterDock(false);
   else { p.docked = false; world.player.hangared = false; }
+  // saved on a planet's surface: rebuild the site and put the ship back on the ground
+  if (p.surface && p.surface.sys === p.systemId) {
+    const planet = sbxPlanetOf(p.surface.sys);
+    if (planet && p.surface.site < planet.nSites) SRF.resume(planet, srfSiteDef(planet, p.surface.site), p.surface.pos);
+    else p.surface = null;
+  } else if (p.surface) p.surface = null;
   $('h-objective').textContent = 'Open universe'; sbxStorageWarn();
   SBXNET.join();
   setScreen(SCREEN.PLAYING);
   sbxToast(p.docked ? `Docked at ${SBX.station().name}.` : `On grid in ${SBX.sys.name}.`);
 }
 function sbxExit() {
+  if (SRF.active) SRF.abort();
   sbxRecordDamage(); if (!SBX.profile.docked) SBX.profile.pos = [world.player.pos.x, world.player.pos.y, world.player.pos.z];
   SBXNET.leave();
   sbxSave('exit'); SBX.active = false; game.mode = 'coop'; document.body.classList.remove('sandbox');
@@ -5956,13 +7226,19 @@ function sbxStep(dt) {
   p.time += dt;
   if (SBX.deathT != null) { SBX.deathT -= dt; if (SBX.deathT <= 0) { SBX.deathT = null; sbxDeathResolve(); } return; }
   if (pl.target && (!pl.target.alive || pl.target.active === false)) pl.target = null;
-  sbxDirector(dt); sbxBeltRespawn(dt);
-  if (!p.docked && pl.alive) {
-    sbxWarpUpdate(dt); assist.update(dt); sbxCapUpdate(dt); sbxAutopilot(dt);
-    sbxKeys();
-    // dock prompt
-    const near = nearestPoint('station', CONFIG.sbx.dock.radius); const dockEl = $('p-dock');
-    dockEl.classList.toggle('on', !!near); if (near) dockEl.textContent = `${near.name} — press E to dock`;
+  if (SRF.active) {
+    SRF.step(dt);            // the surface runs its own flight, keys, hazards and HUD
+  } else {
+    sbxDirector(dt); sbxBeltRespawn(dt);
+    if (!p.docked && pl.alive) {
+      sbxWarpUpdate(dt); assist.update(dt); sbxCapUpdate(dt); sbxAutopilot(dt);
+      sbxKeys();
+      // dock / orbit prompt
+      const near = nearestPoint('station', CONFIG.sbx.dock.radius); const nearP = near ? null : nearestPoint('planet', 2600); const dockEl = $('p-dock');
+      dockEl.classList.toggle('on', !!(near || nearP));
+      if (near) dockEl.textContent = `${near.name} — press E to dock`;
+      else if (nearP) dockEl.textContent = `Orbit of ${nearP.planet.name} — press E for the surface survey`;
+    }
   }
   // the ONE progression engine ticks every second — the same pass that runs the offline catch-up
   SBX.advAcc = (SBX.advAcc || 0) + dt * 1000;
@@ -5972,7 +7248,7 @@ function sbxStep(dt) {
     if (rep) { for (const j of rep.jobs) sbxToast(`Job complete: ${j}.`); for (const sname of rep.skills) sbxToast(`Skill trained: ${sname}.`); for (const ev of rep.structEvents) sbxToast(ev); }
     if (p.docked && $('sb-station').classList.contains('on') && (stationUI.tab === 'market' || (rep && (rep.jobs.length || rep.skills.length)))) sbxRenderStation();
   }
-  sbxFleetStep(dt); sbxStructureRaidStep(); sbxFleetHUD(dt); SBXNET.step(dt);
+  if (!SRF.active) { sbxFleetStep(dt); sbxStructureRaidStep(); sbxFleetHUD(dt); SBXNET.step(dt); }
   SBX.hideT = (SBX.hideT || 0) - dt; if (SBX.hideT <= 0) { SBX.hideT = 2; sbxHideoutStep(); }
   SBX.msnT = (SBX.msnT || 0) - dt; if (SBX.msnT <= 0) { SBX.msnT = 1; sbxMissionStep(); }
   SBX.autosaveT = (SBX.autosaveT || 0) + dt;
@@ -5984,9 +7260,11 @@ function sbxKeys() {
   if (input.consume('KeyE')) {
     const wh = SBX.points.find(x => x.kind === 'wormhole' && x.sig && x.pos.distanceTo(pl.pos) < 400);
     const stn = sbxStructureNear();
+    const pp = SBX.points.find(x => x.kind === 'planet' && x.pos.distanceTo(pl.pos) < 2600);
     if (nearestPoint('station', CONFIG.sbx.dock.radius)) sbxTryDock();
     else if (wh) sbxWormholeTransit(wh);
     else if (stn && stn.st.state !== 'anchoring') sbxStructureDeposit(stn);
+    else if (pp) srfOpenOrbital(pp.planet);
     else { const w = SBX.wrecks.find(x => x.pos.distanceTo(pl.pos) < 450); if (w) sbxLootWreck(w); }
   }
   if (input.consume('KeyP')) sbxScanToggle();
@@ -6008,6 +7286,7 @@ function sbxKeys() {
 function sbxTryJump() { const g = nearestPoint('gate', CONFIG.sbx.gate.jumpDist); if (g) sbxJumpGate(g); else sbxToast('No gate in jump range.'); }
 function sbxHandleEscape() {
   if ($('sb-loss').classList.contains('on')) return true;
+  if ($('sb-planet').classList.contains('on')) { srfCloseOrbital(); return true; }
   if (smap.open) { sbxShowMap(false); return true; }
   if ($('sb-station').classList.contains('on') && !SBX.profile.docked) { sbxShowStation(false); return true; }
   return false;
@@ -6019,6 +7298,7 @@ $('ov-actions').addEventListener('click', (e) => { const b = e.target.closest('[
 for (const b of document.querySelectorAll('#ov-sort button')) b.onclick = () => { SBX.ovSort = b.dataset.sort; sbxOverviewRender(); };
 $('btn-ov-map').onclick = () => sbxShowMap(true);
 $('mod-rack').addEventListener('click', (e) => { const s = e.target.closest('[data-mod]'); if (s) { const rt = world.player.sbx?.actives[+s.dataset.mod]; if (rt) { audio.click(); sbxToggleModule(rt); } } });
+srfOrbitalBind();
 $('sb-loss-btn').onclick = () => { audio.click(true); sbxRespawn(); };
 $('btn-sb-close').onclick = () => { if (SBX.profile.docked) sbxUndock(); else sbxShowStation(false); };
 $('btn-map-close').onclick = () => sbxShowMap(false);
@@ -6397,7 +7677,8 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState,
+  sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
 </script>
