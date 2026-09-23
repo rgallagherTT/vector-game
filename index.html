@@ -9,29 +9,49 @@
   :root {
     --cyan: #5ff2ff;
     --cyan-dim: rgba(95, 242, 255, 0.45);
+    --cyan-faint: rgba(95, 242, 255, 0.22);
     --amber: #ffb347;
     --amber-dim: rgba(255, 179, 71, 0.5);
     --red: #ff5a5a;
-    --ink: rgba(4, 10, 16, 0.72);
+    --green: #7dffb0;
+    --ink: rgba(2, 6, 11, 0.78);
+    --glass: linear-gradient(165deg, rgba(10, 24, 36, 0.62), rgba(4, 10, 16, 0.38));
+    --glass-strong: linear-gradient(168deg, rgba(9, 22, 34, 0.92), rgba(3, 8, 14, 0.86));
+    --panel-shadow: 0 6px 28px rgba(0, 0, 0, 0.4), inset 0 0 24px rgba(95, 242, 255, 0.045);
+    --glow-c: 0 0 9px rgba(95, 242, 255, 0.4);
+    --glow-a: 0 0 9px rgba(255, 179, 71, 0.4);
     --line: 1px;
     --mono: "SF Mono", "JetBrains Mono", "Fira Mono", Consolas, "Courier New", monospace;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #02040a; color: var(--cyan); font-family: var(--mono); }
   body { user-select: none; -webkit-user-select: none; cursor: crosshair; }
+  body::after { content: ""; position: fixed; inset: 0; z-index: 70; pointer-events: none; opacity: 0.14;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 4px); }
+  ::selection { background: rgba(95, 242, 255, 0.3); color: #fff; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: rgba(95, 242, 255, 0.05); }
+  ::-webkit-scrollbar-thumb { background: rgba(95, 242, 255, 0.22); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(95, 242, 255, 0.38); }
   canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   canvas#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
   /* ---------- HUD ---------- */
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; display: none; }
   #hud.visible { display: block; }
-  .panel { position: absolute; padding: 8px 10px; border: var(--line) solid var(--cyan-dim); background: transparent; }
+  .panel { position: absolute; padding: 9px 12px; border: var(--line) solid var(--cyan-faint); background: var(--glass); backdrop-filter: blur(6px) saturate(1.25); -webkit-backdrop-filter: blur(6px) saturate(1.25); box-shadow: var(--panel-shadow); border-radius: 2px; }
+  .panel::before, .panel::after { content: ""; position: absolute; width: 9px; height: 9px; pointer-events: none; opacity: 0.9; }
+  .panel::before { left: -1px; top: -1px; border-left: 2px solid var(--cyan); border-top: 2px solid var(--cyan); }
+  .panel::after { right: -1px; bottom: -1px; border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); }
+  #p-objective, #p-radar, #p-sys, #p-obj, #p-warn { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+  #p-objective::before, #p-objective::after, #p-radar::before, #p-radar::after, #p-sys::before, #p-sys::after,
+  #p-obj::before, #p-obj::after, #p-warn::before, #p-warn::after { display: none; }
   .panel .label { font-size: 10px; color: var(--cyan-dim); margin-bottom: 4px; }
-  .panel .value { font-size: 20px; line-height: 1; }
-  .bar { position: relative; height: 6px; width: 160px; border: var(--line) solid var(--cyan-dim); margin-top: 4px; }
-  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--cyan); transform-origin: left center; transform: scaleX(1); }
-  .bar.amber { border-color: var(--amber-dim); } .bar.amber > i { background: var(--amber); }
-  .bar.red > i { background: var(--red); }
+  .panel .value { font-size: 20px; line-height: 1; text-shadow: var(--glow-c); }
+  .bar { position: relative; height: 6px; width: 160px; border: var(--line) solid var(--cyan-faint); margin-top: 4px; background: rgba(95, 242, 255, 0.05); }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: linear-gradient(90deg, rgba(95, 242, 255, 0.65), var(--cyan)); box-shadow: 0 0 7px rgba(95, 242, 255, 0.5); transform-origin: left center; transform: scaleX(1); }
+  .bar.amber { border-color: rgba(255, 179, 71, 0.28); background: rgba(255, 179, 71, 0.05); } .bar.amber > i { background: linear-gradient(90deg, rgba(255, 179, 71, 0.65), var(--amber)); box-shadow: 0 0 7px rgba(255, 179, 71, 0.5); }
+  .bar.red > i { background: linear-gradient(90deg, rgba(255, 90, 90, 0.65), var(--red)); box-shadow: 0 0 7px rgba(255, 90, 90, 0.5); }
   .row { display: flex; align-items: baseline; gap: 10px; }
   .row .label { margin: 0; width: 64px; }
 
@@ -43,7 +63,7 @@
   #p-objective .title { font-size: 12px; color: var(--amber); }
   #p-objective .sub { font-size: 11px; color: var(--cyan-dim); margin-top: 2px; }
   #p-radar { left: 50%; bottom: 24px; transform: translateX(-50%); padding: 0; border: none; }
-  #radar { display: block; width: 180px; height: 180px; }
+  #radar { display: block; width: 180px; height: 180px; filter: drop-shadow(0 0 8px rgba(95, 242, 255, 0.2)); }
   #p-warn { left: 50%; top: 32%; transform: translateX(-50%); border: none; color: var(--amber); font-size: 14px; text-align: center; display: none; }
   #p-warn.on { display: block; animation: blink 0.8s steps(2, start) infinite; }
   @keyframes blink { to { visibility: hidden; } }
@@ -85,19 +105,21 @@
   #dmg { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 60, 60, 0.55) 100%); }
 
   /* ---------- Screens ---------- */
-  .screen { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: var(--ink); backdrop-filter: blur(2px); }
+  .screen { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: var(--ink); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
   .screen.on { display: flex; }
-  .card { width: min(720px, 90vw); border: var(--line) solid var(--cyan-dim); padding: 28px 32px; font-size: 13px; letter-spacing: 0.06em; line-height: 1.6; }
-  .card h1 { font-size: 22px; font-weight: 400; margin: 0 0 4px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .card { width: min(720px, 90vw); border: var(--line) solid var(--cyan-faint); border-top: 2px solid rgba(95, 242, 255, 0.55); padding: 28px 32px; font-size: 13px; letter-spacing: 0.06em; line-height: 1.6; background: var(--glass-strong); box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55), inset 0 0 40px rgba(95, 242, 255, 0.04); border-radius: 3px; }
+  .card h1 { font-size: 22px; font-weight: 400; margin: 0 0 4px; letter-spacing: 0.2em; text-transform: uppercase; text-shadow: 0 0 16px rgba(95, 242, 255, 0.5), 0 0 2px rgba(95, 242, 255, 0.9); }
   .card h2 { font-size: 11px; font-weight: 400; margin: 0 0 18px; color: var(--amber); letter-spacing: 0.24em; text-transform: uppercase; }
   .card p { margin: 0 0 14px; color: #b9e9ee; white-space: pre-line; }
   .card .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin: 8px 0 18px; }
   .card .grid div { display: flex; justify-content: space-between; border-bottom: 1px dotted rgba(95,242,255,0.2); padding: 2px 0; }
   .card .grid span:last-child { color: var(--amber); }
   .card .keys { color: var(--cyan-dim); font-size: 11px; margin: 10px 0 18px; column-count: 2; }
-  .card button { pointer-events: auto; cursor: pointer; font-family: var(--mono); letter-spacing: 0.18em; text-transform: uppercase; font-size: 13px; color: var(--cyan); background: transparent; border: var(--line) solid var(--cyan); padding: 10px 22px; margin-right: 12px; }
-  .card button:hover { background: rgba(95,242,255,0.12); }
-  .card button.amber { color: var(--amber); border-color: var(--amber); }
+  .card button { pointer-events: auto; cursor: pointer; font-family: var(--mono); letter-spacing: 0.18em; text-transform: uppercase; font-size: 13px; color: var(--cyan); background: rgba(95, 242, 255, 0.04); border: var(--line) solid var(--cyan); padding: 10px 22px; margin-right: 12px; transition: background 0.15s, box-shadow 0.15s, transform 0.05s; }
+  .card button:hover { background: rgba(95,242,255,0.14); box-shadow: 0 0 14px rgba(95, 242, 255, 0.35), inset 0 0 10px rgba(95, 242, 255, 0.1); text-shadow: var(--glow-c); }
+  .card button:active { transform: translateY(1px); }
+  .card button.amber { color: var(--amber); border-color: var(--amber); background: rgba(255, 179, 71, 0.04); }
+  .card button.amber:hover { background: rgba(255, 179, 71, 0.14); box-shadow: 0 0 14px rgba(255, 179, 71, 0.35), inset 0 0 10px rgba(255, 179, 71, 0.1); text-shadow: var(--glow-a); }
   .card .foot { margin-top: 12px; font-size: 10px; color: var(--cyan-dim); }
   #s-loading .card { text-align: center; }
   #s-loading .spinner { display: inline-block; width: 26px; height: 26px; border: var(--line) solid var(--cyan-dim); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 16px; }
@@ -133,14 +155,15 @@
   /* ---------- Stage 2: hangar / campaign screens ---------- */
   .card.wide { width: min(980px, 94vw); max-height: 92vh; overflow: auto; }
   .tabs { display: flex; gap: 0; margin: 0 0 14px; border-bottom: var(--line) solid var(--cyan-dim); }
-  .tabs button { border: none; border-bottom: 2px solid transparent; margin: 0; padding: 8px 16px; color: var(--cyan-dim); }
-  .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .tabs button { border: none; border-bottom: 2px solid transparent; margin: 0; padding: 8px 16px; color: var(--cyan-dim); background: transparent; transition: color 0.15s; }
+  .tabs button:hover { color: var(--cyan); box-shadow: none; }
+  .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); text-shadow: var(--glow-c); }
   .pane { display: none; } .pane.on { display: block; }
   .hgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
   .list { display: flex; flex-direction: column; gap: 6px; }
-  .item { border: var(--line) solid var(--cyan-dim); padding: 8px 12px; cursor: pointer; pointer-events: auto; }
-  .item:hover { background: rgba(95,242,255,0.06); }
-  .item.sel { border-color: var(--cyan); }
+  .item { border: var(--line) solid var(--cyan-faint); padding: 8px 12px; cursor: pointer; pointer-events: auto; background: rgba(95, 242, 255, 0.025); transition: background 0.12s, border-color 0.12s; }
+  .item:hover { background: rgba(95,242,255,0.08); border-color: var(--cyan-dim); }
+  .item.sel { border-color: var(--cyan); box-shadow: 0 0 10px rgba(95, 242, 255, 0.2), inset 0 0 12px rgba(95, 242, 255, 0.06); }
   .item.locked { color: var(--cyan-dim); cursor: default; }
   .item .name { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; }
   .item .desc { font-size: 11px; color: #9fd4da; margin-top: 2px; }
@@ -196,11 +219,18 @@
   #t-wing { left: 33%; top: 30%; width: 12vmin; height: 8vmin; max-width: 70px; max-height: 48px; }
   body.touch-mode #p-radar { transform: translateX(-50%) scale(0.7); transform-origin: bottom center; }
   body.touch-mode #p-status, body.touch-mode #p-weapons { bottom: auto; top: 46%; }
+  /* sandbox touch buttons: two rows on the upper left, only in sandbox mode */
+  #touch .tbtn.sbx { display: none; width: 13vmin; height: 8vmin; max-width: 80px; max-height: 46px; font-size: 10px; }
+  body.sandbox #touch .tbtn.sbx { display: flex; }
+  #t-interact { left: 5%; top: 42%; } #t-warp { left: 20%; top: 42%; } #t-jump { left: 35%; top: 42%; }
+  #t-map { left: 5%; top: 52%; } #t-scan { left: 20%; top: 52%; } #t-stop { left: 35%; top: 52%; }
+  body.sandbox.touch-mode #p-fleet { top: auto; bottom: 42%; transform: scale(0.85); transform-origin: bottom left; }
+  body.sandbox.touch-mode #p-overview { transform: scale(0.85); transform-origin: top right; right: 8px; }
 
   /* ---------- Stage 4: nametags, versus scoreboard, lobby ---------- */
   #tags { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
   .tag3d { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fe8ff; text-align: center; white-space: nowrap; }
-  .tag3d span { display: block; margin-bottom: 3px; text-shadow: 0 0 4px #000; }
+  .tag3d span { display: block; margin-bottom: 3px; text-shadow: 0 0 4px #000, 0 0 8px rgba(159, 232, 255, 0.45); }
   .tag3d .bar { width: 60px; height: 3px; margin: 0 auto; border-color: rgba(159,232,255,0.5); } .tag3d .bar > i { background: #9fe8ff; }
   .tag3d.foe { color: var(--red); } .tag3d.foe .bar { border-color: rgba(255,90,90,0.5); } .tag3d.foe .bar > i { background: var(--red); }
   .tag3d.sel span { color: #fff; }
@@ -210,7 +240,8 @@
   #vs-feed { color: var(--amber); margin-top: 4px; font-size: 10px; }
   .lobby-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
   .lobby-top label { margin-left: 0; }
-  .card input[type=text] { pointer-events: auto; background: #03060c; color: var(--cyan); border: var(--line) solid var(--cyan-dim); font-family: var(--mono); font-size: 12px; padding: 6px 8px; letter-spacing: 0.1em; width: 170px; margin-left: 8px; }
+  .card input[type=text] { pointer-events: auto; background: #03060c; color: var(--cyan); border: var(--line) solid var(--cyan-dim); font-family: var(--mono); font-size: 12px; padding: 6px 8px; letter-spacing: 0.1em; width: 170px; margin-left: 8px; transition: box-shadow 0.15s; }
+  .card input[type=text]:focus, .card textarea:focus, .sb-card select:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 10px rgba(95, 242, 255, 0.3); }
   .item button { float: right; padding: 4px 10px; font-size: 10px; margin: 0 0 0 8px; }
   .item.host { border-color: var(--amber-dim); }
   #lobby-party .w { font-size: 11px; padding: 3px 0; border-bottom: 1px dotted rgba(95,242,255,0.2); }
@@ -229,10 +260,11 @@
   body.sandbox #p-overview { display: flex; }
   #p-cap { right: 24px; bottom: 150px; min-width: 190px; }
   #mod-rack { position: absolute; left: 50%; bottom: 215px; transform: translateX(-50%); gap: 6px; pointer-events: auto; }
-  .modslot { position: relative; width: 44px; height: 44px; border: var(--line) solid var(--cyan-dim); background: rgba(4,10,16,0.5); cursor: pointer; text-align: center; }
+  .modslot { position: relative; width: 44px; height: 44px; border: var(--line) solid var(--cyan-faint); background: linear-gradient(165deg, rgba(10, 24, 36, 0.72), rgba(4, 10, 16, 0.55)); cursor: pointer; text-align: center; border-radius: 2px; transition: border-color 0.12s, box-shadow 0.12s; }
+  .modslot:hover { border-color: var(--cyan-dim); box-shadow: 0 0 8px rgba(95, 242, 255, 0.2); }
   .modslot b { font-weight: 400; font-size: 9px; color: var(--amber); position: absolute; left: 3px; top: 2px; }
   .modslot span { position: absolute; left: 0; right: 0; bottom: 2px; font-size: 8px; color: var(--cyan-dim); overflow: hidden; }
-  .modslot.on { border-color: var(--amber); background: rgba(255,179,71,0.12); }
+  .modslot.on { border-color: var(--amber); background: rgba(255,179,71,0.12); box-shadow: 0 0 10px rgba(255, 179, 71, 0.35), inset 0 0 8px rgba(255, 179, 71, 0.12); }
   .modslot i { position: absolute; inset: 2px; border-radius: 50%; -webkit-mask: radial-gradient(closest-side, transparent 60%, #000 63%); mask: radial-gradient(closest-side, transparent 60%, #000 63%); }
   #p-overview { right: 24px; top: 200px; bottom: 240px; width: 250px; flex-direction: column; pointer-events: auto; padding: 6px 8px; }
   #ov-sort { display: flex; gap: 4px; margin-bottom: 4px; }
@@ -247,17 +279,20 @@
   .ovrow .d { font-variant-numeric: tabular-nums; }
   .ovrow button { margin-left: 4px; font-size: 9px; padding: 1px 6px; pointer-events: auto; cursor: pointer; background: transparent; color: var(--cyan); border: var(--line) solid var(--cyan-dim); }
   #toasts { position: absolute; left: 24px; top: 34%; max-width: 300px; font-size: 11px; color: #ffd9a8; text-transform: none; letter-spacing: 0.04em; }
-  #toasts div { margin-bottom: 4px; border-left: 2px solid var(--amber-dim); padding-left: 8px; }
+  #toasts div { margin-bottom: 4px; border-left: 2px solid var(--amber); padding: 4px 8px; background: linear-gradient(90deg, rgba(255, 179, 71, 0.1), transparent); animation: toastin 0.25s ease-out; }
+  @keyframes toastin { from { opacity: 0; transform: translateX(-10px); } }
   #storage-warn { position: fixed; left: 50%; top: 0; transform: translateX(-50%); background: rgba(120,20,20,0.9); color: #ffd9d9; font-family: var(--mono); font-size: 11px; padding: 4px 14px; z-index: 40; display: none; }
   #storage-warn.on { display: block; }
-  .sb-overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: var(--ink); backdrop-filter: blur(3px); font-family: var(--mono); color: var(--cyan); letter-spacing: 0.06em; }
+  .sb-overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: var(--ink); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); font-family: var(--mono); color: var(--cyan); letter-spacing: 0.06em; }
   .sb-overlay.on { display: flex; }
-  .sb-card { width: min(1100px, 96vw); max-height: 94vh; overflow: auto; border: var(--line) solid var(--cyan-dim); padding: 20px 26px; font-size: 12px; }
-  .sb-card h1 { font-size: 20px; font-weight: 400; margin: 0; letter-spacing: 0.2em; text-transform: uppercase; }
-  .sb-card h3 { font-size: 11px; font-weight: 400; color: var(--amber); letter-spacing: 0.2em; text-transform: uppercase; margin: 14px 0 6px; }
-  .sb-card button { cursor: pointer; font-family: var(--mono); letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; color: var(--cyan); background: transparent; border: var(--line) solid var(--cyan); padding: 4px 10px; margin: 2px; }
-  .sb-card button.amber { color: var(--amber); border-color: var(--amber); }
-  .sb-card button:disabled { opacity: 0.35; cursor: default; }
+  .sb-card { width: min(1100px, 96vw); max-height: 94vh; overflow: auto; border: var(--line) solid var(--cyan-faint); border-top: 2px solid rgba(95, 242, 255, 0.55); padding: 20px 26px; font-size: 12px; background: var(--glass-strong); box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55), inset 0 0 40px rgba(95, 242, 255, 0.04); border-radius: 3px; }
+  .sb-card h1 { font-size: 20px; font-weight: 400; margin: 0; letter-spacing: 0.2em; text-transform: uppercase; text-shadow: 0 0 16px rgba(95, 242, 255, 0.5), 0 0 2px rgba(95, 242, 255, 0.9); }
+  .sb-card h3 { font-size: 11px; font-weight: 400; color: var(--amber); letter-spacing: 0.2em; text-transform: uppercase; margin: 14px 0 6px; text-shadow: 0 0 8px rgba(255, 179, 71, 0.3); }
+  .sb-card button { cursor: pointer; font-family: var(--mono); letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; color: var(--cyan); background: rgba(95, 242, 255, 0.04); border: var(--line) solid var(--cyan); padding: 4px 10px; margin: 2px; transition: background 0.12s, box-shadow 0.12s; }
+  .sb-card button:hover { background: rgba(95, 242, 255, 0.14); box-shadow: 0 0 10px rgba(95, 242, 255, 0.3); }
+  .sb-card button.amber { color: var(--amber); border-color: var(--amber); background: rgba(255, 179, 71, 0.04); }
+  .sb-card button.amber:hover { background: rgba(255, 179, 71, 0.14); box-shadow: 0 0 10px rgba(255, 179, 71, 0.3); }
+  .sb-card button:disabled { opacity: 0.35; cursor: default; box-shadow: none; background: transparent; }
   .sb-card select { background: #03060c; color: var(--cyan); border: var(--line) solid var(--cyan-dim); font-family: var(--mono); font-size: 10px; padding: 3px; max-width: 200px; }
   .sb-card .stats td { padding: 3px 6px; }
   .mkt td { font-size: 11px; }
@@ -266,8 +301,9 @@
   .fitslot .small { width: 52px; text-transform: uppercase; }
   .fitslot b { font-weight: 400; flex: 1; }
   #sb-tabs { display: flex; gap: 0; margin: 10px 0 12px; border-bottom: var(--line) solid var(--cyan-dim); flex-wrap: wrap; }
-  #sb-tabs button { border: none; border-bottom: 2px solid transparent; margin: 0; padding: 6px 12px; color: var(--cyan-dim); }
-  #sb-tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
+  #sb-tabs button { border: none; border-bottom: 2px solid transparent; margin: 0; padding: 6px 12px; color: var(--cyan-dim); background: transparent; }
+  #sb-tabs button:hover { color: var(--cyan); box-shadow: none; background: transparent; }
+  #sb-tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); text-shadow: var(--glow-c); }
   #sb-map .sb-card { width: min(1200px, 97vw); }
   #mapcanvas { width: 100%; height: 62vh; display: block; border: var(--line) solid var(--cyan-dim); background: #03060c; cursor: crosshair; }
   #sb-map .maprow { display: flex; gap: 14px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
@@ -413,6 +449,8 @@
   <div class="zone" id="stick"><i></i></div>
   <div class="tbtn" id="t-fire">Fire</div><div class="tbtn amber" id="t-msl">Msl</div><div class="tbtn amber" id="t-boost">Boost</div><div class="tbtn" id="t-brake">Brake</div>
   <div class="tbtn" id="t-tab">Target</div><div class="tbtn amber" id="t-dash">Dash</div><div class="tbtn" id="t-thup">Thr +</div><div class="tbtn" id="t-thdn">Thr −</div><div class="tbtn" id="t-wing">Wing</div><div class="tbtn" id="t-pause">Pause</div>
+  <div class="tbtn sbx" id="t-interact">Dock/Use</div><div class="tbtn amber sbx" id="t-warp">Warp</div><div class="tbtn sbx" id="t-jump">Jump</div>
+  <div class="tbtn sbx" id="t-map">Map</div><div class="tbtn sbx" id="t-scan">Scan</div><div class="tbtn amber sbx" id="t-stop">Stop</div>
 </div>
 <div id="mute-ind">Audio muted</div>
 <div id="fps"></div>
@@ -540,9 +578,9 @@ const CONFIG = {
     maxPixelRatio: 1.5,
     shadows: true,
     shadowMapSize: 1024,
-    bloomStrength: 0.75,
-    bloomRadius: 0.35,
-    bloomThreshold: 0.82,
+    bloomStrength: 0.95,
+    bloomRadius: 0.45,
+    bloomThreshold: 0.78,
     vignette: 0.42,
     grain: 0.045,
     fovChase: 70,
@@ -927,7 +965,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPrefer
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CONFIG.render.maxPixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.1;
 renderer.shadowMap.enabled = CONFIG.render.shadows;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -978,11 +1016,81 @@ function radialTexture(size, stops, noise = 0) {
   if (noise > 0) { const img = g.getImageData(0, 0, size, size), d = img.data; for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * noise; d[i] += n; d[i + 1] += n; d[i + 2] += n; } g.putImageData(img, 0, 0); }
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
 }
+function flameTexture() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d');
+  const grdV = g.createLinearGradient(0, 0, 0, 128);
+  grdV.addColorStop(0, 'rgba(255,255,255,0.95)'); grdV.addColorStop(0.18, 'rgba(185,228,255,0.8)'); grdV.addColorStop(0.5, 'rgba(100,170,255,0.35)'); grdV.addColorStop(1, 'rgba(60,120,255,0)');
+  g.fillStyle = grdV; g.fillRect(0, 0, 64, 128);
+  const grdH = g.createLinearGradient(0, 0, 64, 0);
+  grdH.addColorStop(0, 'rgba(0,0,0,0)'); grdH.addColorStop(0.5, 'rgba(0,0,0,1)'); grdH.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalCompositeOperation = 'destination-in'; g.fillStyle = grdH; g.fillRect(0, 0, 64, 128);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
+function streakTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 32; const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 256, 0);
+  grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(255,255,255,1)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 32);
+  const v = g.createLinearGradient(0, 0, 0, 32);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(0.5, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalCompositeOperation = 'destination-in'; g.fillStyle = v; g.fillRect(0, 0, 256, 32);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
 const TEX = {
   glow: radialTexture(128, [[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,0.8)'], [0.6, 'rgba(255,255,255,0.15)'], [1, 'rgba(255,255,255,0)']]),
   particle: radialTexture(64, [[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']]),
   nebula: radialTexture(256, [[0, 'rgba(255,255,255,0.55)'], [0.35, 'rgba(255,255,255,0.28)'], [0.7, 'rgba(255,255,255,0.08)'], [1, 'rgba(255,255,255,0)']], 24),
+  flame: flameTexture(),
+  streak: streakTexture(),
 };
+
+// ---------- Procedural nebula skybox: FBM value-noise clouds on an equirect canvas, cached per tint ----------
+const SKYBOX_CACHE = new Map();
+function skyNoise(seed) {
+  let s = seed >>> 0; const rng = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const W = 64, H = 32, g = new Float32Array(W * H);
+  for (let i = 0; i < g.length; i++) g[i] = rng();
+  const sm = (t) => t * t * (3 - 2 * t);
+  return (x, y) => {
+    let fx = (x - Math.floor(x)) * W, fy = (y - Math.floor(y)) * H;
+    const x0 = fx | 0, y0 = fy | 0, x1 = (x0 + 1) % W, y1 = (y0 + 1) % H;
+    fx = sm(fx - x0); fy = sm(fy - y0);
+    return lerp(lerp(g[y0 * W + x0], g[y0 * W + x1], fx), lerp(g[y1 * W + x0], g[y1 * W + x1], fx), fy);
+  };
+}
+function buildSkyboxTexture(tintHex) {
+  const key = tintHex >>> 0;
+  if (SKYBOX_CACHE.has(key)) return SKYBOX_CACHE.get(key);
+  const W = 768, H = 384; const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  const img = g.createImageData(W, H); const d = img.data;
+  const A = new THREE.Color(tintHex); const hsl = { h: 0, s: 0, l: 0 }; A.getHSL(hsl);
+  const B = new THREE.Color().setHSL((hsl.h + 0.42 + (key % 97) / 800) % 1, Math.min(1, hsl.s * 0.85 + 0.2), Math.max(0.18, hsl.l * 0.75));
+  const n1 = skyNoise(key * 3 + 17), n2 = skyNoise(key * 7 + 5), n3 = skyNoise(key * 13 + 29);
+  const fbm = (n, x, y) => n(x, y) * 0.52 + n(x * 2.03 + 0.31, y * 2.03 + 0.17) * 0.27 + n(x * 4.07 + 0.77, y * 4.07 + 0.41) * 0.14 + n(x * 8.13 + 0.13, y * 8.13 + 0.61) * 0.07;
+  const phase = (key % 7) * 0.9;
+  for (let py = 0; py < H; py++) {
+    const y = py / H;
+    for (let px = 0; px < W; px++) {
+      const x = px / W, i = (py * W + px) * 4;
+      const yc = 0.5 + 0.15 * Math.sin(x * Math.PI * 2 + phase);
+      const bw = 0.14 + 0.1 * n3(x * 2, y * 2);
+      const band = Math.exp(-((y - yc) * (y - yc)) / (2 * bw * bw));
+      const w1 = fbm(n1, x * 3, y * 3), w2 = fbm(n2, x * 3 + 5.2, y * 3 + 2.7);
+      const d1 = Math.pow(Math.max(0, w1 - 0.36) / 0.64, 1.5) * (0.35 + 0.75 * band);
+      const d2 = Math.pow(Math.max(0, w2 - 0.42) / 0.58, 1.7) * (0.3 + 0.6 * (1 - band * 0.6));
+      let r = 3 + A.r * 255 * d1 * 0.95 + B.r * 255 * d2 * 0.7;
+      let gg = 4 + A.g * 255 * d1 * 0.95 + B.g * 255 * d2 * 0.7;
+      let b = 9 + A.b * 255 * d1 * 0.95 + B.b * 255 * d2 * 0.7;
+      if (Math.random() < band * 0.06) { const s = Math.random() * 55 * band; r += s; gg += s; b += s; } // star dust along the band
+      d[i] = r; d[i + 1] = gg; d[i + 2] = b; d[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
+  if (SKYBOX_CACHE.size >= 10) { const k0 = SKYBOX_CACHE.keys().next().value; SKYBOX_CACHE.get(k0).dispose(); SKYBOX_CACHE.delete(k0); }
+  SKYBOX_CACHE.set(key, tex); return tex;
+}
 
 // =====================================================================================
 //  Environment — starfield, nebulae, planet, asteroid field (instanced), derelict station
@@ -1029,12 +1137,26 @@ function buildPlanet(def) {
   const planet = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28), new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0 }));
   const dir = V3(def.dir?.x ?? 0.4, def.dir?.y ?? -0.25, def.dir?.z ?? -0.85).normalize();
   planet.position.copy(dir).multiplyScalar(D); scene.add(planet);
-  const atmo = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: def.atmosphere || 0x5aa0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.35 }));
+  const atmo = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: def.atmosphere || 0x5aa0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.16 }));
   atmo.position.copy(planet.position); atmo.scale.set(R * 2.6, R * 2.6, 1); scene.add(atmo);
+  // fresnel rim atmosphere: a slightly larger shell that glows at grazing angles
+  const shellMat = new THREE.ShaderMaterial({
+    uniforms: { c: { value: new THREE.Color(def.atmosphere || 0x5aa0ff) }, p: { value: 3.4 } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    vertexShader: `varying vec3 vN, vV; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 c; uniform float p; varying vec3 vN, vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), p); gl_FragColor = vec4(c, f * 0.85); }`,
+  });
+  const atmoShell = new THREE.Mesh(new THREE.SphereGeometry(R * 1.045, 40, 28), shellMat);
+  atmoShell.position.copy(planet.position); scene.add(atmoShell);
+  // layered sun: soft halo + white-hot core + horizontal lens streak
   const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xfff4d6, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   sunSprite.position.copy(sun.position).normalize().multiplyScalar(CONFIG.environment.starRadius * 0.95); sunSprite.scale.set(2200, 2200, 1); scene.add(sunSprite);
+  const sunCore = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.85 }));
+  sunCore.position.copy(sunSprite.position); sunCore.scale.set(2200 * 0.26, 2200 * 0.26, 1); scene.add(sunCore);
+  const sunStreak = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.streak, color: 0xfff4d6, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.3 }));
+  sunStreak.position.copy(sunSprite.position); sunStreak.scale.set(2200 * 2.3, 2200 * 0.1, 1); scene.add(sunStreak);
   const ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.35, R * 2.2, 64), new THREE.MeshBasicMaterial({ color: 0xc9b08a, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); ring.visible = false; scene.add(ring);
-  atmo.material.fog = false; env.planet = planet; env.atmo = atmo; env.sunSprite = sunSprite; env.ring = ring;
+  atmo.material.fog = false; env.planet = planet; env.atmo = atmo; env.atmoShell = atmoShell; env.sunSprite = sunSprite; env.sunCore = sunCore; env.sunStreak = sunStreak; env.ring = ring;
 }
 
 function asteroidGeometry(detail = 1) {
@@ -1044,16 +1166,18 @@ function asteroidGeometry(detail = 1) {
 }
 function buildAsteroids() {
   const E = CONFIG.environment; const n = E.asteroids;
-  const mesh = new THREE.InstancedMesh(asteroidGeometry(1), new THREE.MeshStandardMaterial({ color: 0x6f6a63, roughness: 0.95, metalness: 0.05, flatShading: true }), n);
+  const mesh = new THREE.InstancedMesh(asteroidGeometry(1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0.05, flatShading: true }), n);
   mesh.frustumCulled = false; mesh.castShadow = false; mesh.receiveShadow = false;
-  const dummy = new THREE.Object3D();
+  const dummy = new THREE.Object3D(); const ic = new THREE.Color();
   for (let i = 0; i < n; i++) {
     const a = rand(0, Math.PI * 2), r = E.asteroidInner + Math.pow(Math.random(), 0.7) * (E.asteroidOuter - E.asteroidInner);
     const pos = V3(Math.cos(a) * r, rand(-E.asteroidThickness, E.asteroidThickness) * 0.5, Math.sin(a) * r);
     const size = lerp(E.asteroidMinSize, E.asteroidMaxSize, Math.pow(Math.random(), 2.2));
     dummy.position.copy(pos); dummy.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6)); dummy.scale.setScalar(size); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
+    mesh.setColorAt(i, ic.setHSL(rand(0.05, 0.1), rand(0.08, 0.3), rand(0.3, 0.52)));
     env.asteroids.push({ pos, radius: size * 1.05 });
   }
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   scene.add(mesh); env.asteroidMesh = mesh;
 }
 function buildStation(posDef) {
@@ -1295,6 +1419,14 @@ class Entity {
   syncRender(alpha) { if (this.mesh) this.interp(alpha, this.mesh.position, this.mesh.quaternion); }
 }
 
+// Shared exhaust-plume geometry (crossed planes, nozzle at z=0 extending rearward to +z)
+const PLUME_GEO = (() => {
+  const mk = () => new THREE.PlaneGeometry(2.0, 6, 1, 1).rotateX(-Math.PI / 2).translate(0, 0, 3);
+  return mergeGeometries([mk(), mk().rotateZ(Math.PI / 2)], false);
+})();
+const TRAIL_N = 44;
+const _tr1 = new THREE.Vector3(), _tr2 = new THREE.Vector3(), _tr3 = new THREE.Vector3(), _tr4 = new THREE.Vector3();
+
 class Ship extends Entity {
   constructor() {
     super();
@@ -1352,6 +1484,7 @@ class PlayerShip extends Ship {
     this.heat = 0; this.overheated = false; this.fireTimer = 0; this.gunSide = 1; this.missiles = 0; this.missileTimer = 0;
     this.lockProgress = 0; this.locked = false; this.target = null; this.cockpit = false; this.aimPoint = V3(); this.leadValid = false; this.leadPoint = V3();
     this.shieldBubble = null; this.engineSprites = []; this.engineLight = null; this.hullMats = [];
+    this.plumes = []; this.plumeMat = null; this.trailMesh = null; this.trailPts = [];
     this.shipId = 'vanguard'; this.secondary = 'homing'; this.dash = { active: 0, cooldown: 0 }; this.phased = false; this.secondaryTimer = 0;
     this.input = input; this.isPlayer = true; this.slot = 0; this.callsign = 'Vanguard'; this.respawnTimer = 0; this.docked = false; this.firedTick = false; this.template = shipTemplate;
     this.active = true; // players are not pooled, but they must satisfy the targetable interface (versus mode targets them)
@@ -1369,7 +1502,54 @@ class PlayerShip extends Ship {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0x66ccff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.position.copy(a); s.scale.set(2.2, 2.2, 1); this.mesh.add(s); this.engineSprites.push(s);
     }
     this.engineLight = new THREE.PointLight(0x55bbff, 300, 60, 2); this.engineLight.position.set(0, 0, template.size.z * 0.5 + 1); this.mesh.add(this.engineLight);
+    // exhaust plumes: crossed additive planes at each engine anchor, stretched with throttle
+    this.plumes = [];
+    this.plumeMat = new THREE.MeshBasicMaterial({ map: TEX.flame, color: 0x77b8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    for (const a of template.engineAnchors) { const m = new THREE.Mesh(PLUME_GEO, this.plumeMat); m.position.copy(a); this.mesh.add(m); this.plumes.push(m); }
+    if (!this.trailMesh) this.buildTrail();
     scene.add(this.mesh);
+  }
+  buildTrail() {
+    const N = TRAIL_N; const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 2 * 3), 3).setUsage(THREE.DynamicDrawUsage));
+    const fade = new Float32Array(N * 2); for (let i = 0; i < N; i++) { const f = 1 - i / (N - 1); fade[i * 2] = f; fade[i * 2 + 1] = f; }
+    geo.setAttribute('aFade', new THREE.BufferAttribute(fade, 1));
+    const idx = []; for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    geo.setIndex(idx);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { c: { value: new THREE.Color(0x66c8ff) }, op: { value: 0 } },
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      vertexShader: `attribute float aFade; varying float vF, vD; void main(){ vF = aFade; vec4 mv = modelViewMatrix * vec4(position,1.0); vD = length(mv.xyz); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform vec3 c; uniform float op; varying float vF, vD; void main(){ float near = smoothstep(10.0, 45.0, vD); gl_FragColor = vec4(c, vF * vF * op * 0.6 * near); }`,
+    });
+    this.trailMesh = new THREE.Mesh(geo, mat); this.trailMesh.frustumCulled = false; this.trailMesh.visible = false; scene.add(this.trailMesh);
+  }
+  updateTrail() {
+    const T = this.trailMesh; if (!T) return;
+    _tr1.set(0, -0.1, (this.template?.size.z || 8) * 0.52).applyQuaternion(this.mesh.quaternion).add(this.mesh.position);
+    if (!Number.isFinite(_tr1.x + _tr1.y + _tr1.z + camera.position.x)) { this.trailPts.length = 0; T.visible = false; T.material.uniforms.op.value = 0; return; }
+    const pts = this.trailPts;
+    if (pts.length && pts[0].distanceTo(_tr1) > 400) pts.length = 0; // warp / respawn: restart the ribbon
+    const v = pts.length >= TRAIL_N ? pts.pop() : new THREE.Vector3();
+    pts.unshift(v.copy(_tr1));
+    const arr = T.geometry.attributes.position.array;
+    const speedF = this.stats ? clamp((this.speed || 0) / (this.stats.flight.maxSpeed || 1), 0, 1.4) : 0;
+    const width = this.boosting ? 0.7 : 0.4;
+    for (let i = 0; i < TRAIL_N; i++) {
+      const last = pts.length - 1;
+      const p = pts[Math.min(i, last)];
+      _tr2.subVectors(pts[Math.min(last, Math.max(0, i - 1))], pts[Math.min(last, i + 1)]);
+      _tr3.subVectors(p, camera.position);
+      _tr4.crossVectors(_tr2, _tr3);
+      const l = _tr4.length(); if (l < 1e-4) _tr4.set(0, 1, 0); else _tr4.multiplyScalar(1 / l);
+      const w = width * (1 - i / TRAIL_N);
+      arr[i * 6] = p.x + _tr4.x * w; arr[i * 6 + 1] = p.y + _tr4.y * w; arr[i * 6 + 2] = p.z + _tr4.z * w;
+      arr[i * 6 + 3] = p.x - _tr4.x * w; arr[i * 6 + 4] = p.y - _tr4.y * w; arr[i * 6 + 5] = p.z - _tr4.z * w;
+    }
+    T.geometry.attributes.position.needsUpdate = true;
+    const opTarget = (this.alive && !this.hangared && !this.docked && !this.phased) ? Math.min(1, 0.22 + speedF * 0.3 + (this.boosting ? 0.5 : 0)) : 0;
+    const u = T.material.uniforms.op; u.value += (opTarget - u.value) * 0.12;
+    T.visible = u.value > 0.02;
   }
   applyStats(stats) {
     this.stats = stats; this.maxHull = stats.hull; this.maxShield = stats.shield; this.shieldRegenRate = stats.shieldRegenRate; this.shieldRegenDelay = stats.shieldRegenDelay; this.radius = stats.radius;
@@ -1458,6 +1638,9 @@ class PlayerShip extends Ship {
     const thr = this.boosting ? 1.6 : 0.5 + this.throttle * 0.7; const flick = 1 + Math.sin(performance.now() * 0.05) * 0.08;
     for (const s of this.engineSprites) { s.scale.set(2.2 * thr * flick, 2.2 * thr * flick, 1); s.material.color.setHex(this.boosting ? 0xaad8ff : 0x55bbff); }
     if (this.engineLight) this.engineLight.intensity = 200 + thr * 250;
+    if (this.plumeMat) this.plumeMat.color.setHex(this.boosting ? 0xa8d4ff : 0x77b8ff);
+    for (const p of this.plumes) p.scale.set(thr * 0.8, thr * 0.8, (0.35 + thr * 0.75) * flick);
+    this.updateTrail();
     const sb = this.shieldBubble.material.uniforms; sb.strength.value = this.shieldFlash * (this.shield > 0 ? 1 : 0.3);
     // hitDir is ship-local; shader compares against view-space normals → transform local→world→view
     _v[0].copy(this.hitDir).applyQuaternion(this.mesh.quaternion).transformDirection(camera.matrixWorldInverse); sb.hitDir.value.copy(_v[0]);
@@ -2833,9 +3016,29 @@ MISSIONS.push(
 //  Stage 2 — Environments: the same scene re-dressed per mission (tint, planet, sun, hazards, fog)
 // =====================================================================================
 function planetTexture(def) {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
+  const W = 512, H = 256; const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
   const base = new THREE.Color(def.color || 0xc98a4b), band = new THREE.Color(def.bandColor || 0x7a5030);
-  for (let y = 0; y < 256; y++) { const t = 0.5 + 0.5 * Math.sin(y * 0.12 + Math.sin(y * 0.031) * 3) * (0.5 + 0.5 * Math.sin(y * 0.021)); const col = base.clone().lerp(band, t * 0.7); g.fillStyle = `#${col.getHexString()}`; g.fillRect(0, y, 512, 1); }
+  const seed = (base.getHex() ^ (band.getHex() << 3)) >>> 0;
+  const n1 = skyNoise(seed + 11), n2 = skyNoise(seed * 3 + 41);
+  const img = g.createImageData(W, H); const d = img.data; const col = new THREE.Color();
+  for (let y = 0; y < H; y++) {
+    const v = y / H, polar = Math.pow(Math.abs(v - 0.5) * 2, 5);
+    for (let x = 0; x < W; x++) {
+      const u = x / W, i = (y * W + x) * 4;
+      // domain-warped latitude bands + fine mottling
+      const warp = (n1(u * 2, v * 2) - 0.5) * 0.22 + (n1(u * 5 + 0.3, v * 5 + 0.7) - 0.5) * 0.08;
+      const yy = (v + warp) * 30;
+      const t = 0.5 + 0.5 * Math.sin(yy + Math.sin(yy * 0.26) * 3) * (0.5 + 0.5 * Math.sin(yy * 0.18));
+      col.copy(base).lerp(band, Math.min(1, t * 0.75 + polar * 0.5));
+      const mot = 0.86 + 0.28 * n2(u * 8, v * 8); // cloud/terrain mottle
+      const storm = Math.pow(Math.max(0, n2(u * 3 + 7.7, v * 3 + 3.1) - 0.62) / 0.38, 2); // occasional bright storm ovals
+      d[i] = Math.min(255, col.r * 255 * mot + storm * 70);
+      d[i + 1] = Math.min(255, col.g * 255 * mot + storm * 66);
+      d[i + 2] = Math.min(255, col.b * 255 * mot + storm * 58);
+      d[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
 }
 function buildDebrisField() {
@@ -2849,20 +3052,25 @@ function applyEnvironment(envDef) {
   const tint = new THREE.Color(envDef.skyboxTint ?? 0x2b4a8a);
   env.nebulae.forEach((s) => { s.material.color.copy(s.userData.base || (s.userData.base = s.material.color.clone())).lerp(tint, 0.45); });
   hemi.color.copy(tint).lerp(new THREE.Color(0x8fb3d9), 0.4);
-  scene.background = new THREE.Color(0x02040a).lerp(tint, 0.08);
+  scene.background = buildSkyboxTexture(tint.getHex());
   // planet
   if (envDef.planet) { const P = envDef.planet; const old = env.planet.material.map; env.planet.material.map = planetTexture(P); env.planet.material.needsUpdate = true; if (old) old.dispose();
-    const dir = V3(P.dir?.x ?? 0.4, P.dir?.y ?? -0.25, P.dir?.z ?? -0.85).normalize(); env.planet.position.copy(dir).multiplyScalar(CONFIG.environment.planetDistance); env.atmo.position.copy(env.planet.position); env.atmo.material.color.setHex(P.atmosphere || 0x5aa0ff); env.planet.visible = env.atmo.visible = true;
+    const dir = V3(P.dir?.x ?? 0.4, P.dir?.y ?? -0.25, P.dir?.z ?? -0.85).normalize(); env.planet.position.copy(dir).multiplyScalar(CONFIG.environment.planetDistance); env.atmo.position.copy(env.planet.position); env.atmo.material.color.setHex(P.atmosphere || 0x5aa0ff);
+    env.atmoShell.position.copy(env.planet.position); env.atmoShell.material.uniforms.c.value.setHex(P.atmosphere || 0x5aa0ff);
+    env.planet.visible = env.atmo.visible = env.atmoShell.visible = true;
     env.ring.visible = !!P.ring; if (P.ring) { env.ring.position.copy(env.planet.position); env.ring.lookAt(_v[0].copy(env.planet.position).add(_v[1].set(0.3, 1, 0.2))); }
-  } else { env.planet.visible = env.atmo.visible = env.ring.visible = false; }
+  } else { env.planet.visible = env.atmo.visible = env.atmoShell.visible = env.ring.visible = false; }
   // sun
   const S = envDef.sun || { color: 0xfff4d6, size: 2200, dir: { x: -0.55, y: 0.33, z: -0.77 } }; env.sunSprite.material.color.setHex(S.color); env.sunSprite.scale.set(S.size, S.size, 1); env.sunSprite.position.set(S.dir.x, S.dir.y, S.dir.z).normalize().multiplyScalar(CONFIG.environment.starRadius * 0.95); sun.color.setHex(S.color);
+  env.sunCore.position.copy(env.sunSprite.position); env.sunCore.scale.set(S.size * 0.26, S.size * 0.26, 1);
+  env.sunStreak.position.copy(env.sunSprite.position); env.sunStreak.scale.set(S.size * 2.3, S.size * 0.1, 1);
+  env.sunStreak.material.color.setHex(S.color);
   // hazards
   const hz = envDef.hazards || []; const density = envDef.asteroidDensity ?? (hz.includes('asteroids') ? 1 : 0);
   const count = Math.floor(density * CONFIG.environment.asteroids); env.asteroidMesh.count = count; env.asteroidMesh.visible = count > 0; env.station.visible = hz.includes('derelict'); env.debrisMesh.visible = hz.includes('debris');
   world.obstacles = []; world.obstacles.push(...env.asteroids.slice(0, count)); if (env.station.visible) world.obstacles.push({ pos: env.station.position, radius: env.stationRadius });
   // fog
-  if (envDef.fog || hz.includes('fog')) { const F = envDef.fog || { color: 0x1a1a2a, density: 0.0002 }; scene.fog = new THREE.FogExp2(F.color, F.density); scene.background = new THREE.Color(F.color).lerp(new THREE.Color(0x02040a), 0.5); } else scene.fog = null;
+  if (envDef.fog || hz.includes('fog')) { const F = envDef.fog || { color: 0x1a1a2a, density: 0.0002 }; scene.fog = new THREE.FogExp2(F.color, F.density); scene.background = buildSkyboxTexture(new THREE.Color(F.color).lerp(tint, 0.4).getHex()); } else scene.fog = null;
 }
 
 // =====================================================================================
@@ -3104,7 +3312,7 @@ const net = {
     for (const cap of [70, 24, 0]) { CONFIG.net.maxProjectiles = cap; b64 = this.b64(this.writeSnapshot()); if (b64.length < 3800) break; }
     CONFIG.net.maxProjectiles = saved; this.room.presence({ snap: b64 });
   },
-  disconnect() { for (const u of this.roomUnsubs) { try { u(); } catch (e) {} } this.roomUnsubs = []; if (this.room && this.transport === 'room') { try { this.room.presence({ role: null, snap: null, inp: null }); } catch (e) {} } this.transport = 'rtc'; this.myPeer = null; this.hostPeer = null; this.lastSnapB64 = null; for (const p of this.peers) { try { p.pc.close(); } catch (e) {} } this.peers = []; if (this.pc) { try { this.pc.close(); } catch (e) {} } this.pc = null; this.ctl = null; this.game = null; this.role = 'solo'; this.connected = false; this.pendingPeer = null; this.pending = []; world.netEvents = false; game.mode = 'coop'; this.setStatus('Not connected.'); lobby.onNetChange(); for (const p of world.players) if (p && p !== world.player && p.mesh) { scene.remove(p.mesh); p.mesh = null; } world.players = [world.player]; world.player.slot = 0; },
+  disconnect() { for (const u of this.roomUnsubs) { try { u(); } catch (e) {} } this.roomUnsubs = []; if (this.room && this.transport === 'room') { try { this.room.presence({ role: null, snap: null, inp: null }); } catch (e) {} } this.transport = 'rtc'; this.myPeer = null; this.hostPeer = null; this.lastSnapB64 = null; for (const p of this.peers) { try { p.pc.close(); } catch (e) {} } this.peers = []; if (this.pc) { try { this.pc.close(); } catch (e) {} } this.pc = null; this.ctl = null; this.game = null; this.role = 'solo'; this.connected = false; this.pendingPeer = null; this.pending = []; world.netEvents = false; game.mode = 'coop'; this.setStatus('Not connected.'); lobby.onNetChange(); for (const p of world.players) if (p && p !== world.player) { if (p.mesh) { scene.remove(p.mesh); p.mesh = null; } if (p.trailMesh) { scene.remove(p.trailMesh); p.trailMesh = null; } } world.players = [world.player]; world.player.slot = 0; },
 };
 
 // =====================================================================================
@@ -3124,6 +3332,9 @@ const touch = {
     const key = (k) => [() => input.keys.add(k), () => input.keys.delete(k)]; const tap = (k) => [() => input.pressed.add(k), () => {}];
     hold('t-fire', () => { input.fire = true; }, () => { input.fire = false; }); hold('t-msl', ...tap('KeyF')); hold('t-boost', ...key('ShiftLeft')); hold('t-brake', ...key('Space'));
     hold('t-tab', ...tap('Tab')); hold('t-dash', ...tap('KeyQ')); hold('t-thup', ...key('KeyW')); hold('t-thdn', ...key('KeyS')); hold('t-wing', ...tap('KeyV')); hold('t-pause', ...tap('Escape'));
+    // sandbox row: same key codes the keyboard path consumes
+    hold('t-interact', ...tap('KeyE')); hold('t-warp', ...tap('KeyR')); hold('t-jump', ...tap('KeyJ'));
+    hold('t-map', ...tap('KeyN')); hold('t-scan', ...tap('KeyP')); hold('t-stop', ...tap('KeyX'));
     $('opt-touch').addEventListener('change', (e) => this.set(e.target.checked));
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) { $('opt-touch').checked = true; this.set(true); }
   },
@@ -4557,7 +4768,7 @@ function sbxLoadSystem(sysIdx, entryPos) {
   });
   // belts: one InstancedMesh for all minable rocks
   const rockCount = sys.belts.length * CONFIG.sbx.belt.rocksPerBelt;
-  const rockMesh = new THREE.InstancedMesh(asteroidGeometry(1), new THREE.MeshStandardMaterial({ color: 0x7d7468, roughness: 0.95, metalness: 0.05, flatShading: true }), Math.max(1, rockCount));
+  const rockMesh = new THREE.InstancedMesh(asteroidGeometry(1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0.05, flatShading: true }), Math.max(1, rockCount));
   rockMesh.frustumCulled = false; scene.add(rockMesh); SBX.sceneObjs.push(rockMesh); SBX.rockMesh = rockMesh;
   const rng = makeRng(CONFIG.sbx.seed + sysIdx * 977); const dummy = new THREE.Object3D(); let ri = 0;
   for (const belt of sys.belts) {
@@ -4571,10 +4782,15 @@ function sbxLoadSystem(sysIdx, entryPos) {
       const maxUnits = 120 + Math.floor(rng() * 240);
       if (bs.units[k] == null) bs.units[k] = maxUnits;
       const rock = { index: ri, pos, ore, maxUnits, belt, k, get units() { return bs.units[k]; }, set units(v) { bs.units[k] = v; }, radius: 12 };
-      SBX.rocks.push(rock); sbxRockMatrix(rock, dummy); ri++;
+      SBX.rocks.push(rock); sbxRockMatrix(rock, dummy);
+      // tint per ore so rich rocks read at a glance
+      const oreHue = { ore_cindrite: 0.07, ore_auberite: 0.02, ore_vexcry: 0.58 }[ore] ?? 0.07;
+      rockMesh.setColorAt(ri, _c.setHSL(oreHue + (rng() - 0.5) * 0.02, ore === 'ore_vexcry' ? 0.4 : 0.18 + rng() * 0.2, 0.32 + rng() * 0.18));
+      ri++;
     }
   }
   rockMesh.instanceMatrix.needsUpdate = true;
+  if (rockMesh.instanceColor) rockMesh.instanceColor.needsUpdate = true;
   // wrecks persisted for this system
   for (const w of state.wrecks) sbxSpawnWreck(V3(w.x, w.y, w.z), w.items, w);
   // deadspace points for active recovery missions in this system
@@ -4590,6 +4806,7 @@ function sbxLoadSystem(sysIdx, entryPos) {
   pl.reset(entryPos || _v[0].set(0, 100, 3000), _q[0].identity()); pl.target = null; cam.init = false;
   SBX.police = { responding: false, timer: -1, aggressed: false };
   sbxSpawnGateCamps(sys); sbxSpawnFleet();
+  SBXNET.onSystem();
   (SBX.profile.visitedSys = SBX.profile.visitedSys || []).includes(sysIdx) || SBX.profile.visitedSys.push(sysIdx);
   if (sys.sec >= 0.5 && SBX.profile.secStatus <= CONFIG.sbx.police.secStatusHostile) { SBX.police.timer = 4; SBX.police.responding = true; } // outlaws are hunted on sight in high sec
   SBX.dirty = true;
@@ -5076,10 +5293,12 @@ function sbxOverviewEntries() {
   // rocks: only the closest few, only when near a belt (keeps the list readable)
   const rocks = SBX.rocks.filter(r => r.units > 0).map(r => ({ kind: 'rock', name: `${ITEMS[r.ore].name} (${r.units})`, pos: r.pos, ref: r, rock: r, dist: r.pos.distanceTo(pl.pos) })).filter(r => r.dist < 2500).sort((a, b) => a.dist - b.dist).slice(0, 6);
   out.push(...rocks);
+  // other live pilots in this system (sandbox multiplayer ghosts)
+  for (const peer of SBXNET.peers.values()) if (peer.mesh) out.push({ kind: 'pilot', name: peer.name, pos: peer.mesh.position, ref: peer, dist: peer.mesh.position.distanceTo(pl.pos) });
   if (SBX.ovSort === 'dist') out.sort((a, b) => a.dist - b.dist); else if (SBX.ovSort === 'name') out.sort((a, b) => a.name.localeCompare(b.name)); else out.sort((a, b) => a.kind.localeCompare(b.kind) || a.dist - b.dist);
   return out;
 }
-const OV_COLOR = { station: '#9fe8ff', gate: '#c9d4ff', belt: '#d9c9a0', rock: '#d9c9a0', wreck: '#ffd166', deadspace: '#ff9a5a', wormhole: '#c98cff', structure: '#ffd166' };
+const OV_COLOR = { station: '#9fe8ff', gate: '#c9d4ff', belt: '#d9c9a0', rock: '#d9c9a0', wreck: '#ffd166', deadspace: '#ff9a5a', wormhole: '#c98cff', structure: '#ffd166', pilot: '#ffd27a' };
 function sbxOverviewRender() {
   const list = $('ov-list'); if (!list) return;
   const entries = sbxOverviewEntries(); const sel = SBX.selected;
@@ -5412,6 +5631,187 @@ function sbxOfflineDigest(rep, awayMs) {
 }
 
 // =====================================================================================
+//  part22 — Sandbox multiplayer: live co-presence over the Supabase Realtime channel.
+//  Every sandbox pilot broadcasts a light snapshot a few times a second; pilots in the
+//  SAME system render as ghost ships with nametags, show up in the overview and in
+//  "local" join/leave toasts. Shots land on other pilots only in low/null sec
+//  (victim-authoritative damage — your client applies hits others report on you).
+//  NPCs, the economy and saves stay local to each pilot: you share space, not servers.
+// =====================================================================================
+const SBXNET = {
+  client: null, ch: null, ready: false, on: false, err: null,
+  myId: 'sx' + Math.random().toString(36).slice(2, 10),
+  peers: new Map(), // id → { id, name, sys, hull, p, q, v, t, hu, sh, warp, mesh, tagEl, lastSnap }
+  roster: {},       // presence: id → { name, sys, ship }
+  sendT: 0, hsToastT: 0, localSet: new Set(),
+  get available() { return !!(CONFIG.lobby.url && CONFIG.lobby.key); },
+
+  async join() {
+    if (this.on) { this.trackPresence(); return; }
+    if (!this.available) return;
+    this.on = true;
+    try {
+      const L = CONFIG.lobby;
+      const createClient = window.__createSupabaseClient || (await import(/* @vite-ignore */ L.lib)).createClient;
+      this.client = lobby.client || createClient(L.url, L.key, { realtime: { params: { eventsPerSecond: 20 } }, auth: { persistSession: false, autoRefreshToken: false } });
+      this.ch = this.client.channel('vector-sbx', { config: { presence: { key: this.myId }, broadcast: { self: false, ack: false } } });
+      this.ch.on('presence', { event: 'sync' }, () => this.onSync());
+      this.ch.on('broadcast', { event: 'snap' }, (m) => this._onSnap(m.payload || m));
+      this.ch.on('broadcast', { event: 'hit' }, (m) => this._onHit(m.payload || m));
+      this.ch.on('broadcast', { event: 'kill' }, (m) => this._onKill(m.payload || m));
+      this.ch.on('broadcast', { event: 'gone' }, (m) => this._onGone(m.payload || m));
+      this.ch.subscribe((status) => {
+        if (status === 'SUBSCRIBED') { this.ready = true; this.trackPresence(); sbxToast('Local channel open — other pilots are visible.'); }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') this.ready = false;
+      });
+    } catch (e) { this.err = e.message || String(e); this.on = false; }
+  },
+  leave() {
+    this.sendGone();
+    for (const peer of this.peers.values()) this.dropGhost(peer);
+    this.peers.clear(); this.localSet.clear(); this.roster = {};
+    if (this.ch) { try { this.ch.unsubscribe(); } catch (e) {} }
+    this.ch = null; this.ready = false; this.on = false;
+  },
+  myName() { return game.profile.name || (game.profile.name = lobby.defaultName()); },
+  trackPresence() {
+    if (!this.ready || !this.ch || !SBX.active) return;
+    this.ch.track({ name: this.myName(), sys: SBX.profile.systemId, ship: SBX_HULLS[SBX.ship()?.hull]?.name || '?', t: Date.now() }).catch(() => {});
+  },
+  onSystem() { // called after every system load
+    this.trackPresence();
+    for (const peer of this.peers.values()) if (peer.sys !== SBX.profile.systemId) this.dropGhost(peer);
+    this.refreshLocal(false);
+  },
+  onSync() {
+    if (!this.ch) return;
+    const st = this.ch.presenceState(); const roster = {};
+    for (const [key, metas] of Object.entries(st)) { if (key === this.myId || !metas?.length) continue; roster[key] = metas[metas.length - 1]; }
+    this.roster = roster;
+    for (const [id, peer] of this.peers) if (!roster[id]) { this.dropGhost(peer); this.peers.delete(id); }
+    this.refreshLocal(true);
+  },
+  refreshLocal(toast) { // join/leave toasts for pilots sharing your system ("local")
+    if (!SBX.active) return;
+    const now = new Set();
+    for (const [id, m] of Object.entries(this.roster)) if (m.sys === SBX.profile.systemId) now.add(id);
+    if (toast) {
+      for (const id of now) if (!this.localSet.has(id)) sbxToast(`${this.roster[id].name} entered local.`);
+      for (const id of this.localSet) if (!now.has(id) && this.peers.get(id)) sbxToast(`${this.peers.get(id).name} left local.`);
+    }
+    this.localSet = now;
+  },
+  send(event, payload) { if (this.ready && this.ch) this.ch.send({ type: 'broadcast', event, payload }).catch(() => {}); },
+  sendGone() { this.send('gone', { i: this.myId }); },
+
+  step(dt) {
+    if (!SBX.active) return;
+    const pl = world.player, p = SBX.profile, now = performance.now();
+    // outgoing snapshots
+    this.sendT -= dt;
+    if (this.sendT <= 0 && this.ready && pl.alive && !p.docked && !pl.hangared) {
+      this.sendT = 0.22;
+      const r2 = (x) => Math.round(x * 100) / 100;
+      this.send('snap', {
+        i: this.myId, n: this.myName(), s: p.systemId, h: SBX.ship()?.hull || 'h_kestrel',
+        p: [r2(pl.pos.x), r2(pl.pos.y), r2(pl.pos.z)], q: [r2(pl.quat.x), r2(pl.quat.y), r2(pl.quat.z), r2(pl.quat.w)],
+        v: [r2(pl.vel.x), r2(pl.vel.y), r2(pl.vel.z)],
+        hu: Math.round((pl.hull / pl.maxHull) * 100) / 100, sh: Math.round((pl.shield / Math.max(1, pl.maxShield)) * 100) / 100, w: pl.warping ? 1 : 0,
+      });
+    }
+    // ghosts: extrapolate + smooth toward the latest snapshot
+    for (const peer of this.peers.values()) {
+      if (!peer.mesh) continue;
+      if (now - peer.lastSnap > 8000) { this.dropGhost(peer); continue; } // stale: they docked, left, or lost link
+      const age = Math.min(1.2, (now - peer.lastSnap) / 1000);
+      _v[8].set(peer.p[0] + peer.v[0] * age, peer.p[1] + peer.v[1] * age, peer.p[2] + peer.v[2] * age);
+      const k = 1 - Math.exp(-8 * dt);
+      peer.mesh.position.lerp(_v[8], k);
+      _q[1].set(peer.q[0], peer.q[1], peer.q[2], peer.q[3]).normalize();
+      peer.mesh.quaternion.slerp(_q[1], k);
+      this.updateTag(peer);
+    }
+    // PvP: my bolts vs ghost hulls — real damage only where the law is thin
+    if (this.peers.size) {
+      const sec = SBX.sys?.sec ?? 1;
+      world.projectiles.forEachActive(pr => {
+        if (pr.team !== 'player' || pr.owner !== pl) return;
+        for (const peer of this.peers.values()) {
+          if (!peer.mesh || peer.warp) continue;
+          if (!sweptHit(pr.prevPos, pr.pos, peer.mesh.position, 14 + pr.radius, _v[8])) continue;
+          world.sparks(_v[8], CONFIG.fx.sparkParticles, 0xffe0a0);
+          if (sec >= 0.5) {
+            if (now - this.hsToastT > 5000) { this.hsToastT = now; sbxToast('High sec — Authority dampers absorb your fire.'); }
+          } else this.send('hit', { to: peer.id, n: this.myName(), d: pr.damage, m: null });
+          return world.projectiles.release(pr);
+        }
+      });
+    }
+  },
+
+  // ---------- incoming events (also called directly by the test harness) ----------
+  _onSnap(s) {
+    if (!s || s.i === this.myId || !SBX.active) return;
+    let peer = this.peers.get(s.i);
+    if (!peer) { peer = { id: s.i, mesh: null, tagEl: null }; this.peers.set(s.i, peer); }
+    peer.name = s.n; peer.sys = s.s; peer.hull = s.h; peer.p = s.p; peer.q = s.q; peer.v = s.v;
+    peer.hu = s.hu; peer.sh = s.sh; peer.warp = !!s.w; peer.lastSnap = performance.now();
+    if (s.s === SBX.profile.systemId) { if (!peer.mesh) this.spawnGhost(peer); }
+    else if (peer.mesh) this.dropGhost(peer);
+  },
+  _onHit(h) {
+    if (!h || h.to !== this.myId || !SBX.active) return;
+    const pl = world.player, p = SBX.profile;
+    if (!pl.alive || p.docked || pl.hangared) return;
+    if ((SBX.sys?.sec ?? 1) >= 0.5) return; // victim-authoritative: no PvP damage in high sec
+    _v[8].copy(pl.pos).add(_v[9].set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize().multiplyScalar(pl.radius));
+    world.hitShip(pl, h.d || 10, _v[8], 'enemy', { name: h.n || 'pilot', pvp: true });
+    shake.add(0.18);
+    if (pl.hull <= 0) this.send('kill', { n: this.myName(), by: h.n || 'pilot', s: p.systemId });
+  },
+  _onKill(k) {
+    if (!k || !SBX.active) return;
+    if (k.by === this.myName()) sbxToast(`☠ Kill confirmed — you destroyed ${k.n}'s ship.`);
+    else if (k.s === SBX.profile.systemId) sbxToast(`☠ ${k.by} destroyed ${k.n}'s ship.`);
+  },
+  _onGone(g) { const peer = g && this.peers.get(g.i); if (peer) { this.dropGhost(peer); this.peers.delete(g.i); } },
+
+  // ---------- ghost ships + nametags ----------
+  spawnGhost(peer) {
+    const hue = (peer.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 12) / 12;
+    const tint = new THREE.Color().setHSL(hue, 0.35, 0.72);
+    const root = new THREE.Group();
+    const body = instantiateShip(tint.getHex(), TEMPLATES.fighter);
+    const cls = SBX_HULLS[peer.hull]?.cls;
+    const scl = { Frigate: 1, Destroyer: 1.35, Cruiser: 1.7, 'Mining Barge': 1.7, Industrial: 2.0 }[cls] || 1;
+    root.scale.setScalar(scl); root.add(body);
+    const eng = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0x66ccff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    eng.position.set(0, 0, (shipTemplate.size.z || 8) * 0.5); eng.scale.set(2.4, 2.4, 1); root.add(eng);
+    root.position.set(peer.p[0], peer.p[1], peer.p[2]);
+    scene.add(root); peer.mesh = root;
+  },
+  dropGhost(peer) {
+    if (peer.mesh) { scene.remove(peer.mesh); peer.mesh.traverse((o) => { if (o.isMesh) for (const m of (Array.isArray(o.material) ? o.material : [o.material])) m.dispose(); if (o.isSprite) o.material.dispose(); }); peer.mesh = null; }
+    if (peer.tagEl) { peer.tagEl.remove(); peer.tagEl = null; }
+  },
+  updateTag(peer) {
+    if (!peer.tagEl) {
+      const el = document.createElement('div'); el.className = 'tag3d'; el.innerHTML = '<span></span><div class="bar"><i></i></div>';
+      $('tags').appendChild(el); peer.tagEl = el;
+    }
+    const el = peer.tagEl;
+    _v[8].copy(peer.mesh.position).addScaledVector(WORLD_UP, 10); toScreen(_v[8], _scr);
+    if (!_scr.onScreen) { el.style.display = 'none'; return; }
+    el.style.display = ''; el.style.transform = `translate(${_scr.x.toFixed(1)}px, ${_scr.y.toFixed(1)}px)`;
+    el.classList.toggle('foe', (SBX.sys?.sec ?? 1) < 0.5);
+    const d = peer.mesh.position.distanceTo(world.player.pos);
+    const label = `${peer.name} · ${d > 10000 ? (d / 1000).toFixed(1) + ' km' : fmt(d) + ' m'}`;
+    if (el.firstChild.textContent !== label) el.firstChild.textContent = label;
+    setBar(el.lastChild.firstChild, clamp(peer.hu ?? 1, 0, 1));
+  },
+};
+
+// =====================================================================================
 //  part18 — Sandbox controller: enter/exit, docking, the per-tick step, input, hooks
 //  into the shared world, and every DOM binding for the sandbox UI.
 // =====================================================================================
@@ -5465,11 +5865,13 @@ function sbxEnter() {
   if (p.docked && SBX.station(p.stationId) && SBX.systemOfStation(p.stationId) === SBX.sys) sbxEnterDock(false);
   else { p.docked = false; world.player.hangared = false; }
   $('h-objective').textContent = 'Open universe'; sbxStorageWarn();
+  SBXNET.join();
   setScreen(SCREEN.PLAYING);
   sbxToast(p.docked ? `Docked at ${SBX.station().name}.` : `On grid in ${SBX.sys.name}.`);
 }
 function sbxExit() {
   sbxRecordDamage(); if (!SBX.profile.docked) SBX.profile.pos = [world.player.pos.x, world.player.pos.y, world.player.pos.z];
+  SBXNET.leave();
   sbxSave('exit'); SBX.active = false; game.mode = 'coop'; document.body.classList.remove('sandbox');
   world.sandboxDamage = null; world.onEnemyHit = null; world.npcHostile = null; world.player.hangared = false; world.player.warping = false; world.player.apSteer = false;
   sbxShowStation(false); sbxShowMap(false); $('sb-loss').classList.remove('on');
@@ -5486,6 +5888,7 @@ function sbxTryDock() {
   SBX.profile.stationId = st.id; sbxEnterDock(true);
 }
 function sbxEnterDock(announce) {
+  SBXNET.sendGone();
   const pl = world.player; const p = SBX.profile; p.docked = true; pl.hangared = true; pl.vel.set(0, 0, 0);
   assist.cancel(true); SBX.warpDrive.state = null; pl.warping = false; SBX.ship().location = 'station:' + p.stationId;
   sbxRecordDamage(); SBX.offersFor = null; sbxFleetDeliverOnDock(); sbxShowStation(true); sbxSave('dock');
@@ -5537,7 +5940,7 @@ function sbxStep(dt) {
     if (rep) { for (const j of rep.jobs) sbxToast(`Job complete: ${j}.`); for (const sname of rep.skills) sbxToast(`Skill trained: ${sname}.`); for (const ev of rep.structEvents) sbxToast(ev); }
     if (p.docked && $('sb-station').classList.contains('on') && (stationUI.tab === 'market' || (rep && (rep.jobs.length || rep.skills.length)))) sbxRenderStation();
   }
-  sbxFleetStep(dt); sbxStructureRaidStep(); sbxFleetHUD(dt);
+  sbxFleetStep(dt); sbxStructureRaidStep(); sbxFleetHUD(dt); SBXNET.step(dt);
   SBX.hideT = (SBX.hideT || 0) - dt; if (SBX.hideT <= 0) { SBX.hideT = 2; sbxHideoutStep(); }
   SBX.msnT = (SBX.msnT || 0) - dt; if (SBX.msnT <= 0) { SBX.msnT = 1; sbxMissionStep(); }
   SBX.autosaveT = (SBX.autosaveT || 0) + dt;
@@ -5583,6 +5986,7 @@ $('ov-list').addEventListener('click', (e) => { const r = e.target.closest('[dat
 $('ov-actions').addEventListener('click', (e) => { const b = e.target.closest('[data-ova]'); if (b) { audio.click(); sbxOvAction(b.dataset.ova); } });
 for (const b of document.querySelectorAll('#ov-sort button')) b.onclick = () => { SBX.ovSort = b.dataset.sort; sbxOverviewRender(); };
 $('btn-ov-map').onclick = () => sbxShowMap(true);
+$('mod-rack').addEventListener('click', (e) => { const s = e.target.closest('[data-mod]'); if (s) { const rt = world.player.sbx?.actives[+s.dataset.mod]; if (rt) { audio.click(); sbxToggleModule(rt); } } });
 $('sb-loss-btn').onclick = () => { audio.click(true); sbxRespawn(); };
 $('btn-sb-close').onclick = () => { if (SBX.profile.docked) sbxUndock(); else sbxShowStation(false); };
 $('btn-map-close').onclick = () => sbxShowMap(false);
@@ -5961,7 +6365,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
+  SBX, SBXNET, sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
 </script>
