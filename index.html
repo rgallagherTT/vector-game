@@ -579,7 +579,7 @@
       <div>Esc — pause</div><div>M — mute &nbsp; V — wingmen engage / regroup</div>
     </div>
   </details>
-  <div class="actions"><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
+  <div class="actions"><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><label><input type="checkbox" id="opt-touch"> Touch controls</label><label><input type="checkbox" id="opt-humans"> Humans only — no NPC ships</label></div>
   <div class="small" id="b-coop-status"></div>
   <div class="foot">Ship: <span id="b-ship">Vanguard</span> &nbsp;·&nbsp; Credits: <span id="b-credits">0</span></div>
 </div></div>
@@ -3465,6 +3465,13 @@ const touch = {
     dyn('t-map', 'KeyN'); dyn('t-scan', 'KeyP'); dyn('t-stop', 'KeyX');
     $('opt-touch').addEventListener('change', (e) => this.set(e.target.checked));
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) { $('opt-touch').checked = true; this.set(true); }
+    // humans-only sandbox: no NPC ships spawn, only real pilots share space
+    try { game.humansOnly = localStorage.getItem('vec_humans_only') === '1'; } catch (e) { game.humansOnly = false; }
+    $('opt-humans').checked = !!game.humansOnly;
+    $('opt-humans').addEventListener('change', (e) => {
+      game.humansOnly = e.target.checked;
+      try { localStorage.setItem('vec_humans_only', e.target.checked ? '1' : '0'); } catch (err) {}
+    });
   },
   set(on) { this.enabled = on; document.body.classList.toggle('touch-mode', on); if (!on) { input.mouseX = 0; input.mouseY = 0; } },
   update() { $('touch').classList.toggle('on', this.enabled && (screen === SCREEN.PLAYING || screen === SCREEN.PAUSED)); },
@@ -5025,6 +5032,7 @@ function sbxRockMatrix(rock, dummy = new THREE.Object3D()) {
 
 // ---------- Ambient NPCs — exist whether or not the player is watching ----------
 function sbxSpawnNPC(kind, type, pos, opts = {}) {
+  if (game.humansOnly) return null;                                   // humans-only mode: space belongs to real pilots
   const e = world.spawnEnemy(type, pos, _v[7].set(rand(-1, 1), 0, rand(-1, 1)).normalize(), opts);
   if (!e) return null;
   e.npc = { kind, faction: kind === 'pirate' ? 'syndicate' : kind === 'police' ? 'authority' : 'guild' };
@@ -8098,7 +8106,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
