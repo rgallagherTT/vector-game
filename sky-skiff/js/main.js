@@ -145,7 +145,10 @@ U.refreshMenu = function(){
 
   var canLaunch = guns.length > 0;
   $('goOnline').disabled = !canLaunch;
+  $('goHumans').disabled = !canLaunch;
   $('goBots').disabled = !canLaunch;
+  /* a self-hosted server.js only runs drone-filled rooms */
+  $('goHumans').hidden = SS.Net.mode() === 'ws';
   var name = SS.Profile.name();
   if (name) $('accName').textContent = name;
 };
@@ -153,8 +156,11 @@ U.refreshMenu = function(){
 /* ---- online matchmaking ---- */
 var mmOpen = false;
 U.matchmakingOpen = function(){ return mmOpen; };
+U.lastHumansOnly = false;
 
-U.startMatchmaking = function(){
+U.startMatchmaking = function(humansOnly){
+  humansOnly = !!humansOnly && SS.Net.humansOnlyAvailable();
+  U.lastHumansOnly = humansOnly;
   var name = SS.Profile.name();
   if (!name){ U.checkProfile(); return; }
   if (!SS.Net.available()){
@@ -169,6 +175,10 @@ U.startMatchmaking = function(){
   $('mmCount').textContent = '1/10';
   $('mmTimer').textContent = '–';
   $('mmNet').textContent = '';
+  $('mmTitle').textContent = humansOnly ? 'Humans only — finding pilots…' : 'Finding pilots…';
+  $('mmSub').textContent = humansOnly
+    ? 'No drones. The match starts a few seconds after a second pilot joins, and anyone who queues before then gets in.'
+    : 'Launches the moment the room is full. Empty seats become drones when the timer runs out.';
   $('mmLobbyList').innerHTML = '';
   var myDiv = document.createElement('div');
   myDiv.className = 'mm-slot human';
@@ -179,7 +189,7 @@ U.startMatchmaking = function(){
   SS.Net.joinQueue(name, mine.type, mine.loadout, function(){
     U.cancelMatchmaking(true);
     U.toast('Could not reach the online lobby. Check your connection, or play bots — that\'s always instant.', false);
-  });
+  }, { humans: humansOnly });
 };
 
 U.setLobbyStatus = function(text){
@@ -204,7 +214,7 @@ U.updateOnlineLobby = function(players, max){
 };
 
 U.updateLobbyTimer = function(sec){
-  if (mmOpen) $('mmTimer').textContent = sec;
+  if (mmOpen) $('mmTimer').textContent = sec == null ? '–' : sec;
 };
 
 U.closeMatchmakingModal = function(){
@@ -549,7 +559,8 @@ addEventListener('pointerdown', function(e){
   if (e.target && e.target.tagName === 'BUTTON') SS.Sfx.click();
 }, true);
 
-$('goOnline').onclick = function(){ SS.UI.startMatchmaking(); };
+$('goOnline').onclick = function(){ SS.UI.startMatchmaking(false); };
+$('goHumans').onclick = function(){ SS.UI.startMatchmaking(true); };
 $('goBots').onclick   = function(){ SS.Game.start({ mode: 'bots' }); };
 $('cancelMM').onclick = function(){ SS.UI.cancelMatchmaking(); };
 $('specBtn').onclick  = function(){ SS.Game.leaveToResults(); };
@@ -557,7 +568,7 @@ $('specBtn').onclick  = function(){ SS.Game.leaveToResults(); };
 $('openGarage').onclick= function(){ SS.UI.renderGarage(); SS.UI.show('garage'); };
 $('gClose').onclick    = function(){ SS.UI.refreshMenu(); SS.UI.show('menu'); };
 $('again').onclick     = function(){
-  if (SS.Game.lastMode() === 'online'){ SS.UI.show('menu'); SS.UI.startMatchmaking(); }
+  if (SS.Game.lastMode() === 'online'){ SS.UI.show('menu'); SS.UI.startMatchmaking(SS.UI.lastHumansOnly); }
   else SS.Game.start({ mode: 'bots' });
 };
 $('toGarage').onclick  = function(){ SS.UI.renderGarage(); SS.UI.show('garage'); };

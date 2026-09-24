@@ -53,7 +53,8 @@ SS.Net = (function(){
       case 'start_match':
         inMatch = true;
         if (U && U.closeMatchmakingModal) U.closeMatchmakingModal();
-        if (G) G.start({ mode:'online', myNetId: msg.myId, hostId: msg.hostId, players: msg.players });
+        if (G) G.start({ mode:'online', myNetId: msg.myId, hostId: msg.hostId, players: msg.players,
+                         humansOnly: !!msg.humansOnly });
         break;
 
       case 'player_state':  if (inMatch && G) G.netState(msg.id, msg.s); break;
@@ -149,6 +150,7 @@ SS.Net = (function(){
   var P2P = (function(){
     var client = null;
     var lobby = null, lobbyClosing = null, queued = false, me = null, lead = null, tick = null;
+    var humansQ = false;                  // queued for a humans-only room
     var lobbyDownSince = 0;
     var R = null;                         // the room we're playing in
     var GAME_TYPES = { player_state:1, bot_state:1, player_shot:1, player_damage:1,
@@ -236,8 +238,9 @@ SS.Net = (function(){
     }
 
     /* ================= lobby ================= */
-    function join(name, hull, loadout, fail){
+    function join(name, hull, loadout, fail, humans){
       if (!myId) myId = 'p' + hex(8);
+      humansQ = !!humans;
       me = { id:myId, name:name, hull:hull, loadout:loadout, t:Date.now(), v:PROTO, q:1 };
       queued = true; lead = null; lobbyDownSince = 0;
       status('Connecting to the lobby…');
@@ -250,7 +253,7 @@ SS.Net = (function(){
       withClient(function(){
         Promise.resolve(lobbyClosing).then(function(){
           if (!queued || lobby) return;
-          lobby = Chan(prefix() + '-lobby', myId, {
+          lobby = Chan(prefix() + (humansQ ? '-lobby-humans' : '-lobby'), myId, {
             presence: onLobby,
             message:  onLobbyMsg,
             ready: function(c){ status('In the lobby — waiting for pilots'); chTrack(c, me); },
@@ -306,7 +309,18 @@ SS.Net = (function(){
       var list = queueList();
       if (!list.length || list[0].id !== myId){ lead = null; return; }
 
-      var Q = Math.max(1, CFG.queueSeconds || 30) * 1000;
+      // humans only: nothing to count down to until a second pilot turns up
+      if (humansQ && list.length < 2){
+        if (!lead || !lead.waiting){
+          lead = { waiting: true };
+          handle({ type:'lobby_timer', seconds:null });
+          status('Waiting for another pilot — send them the link!');
+        }
+        return;
+      }
+      if (lead && lead.waiting){ lead = null; status('Pilot found — launching soon'); }
+
+      var Q = Math.max(1, humansQ ? (CFG.humansQueueSeconds || 10) : (CFG.queueSeconds || 30)) * 1000;
       if (!lead) lead = { deadline: now + Q, n: list.length, changed: now, shown: -1 };
       if (list.length !== lead.n){
         // a pilot arriving late holds the door a few seconds for friends
@@ -336,9 +350,9 @@ SS.Net = (function(){
         humans.push({ id:p.id, kind:'human', name:name, hull:hull,
                       loadout: SS.cleanLoadout(p.loadout, SS.BOATS[hull].slots) });
       }
-      var bots = SS.botRoster(MAX - humans.length, taken);
-      var idx = [];
-      for (var k=0;k<MAX;k++) idx.push(k);
+      var bots = humansQ ? [] : SS.botRoster(MAX - humans.length, taken);
+      var idx = [], total = humans.length + bots.length;
+      for (var k=0;k<total;k++) idx.push(k);
       idx.sort(function(){ return Math.random() - 0.5; });
 
       var players = [];
@@ -347,7 +361,8 @@ SS.Net = (function(){
         players.push({ id:b.id, kind:'bot', name:b.name, hull:b.hull, loadout:b.loadout,
                        spawnIdx: idx[humans.length + j] });
       });
-      var msg = { type:'start_match', v:PROTO, roomId:'r' + hex(10), hostId:myId, players:players };
+      var msg = { type:'start_match', v:PROTO, roomId:'r' + hex(10), hostId:myId, players:players,
+                  h: humansQ ? 1 : 0 };
       chSend(lobby, msg);
       begin(msg);
     }
@@ -410,7 +425,8 @@ SS.Net = (function(){
         R.tickT = setInterval(roomTick, 500);
         R.pumpT = setInterval(pump, Math.round(1000 / Math.max(1, CFG.relayHz || 6)));
       }
-      handle({ type:'start_match', roomId:R.id, myId:myId, hostId:R.hostId, players:players });
+      handle({ type:'start_match', roomId:R.id, myId:myId, hostId:R.hostId, players:players,
+               humansOnly: !!m.h });
     }
 
     function isPresent(id){ return !!R.present[id] && !R.gone[id]; }
@@ -779,11 +795,14 @@ SS.Net = (function(){
     linkKind:    function(){ return backend ? backend.linkKind() : 'none'; },
     playUrl:     function(){ return CFG.playUrl || ''; },
 
-    joinQueue: function(name, hull, loadout, onFail){
+    /* Humans-only rooms run on the Supabase lobby; server.js only fills with drones. */
+    humansOnlyAvailable: function(){ return mode() === 'p2p'; },
+
+    joinQueue: function(name, hull, loadout, onFail, opts){
       var m = mode();
       if (!m){ if (onFail) onFail('offline'); return; }
       backend = m === 'ws' ? WS : P2P;
-      backend.join(name, hull, loadout, onFail);
+      backend.join(name, hull, loadout, onFail, !!(opts && opts.humans) && m === 'p2p');
     },
     cancelQueue: function(){ if (backend) backend.cancel(); },
     leaveRoom:   function(){ if (inMatch && backend) backend.leave(); inMatch = false; },

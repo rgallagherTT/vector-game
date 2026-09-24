@@ -10,7 +10,8 @@ your friends. Everyone who opens it and hits **Online Match** lands in the same 
 
 Open the link above, pick a callsign, hit **Online Match**. The lobby lists everyone queued by
 callsign; a match launches the moment ten pilots are in, or after 30 seconds with drones
-filling the empty seats. **Vs Bots** starts instantly and works offline too — you can even
+filling the empty seats. **Humans Only** skips the drones: it waits for a second pilot, then
+starts 10 seconds later (anyone who queues in that window gets in). **Vs Bots** starts instantly and works offline too — you can even
 double-click `index.html`.
 
 ## How multiplayer works
