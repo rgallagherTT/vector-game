@@ -122,6 +122,25 @@
   .card button.amber:hover { background: rgba(255, 179, 71, 0.14); box-shadow: 0 0 14px rgba(255, 179, 71, 0.35), inset 0 0 10px rgba(255, 179, 71, 0.1); text-shadow: var(--glow-a); }
   .card .foot { margin-top: 12px; font-size: 10px; color: var(--cyan-dim); }
   #s-loading .card { text-align: center; }
+  /* Title screen — sandbox-first mode cards, briefing folded away */
+  .card.title-card { width: min(780px, 92vw); }
+  .wordmark { font-size: 44px; letter-spacing: 0.55em; text-transform: uppercase; color: var(--cyan); text-shadow: 0 0 26px rgba(95, 242, 255, 0.55), 0 0 3px rgba(95, 242, 255, 0.9); margin: 2px 0 0 0.15em; }
+  .tagline { color: var(--cyan-dim); font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; margin: 2px 0 22px; }
+  .mode-cards { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .mode-card { flex: 1 1 260px; border: var(--line) solid var(--cyan-dim); background: rgba(95, 242, 255, 0.03); padding: 16px 18px; border-radius: 3px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .mode-card b { font-size: 15px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: var(--cyan); }
+  .mode-card span { color: var(--cyan-dim); font-size: 11px; letter-spacing: 0.06em; line-height: 1.55; text-transform: none; }
+  .card button.mode-card { margin: 0; padding: 16px 18px; font-size: 11px; }
+  .mode-card.sandbox { border-color: rgba(125, 255, 176, 0.7); background: rgba(125, 255, 176, 0.04); }
+  .mode-card.sandbox b { color: #7dffb0; text-shadow: 0 0 16px rgba(125, 255, 176, 0.5); }
+  .mode-card.sandbox:hover { background: rgba(125, 255, 176, 0.12); box-shadow: 0 0 18px rgba(125, 255, 176, 0.3), inset 0 0 12px rgba(125, 255, 176, 0.08); }
+  .mode-card .mc-mission { color: var(--amber); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; }
+  .mode-card .mc-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mode-card #btn-launch { margin: 4px 0 0; padding: 8px 20px; }
+  details.b-more { margin: 4px 0 6px; }
+  details.b-more summary { pointer-events: auto; cursor: pointer; color: var(--cyan-dim); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; padding: 4px 0; list-style-position: inside; }
+  details.b-more summary:hover { color: var(--cyan); }
+  details.b-more[open] { border-bottom: 1px dotted rgba(95, 242, 255, 0.2); padding-bottom: 8px; }
   #s-loading .spinner { display: inline-block; width: 26px; height: 26px; border: var(--line) solid var(--cyan-dim); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #mute-ind { position: fixed; right: 24px; top: 50%; font-size: 10px; color: var(--amber-dim); z-index: 11; display: none; pointer-events: none; }
@@ -536,19 +555,31 @@
 
 <div class="screen on" id="s-loading"><div class="card"><div class="spinner"></div><h1>Vector</h1><h2 id="loading-text">Initializing</h2></div></div>
 
-<div class="screen" id="s-briefing"><div class="card">
-  <h1 id="b-name">Mission</h1><h2 id="b-sub">Briefing</h2>
-  <div class="dialogue" id="b-dialogue"></div>
-  <p id="b-text"></p>
-  <div class="keys">
-    <div>Mouse — pitch / yaw</div><div>Left click — cannons</div>
-    <div>A / D — roll</div><div>Right click / F — secondary</div>
-    <div>W / S — throttle</div><div>Tab — cycle target / subsystem</div>
-    <div>Shift — boost</div><div>C — cockpit view</div>
-    <div>Space — airbrake / drift</div><div>Q — ship special (Revenant)</div>
-    <div>Esc — pause</div><div>M — mute &nbsp; V — wingmen engage / regroup</div>
+<div class="screen" id="s-briefing"><div class="card title-card">
+  <div class="wordmark">Vector</div>
+  <div class="tagline">Fly · Fight · Mine · Trade · Land</div>
+  <div class="mode-cards">
+    <button class="mode-card sandbox" id="btn-sandbox"><b>Sandbox</b><span id="sbx-sub">The open universe — mine, trade, fight, build, land on planets. Progress saves.</span></button>
+    <div class="mode-card campaign">
+      <b>Campaign</b>
+      <span class="mc-mission" id="b-name">1. Perimeter Sweep</span>
+      <span class="mc-sub" id="b-sub">Six missions. Learn the ship.</span>
+      <div><button id="btn-launch">Launch</button></div>
+    </div>
   </div>
-  <div class="actions"><button id="btn-launch">Launch</button><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><button id="btn-sandbox" style="border-color:#7dffb0;color:#7dffb0">Sandbox</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
+  <details class="b-more"><summary>Mission briefing &amp; controls</summary>
+    <div class="dialogue" id="b-dialogue"></div>
+    <p id="b-text"></p>
+    <div class="keys">
+      <div>Mouse — pitch / yaw</div><div>Left click — cannons</div>
+      <div>A / D — roll</div><div>Right click / F — secondary</div>
+      <div>W / S — throttle</div><div>Tab — cycle target / subsystem</div>
+      <div>Shift — boost</div><div>C — cockpit view</div>
+      <div>Space — airbrake / drift</div><div>Q — ship special (Revenant)</div>
+      <div>Esc — pause</div><div>M — mute &nbsp; V — wingmen engage / regroup</div>
+    </div>
+  </details>
+  <div class="actions"><button id="btn-b-hangar" class="amber">Hangar</button><button id="btn-b-coop">Lobby / multiplayer</button><label><input type="checkbox" id="opt-touch"> Touch controls</label></div>
   <div class="small" id="b-coop-status"></div>
   <div class="foot">Ship: <span id="b-ship">Vanguard</span> &nbsp;·&nbsp; Credits: <span id="b-credits">0</span></div>
 </div></div>
@@ -970,6 +1001,15 @@ const audio = {
     const hiss = ctx.createBufferSource(); hiss.buffer = buf; hiss.loop = true;
     const hg = ctx.createGain(); hg.gain.value = 0.15; hiss.connect(hg); hg.connect(lp); hiss.start();
     this.engine = { gain: eg, filter: lp, o1, o2 };
+    // ambient space bed: deep drone + slow filtered noise, barely there — kills the dead silence
+    const ag = ctx.createGain(); ag.gain.value = 0.045; ag.connect(this.master);
+    const alp = ctx.createBiquadFilter(); alp.type = 'lowpass'; alp.frequency.value = 200; alp.Q.value = 0.5; alp.connect(ag);
+    const an = ctx.createBufferSource(); an.buffer = buf; an.loop = true; an.playbackRate.value = 0.3; an.connect(alp); an.start();
+    const ao = ctx.createOscillator(); ao.type = 'sine'; ao.frequency.value = 36;
+    const aog = ctx.createGain(); aog.gain.value = 0.4; ao.connect(aog); aog.connect(alp); ao.start();
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.05;
+    const lg = ctx.createGain(); lg.gain.value = 55; lfo.connect(lg); lg.connect(alp.frequency); lfo.start();
+    this.ambient = ag;
     // lock tone
     this.lockGain = ctx.createGain(); this.lockGain.gain.value = 0; this.lockGain.connect(this.master);
     this.lockOsc = ctx.createOscillator(); this.lockOsc.type = 'square'; this.lockOsc.frequency.value = 1400; this.lockOsc.connect(this.lockGain); this.lockOsc.start();
@@ -1714,9 +1754,11 @@ class PlayerShip extends Ship {
   }
   syncRender(alpha) {
     super.syncRender(alpha);
-    const thr = this.boosting ? 1.6 : 0.5 + this.throttle * 0.7; const flick = 1 + Math.sin(performance.now() * 0.05) * 0.08;
-    for (const s of this.engineSprites) { s.scale.set(2.2 * thr * flick, 2.2 * thr * flick, 1); s.material.color.setHex(this.boosting ? 0xaad8ff : 0x55bbff); }
-    if (this.engineLight) this.engineLight.intensity = 200 + thr * 250;
+    // engines answer the actual throttle: a faint pilot glow at idle, dark when parked
+    const eff = this.parked ? 0 : this.throttle;
+    const thr = this.boosting ? 1.6 : (this.parked ? 0 : 0.12) + eff * 0.95; const flick = 1 + Math.sin(performance.now() * 0.05) * 0.08;
+    for (const s of this.engineSprites) { s.scale.set(2.2 * thr * flick + 0.15, 2.2 * thr * flick + 0.15, 1); s.material.color.setHex(this.boosting ? 0xaad8ff : 0x55bbff); }
+    if (this.engineLight) this.engineLight.intensity = 40 + thr * 380;
     if (this.plumeMat) this.plumeMat.color.setHex(this.boosting ? 0xa8d4ff : 0x77b8ff);
     for (const p of this.plumes) p.scale.set(thr * 0.8, thr * 0.8, (0.35 + thr * 0.75) * flick);
     this.updateTrail();
@@ -5102,6 +5144,31 @@ function sbxBeltRespawn(dt) {
   }
 }
 
+// ---------- Mining beam — visible feedback while a miner is cycling ----------
+const MINE_FX = { beam: null, hit: null, sparkT: 0 };
+function sbxMiningFX(dt) {
+  const pl = world.player;
+  const on = pl.alive && !SBX.profile?.docked && !SRF.active && pl.sbx?.actives.some(r => r.on && r.def.mine);
+  const rock = on ? miningTargetRock() : null;
+  if (!rock) { if (MINE_FX.beam) { MINE_FX.beam.visible = false; MINE_FX.hit.visible = false; } return; }
+  if (!MINE_FX.beam) {
+    const mat = new THREE.MeshBasicMaterial({ map: TEX.glow, color: 0xffc880, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    MINE_FX.beam = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); MINE_FX.beam.frustumCulled = false; MINE_FX.beam.matrixAutoUpdate = false; scene.add(MINE_FX.beam);
+    MINE_FX.hit = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xffdcae, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(MINE_FX.hit);
+  }
+  // a camera-facing ribbon from the ship to the rock, pulsing with the cycle
+  const dir = _v[0].copy(rock.pos).sub(pl.pos); const len = Math.max(dir.length(), 0.001); dir.multiplyScalar(1 / len);
+  const mid = _v[1].copy(pl.pos).addScaledVector(dir, len * 0.5);
+  const side = _v[2].crossVectors(dir, _v[3].copy(camera.position).sub(mid));
+  if (side.lengthSq() < 1e-6) side.set(1, 0, 0); else side.normalize();
+  const normal = _v[4].crossVectors(side, dir);
+  const pulse = 0.65 + 0.35 * Math.sin(performance.now() * 0.018);
+  MINE_FX.beam.matrix.makeBasis(_v[5].copy(side).multiplyScalar(2.4 * pulse), _v[6].copy(dir).multiplyScalar(len), normal).setPosition(mid);
+  MINE_FX.beam.visible = true; MINE_FX.beam.material.opacity = 0.3 + 0.3 * pulse;
+  MINE_FX.hit.position.copy(rock.pos); MINE_FX.hit.scale.set(16 * pulse, 16 * pulse, 1); MINE_FX.hit.material.opacity = 0.45 + 0.4 * pulse; MINE_FX.hit.visible = true;
+  MINE_FX.sparkT -= dt; if (MINE_FX.sparkT <= 0) { MINE_FX.sparkT = 0.5; world.sparks(rock.pos, 2, 0xd9c9a0); }
+}
+
 // ---------- Warp drive ----------
 SBX.warpDrive = { state: null, dest: new THREE.Vector3(), name: '', t: 0, speed: 0 };
 function sbxWarpTo(point, name) {
@@ -7575,6 +7642,7 @@ function sbxRespawn() {
 function sbxStep(dt) {
   const pl = world.player; const p = SBX.profile;
   p.time += dt;
+  sbxMiningFX(dt);
   if (SBX.deathT != null) { SBX.deathT -= dt; if (SBX.deathT <= 0) { SBX.deathT = null; sbxDeathResolve(); } return; }
   if (pl.target && (!pl.target.alive || pl.target.active === false)) pl.target = null;
   if (SRF.active) {
@@ -7917,7 +7985,7 @@ function currentMissionDef() { return game.mode === 'versus' ? VERSUS_MISSION : 
 function refreshScreen() { SCREEN_HANDLERS[screen]?.enter?.(screen); }
 const SCREEN_HANDLERS = {
   COOP: { enter() { net.setStatus(net.status); const roomMode = !net.rtcAvailable && !!net.room; $('coop-mode').textContent = roomMode ? 'This page uses the live room: anyone with this artifact open can host or join with one click, no codes.' : net.rtcAvailable ? 'Joining opens a direct link between the two of you; the lobby only introduces you. Strict firewalls can block it — then use the codes.' : 'Connections are blocked on this page and no live room is available.'; $('lobby-name').value = game.profile.name; lobby.render(); lobby.track(); } },
-  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; $('btn-sandbox').textContent = sbxUnlocked() ? 'Sandbox' : 'Sandbox (skip tutorial)'; audio.engineOff(); } },
+  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; $('sbx-sub').textContent = sbxUnlocked() ? 'The open universe — mine, trade, fight, build, land on planets. Progress saves.' : 'Skip the tutorial — jump straight into the open universe. Progress saves.'; audio.engineOff(); } },
   PLAYING: { enter(from) { if (from !== SCREEN.PAUSED && game.mode !== 'sandbox') startMission(currentMissionDef()); resetClock(); audio.resume(); if (net.role === 'guest') { net.lastSnapT = 0; net.prevSnapT = 0; } } },
   PAUSED: { enter() { audio.suspend(); $('btn-abort').textContent = game.mode === 'sandbox' ? 'Save & leave sandbox' : 'Abort mission'; }, exit() { resetClock(); } },
   DEBRIEF: { enter() { audio.engineOff(); } },
