@@ -219,13 +219,32 @@
   #t-wing { left: 33%; top: 30%; width: 12vmin; height: 8vmin; max-width: 70px; max-height: 48px; }
   body.touch-mode #p-radar { transform: translateX(-50%) scale(0.7); transform-origin: bottom center; }
   body.touch-mode #p-status, body.touch-mode #p-weapons { bottom: auto; top: 46%; }
-  /* sandbox touch buttons: two rows on the upper left, only in sandbox mode */
-  #touch .tbtn.sbx { display: none; width: 13vmin; height: 8vmin; max-width: 80px; max-height: 46px; font-size: 10px; }
-  body.sandbox #touch .tbtn.sbx { display: flex; }
-  #t-interact { left: 5%; top: 42%; } #t-warp { left: 20%; top: 42%; } #t-jump { left: 35%; top: 42%; }
-  #t-map { left: 5%; top: 52%; } #t-scan { left: 20%; top: 52%; } #t-stop { left: 35%; top: 52%; }
-  body.sandbox.touch-mode #p-fleet { top: auto; bottom: 42%; transform: scale(0.85); transform-origin: bottom left; }
-  body.sandbox.touch-mode #p-overview { transform: scale(0.85); transform-origin: top right; right: 8px; }
+  /* sandbox touch strip: one row along the top; the buttons relabel themselves by context */
+  #sbx-strip { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); display: none; gap: 6px; pointer-events: auto; }
+  body.sandbox #sbx-strip { display: flex; }
+  #sbx-strip .tbtn { position: static; width: auto; min-width: 62px; height: 36px; padding: 0 10px; font-size: 10px; }
+  body.sandbox #t-wing { display: none; } /* wingman command has no meaning in the sandbox */
+  /* touch-mode layout: keep panels off the controls */
+  body.touch-mode #hintbar { top: 52px; max-width: 78vw; }
+  body.sandbox.touch-mode #p-speed { transform: scale(0.85); transform-origin: top left; left: 4px; top: 4px; }
+  body.sandbox.touch-mode #p-sys { left: 8px; top: 108px; }
+  body.sandbox.touch-mode #p-status { top: auto; bottom: 34%; left: 4px; transform: scale(0.85); transform-origin: bottom left; }
+  body.sandbox.touch-mode #p-weapons { top: auto; bottom: 34%; right: 4px; transform: scale(0.85); transform-origin: bottom right; }
+  body.sandbox.touch-mode #p-cap { display: none; }
+  body.sandbox.touch-mode #p-fleet { top: auto; bottom: 44%; left: 4px; transform: scale(0.8); transform-origin: bottom left; }
+  body.sandbox.touch-mode #p-overview { transform: scale(0.78); transform-origin: top right; right: 4px; top: 118px; bottom: 36%; }
+  body.sandbox.touch-mode #p-rover { left: 50%; right: auto; top: 140px; bottom: auto; transform: translateX(-50%) scale(0.85); transform-origin: top center; }
+  body.sandbox.touch-mode #toasts { top: 150px; bottom: auto; left: 8px; max-width: 190px; font-size: 10px; }
+  body.sandbox.touch-mode #mod-rack { bottom: 190px; }
+  body.surface.touch-mode #p-weapons { display: none; }
+  body.sandbox.touch-mode #t-pause { left: auto; right: 2%; top: 6px; transform: none; }
+  body.sandbox.touch-mode #t-brake { right: 33%; bottom: 32%; }
+  body.touch-mode #toasts div:nth-child(n+3) { display: none; }
+  body.sandbox.touch-mode #t-thup { left: auto; right: 24%; top: 45%; }
+  body.sandbox.touch-mode #t-thdn { left: auto; right: 24%; top: 58%; }
+  body.sandbox.touch-mode #stick { width: 36vmin; height: 36vmin; max-width: 170px; max-height: 170px; bottom: 8%; }
+  body.sandbox.touch-mode #p-status { bottom: 46%; }
+  body.sandbox.touch-mode #hintbar { max-width: 46vw; font-size: 11px; }
 
   /* ---------- Stage 4: nametags, versus scoreboard, lobby ---------- */
   #tags { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
@@ -485,7 +504,7 @@
   <h3>At a station</h3>
   <p class="small hp"><b>Market</b> trades · <b>Fitting</b> arms your ship within powergrid/CPU · <b>Missions</b> pay ISK and standing · <b>Skills</b> train in real time even offline · <b>Industry</b> turns minerals and hours into hardware · <b>Insurance</b> softens the next loss.</p>
   <h3>Planets</h3>
-  <p class="small hp">Warp to a planet, hold orbit, cycle a <b>Surface surveyor</b> to reveal landing sites, press <b>E</b> and descend. Land gently on flat ground. <b>R</b> deploys the rover — drive it (<b>P</b> prospects) to drill deposits, loot ruins and wrecks, and don't outrun its power tether. <b>B</b> anchors a mining outpost. Climb past 900 m to leave.</p>
+  <p class="small hp">Warp to a planet, hold orbit, press <b>E</b> — one site is always ready — and descend. Land gently on flat ground. You start with a rover in the hold: <b>R</b> deploys it. Drive it (<b>P</b> prospects) to drill deposits, grab salvage crates, ride geyser vents for gas, clear fauna nests, and run the timed <b>circuit</b> through the amber rings for ISK. Settlements on green worlds buy ore and artifacts on the spot. <b>B</b> anchors a mining outpost. Climb past 900 m to leave.</p>
   <h3>Multiplayer</h3>
   <p class="small hp">Everyone playing shares space. Pilots in your system appear with nametags — in low/null sec (below 0.5) they can shoot you, and you them. The lobby on the title screen hosts co-op and versus matches.</p>
   <p class="small" style="color:var(--cyan-dim)">The hint bar above the radar always suggests your next move — the × on it (or this panel) turns it off and on.</p>
@@ -507,8 +526,10 @@
   <div class="zone" id="stick"><i></i></div>
   <div class="tbtn" id="t-fire">Fire</div><div class="tbtn amber" id="t-msl">Msl</div><div class="tbtn amber" id="t-boost">Boost</div><div class="tbtn" id="t-brake">Brake</div>
   <div class="tbtn" id="t-tab">Target</div><div class="tbtn amber" id="t-dash">Dash</div><div class="tbtn" id="t-thup">Thr +</div><div class="tbtn" id="t-thdn">Thr −</div><div class="tbtn" id="t-wing">Wing</div><div class="tbtn" id="t-pause">Pause</div>
-  <div class="tbtn sbx" id="t-interact">Dock/Use</div><div class="tbtn amber sbx" id="t-warp">Warp</div><div class="tbtn sbx" id="t-jump">Jump</div>
-  <div class="tbtn sbx" id="t-map">Map</div><div class="tbtn sbx" id="t-scan">Scan</div><div class="tbtn amber sbx" id="t-stop">Stop</div>
+  <div id="sbx-strip">
+    <div class="tbtn sbx" id="t-interact">Dock/Use</div><div class="tbtn amber sbx" id="t-warp">Warp</div><div class="tbtn sbx" id="t-jump">Jump</div>
+    <div class="tbtn sbx" id="t-map">Map</div><div class="tbtn sbx" id="t-scan">Scan</div><div class="tbtn amber sbx" id="t-stop">Stop</div>
+  </div>
 </div>
 <div id="mute-ind">Audio muted</div>
 <div id="fps"></div>
@@ -3396,14 +3417,31 @@ const touch = {
     const key = (k) => [() => input.keys.add(k), () => input.keys.delete(k)]; const tap = (k) => [() => input.pressed.add(k), () => {}];
     hold('t-fire', () => { input.fire = true; }, () => { input.fire = false; }); hold('t-msl', ...tap('KeyF')); hold('t-boost', ...key('ShiftLeft')); hold('t-brake', ...key('Space'));
     hold('t-tab', ...tap('Tab')); hold('t-dash', ...tap('KeyQ')); hold('t-thup', ...key('KeyW')); hold('t-thdn', ...key('KeyS')); hold('t-wing', ...tap('KeyV')); hold('t-pause', ...tap('Escape'));
-    // sandbox row: same key codes the keyboard path consumes
-    hold('t-interact', ...tap('KeyE')); hold('t-warp', ...tap('KeyR')); hold('t-jump', ...tap('KeyJ'));
-    hold('t-map', ...tap('KeyN')); hold('t-scan', ...tap('KeyP')); hold('t-stop', ...tap('KeyX'));
+    // sandbox row: dynamic keys — the same buttons mean different things in space, landed, or driving
+    const dyn = (id, key) => { const el = $(id); el.dataset.key = key; hold(id, () => input.pressed.add(el.dataset.key), () => {}); };
+    dyn('t-interact', 'KeyE'); dyn('t-warp', 'KeyR'); dyn('t-jump', 'KeyJ');
+    dyn('t-map', 'KeyN'); dyn('t-scan', 'KeyP'); dyn('t-stop', 'KeyX');
     $('opt-touch').addEventListener('change', (e) => this.set(e.target.checked));
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) { $('opt-touch').checked = true; this.set(true); }
   },
   set(on) { this.enabled = on; document.body.classList.toggle('touch-mode', on); if (!on) { input.mouseX = 0; input.mouseY = 0; } },
   update() { $('touch').classList.toggle('on', this.enabled && (screen === SCREEN.PLAYING || screen === SCREEN.PAUSED)); },
+  /** Relabel the sandbox strip for where the pilot actually is. */
+  sbxContext() {
+    const ctx = SRF.active ? (SRF.mode === 'rover' && SRF.rover ? 'rover' : SRF.landed ? 'landed' : 'flying') : 'space';
+    if (ctx === this._ctx) return; this._ctx = ctx;
+    const T = {
+      space:  { 't-interact': ['KeyE', 'Dock/Use'], 't-warp': ['KeyR', 'Warp'], 't-jump': ['KeyJ', 'Jump'], 't-map': ['KeyN', 'Map'], 't-scan': ['KeyP', 'Scan'], 't-stop': ['KeyX', 'Stop'] },
+      flying: { 't-interact': ['KeyE', 'Use'], 't-warp': ['KeyH', 'Hover'], 't-jump': null, 't-map': null, 't-scan': null, 't-stop': ['KeyX', 'Stop'] },
+      landed: { 't-interact': ['KeyE', 'Use'], 't-warp': ['KeyR', 'Rover'], 't-jump': null, 't-map': ['KeyB', 'Outpost'], 't-scan': null, 't-stop': null },
+      rover:  { 't-interact': ['KeyE', 'Use'], 't-warp': ['KeyR', 'Board'], 't-jump': null, 't-map': ['KeyB', 'Outpost'], 't-scan': ['KeyP', 'Prospect'], 't-stop': ['KeyX', 'Flip'] },
+    }[ctx];
+    for (const [id, def] of Object.entries(T)) {
+      const el = $(id); if (!el) continue;
+      el.style.visibility = def ? '' : 'hidden';
+      if (def) { el.dataset.key = def[0]; el.textContent = def[1]; }
+    }
+  },
 };
 
 // =====================================================================================
@@ -3623,7 +3661,7 @@ const ITEMS = {
   ore_cryolite:  { name: 'Cryolite ore',   cat: 'ore', vol: 8,  base: 170, refine: { min_silica: 2, min_nobelium: 1 } },
   min_iridium:   { name: 'Iridium',        cat: 'mineral', vol: 0.8, base: 210 },
   art_relic:     { name: 'Surface artifact', cat: 'trade', vol: 2, base: 5200 },
-  rover_mk1:     { name: 'Rover Mk1',      cat: 'vehicle', vol: 40, base: 60000 },
+  rover_mk1:     { name: 'Rover Mk1',      cat: 'vehicle', vol: 20, base: 60000 }, // folds into a bay — light enough to land with
 };
 // module + hull items are appended to ITEMS below so one market/cargo/price path handles everything
 
@@ -6064,9 +6102,54 @@ sbxMigrateProfile = function (p) {
   p = _mig3base(p);
   if (!p.planets) p.planets = {};
   if (p.surface === undefined) p.surface = null;   // { sys, site, pos:[x,y,z] } when saved on the ground
+  // every pilot starts with (or is retroactively issued) one rover — only stamped once a ship exists to carry it,
+  // so the shipless default-profile template never poisons the flag
+  if (!p.roverGranted && p.ships?.length) {
+    p.roverGranted = true;
+    const s = p.ships.find(x => x.uid === p.activeShip) || p.ships[0];
+    s.cargo.rover_mk1 = (s.cargo.rover_mk1 || 0) + 1;
+  }
   p.v = CONFIG.sbx.saveVersion;
   return p;
 };
+
+// ---------- more to do down there: crates, geysers, nests, races — all seeded, all persistent ----------
+function srfCrates(site) {
+  const rng = makeRng(site.seed ^ 0xc4a7); const out = [];
+  const stuff = ['min_ferrite', 'min_silica', 'ammo_cells', 'tg_machinery', 'tg_medical', 'min_nobelium'];
+  const n = 8 + Math.floor(rng() * 5);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * Math.PI * 2, r = 350 + rng() * 3000;
+    out.push({ i, x: Math.cos(a) * r, z: Math.sin(a) * r, item: stuff[Math.floor(rng() * stuff.length)], qty: 6 + Math.floor(rng() * 30) });
+  }
+  return out;
+}
+function srfGeysers(site) {
+  if (!['barren', 'ice', 'volcanic'].includes(site.biome)) return [];
+  const rng = makeRng(site.seed ^ 0x6e75); const out = [];
+  for (let i = 0; i < 3 + Math.floor(rng() * 3); i++) {
+    const a = rng() * Math.PI * 2, r = 500 + rng() * 2600;
+    out.push({ i, x: Math.cos(a) * r, z: Math.sin(a) * r, period: 14 + rng() * 18, phase: rng() * 20 });
+  }
+  return out;
+}
+function srfNestDef(site) {
+  if (!BIOMES[site.biome].fauna) return null;
+  const rng = makeRng(site.seed ^ 0x9e57);
+  const a = rng() * Math.PI * 2, r = 1200 + rng() * 1800;
+  return { x: Math.cos(a) * r, z: Math.sin(a) * r, hp: 70 };
+}
+function srfRace(site) {
+  const rng = makeRng(site.seed ^ 0x4ace); const pts = [];
+  const n = 7, rr = 430 + rng() * 380, ecc = 0.65 + rng() * 0.35, rot = rng() * Math.PI;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const x0 = Math.cos(a) * rr, z0 = Math.sin(a) * rr * ecc;
+    pts.push({ x: x0 * Math.cos(rot) - z0 * Math.sin(rot) + 120, z: x0 * Math.sin(rot) + z0 * Math.cos(rot) - 140 });
+  }
+  let len = 0; for (let i = 0; i < n; i++) { const b = pts[(i + 1) % n]; len += Math.hypot(pts[i].x - b.x, pts[i].z - b.z); }
+  return { pts, par: Math.round(len / 15), reward: 8000 + site.hazard * 4000 };
+}
 
 // ---------- Surface extraction outposts extend the Stage 4 structure system ----------
 STRUCTURE_DEFS.extractor = {
@@ -6282,6 +6365,7 @@ const SRF = {
   active: false, cine: null, planet: null, site: null, siteSt: null, B: null, H: null,
   mode: 'ship', landed: false, gearOk: true, hover: false, vspd: 0, alt: 0, groundNy: 1,
   rover: null, deposits: [], anoms: [], depMeshes: [], anomMeshes: [], outposts: [], base: null,
+  crates: [], crateMeshes: [], geysers: [], nest: null, race: null, raceState: null, rings: [], kiosk: null,
   fauna: [], objs: null, fog: null, warnT: 0, hazT: 0, wx: { type: null, int: 0 }, wxRoll: -1,
   lights: null, prospect: false, prospectT: 0, drillT: 0, sunEl: 1, overT: 0, deadHandled: false,
   saved: { sunPos: new THREE.Vector3(), sunI: 2.2, hemiI: 0.55 },
@@ -6432,6 +6516,7 @@ const SRF = {
     this.boundary(pl, dt);
     this.hazards(dt);
     this.interactables(dt);
+    this.activities(dt);
     this.faunaStep(dt);
     this.baseStep(dt);
     this.projectilesVsSurface(dt);
@@ -6596,6 +6681,130 @@ const SRF = {
       world.bosses.push(base); this.base = base;
     }
     this.spawnFauna();
+    // ---- things to do: salvage crates, geysers, a nest, the rover circuit, the settlement kiosk ----
+    this.crates = srfCrates(this.site); this.crateMeshes = [];
+    for (const c of this.crates) {
+      if (this.siteSt.crates?.[c.i]) { this.crateMeshes.push(null); continue; }
+      const m = new THREE.Mesh(SRF_CRATE_GEO, SRF_ACT_MATS.crate);
+      m.position.set(c.x, this.groundY(c.x, c.z) + 0.8, c.z); m.rotation.y = c.i * 1.3;
+      this.objs.add(m); this.crateMeshes.push(m);
+    }
+    this.geysers = srfGeysers(this.site).map(g => {
+      const m = new THREE.Mesh(SRF_GEYSER_GEO, SRF_ACT_MATS.geyser);
+      m.position.set(g.x, this.groundY(g.x, g.z), g.z); this.objs.add(m);
+      return { ...g, t: g.phase, erupting: 0, mesh: m };
+    });
+    const nd = srfNestDef(this.site);
+    this.nest = nd && !this.siteSt.nest ? { ...nd, mesh: null } : null;
+    if (this.nest) {
+      const m = new THREE.Mesh(SRF_NEST_GEO, SRF_ACT_MATS.nest);
+      m.position.set(this.nest.x, this.groundY(this.nest.x, this.nest.z) + 1, this.nest.z);
+      this.objs.add(m); this.nest.mesh = m;
+    }
+    this.race = srfRace(this.site); this.raceState = null; this.rings = [];
+    this.race.pts.forEach((pt, i) => {
+      const m = new THREE.Mesh(SRF_RING_GEO, i === 0 ? SRF_ACT_MATS.ringNext : SRF_ACT_MATS.ringDim);
+      m.position.set(pt.x, this.groundY(pt.x, pt.z) + 5, pt.z);
+      m.lookAt(_v[0].set(this.race.pts[(i + 1) % this.race.pts.length].x, m.position.y, this.race.pts[(i + 1) % this.race.pts.length].z));
+      this.objs.add(m); this.rings.push(m);
+    });
+    this.kiosk = null;
+    if (this.B.civ) {
+      const k = buildParts([{ g: 'box', size: [6, 3.4, 4], pos: [0, 1.7, 0], mat: 'hull' }, { g: 'box', size: [7, 0.5, 5], pos: [0, 3.8, 0], mat: 'accent' }, { g: 'cyl', size: [0.3, 0.3, 5, 6], pos: [3.6, 2.5, 0], mat: 'dark' }, { g: 'sphere', size: [0.5, 8, 6], pos: [3.6, 5.2, 0], mat: 'glowAmber' }]);
+      const kx = TERRA.pad.position.x + 34, kz = TERRA.pad.position.z + 6;
+      k.position.set(kx, this.groundY(kx, kz), kz); this.objs.add(k);
+      this.kiosk = { x: kx, z: kz };
+    }
+  },
+  /** The per-frame life of the new surface content. */
+  activities(dt) {
+    const veh = this.mode === 'rover' && this.rover ? this.rover : (this.landed ? null : world.player);
+    const rv = this.rover;
+    // crates: drive or fly low over one to grab it
+    if (veh) for (const c of this.crates) {
+      const m = this.crateMeshes[c.i]; if (!m) continue;
+      if (Math.hypot(veh.pos.x - c.x, veh.pos.z - c.z) < 10 && veh.pos.y - this.groundY(c.x, c.z) < 14) {
+        (this.siteSt.crates = this.siteSt.crates || {})[c.i] = 1;
+        const cargo = veh === rv ? rv.cargo : SBX.ship().cargo;
+        cargo[c.item] = (cargo[c.item] || 0) + c.qty;
+        m.visible = false; this.crateMeshes[c.i] = null;
+        world.sparks(m.position, 6, 0xffd166); audio.click(true);
+        sbxToast(`Salvage crate: ${c.qty}× ${ITEMS[c.item].name}.`);
+      }
+    }
+    // geysers: periodic eruptions — a free launch, a hull rattle, and vented gas worth taking
+    for (const g of this.geysers) {
+      g.t -= dt;
+      if (g.t <= 0) { g.t = g.period; g.erupting = 3; }
+      if (g.erupting > 0) {
+        g.erupting -= dt;
+        if (Math.random() < 0.6) { _v[0].set(rand(-3, 3), rand(26, 44), rand(-3, 3)); world.particles.emit(g.mesh.position, _v[0], rand(0.5, 1.1), rand(3, 5), this.B.lava != null ? 0xff8a40 : 0xcfe8f4, 0.3); }
+        if (veh && Math.hypot(veh.pos.x - g.x, veh.pos.z - g.z) < 20) {
+          if (veh === rv) { rv.vel.y = Math.max(rv.vel.y, 24); this.damageRover(2 * dt, 'a geyser'); }
+          else { this.vspd = Math.max(this.vspd, 18); }
+          g.gasT = (g.gasT || 0) - dt;
+          if (g.gasT <= 0) { g.gasT = 1; const cargo = veh === rv ? rv.cargo : SBX.ship().cargo; cargo.gas_mist = (cargo.gas_mist || 0) + 5; sbxToast('Vent gas captured (+5 Aurorae gas).'); }
+        }
+      }
+    }
+    // the rover circuit: cross the bright ring to start, chase the next one
+    this.raceCd = Math.max(0, (this.raceCd || 0) - dt);
+    if (rv && !rv.flipped && this.rings.length) {
+      const R = this.raceState;
+      if (!R) {
+        const s = this.rings[0].position;
+        if (this.raceCd <= 0 && Math.hypot(rv.pos.x - s.x, rv.pos.z - s.z) < 15) {
+          this.raceState = { i: 1, t: 0 };
+          this.paintRings(1);
+          sbxToast(`Circuit start — ${this.race.pts.length} gates. Par ${this.race.par}s. Go!`);
+        }
+      } else {
+        R.t += dt;
+        const tgt = this.rings[R.i % this.rings.length].position;
+        if (Math.hypot(rv.pos.x - tgt.x, rv.pos.z - tgt.z) < 16) {
+          R.i++;
+          if (R.i > this.rings.length) { // lap complete (back through the start gate)
+            const t = Math.round(R.t); this.raceState = null; this.paintRings(0); this.raceCd = 5;
+            const best = this.siteSt.race; const first = !this.siteSt.racePaid;
+            if (best == null || t < best) this.siteSt.race = t;
+            const pay = first ? this.race.reward : Math.round(this.race.reward * 0.15) * (t <= this.race.par ? 1 : 0);
+            if (first) this.siteSt.racePaid = 1;
+            if (pay > 0) { SBX.profile.isk += pay; }
+            sbxToast(`Lap ${t}s (par ${this.race.par}s${best != null ? `, best ${Math.min(best, t)}s` : ''})${pay > 0 ? ` — ${fmtIsk(pay)} ISK` : ''}.`);
+            sbxSave('race');
+          } else this.paintRings(R.i - 1);
+        }
+        if (R.t > this.race.par * 3 || rv.flipped) { this.raceState = null; this.paintRings(0); sbxToast('Circuit abandoned.'); }
+      }
+    }
+  },
+  paintRings(next) {
+    this.rings.forEach((m, i) => { m.material = i === (next % this.rings.length) ? SRF_ACT_MATS.ringNext : SRF_ACT_MATS.ringDim; });
+  },
+  nestHit(dmg, at) {
+    const n = this.nest; if (!n) return;
+    n.hp -= dmg; world.sparks(n.mesh.position, 5, 0xaad477);
+    if (n.hp <= 0) {
+      this.siteSt.nest = 1; world.explode(n.mesh.position, 1);
+      n.mesh.visible = false; this.nest = null;
+      const cargo = this.mode === 'rover' && this.rover ? this.rover.cargo : SBX.ship().cargo;
+      cargo.art_relic = (cargo.art_relic || 0) + 1; cargo.min_nobelium = (cargo.min_nobelium || 0) + 20;
+      for (const f of this.fauna) if (f.kind !== 'defender') f.mode = 'wander';
+      sbxToast('Nest destroyed — the fauna scatter. Relic and nobelium recovered.');
+      sbxSave('nest');
+    }
+  },
+  kioskSell(veh) {
+    const cargo = veh === this.rover ? this.rover.cargo : SBX.ship().cargo;
+    let paid = 0, moved = 0;
+    for (const [id, q] of Object.entries({ ...cargo })) {
+      const it = ITEMS[id]; if (!it || !['ore', 'trade'].includes(it.cat) && id !== 'gas_mist') continue;
+      if (it.cat === 'trade' && id !== 'art_relic' && id !== 'gas_mist') continue; // the kiosk wants raw goods and relics, not your rations
+      paid += Math.round(itemValue(id) * 0.88 * q); moved += q; delete cargo[id];
+    }
+    if (!moved) return sbxToast('The settlement buys ore, gas and artifacts — nothing like that aboard.');
+    SBX.profile.isk += paid;
+    sbxToast(`Settlement bought ${moved} units for ${fmtIsk(paid)} ISK (88% of value).`);
   },
   spawnFauna() {
     const kind = this.B.fauna; if (!kind) return;
@@ -6721,7 +6930,8 @@ const SRF = {
     const gy = this.groundY(rv.pos.x, rv.pos.z);
     const grounded = rv.pos.y - gy < 1.6;
     if (!rv.flipped) {
-      const thr = (input.keys.has('KeyW') ? 1 : 0) - (input.keys.has('KeyS') ? 0.6 : 0);
+      // keyboard or touch stick: pushing the stick forward drives
+      const thr = clamp((input.keys.has('KeyW') ? 1 : 0) - (input.keys.has('KeyS') ? 0.6 : 0) + (touch.enabled ? input.mouseY * 1.8 : 0), -0.6, 1);
       const steer = clamp(input.mouseX * 2.2, -1, 1);
       const spd = Math.hypot(rv.vel.x, rv.vel.z);
       rv.yaw -= steer * R.turn * dt * clamp(spd / 8 + 0.25, 0.3, 1);
@@ -6804,7 +7014,7 @@ const SRF = {
     _v[0].set(Math.sin(rv.yaw), 0, Math.cos(rv.yaw));
     _v[1].copy(rv.pos).addScaledVector(_v[0], -13); _v[1].y = Math.max(rv.pos.y + 5.5, this.groundY(_v[1].x, _v[1].z) + 2.5);
     camera.position.lerp(_v[1], 1 - Math.exp(-6 * dt));
-    camera.lookAt(_v[2].copy(rv.pos).addScaledVector(_v[0], 14).add(_v[3].set(0, 2 - input.mouseY * 6, 0)));
+    camera.lookAt(_v[2].copy(rv.pos).addScaledVector(_v[0], 14).add(_v[3].set(0, touch.enabled ? 2 : 2 - input.mouseY * 6, 0)));
   },
   clampCamera() {
     const gy = this.H ? this.groundY(camera.position.x, camera.position.z) : -1e9;
@@ -6842,6 +7052,7 @@ const SRF = {
     const rv = this.rover;
     world.projectiles.forEachActive(p => {
       if (p.team === 'player') {
+        if (this.nest && sweptHit(p.prevPos, p.pos, this.nest.mesh.position, 6 + p.radius, _v[1])) { this.nestHit(p.damage, _v[1]); return world.projectiles.release(p); }
         for (const f of this.fauna) { if (!f.on) continue; _v[0].set(f.x, this.groundY(f.x, f.z) + 1.5, f.z); if (sweptHit(p.prevPos, p.pos, _v[0], 2.6 + p.radius, _v[1])) { f.hp -= p.damage; world.sparks(_v[1], 5, 0xaadd77); if (f.hp <= 0) { f.on = false; world.explode(_v[0], 0.5); } return world.projectiles.release(p); } }
       } else if (rv && sweptHit(p.prevPos, p.pos, rv.pos, 3.4 + p.radius, _v[1])) {
         this.damageRover(p.damage, 'weapons fire'); world.sparks(_v[1], 6, 0xffe0a0); return world.projectiles.release(p);
@@ -6910,6 +7121,7 @@ const SRF = {
       this.baseLoot = null; return sbxToast('Base stores stripped.');
     }
     for (const o of this.outposts) if (Math.hypot(veh.pos.x - o.mesh.position.x, veh.pos.z - o.mesh.position.z) < 60) return this.collectOutpost(o);
+    if (this.kiosk && Math.hypot(veh.pos.x - this.kiosk.x, veh.pos.z - this.kiosk.z) < 40) return this.kioskSell(veh);
     if (this.mode === 'rover' && this.rover && this.rover.pos.distanceTo(world.player.pos) < 60) { // transfer rover → ship without stowing
       const cargo = SBX.ship().cargo; let moved = 0;
       for (const [id, q] of Object.entries(this.rover.cargo)) { cargo[id] = (cargo[id] || 0) + q; moved += q; delete this.rover.cargo[id]; }
@@ -6957,6 +7169,21 @@ const SRF_DEP_GEO = mergeGeometries([
   new THREE.ConeGeometry(0.7, 2.2, 5).translate(1.1, 1.1, 0.4).toNonIndexed(),
   new THREE.ConeGeometry(0.6, 1.8, 5).translate(-0.9, 0.9, -0.5).toNonIndexed(),
 ], false);
+const SRF_CRATE_GEO = new THREE.BoxGeometry(1.8, 1.6, 1.8);
+const SRF_GEYSER_GEO = new THREE.ConeGeometry(3.2, 2.4, 8, 1, true);
+const SRF_NEST_GEO = mergeGeometries([
+  new THREE.SphereGeometry(3, 8, 6).scale(1, 0.55, 1).toNonIndexed(),
+  new THREE.SphereGeometry(1.6, 7, 5).translate(2.2, 0.4, 1).toNonIndexed(),
+  new THREE.SphereGeometry(1.3, 7, 5).translate(-2, 0.5, -1.4).toNonIndexed(),
+], false);
+const SRF_RING_GEO = new THREE.TorusGeometry(9, 0.7, 6, 20);
+const SRF_ACT_MATS = {
+  crate: new THREE.MeshStandardMaterial({ color: 0xc9a35a, roughness: 0.6, metalness: 0.5, emissive: 0x664411, emissiveIntensity: 0.35, flatShading: true }),
+  geyser: new THREE.MeshStandardMaterial({ color: 0x5a5148, roughness: 0.95, flatShading: true }),
+  nest: new THREE.MeshStandardMaterial({ color: 0x5a6a3a, roughness: 0.85, emissive: 0x2a3a10, emissiveIntensity: 0.4, flatShading: true }),
+  ringNext: new THREE.MeshBasicMaterial({ color: 0xffb347, toneMapped: false }),
+  ringDim: new THREE.MeshBasicMaterial({ color: 0x2a4a55, transparent: true, opacity: 0.55 }),
+};
 const SRF_DEP_MATS = {
   ore_thorite: new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.4, metalness: 0.6, emissive: 0x882200, emissiveIntensity: 0.25, flatShading: true }),
   ore_cryolite: new THREE.MeshStandardMaterial({ color: 0xbfe8f4, roughness: 0.2, metalness: 0.1, emissive: 0x2266aa, emissiveIntensity: 0.2, flatShading: true }),
@@ -7166,7 +7393,7 @@ const HINTS = {
       if (SRF.mode === 'rover') {
         if (SRF.rover?.flipped) return `Rover is on its roof — ${K('X')} rights it.`;
         if (SRF.prospect) return `Prospector live — drive toward a rising signal, then park beside the deposit to drill. ${K('E')} loots and transfers.`;
-        return `${K('W/S')} drive · steer with the mouse · ${K('P')} prospector · ${K('E')} use / transfer · ${K('R')} board the ship.`;
+        return `${K('W/S')} drive · steer with the mouse · ${K('P')} prospector · ${K('E')} use / transfer · ${K('R')} board. Amber crates are salvage; the amber ring starts a timed circuit.`;
       }
       if (SRF.landed) return `Landed. ${K('R')} deploys the rover · ${K('B')} anchors an outpost beside a deposit · hold ${K('Shift')} to lift off.`;
       return `Watch ALT and V/S (top left). Touch down under 12 m/s on flat ground — ${K('H')} holds altitude. Climb past 900 m to reach orbit.`;
@@ -7185,6 +7412,7 @@ const HINTS = {
   },
   step(dt) {
     this.t -= dt; if (this.t > 0) return; this.t = 0.5;
+    if (touch.enabled && game.mode === 'sandbox') touch.sbxContext();
     if (this.off || game.mode !== 'sandbox') { this.render('', false); return; }
     const h = this.pick();
     if (h !== this.last) { this.last = h; this.render(h, false); }
@@ -7235,6 +7463,7 @@ function sbxInitProfile() {
   SBX.profile = sbxDefaultProfile();
   SBX.profile.name = game.profile.name || 'Pilot';
   const s = sbxStarterShip('station'); SBX.profile.activeShip = s.uid;
+  if (!SBX.profile.roverGranted) { SBX.profile.roverGranted = true; s.cargo.rover_mk1 = 1; } // day one comes with wheels
   SBX.profile.tutorialDone = true;                                    // entering at all marks the arc done — the campaign stays available as the tutorial
   if (game.missionsCompleted.length >= MISSIONS.length) SBX.profile.isk += CONFIG.sbx.tutorialIsk + game.credits * CONFIG.sbx.iskPerCredit;
   sbxSave('init');
@@ -7798,7 +8027,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
