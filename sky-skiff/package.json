@@ -1,0 +1,13 @@
+{
+  "name": "sky-skiff",
+  "version": "2.0.0",
+  "private": true,
+  "description": "3D hover-boat battle arena — static client + zero-dependency Node matchmaking/relay server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
