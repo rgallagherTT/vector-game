@@ -336,6 +336,23 @@
   body.surface #p-rover.on { display: block; }
   #orb-info h3 { font-size: 12px; color: var(--amber); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 8px; }
   #orb-info .ovrow { cursor: default; }
+
+  /* ---------- clarity layer: hint bar, help, tab explainers ---------- */
+  #hintbar { left: 50%; bottom: 218px; transform: translateX(-50%); max-width: 620px; display: none; text-transform: none; letter-spacing: 0.03em; font-size: 12px; color: #cfeef4; text-align: center; padding: 7px 30px 7px 14px; pointer-events: auto; line-height: 1.5; }
+  #hintbar.on { display: block; }
+  #hintbar b { font-weight: 400; color: var(--amber); border: 1px solid var(--amber-dim); border-radius: 3px; padding: 0 5px; margin: 0 1px; font-size: 11px; white-space: nowrap; }
+  #hintbar #hint-x { position: absolute; right: 8px; top: 4px; cursor: pointer; color: var(--cyan-dim); font-size: 14px; }
+  #hintbar #hint-x:hover { color: var(--cyan); }
+  body.touch-mode #hintbar { bottom: auto; top: 64px; }
+  #btn-help { position: fixed; right: 24px; bottom: 24px; z-index: 14; width: 30px; height: 30px; border: 1px solid var(--cyan-dim); border-radius: 50%; color: var(--cyan); font-family: var(--mono); font-size: 15px; display: none; align-items: center; justify-content: center; cursor: pointer; background: var(--glass); pointer-events: auto; }
+  body.sandbox #btn-help { display: flex; }
+  #btn-help:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(95, 242, 255, 0.3); }
+  .tabhelp { margin: 0 0 12px; padding: 6px 10px; border-left: 2px solid var(--cyan-dim); color: #9fd4da; font-size: 11px; text-transform: none; letter-spacing: 0.03em; background: rgba(95, 242, 255, 0.04); }
+  #sb-tabs .tab-util { margin-left: 22px; position: relative; }
+  #sb-tabs .tab-util::before { content: ""; position: absolute; left: -12px; top: 20%; bottom: 20%; width: 1px; background: var(--cyan-faint); }
+  #sb-help h3 { margin-top: 16px; }
+  #sb-help .hp { text-transform: none; letter-spacing: 0.03em; font-size: 12px; color: #b9e9ee; line-height: 1.65; }
+  #sb-help .hp b { color: var(--amber); font-weight: 400; }
 </style>
 </head>
 <body>
@@ -418,6 +435,9 @@
   <div class="panel" id="p-warn">Return to combat zone</div>
   <div class="panel" id="p-radar"><canvas id="radar" width="180" height="180"></canvas></div>
 
+  <div class="panel" id="hintbar"></div>
+  <div id="btn-help" title="Help — F1">?</div>
+
   <div id="ret-center"></div>
   <div id="ret-aim" class="reticle"></div>
   <div id="ret-lead" class="reticle"></div>
@@ -434,14 +454,14 @@
   <div id="sb-tabs">
     <button data-stab="market" data-svc="market" class="on">Market</button>
     <button data-stab="fitting" data-svc="fitting">Fitting</button>
-    <button data-stab="hangar">Hangar</button>
-    <button data-stab="inventory">Inventory</button>
+    <button data-stab="hangar">Ships</button>
+    <button data-stab="inventory">Cargo</button>
+    <button data-stab="agents" data-svc="agents">Missions</button>
     <button data-stab="skills">Skills</button>
     <button data-stab="industry" data-svc="fitting">Industry</button>
     <button data-stab="trade" data-svc="market">Trade</button>
     <button data-stab="fleet">Fleet</button>
-    <button data-stab="agents" data-svc="agents">Agents</button>
-    <button data-stab="repair" data-svc="repair">Repair</button>
+    <button data-stab="repair" data-svc="repair" class="tab-util">Repair</button>
     <button data-stab="insurance">Insurance</button>
     <button data-stab="save">Save</button>
   </div>
@@ -455,6 +475,20 @@
     <label><input type="radio" name="routepref" value="safest"> Safest route (prefers high sec)</label>
     <button id="btn-map-route">Set route</button><button id="btn-map-ap" class="amber">Autopilot</button><button id="btn-map-close">Close [N]</button>
   </div>
+</div></div>
+<div class="sb-overlay" id="sb-help"><div class="sb-card" style="width:min(760px,94vw)">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><h1>How this works</h1><button id="btn-help-close" class="amber">Close [F1]</button></div>
+  <h3>The loop</h3>
+  <p class="small hp">Earn ISK → fit a better ship → reach more dangerous space → earn faster. Mine asteroids, haul goods between stations, run missions, build things, or take what others built. <span style="color:var(--red)">When a ship dies, it and everything on it are gone forever.</span> Keep spare ships and ISK at stations.</p>
+  <h3>Flying</h3>
+  <p class="small hp">Mouse steers · <b>W/S</b> throttle · <b>Shift</b> boost · <b>Tab</b> targets. The <b>OVERVIEW</b> (right panel) is your world: click a row, then Warp / Approach / Orbit. <b>E</b> docks or interacts · <b>N</b> star map · <b>J</b> jumps a gate · <b>1–8</b> cycle fitted modules. Green systems (0.5+) are policed; red ones pay better and shoot back.</p>
+  <h3>At a station</h3>
+  <p class="small hp"><b>Market</b> trades · <b>Fitting</b> arms your ship within powergrid/CPU · <b>Missions</b> pay ISK and standing · <b>Skills</b> train in real time even offline · <b>Industry</b> turns minerals and hours into hardware · <b>Insurance</b> softens the next loss.</p>
+  <h3>Planets</h3>
+  <p class="small hp">Warp to a planet, hold orbit, cycle a <b>Surface surveyor</b> to reveal landing sites, press <b>E</b> and descend. Land gently on flat ground. <b>R</b> deploys the rover — drive it (<b>P</b> prospects) to drill deposits, loot ruins and wrecks, and don't outrun its power tether. <b>B</b> anchors a mining outpost. Climb past 900 m to leave.</p>
+  <h3>Multiplayer</h3>
+  <p class="small hp">Everyone playing shares space. Pilots in your system appear with nametags — in low/null sec (below 0.5) they can shoot you, and you them. The lobby on the title screen hosts co-op and versus matches.</p>
+  <p class="small" style="color:var(--cyan-dim)">The hint bar above the radar always suggests your next move — the × on it (or this panel) turns it off and on.</p>
 </div></div>
 <div class="sb-overlay" id="sb-planet"><div class="sb-card">
   <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><h1 id="orb-title">Orbital survey</h1><button id="btn-orb-close" class="amber">Close</button></div>
@@ -4099,7 +4133,7 @@ const skillTrainMs = (id, toLvl) => SKILLS[id].baseMin * 60000 * Math.pow(CONFIG
 function skillBonus(key) { let v = 0; for (const id of SKILL_ORDER) { const b = SKILLS[id].bonus[key]; if (b) v += b * skillLvl(id); } return v; }
 /** Gates: hulls need Ship command; some modules need a specific skill level. */
 const HULL_SKILL_REQ = { h_wisp: 0, h_kestrel: 1, h_talon: 2, h_lumen: 2, h_aurora: 3, h_burrow: 4, h_mule: 4, h_bastion: 4, h_sovereign: 5, h_atlas: 5 };
-const MODULE_SKILL_REQ = { w_beam: ['gunnery', 2], w_launcher: ['gunnery', 1], m_mwd: ['navigation', 2], w_miner2: ['mining', 2], l_rep: ['production', 0], probe: ['science', 1], surveyor: ['science', 1] };
+const MODULE_SKILL_REQ = { w_beam: ['gunnery', 2], w_launcher: ['gunnery', 1], m_mwd: ['navigation', 2], w_miner2: ['mining', 2], l_rep: ['production', 0], probe: ['science', 1] };
 function hullSkillOk(hullId) { return skillLvl('command') >= (HULL_SKILL_REQ[hullId] ?? 0); }
 function moduleSkillReq(modId) { const r = MODULE_SKILL_REQ[modId]; return r && skillLvl(r[0]) < r[1] ? `needs ${SKILLS[r[0]].name} ${r[1]} (trained ${skillLvl(r[0])})` : null; }
 
@@ -5353,7 +5387,7 @@ function sbxToastTick(dt) { let ch = false; for (let i = toasts.length - 1; i >=
 let sbxHudT = 0, ovT = 0;
 function sbxHUD(dt) {
   const pl = world.player; const sb = pl.sbx; if (!sb) return;
-  sbxToastTick(dt);
+  sbxToastTick(dt); HINTS.step(dt);
   sbxHudT -= dt; if (sbxHudT <= 0) {
     sbxHudT = 0.1;
     setBar($('h-cap'), sb.cap / sb.capMax); $('h-cap-t').textContent = `${fmt(sb.cap)} / ${fmt(sb.capMax)}`;
@@ -5452,6 +5486,7 @@ function sbxRenderStation() {
   else if (tab === 'insurance') C.innerHTML = renderInsurance();
   else if (tab === 'save') C.innerHTML = renderSaveTab();
   else if (SBX4_TABS[tab]) C.innerHTML = SBX4_TABS[tab](st);
+  if (TAB_HELP[tab]) C.innerHTML = `<p class="tabhelp">${TAB_HELP[tab]}</p>` + C.innerHTML;
 }
 function spark(hist) {
   if (!hist || hist.length < 2) return '<svg class="spark" viewBox="0 0 60 16"></svg>';
@@ -5950,13 +5985,15 @@ function sbxPlanetOf(sysIdx) {
 }
 function srfSiteDef(planet, i) {
   const rng = makeRng(CONFIG.sbx.seed ^ ((planet.sys * 131 + i) * 2657 + 5));
-  const biome = planet.pool[Math.floor(rng() * planet.pool.length)];
+  // the first site of every planet is always open: no module gate, no standing gate
+  const pool = i === 0 ? (planet.pool.filter(b => !BIOMES[b].gate) || planet.pool) : planet.pool;
+  const biome = (pool.length ? pool : planet.pool)[Math.floor(rng() * (pool.length || planet.pool.length))];
   const B = BIOMES[biome];
   const hazard = clamp(1 + Math.floor(rng() * 3) + (B.gate ? 2 : 0), 1, 5);
   return {
     i, biome, hazard, seed: (CONFIG.sbx.seed ^ ((planet.sys * 131 + i) * 92821 + 7)) >>> 0,
     lat: (rng() - 0.5) * 130, lon: rng() * 360, ore: B.ore[Math.floor(rng() * B.ore.length)],
-    gateMod: B.gate || null, standingReq: hazard >= 4 ? 1 : 0,
+    gateMod: B.gate || null, standingReq: i > 0 && hazard >= 4 ? 1 : 0,
     name: `${planet.name} · ${['LZ', 'Basin', 'Rift', 'Mesa', 'Verge', 'Field', 'Scar', 'Reach'][i % 8]}-${i + 1}`,
     nDeposits: 6 + Math.floor(rng() * 5), nAnoms: 2 + Math.floor(rng() * 3), hasBase: hazard >= 3 && rng() < 0.8,
   };
@@ -6986,6 +7023,11 @@ function sbxUnfitDestroy(m) { // a hard landing shears a module off the fit enti
 const ORB = { open: false, planet: null, yaw: 0.6, sel: null, drag: null };
 function srfOpenOrbital(planet) {
   ORB.open = true; ORB.planet = planet; ORB.sel = null;
+  const ps = srfPState(planet);
+  if (ps.scanned === 0) { // the ship's own passive sensors always find one site — nobody stares at an empty globe
+    ps.scanned = 1; ORB.sel = 0;
+    sbxToast('Passive scan resolved one landing site. A fitted Surface surveyor maps the rest.');
+  }
   $('sb-planet').classList.add('on');
   srfRenderOrbital();
 }
@@ -7107,6 +7149,83 @@ function srfProspectPing(veh) {
 }
 
 // =====================================================================================
+//  part27 — Clarity layer: a context hint bar that always says what to do next,
+//  a plain-language help overlay (F1 / the ? button), and one-line tab explainers.
+//  Sandbox only; the campaign keeps its mission briefings.
+// =====================================================================================
+const HINTS = {
+  t: 0, last: '', off: false,
+  load() { try { this.off = localStorage.getItem('vector-hints') === 'off'; } catch (e) {} },
+  save() { try { localStorage.setItem('vector-hints', this.off ? 'off' : 'on'); } catch (e) {} },
+  toggle() { this.off = !this.off; this.save(); this.render(this.off ? '' : this.last, true); sbxToast(this.off ? 'Hints off — F1 brings them back.' : 'Hints on.'); },
+  pick() {
+    const pl = world.player, p = SBX.profile;
+    const K = (k) => `<b>${k}</b>`;
+    if (SRF.active) {
+      if (SRF.cine) return 'Atmospheric entry — the terrain is building below you.';
+      if (SRF.mode === 'rover') {
+        if (SRF.rover?.flipped) return `Rover is on its roof — ${K('X')} rights it.`;
+        if (SRF.prospect) return `Prospector live — drive toward a rising signal, then park beside the deposit to drill. ${K('E')} loots and transfers.`;
+        return `${K('W/S')} drive · steer with the mouse · ${K('P')} prospector · ${K('E')} use / transfer · ${K('R')} board the ship.`;
+      }
+      if (SRF.landed) return `Landed. ${K('R')} deploys the rover · ${K('B')} anchors an outpost beside a deposit · hold ${K('Shift')} to lift off.`;
+      return `Watch ALT and V/S (top left). Touch down under 12 m/s on flat ground — ${K('H')} holds altitude. Climb past 900 m to reach orbit.`;
+    }
+    if (p.docked) return `You're docked. MARKET trades · FITTING arms the ship · MISSIONS pay · SKILLS train while you're away. Undock (top right) when ready.`;
+    if (pl.warping) return 'In warp — sit back. Any stick input drops you out early.';
+    const near = SBX.points.find(x => x.kind === 'station' && x.pos.distanceTo(pl.pos) < CONFIG.sbx.dock.radius * 1.4);
+    if (near) return `${K('E')} docks at ${near.name}.`;
+    const pp = SBX.points.find(x => x.kind === 'planet' && x.pos.distanceTo(pl.pos) < 2600);
+    if (pp) return `Holding orbit. ${K('E')} opens the surface survey — one site is always resolved. Pick it and descend.`;
+    if (pl.target?.alive && pl.target.npc?.kind === 'pirate') return `Hostile locked — ${K('click')} fires, modules ${K('1–8')} cycle, ${K('X')} breaks off.`;
+    const oreAboard = Object.keys(SBX.ship()?.cargo || {}).some(id => ITEMS[id]?.cat === 'ore');
+    if (oreAboard) return `Ore in the hold — dock at a station and sell it on the MARKET, or refine it first for more.`;
+    if (p.isk < 25000 && !p.fleet.length) return `Low on ISK? Warp to a BELT (overview, right) and mine with your laser ${K('1')}, or dock and take a MISSION.`;
+    return `Pick a destination in the OVERVIEW (right) and hit Warp — or ${K('R')} warps to your selection. ${K('N')} star map · ${K('E')} dock / interact · ${K('F1')} help.`;
+  },
+  step(dt) {
+    this.t -= dt; if (this.t > 0) return; this.t = 0.5;
+    if (this.off || game.mode !== 'sandbox') { this.render('', false); return; }
+    const h = this.pick();
+    if (h !== this.last) { this.last = h; this.render(h, false); }
+  },
+  render(html, force) {
+    const el = $('hintbar'); if (!el) return;
+    el.classList.toggle('on', !!html && !this.off);
+    if (html || force) el.innerHTML = html ? html + '<span id="hint-x" title="hide hints">×</span>' : '';
+  },
+};
+HINTS.load();
+
+// ---------- one-line explainers at the top of every station tab ----------
+const TAB_HELP = {
+  market: 'Buy low here, sell high somewhere else. Prices move when you trade — the Trend column shows where they have been.',
+  fitting: 'Your ship has High (weapons), Mid (defense/speed), Low (armor/utility) and Rig slots, limited by powergrid and CPU. Fit it, then undock.',
+  hangar: 'Every ship you own, and hull kits waiting to be assembled. Board a ship to fly it. A destroyed ship is gone forever.',
+  inventory: 'What is in your ship versus what is stored at this station. Station hangars are safe; cargo flies with you and dies with you.',
+  skills: 'Skills train in real time, even with the game closed. Queue what unlocks the ship or module you want next.',
+  industry: 'Blueprints + minerals + real hours = things. Jobs keep running while you fly or log off.',
+  trade: 'Your standing buy/sell orders (they fill over time) and the route planner — profit per jump, weighed against the risk.',
+  fleet: 'Hired pilots that escort, mine or haul for you. They die for real, contract and all.',
+  agents: 'Missions for ISK and faction standing. Standing unlocks better blueprints, sites and forgiveness.',
+  repair: 'Fix hull and armor damage for a fee. Shields recharge on their own.',
+  insurance: 'Pays out a fraction of the hull price when the ship dies. Modules and cargo are never covered.',
+  save: 'Your pilot autosaves here and in flight. Export a file if you play in more than one browser.',
+};
+
+// ---------- the help overlay ----------
+function sbxHelp(show) {
+  $('sb-help').classList.toggle('on', show);
+  if (show && SBX.profile) { SBX.profile.seenHelp = true; }
+}
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'F1' && game.mode === 'sandbox') { e.preventDefault(); sbxHelp(!$('sb-help').classList.contains('on')); }
+});
+$('btn-help').onclick = () => { audio.click(); sbxHelp(true); };
+$('btn-help-close').onclick = () => { audio.click(); sbxHelp(false); };
+$('hintbar').addEventListener('click', (e) => { if (e.target.id === 'hint-x') HINTS.toggle(); });
+
+// =====================================================================================
 //  part18 — Sandbox controller: enter/exit, docking, the per-tick step, input, hooks
 //  into the shared world, and every DOM binding for the sandbox UI.
 // =====================================================================================
@@ -7169,6 +7288,7 @@ function sbxEnter() {
   SBXNET.join();
   setScreen(SCREEN.PLAYING);
   sbxToast(p.docked ? `Docked at ${SBX.station().name}.` : `On grid in ${SBX.sys.name}.`);
+  if (!p.seenHelp) sbxHelp(true); // first flight: one plain-language page before the universe starts charging for lessons
 }
 function sbxExit() {
   if (SRF.active) SRF.abort();
@@ -7286,6 +7406,7 @@ function sbxKeys() {
 function sbxTryJump() { const g = nearestPoint('gate', CONFIG.sbx.gate.jumpDist); if (g) sbxJumpGate(g); else sbxToast('No gate in jump range.'); }
 function sbxHandleEscape() {
   if ($('sb-loss').classList.contains('on')) return true;
+  if ($('sb-help').classList.contains('on')) { sbxHelp(false); return true; }
   if ($('sb-planet').classList.contains('on')) { srfCloseOrbital(); return true; }
   if (smap.open) { sbxShowMap(false); return true; }
   if ($('sb-station').classList.contains('on') && !SBX.profile.docked) { sbxShowStation(false); return true; }
@@ -7677,7 +7798,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
