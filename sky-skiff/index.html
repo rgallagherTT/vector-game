@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sky Skiff</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%E2%9B%B5%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="boot"></div>
+
+<div id="ui">
+
+  <!-- ══════════ MENU ══════════ -->
+  <section id="menu" class="scr on"><div class="mwrap">
+    <div id="accountPill" class="acc-pill" title="Change callsign">
+      <span class="acc-icon">⚓</span>
+      <span id="accName">Pilot</span>
+      <span class="acc-edit">edit</span>
+    </div>
+
+    <h1>Sky Skiff<em>Ten hulls, one shrinking sea. Fight for every coin.</em></h1>
+
+    <div class="active-card plate">
+      <div class="bar4" id="activeBar"></div>
+      <div class="an" id="activeName">Skiff MK1</div>
+      <div class="ag" id="activeGuns">Pulse Repeater</div>
+      <div class="as" id="activeSlots">2 hardpoints</div>
+    </div>
+
+    <div class="krow launch-row">
+      <button class="pri online-btn" id="goOnline">
+        <span class="btn-main">🌐 Online Match</span>
+        <span class="btn-sub">Real pilots · bots fill in</span>
+      </button>
+      <button class="pri bot-btn" id="goBots">
+        <span class="btn-main">🤖 Vs Bots</span>
+        <span class="btn-sub">Play right away</span>
+      </button>
+      <button id="openGarage" class="garage-btn">Garage</button>
+    </div>
+
+    <div class="meta-line">Balance <span class="coin" id="mCoins">0</span></div>
+    <div class="meta-line" id="mStats"></div>
+
+    <div class="keys">
+      <b>W</b>/<b>S</b> throttle · <b>A</b>/<b>D</b> steer · <b>mouse</b> look · <b>Shift</b> boost · <b>Space</b> fly<br>
+      <b>Left click</b> or <b>1</b> fires hardpoint 1 · <b>Right click</b> or <b>2</b> fires hardpoint 2 · <b>3</b>/<b>E</b> fires hardpoint 3 · <b>4</b>/<b>R</b> fires hardpoint 4 · <b>5</b> for hardpoint 5<br>
+      <b>Q</b> toggles lock-on. Hold a trigger until its heat bar fills and that gun vents — the others keep firing.<br>
+      Touch: left stick steers, drag the right half to look, trigger buttons on the right.
+    </div>
+  </div></section>
+
+  <!-- ══════════ GARAGE ══════════ -->
+  <section id="garage" class="scr">
+    <div class="panel-head">
+      <h2>Garage</h2>
+      <span>Balance <span class="coin" id="gCoins">0</span></span>
+      <button class="small danger" id="wipe">Erase save</button>
+      <button class="small" id="gClose">Close</button>
+    </div>
+    <div class="gwrap">
+      <div class="sub">Your hulls — a fitted gun stays on that hull for good</div>
+      <div class="grid" id="gOwned"></div>
+      <div class="sub">Locker — guns waiting for a hardpoint</div>
+      <div class="grid" id="gLocker"></div>
+      <div class="sub">Hulls for sale</div>
+      <div class="grid" id="gBoats"></div>
+      <div class="sub">Guns for sale</div>
+      <div class="grid" id="gGuns"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ RESULTS ══════════ -->
+  <section id="results" class="scr"><div class="rwrap">
+    <h1 id="rP" style="font-size:clamp(26px,6.5vw,54px)">Eliminated</h1>
+    <div id="rBreak"></div>
+    <div class="meta-line">Balance <span class="coin" id="rBal">0</span></div>
+    <div class="krow">
+      <button class="pri" id="again">Launch again</button>
+      <button id="toGarage">Garage</button>
+      <button id="toMenu">Menu</button>
+    </div>
+  </div></section>
+
+  <!-- ══════════ HUD ══════════ -->
+  <section id="hud">
+    <div id="dmg"></div>
+    <div id="dnums"></div>
+    <div id="banner"></div>
+    <svg id="xh" viewBox="0 0 26 26" fill="none" stroke="#dff2fb" stroke-width="1.4">
+      <circle cx="13" cy="13" r="1.6" fill="#dff2fb" stroke="none"/>
+      <path d="M13 1v6M13 19v6M1 13h6M19 13h6" opacity=".8"/>
+    </svg>
+
+    <div id="ret">
+      <svg viewBox="0 0 140 140" fill="none">
+        <circle id="ring" cx="70" cy="70" r="44" stroke="#5fe3ff" stroke-width="2.2"
+                stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"
+                transform="rotate(-90 70 70)"/>
+        <g class="brk" stroke="#5fe3ff" stroke-width="2.2" stroke-linecap="square">
+          <path d="M28 42V28h14"/><path d="M98 28h14v14"/>
+          <path d="M112 98v14H98"/><path d="M42 112H28V98"/>
+        </g>
+      </svg>
+      <div id="htag"></div>
+      <div id="ltag">LOCKED</div>
+    </div>
+
+    <div id="top" class="g">
+      <div class="chip"><span>Afloat</span><b id="aN">10</b></div>
+      <div class="chip"><span>Kills</span><b id="kN">0</b></div>
+      <div class="chip w"><span>Storm</span><b id="sN">holding</b></div>
+      <div class="chip" id="pingChip" style="display:none"><span>Ping</span><b id="pingN">–</b></div>
+    </div>
+
+    <div id="feed" class="g"></div>
+    <div id="slots"></div>
+
+    <div id="spec" class="g">
+      <span>Spectating — the fight goes on</span>
+      <button class="small" id="specBtn">Show my results</button>
+    </div>
+
+    <div id="vitals" class="g">
+      <div class="meta"><span id="hullName">Hull</span><span id="hpT">100</span></div>
+      <div class="bar"><i id="hpF"></i></div>
+      <div class="meta" style="margin-top:8px"><span>Flight</span><span id="flyT">—</span></div>
+      <div class="bar t"><i id="flyF"></i></div>
+      <div class="meta" style="margin-top:6px"><span>Boost</span><span></span></div>
+      <div class="bar t"><i id="boF"></i></div>
+    </div>
+
+    <div id="spd" class="g"><b id="sV">0</b><span>knots</span></div>
+  </section>
+
+  <button id="muteBtn" title="Sound on/off">🔊</button>
+
+  <!-- ══════════ TOUCH ══════════ -->
+  <div id="touch">
+    <div id="stick"><div id="knob"></div></div>
+    <div id="triggers"></div>
+    <div class="tb" id="bL">LOCK</div>
+    <div class="tb" id="bY">FLY</div>
+    <div class="tb" id="bB">BOOST</div>
+  </div>
+
+  <!-- ══════════ CALLSIGN MODAL ══════════ -->
+  <div id="profileModal" class="modal-overlay">
+    <div class="auth-card plate">
+      <div class="auth-header">
+        <h2>Choose your callsign</h2>
+        <p>That's the whole sign-up. It's the name other pilots see when you fly online.</p>
+      </div>
+      <form id="csForm" onsubmit="return false;">
+        <div class="form-group">
+          <label for="csInput">Callsign</label>
+          <div class="cs-row">
+            <input type="text" id="csInput" maxlength="16" placeholder="Kestrel-42"
+                   autocomplete="off" spellcheck="false">
+            <button type="button" class="small" id="csRandom" title="Random name">🎲</button>
+          </div>
+          <small class="field-hint">2–16 letters or numbers. No account, no password.</small>
+        </div>
+        <div id="csError" class="auth-error"></div>
+        <button type="submit" class="pri auth-submit-btn">Start flying</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════ MATCHMAKING MODAL ══════════ -->
+  <div id="matchmakingModal" class="modal-overlay">
+    <div class="mm-card plate">
+      <div class="mm-radar">
+        <div class="radar-sweep"></div>
+        <div class="mm-timer-box">
+          <span id="mmTimer">–</span>
+          <small>sec</small>
+        </div>
+      </div>
+
+      <h3>Finding pilots…</h3>
+      <p class="mm-sub">Launches the moment the room is full. Empty seats become drones when the timer runs out.</p>
+      <p class="mm-net" id="mmNet"></p>
+
+      <div class="mm-status">
+        <span class="chip">Pilots ready: <b id="mmCount">1/10</b></span>
+      </div>
+
+      <div class="mm-lobby" id="mmLobbyList"></div>
+
+      <button id="cancelMM" class="danger mm-cancel-btn">Cancel queue</button>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL + TOASTS ══════════ -->
+  <div id="modal"><div id="mBox" class="plate">
+    <div id="mTitle">Confirm</div>
+    <div id="mBody"></div>
+    <div class="krow" style="justify-content:flex-end">
+      <button id="mCancel">Cancel</button>
+      <button id="mOk" class="pri">Confirm</button>
+    </div>
+  </div></div>
+
+  <div id="toasts"></div>
+</div>
+
+<script src="js/vendor/three.min.js"></script>
+<script>
+/* If the 3D library failed to load, say so plainly instead of a blank page. */
+if (!window.THREE){
+  document.getElementById('boot').style.display = 'flex';
+  document.getElementById('boot').textContent =
+    'Could not load the 3D library (js/vendor/three.min.js). ' +
+    'Make sure the whole folder was copied, then reload.';
+}
+</script>
+<script src="js/online-config.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/render.js"></script>
+<script src="js/bots.js"></script>
+<script src="js/garage.js"></script>
+<script src="js/game.js"></script>
+<script src="js/net.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
