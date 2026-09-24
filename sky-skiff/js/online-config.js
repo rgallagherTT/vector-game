@@ -21,6 +21,7 @@ window.SKYSKIFF_ONLINE = Object.assign({
   lib: 'js/vendor/supabase.js',
   stun: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'],
   queueSeconds: 30,          // matchmaking wait before drones fill the room
+  humansQueueSeconds: 10,    // humans only: countdown once a second pilot is in
   relayHz: 6,                // send rate for players on the relay fallback
   rtc: true,                 // false = always use the relay (debugging)
   server: '',                // a wss:// URL here switches to a self-hosted server.js

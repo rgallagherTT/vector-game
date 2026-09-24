@@ -21,7 +21,7 @@ var camYaw=0, camPitch=0.14, lastLook=0, shake=0, camInit=false, camRoll=0;
 var lockSeek=false, lockCand=null, prevLockOn=false;
 var mtime=0, over=false, running=false;
 var myDamage=0, myKills=0, dmgFlash=0;
-var matchMode='bots', hostId=null, meDead=false, specTimer=0;
+var matchMode='bots', hostId=null, meDead=false, specTimer=0, humansOnly=false;
 var respawnQ = [];
 var _v = new THREE.Vector3(), camP = new THREE.Vector3(), camA = new THREE.Vector3();
 var SIZE = 10;
@@ -86,7 +86,8 @@ function randomLoadout(def){
 
 function spawnPt(i,n){
   var a=(i/n)*Math.PI*2 + SS.rnd(-0.1,0.1);
-  return { x:Math.sin(a)*SS.ARENA*0.86, z:Math.cos(a)*SS.ARENA*0.86, yaw:SS.wrap(a+Math.PI) };
+  var r = SS.ARENA * (n <= 4 ? 0.5 : 0.86);    // small rooms start closer together
+  return { x:Math.sin(a)*r, z:Math.cos(a)*r, yaw:SS.wrap(a+Math.PI) };
 }
 
 /* ---------------- world callbacks ---------------- */
@@ -144,13 +145,16 @@ world.damage = function(t, dmg, byWho, opts){
   }
 };
 
-function killBoat(b, byWho){
+/* how === 'left': the pilot quit a humans-only match — the hull leaves
+   the arena instead of exploding, and nobody gets the kill */
+function killBoat(b, byWho, how){
   if (!b.alive) return;
+  var left = how === 'left';
   b.alive = false; b.surv = mtime;
   var alive = 0;
   for (var i=0;i<world.boats.length;i++) if (world.boats[i].alive) alive++;
   b.place = alive + 1;
-  var k = byWho != null ? findBoat(byWho) : null;
+  var k = (!left && byWho != null) ? findBoat(byWho) : null;
   if (k && k.alive){
     k.kills++;
     if (k.id === myId){
@@ -159,9 +163,14 @@ function killBoat(b, byWho){
       SS.Sfx.kill();
     }
   }
-  if (matchMode !== 'attract') feed(b, k);
-  R.boom(b.x, b.y, b.z, b.def.trim);
-  SS.Sfx.boom(distToCam(b.x,b.y,b.z), true);
+  if (left){
+    note('<b>'+esc(b.name)+'</b> <span>left the match</span>');
+    R.splash(b.x, b.z);
+  } else {
+    if (matchMode !== 'attract') feed(b, k);
+    R.boom(b.x, b.y, b.z, b.def.trim);
+    SS.Sfx.boom(distToCam(b.x,b.y,b.z), true);
+  }
   if (meshes[b.id]){ R.remove(meshes[b.id]); delete meshes[b.id]; }
 
   if (matchMode === 'attract'){
@@ -207,6 +216,7 @@ function finish(me){
 G.start = function(opts){
   opts = opts || {};
   matchMode = opts.mode || 'bots';
+  humansOnly = false;
   var attract = matchMode === 'attract';
   var myName = (SS.Profile && SS.Profile.name()) || 'You';
   var mine = SS.Save.data ? SS.Save.activeBoat() : { type:'skiff', loadout:['pulse'] };
@@ -240,6 +250,7 @@ G.start = function(opts){
 
   if (matchMode === 'online' && opts.players && opts.players.length){
     myId = opts.myNetId;
+    humansOnly = !!opts.humansOnly;
     for (var i=0;i<opts.players.length;i++){
       var p = opts.players[i];
       var s = spawnPt(p.spawnIdx != null ? p.spawnIdx : i, opts.players.length);
@@ -278,8 +289,9 @@ G.start = function(opts){
   if (isOnline()){
     var humans = 0;
     for (var h=0;h<world.boats.length;h++) if (!world.boats[h].isBot) humans++;
-    feed({ name: humans + ' pilot' + (humans===1?'':'s') + ' online' },
-         { name: 'STORM CLOSES IN 20s' });
+    note('<b>' + humans + ' pilot' + (humans===1?'':'s') + ' online</b>' +
+         (humansOnly ? ' <span>· humans only</span>' : ' <span>· drones fill the rest</span>'));
+    note('<span>Storm closes in 20s</span>');
   }
   SS.UI.show('match');
 };
@@ -298,7 +310,7 @@ G.debug = function(){
                 alive:b.alive, hp:Math.round(b.hp), prot:+Math.max(0, b.prot).toFixed(2),
                 x:+b.x.toFixed(1), z:+b.z.toFixed(1) });
   }
-  return { mode:matchMode, running:running, over:over, myId:myId, hostId:hostId,
+  return { mode:matchMode, humansOnly:humansOnly, running:running, over:over, myId:myId, hostId:hostId,
            boats:world.boats.length, alive:alive, projectiles:world.projectiles.length,
            kills:myKills, damage:Math.round(myDamage), list:list };
 };
@@ -345,7 +357,8 @@ G.netLeft = function(id){
   var b = findBoat(id);
   if (!b || !b.alive || b.left || id === myId) return;
   b.left = true;
-  feed(b, { name: 'signal lost —' });
+  if (humansOnly && !b.isBot){ killBoat(b, null, 'left'); return; }
+  note('<b>'+esc(b.name)+'</b> <span>lost signal — a drone took the helm</span>');
   /* the departed pilot's hull becomes a drone; the host flies it */
   b.isBot = true;
   b.name = b.name + ' ⚠';
@@ -359,12 +372,24 @@ G.netHostChange = function(newHost){
       var b = world.boats[i];
       if (b.isBot && b.remote){ b.remote = false; b.net = null; }
     }
-    SS.UI.toast('You are now hosting the drones.', true);
+    SS.UI.toast(humansOnly ? 'You are now hosting the match.' : 'You are now hosting the drones.', true);
   }
 };
 
 G.netDropped = function(){
   if (!running || matchMode !== 'online') return;
+  if (humansOnly){
+    /* no drones to hand the helms to — the match ends where it stands */
+    var me = findBoat(myId);
+    if (me && me.alive){
+      var al = 0;
+      for (var j=0;j<world.boats.length;j++) if (world.boats[j].alive) al++;
+      me.place = al; me.surv = mtime;
+    }
+    SS.UI.toast('Lost the connection — match over.', false);
+    if (me) finish(me);
+    return;
+  }
   matchMode = 'bots';
   for (var i=0;i<world.boats.length;i++){
     var b = world.boats[i];
@@ -758,6 +783,15 @@ function hitMark(){
   var x = $('xh'); if (!x) return;
   x.classList.add('hit'); clearTimeout(hitT);
   hitT = setTimeout(function(){ x.classList.remove('hit'); }, 110);
+}
+
+/* a plain line in the kill feed (arrivals, departures, match notes) */
+function note(html){
+  var d = document.createElement('div'); d.className = 'kl';
+  d.innerHTML = html;
+  var f = $('feed'); f.insertBefore(d, f.firstChild);
+  while (f.children.length > 5) f.removeChild(f.lastChild);
+  setTimeout(function(){ if (d.parentNode) d.parentNode.removeChild(d); }, 5500);
 }
 
 function feed(dead, k){
