@@ -410,7 +410,7 @@
     <div class="small" id="rv-info" style="text-transform:none"></div>
   </div>
   <div class="panel" id="p-overview">
-    <div id="ov-sort"><span class="label" style="flex:1">Overview</span><button data-sort="dist">Dist</button><button data-sort="type">Type</button><button data-sort="name">Name</button><button id="btn-ov-map">Map [N]</button></div>
+    <div id="ov-sort"><span class="label" style="flex:1">Overview</span><button id="btn-ov-warp" style="border-color:var(--amber);color:var(--amber)">Warp ▸</button><button data-sort="dist">Dist</button><button data-sort="type">Type</button><button id="btn-ov-map">Map [N]</button></div>
     <div id="ov-actions"></div>
     <div id="ov-list"></div>
   </div>
@@ -5418,8 +5418,9 @@ function sbxDeath(killerName) {
 //  the overview, the station interior, the star map, and the loss screen.
 // =====================================================================================
 const toasts = [];
-function sbxToast(msg) { toasts.push({ msg, t: 6 }); if (toasts.length > 4) toasts.shift(); const el = $('toasts'); if (el) el.innerHTML = toasts.map(t => `<div>${t.msg}</div>`).join(''); }
-function sbxToastTick(dt) { let ch = false; for (let i = toasts.length - 1; i >= 0; i--) { toasts[i].t -= dt; if (toasts[i].t <= 0) { toasts.splice(i, 1); ch = true; } } if (ch) $('toasts').innerHTML = toasts.map(t => `<div>${t.msg}</div>`).join(''); }
+const toastHtml = () => toasts.slice().reverse().map(t => `<div style="opacity:${t.t < 8 ? 0.45 : 1}">${t.msg}</div>`).join(''); // newest on top; old entries dim before they go
+function sbxToast(msg) { toasts.push({ msg, t: 30 }); if (toasts.length > 5) toasts.shift(); const el = $('toasts'); if (el) el.innerHTML = toastHtml(); }
+function sbxToastTick(dt) { let ch = false; for (let i = toasts.length - 1; i >= 0; i--) { const was = toasts[i].t; toasts[i].t -= dt; if (toasts[i].t <= 0) { toasts.splice(i, 1); ch = true; } else if (was >= 8 && toasts[i].t < 8) ch = true; } if (ch) $('toasts').innerHTML = toastHtml(); }
 
 // ---------- HUD ----------
 let sbxHudT = 0, ovT = 0;
@@ -6102,9 +6103,10 @@ sbxMigrateProfile = function (p) {
   p = _mig3base(p);
   if (!p.planets) p.planets = {};
   if (p.surface === undefined) p.surface = null;   // { sys, site, pos:[x,y,z] } when saved on the ground
-  // every pilot starts with (or is retroactively issued) one rover — only stamped once a ship exists to carry it,
-  // so the shipless default-profile template never poisons the flag
-  if (!p.roverGranted && p.ships?.length) {
+  // a pilot is never left without wheels: if no rover exists anywhere in their estate on load, issue one
+  const ownsRover = (p.ships || []).some(s => (s.cargo?.rover_mk1 || 0) > 0)
+    || Object.values(p.hangars || {}).some(h => (h.rover_mk1 || 0) > 0);
+  if (!ownsRover && p.ships?.length) {
     p.roverGranted = true;
     const s = p.ships.find(x => x.uid === p.activeShip) || p.ships[0];
     s.cargo.rover_mk1 = (s.cargo.rover_mk1 || 0) + 1;
@@ -7647,6 +7649,7 @@ $('ov-list').addEventListener('click', (e) => { const r = e.target.closest('[dat
 $('ov-actions').addEventListener('click', (e) => { const b = e.target.closest('[data-ova]'); if (b) { audio.click(); sbxOvAction(b.dataset.ova); } });
 for (const b of document.querySelectorAll('#ov-sort button')) b.onclick = () => { SBX.ovSort = b.dataset.sort; sbxOverviewRender(); };
 $('btn-ov-map').onclick = () => sbxShowMap(true);
+$('btn-ov-warp').onclick = () => { if (SBX.selected) { audio.click(); sbxWarpTo(SBX.selected.pos, SBX.selected.name); } else sbxToast('Click a destination in the list below, then Warp.'); };
 $('mod-rack').addEventListener('click', (e) => { const s = e.target.closest('[data-mod]'); if (s) { const rt = world.player.sbx?.actives[+s.dataset.mod]; if (rt) { audio.click(); sbxToggleModule(rt); } } });
 srfOrbitalBind();
 $('sb-loss-btn').onclick = () => { audio.click(true); sbxRespawn(); };
