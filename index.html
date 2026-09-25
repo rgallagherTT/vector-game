@@ -5,77 +5,83 @@
   is regenerated from those anchors on every build, so it always matches the code.
 
   SECTIONS (in file order)
-    §CSS                  the whole stylesheet: HUD, screens, sandbox, surface, shipyard, thermal panel
-      §CSS.PARTS            part-built ships have no shield pool; the thermal panel replaces the weapon heat bar
-    §DOM                  markup: canvases, HUD panels, screens, station / map / help / survey overlays, touch controls
-    §CONFIG               imports, CONFIG tuning, math helpers, input, synthesized audio, lobby settings
-    §RENDER               renderer, scene, post-processing, procedural textures, skybox, planet and sun, asteroids, ship model templates
-    §ENTITIES             object pools, Entity / Ship / PlayerShip (flight model: §FLIGHT), steering primitives, enemy archetypes and AI (§ENEMYAI)
-    §FLIGHT               the Stage 1 arcade flight model: mouse-rate steering, throttle, boost, drift (part physics feed its parameters)
-    §ENEMYAI              EnemyShip: pooled; archetype mode tables over the shared steering primitives
-    §WORLD                particles, debris, shockwaves, the World: projectiles, missiles, damage routing, collisions, render sync
-    §CAMERA               chase / cockpit camera, then the HUD (§HUD): reticles, radar, speed lines, objective handlers
-    §HUD                  DOM HUD: reticles, lead indicator, target bracket, off-screen arrow, radar, speed lines
-    §SHIPS                campaign ship catalogue, upgrade modules, secondary weapons
-    §CAPITALS             campaign capital ships, subsystems, bosses
-    §MISSIONS             mission definitions, objective handlers, environment application
-    §ALLIES               wingmen, then touch controls (§TOUCH) and the contextual mobile strip
-    §TOUCH                touch controls and the contextual sandbox strip
-    §VERSUS               versus mode, nametags, lobby
-    §SBXDATA              sandbox universe, items, hulls, modules, the SBX singleton, save IO
-    §FITTING              fitting stats, capacitor, module cycles, damage types, nav assists
-    §PROGRESSION          skills, recipes and blueprints, structure defs, save v2, net worth, the offline engine
-    §INDUSTRY             industry jobs, market orders, trade routes, structures live, fleet, exploration, incursions
-    §SYSTEM               the current system: stations, gates, belts, NPC traffic, wrecks, mining, warp
-    §ECONOMY              per-station markets, trading, refining, agents, insurance, permanent loss
-    §SBXUI                sandbox HUD, toasts, the overview, station tabs (market, fitting, ships, cargo, missions, repair, insurance, save)
-    §SBXUI4               skills, industry, trade and fleet station tabs, fleet HUD
-    §SBXNET               sandbox multiplayer co-presence
-    §PLANETS              planets, landing sites, biomes, the height field, save v3, surface activities data
-    §TERRAIN              pooled terrain engine
-    §SURFACE              descent, atmospheric flight, landing, rover, surface activities, takeoff
-    §ORBITAL              orbital survey globe, surface HUD, prospector
-    §CLARITY              context hint bar, help overlay, tab explainers
-    §PARTS                Stage 6 data layer: part catalog, design physics, flight mapping, presets, part items, save v4
-      §PARTS.CATALOG        part definitions at fighter scale; capital variants multiply these
-      §PARTS.GRAPH          structural connectivity: load paths run only through frames and crew modules
-      §PARTS.DERIVE         every number the builder shows and the flight model consumes
-      §PARTS.WARNINGS       warnings, never blocks
-      §PARTS.FLIGHT         derived physics feed the Stage 1 arcade parameters; the reference fighter maps to CONFIG.flight exactly
-      §PARTS.PRESETS        the Stage 1 fighter by hand; everything else from a symmetric generator
-      §PARTS.TITAN_PRESET   a kilometre of spine: armoured core, two habitat rings, radiator wings, a side hangar
-      §PARTS.ITEMS          every part is a market item, manufacturable, with a blueprint; damaged salvage is a graded variant
-      §PARTS.DESIGNS        player blueprints: a design becomes a virtual hull, a kit item, a recipe and a blueprint original
-      §PARTS.HULLS          Stage 2–3 hulls become preset designs; their table entries now come from their parts
-      §PARTS.NEWSHIP        S6-EDIT(§SBXDATA sbxNewShip): every new ship carries its part design and per-part integrity
-      §PARTS.SAVE_V4        v3 → v4: hulls become their preset designs; fits are preserved slot for slot
-    §PARTRT               Stage 6 runtime: per-part hits, stumps, structural detachment, thermal model, part rendering
-      §PARTRT.GEOMETRY      shape templates and the per-part visual recipe
-      §PARTRT.STATE         per-ship runtime state
-      §PARTRT.RAYCAST       march the projectile's own segment through the part grid
-      §PARTRT.DAMAGE        damage lands on a part, ablates, penetrates, destroys, detaches
-      §PARTRT.DETACH        anything that lost its load path to the core breaks off as its own body
-      §PARTRT.HIT           World hook: every hit on a part-based ship resolves here
-      §PARTRT.THERMAL       heat in from reactors, drives, guns; out only through radiators
-      §PARTRT.PLAYER        the player's ship: boarding builds the state; the flight hook reads it
-      §PARTRT.NPC           sandbox NPCs are part-built: their tuned stats degrade as their parts go
-      §PARTRT.SALVAGE       wrecks drop parts with their integrity carried over
-      §PARTRT.STATION       dock refuels and cools; repairs rebuild destroyed parts; the record keeps the parts
-      §PARTRT.HOOKS         S6-EDIT(§SBXCONTROL sbxBoardVisual): part ships board through partBoardVisual
-      §PARTRT.RENDER        per-frame visual state for every part-built body
-    §THERMALHUD           the ship-wide thermal readout that replaces the per-weapon heat bar
-    §SHIPYARD             the station-side part builder: 3D grid editor, readouts, warnings, blueprints, assembly, refit
-    §SHIPBUILD            alias anchor for §SHIPYARD: the part-based ship builder lives here
-    §TITAN                capital ships: rings, enterable hangar, pads, turret AI, heat death, bridge command, launch and return
-      §TITAN.SPAWN          flagships live in fixed systems; the player's own titan waits where it was parked
-      §TITAN.AI             a platform, not a fighter: slow turns, turret batteries, radiator doctrine
-      §TITAN.SHOTS          every projectile checks titans: bounding sphere first, then the part grid
-      §TITAN.HANGAR         grid collision, pad landing, lights and traffic inside the bay
-      §TITAN.RENDER         interpolated pose, spinning rings, bay lights, shuttle traffic
-      §TITAN.COMMAND        the player's titan: bridge view, tactical overlay, turret control, launch and return
-      §TITAN.HOOKS          S6-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxTryDock): titans populate with the system; titans do not dock
-    §SBXCONTROL           sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
-    §BOOT                 mission runner, hangar, screen state machine, main loop, boot, test exports
+    §CSS                 the whole stylesheet: HUD, screens, sandbox, surface, shipyard, thermal panel
+      §CSS.PARTS           part-built ships have no shield pool; the thermal panel replaces the weapon heat bar
+    §DOM                 markup: canvases, HUD panels, screens, station / map / help / survey overlays, touch controls
+    §CONFIG              imports, CONFIG tuning, math helpers, input, synthesized audio, lobby settings
+    §RENDER              renderer, scene, post-processing, procedural textures, skybox, planet and sun, asteroids, ship model templates
+    §ENTITIES            object pools, Entity / Ship / PlayerShip (flight model: §FLIGHT), steering primitives, enemy archetypes and AI (§ENEMYAI)
+    §FLIGHT              the Stage 1 arcade flight model: mouse-rate steering, throttle, boost, drift (part physics feed its parameters)
+    §ENEMYAI             EnemyShip: pooled; archetype mode tables over the shared steering primitives
+    §WORLD               particles, debris, shockwaves, the World: projectiles, missiles, damage routing, collisions, render sync
+    §CAMERA              chase / cockpit camera, then the HUD (§HUD): reticles, radar, speed lines, objective handlers
+    §HUD                 DOM HUD: reticles, lead indicator, target bracket, off-screen arrow, radar, speed lines
+    §SHIPS               campaign ship catalogue, upgrade modules, secondary weapons
+    §CAPITALS            campaign capital ships, subsystems, bosses
+    §MISSIONS            mission definitions, objective handlers, environment application
+    §ALLIES              wingmen, then touch controls (§TOUCH) and the contextual mobile strip
+    §TOUCH               touch controls and the contextual sandbox strip
+    §VERSUS              versus mode, nametags, lobby
+    §SBXDATA             sandbox universe, items, hulls, modules, the SBX singleton, save IO
+    §FITTING             fitting stats, capacitor, module cycles, damage types, nav assists
+    §PROGRESSION         skills, recipes and blueprints, structure defs, save v2, net worth, the offline engine
+    §INDUSTRY            industry jobs, market orders, trade routes, structures live, fleet, exploration, incursions
+    §SYSTEM              the current system: stations, gates, belts, NPC traffic, wrecks, mining, warp
+    §ECONOMY             per-station markets, trading, refining, agents, insurance, permanent loss
+    §SBXUI               sandbox HUD, toasts, the overview, station tabs (market, fitting, ships, cargo, missions, repair, insurance, save)
+    §SBXUI4              skills, industry, trade and fleet station tabs, fleet HUD
+    §SBXNET              sandbox multiplayer co-presence
+    §PLANETS             planets, landing sites, biomes, the height field, save v3, surface activities data
+    §TERRAIN             pooled terrain engine
+    §SURFACE             descent, atmospheric flight, landing, rover, surface activities, takeoff
+    §ORBITAL             orbital survey globe, surface HUD, prospector
+    §CLARITY             context hint bar, help overlay, tab explainers
+    §PARTS               Stage 6 data layer: part catalog, design physics, flight mapping, presets, part items, save v4
+      §PARTS.CATALOG       part definitions at fighter scale; capital variants multiply these
+      §PARTS.GRAPH         structural connectivity: load paths run only through frames and crew modules
+      §PARTS.DERIVE        every number the builder shows and the flight model consumes
+      §PARTS.WARNINGS      warnings, never blocks
+      §PARTS.FLIGHT        derived physics feed the Stage 1 arcade parameters; the reference fighter maps to CONFIG.flight exactly
+      §PARTS.PRESETS       the Stage 1 fighter by hand; everything else from a symmetric generator
+      §PARTS.TITAN         the titan preset, laid out part-for-part on the titan kit (40 m cells; kit metres = cell × 40)
+      §PARTS.ITEMS         every part is a market item, manufacturable, with a blueprint; damaged salvage is a graded variant
+      §PARTS.DESIGNS       player blueprints: a design becomes a virtual hull, a kit item, a recipe and a blueprint original
+      §PARTS.HULLS         Stage 2–3 hulls become preset designs; their table entries now come from their parts
+      §PARTS.NEWSHIP       S6-EDIT(§SBXDATA sbxNewShip): every new ship carries its part design and per-part integrity
+      §PARTS.SAVE_V4       v3 → v4: hulls become their preset designs; fits are preserved slot for slot
+    §PARTRT              Stage 6 runtime: per-part hits, stumps, structural detachment, thermal model, part rendering
+      §PARTRT.GEOMETRY     shape templates and the per-part visual recipe
+      §PARTRT.STATE        per-ship runtime state
+      §PARTRT.RAYCAST      march the projectile's own segment through the part grid
+      §PARTRT.DAMAGE       damage lands on a part, ablates, penetrates, destroys, detaches
+      §PARTRT.DETACH       anything that lost its load path to the core breaks off as its own body
+      §PARTRT.HIT          World hook: every hit on a part-based ship resolves here
+      §PARTRT.THERMAL      heat in from reactors, drives, guns; out only through radiators
+      §PARTRT.PLAYER       the player's ship: boarding builds the state; the flight hook reads it
+      §PARTRT.NPC          sandbox NPCs are part-built: their tuned stats degrade as their parts go
+      §PARTRT.SALVAGE      wrecks drop parts with their integrity carried over
+      §PARTRT.STATION      dock refuels and cools; repairs rebuild destroyed parts; the record keeps the parts
+      §PARTRT.HOOKS        S6-EDIT(§SBXCONTROL sbxBoardVisual): part ships board through partBoardVisual
+      §PARTRT.RENDER       per-frame visual state for every part-built body
+    §THERMALHUD          the ship-wide thermal readout that replaces the per-weapon heat bar
+    §SHIPYARD            the station-side part builder: 3D grid editor, readouts, warnings, blueprints, assembly, refit
+    §SHIPBUILD           alias anchor for §SHIPYARD: the part-based ship builder lives here
+    §TITANKIT            the titan kit: part meshes, materials, and the per-cell merged titan mesh
+      §TITANKIT.BUILDER    one merged, indexed, multi-material geometry per kit part
+      §TITANKIT.PARTS      the kit's part meshes (pivot at the attach face)
+      §TITANKIT.MATERIAL   six kit materials per ship, sharing the part runtime's uniforms (deploy, heat, throttle, time)
+      §TITANKIT.ASSEMBLE   merge every kit node into one geometry; each triangle owned by one cell
+      §TITANKIT.STATE      PartState hooks for kit designs: build, destroy, scorch, colour, dispose
+    §TITAN               capital ships: rings, enterable hangar, pads, turret AI, heat death, bridge command, launch and return
+      §TITAN.SPAWN         flagships live in fixed systems; the player's own titan waits where it was parked
+      §TITAN.AI            a platform, not a fighter: slow turns, turret batteries, radiator doctrine
+      §TITAN.SHOTS         every projectile checks titans: bounding sphere first, then the part grid
+      §TITAN.HANGAR        grid collision, pad landing, lights and traffic inside the bay
+      §TITAN.RENDER        interpolated pose, spinning rings, bay lights, shuttle traffic
+      §TITAN.COMMAND       the player's titan: bridge view, tactical overlay, turret control, launch and return
+      §TITAN.HOOKS         S6-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxTryDock): titans populate with the system; titans do not dock
+    §SBXCONTROL          sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
+    §BOOT                mission runner, hangar, screen state machine, main loop, boot, test exports
 
   STAGE 6 CHANGES TO EARLIER SECTIONS (each marked in place with "S6-EDIT")
     §ENTITIES PlayerShip.build — a part-built ship brings its own merged mesh as the body
@@ -94,6 +100,7 @@
     §SBXUI renderMarket — ship parts get their own section
     §CLARITY HINTS.pick — heat, titans, pads
     §SBXDATA sbxNewShip — every new ship carries its part design and per-part integrity
+    §PARTRT PartState — kit designs draw from the titan kit meshes
     §SBXCONTROL sbxBoardVisual — part ships board through partBoardVisual
     §SYSTEM sbxLoadSystem, §SBXCONTROL sbxTryDock — titans populate with the system; titans do not dock
     §SBXCONTROL sbxStep — ticks the part runtime, NPC parts, debris and titans
@@ -7781,7 +7788,8 @@ const PARTS = {
 const PART_ORDER = Object.keys(PARTS);
 const PART_MOUNTS = { high: 'hp_turret', mid: 'hp_util', low: 'hp_int', rig: 'hp_rig' };
 
-const partScale = (D) => PART_SCALES[D?.scale || 'fighter'];
+const _partScaleCs = {};
+const partScale = (D) => { const S = PART_SCALES[D?.scale || 'fighter']; if (!D?.cs || D.cs === S.cs) return S; const k = (D.scale || 'fighter') + D.cs; return _partScaleCs[k] || (_partScaleCs[k] = { ...S, cs: D.cs }); };   // a design may set its own cell edge (the kit titan: 40 m)
 const partKey = (x, y, z) => x + ',' + y + ',' + z;
 const _fin = new THREE.Vector3();
 function partStat(t, key, S) {
@@ -7870,7 +7878,7 @@ function partDerive(D, hp = null, opts = {}) {
     out.cost += partStat(p.t, 'cost', S);
     out.heatCap += partStat(p.t, 'mass', S) * PART_THERMAL.capPerTonne * (S.heatCap / S.mass);
     out.passive += PART_THERMAL.passivePerPart * S.heat;
-    if (def.armor) out.armorHp += partStat(p.t, 'hp', S) * frac; else out.structHp += partStat(p.t, 'hp', S) * frac;
+    if (def.armor) out.armorHp += partStat(p.t, 'hp', S) * (p.hm || 1) * frac; else out.structHp += partStat(p.t, 'hp', S) * (p.hm || 1) * frac;
     if (!att[i]) continue;                                            // unattached parts carry mass but do no work
     if (def.cat === 'reactor') { out.gen += partStat(p.t, 'power', S) * (frac < 0.3 ? 0.5 : 1); out.heatIdle += partStat(p.t, 'heatIdle', S); out.reactors++; }
     if (def.draw) out.draw += partStat(p.t, 'draw', S);
@@ -7892,11 +7900,11 @@ function partDerive(D, hp = null, opts = {}) {
       out.rcsAuth.x += f * Math.hypot(r.y, r.z); out.rcsAuth.y += f * Math.hypot(r.x, r.z); out.rcsAuth.z += f * Math.hypot(r.x, r.y); out.rcsN++;
     }
     if (def.cat === 'radiator') {
-      const dv = PART_DIRS[p.d ?? 0]; let finOk = true;
-      for (let k = 1; k <= def.fin; k++) { const j = map.get(partKey(p.x + dv[0] * k, p.y + dv[1] * k, p.z + dv[2] * k)); if (j != null && alive(j)) finOk = false; }
+      const dv = PART_DIRS[p.d ?? 0]; let finOk = true; const fin = p.fin || def.fin, rk = p.rk || 1;   // kit wings: one long fin, several radiators' worth of panel
+      for (let k = 1; k <= fin; k++) { const j = map.get(partKey(p.x + dv[0] * k, p.y + dv[1] * k, p.z + dv[2] * k)); if (j != null && alive(j)) finOk = false; }
       if (!finOk) out.finBlocked.push(i);
-      out.reject += (finOk ? partStat(p.t, 'reject', S) : partStat(p.t, 'rejectRet', S)) * (0.4 + 0.6 * frac); out.rejectRet += partStat(p.t, 'rejectRet', S); out.radiators++;
-      radius = Math.max(radius, _fin.set(dv[0], dv[1], dv[2]).multiplyScalar(def.fin * cs).add(r).length() + cs * 0.6);   // deployed fins reach past the hull
+      out.reject += (finOk ? partStat(p.t, 'reject', S) : partStat(p.t, 'rejectRet', S)) * rk * (0.4 + 0.6 * frac); out.rejectRet += partStat(p.t, 'rejectRet', S) * rk; out.radiators++;
+      radius = Math.max(radius, _fin.set(dv[0], dv[1], dv[2]).multiplyScalar(fin * cs).add(r).length() + cs * 0.6);   // deployed fins reach past the hull
     }
   }
   out.radius = radius;
@@ -8112,70 +8120,84 @@ const PART_NPC_SPECS = {
 };
 function partBuildNpcPresets() { for (const [k, spec] of Object.entries(PART_NPC_SPECS)) PART_PRESETS['n_' + k] = partGenerate({ ...spec, name: CONFIG.enemies[k]?.name || k }); }
 
-// §PARTS.TITAN_PRESET — a kilometre of spine: armoured core, two habitat rings, radiator wings, a side hangar
+// §PARTS.TITAN — the titan preset, laid out part-for-part on the titan kit (40 m cells; kit metres = cell × 40)
+//  Every kit node lists the grid cells that own it: hits, damage, detachment and heat run on the cells,
+//  the kit geometry is what you see. PART_KIT.titan holds the node list (not saved; rebuilt from this function).
+const PART_KIT = {};
 function partTitanDesign(name = 'Leviathan-class titan', opt = {}) {
-  const parts = []; const occ = new Map();
-  const put = (t, x, y, z, d = 0) => { const k = partKey(x, y, z); if (occ.has(k)) { parts[occ.get(k)].t = t; parts[occ.get(k)].d = d; return; } occ.set(k, parts.length); parts.push({ t, x, y, z, d }); };
-  const del = (x, y, z) => { const k = partKey(x, y, z); if (!occ.has(k)) return; const i = occ.get(k); parts[i] = null; occ.delete(k); };
-  const L = opt.len || 44; const z0 = -22, z1 = z0 + L - 1;
-  // core: a 3×3 truss along the whole length
-  for (let z = z0; z <= z1; z++) for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) put('frame', x, y, z);
-  // bridge + crew modules forward, habitat rings mid-ship
-  put('crew', 0, 1, z0 + 2); put('crew', 0, 0, z0 + 3);
-  put('hab_ring', 0, 0, -8); put('hab_ring', 0, 0, 4);
-  // armour skin on the forward third and the belly
-  for (let z = z0; z <= z0 + 12; z++) for (const [x, y] of [[-2, 0], [2, 0], [0, 2], [0, -2], [-2, 1], [2, 1], [-2, -1], [2, -1]]) put('armor_h', x, y, z);
-  for (const [x, y] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1], [0, 0]]) put('armor_h', x, y, z0 - 1);
-  // reactors deep in the aft core
-  for (const z of [8, 11, 14, 17]) { put('reactor_h', 0, 0, z); put('reactor_h', -2, 0, z); put('reactor_h', 2, 0, z); }
-  for (const z of [6, 8, 10, 12, 14, 16, 18]) { put('tank', 0, -2, z); put('tank', 0, 2, z); put('tank', -2, -1, z); put('tank', 2, -1, z); }
-  // engines: a 3×3 cluster aft
-  for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) put('thruster_h', x, y, z1 + 1, 4);
-  // RCS at the four corners of both ends
-  for (const z of [z0 + 1, z1 - 1]) for (const [x, y] of [[-2, 2], [2, 2], [-2, -2], [2, -2]]) { put('frame', Math.sign(x), Math.sign(y) * 2, z); put('rcs', x, y, z); }
-  for (const z of [z0 + 4, z1 - 4]) { put('rcs', -3, 0, z); put('rcs', 3, 0, z); put('rcs', 0, 3, z); put('rcs', 0, -3, z); put('frame', -2, 0, z); put('frame', 2, 0, z); put('frame', 0, 2, z); put('frame', 0, -2, z); }
-  // radiator wings: booms out along ±y (dorsal/ventral) aft of the rings, fins facing out
-  for (const z of [9, 11, 13, 15, 17]) for (const s of [1, -1]) {
-    for (let y = 2; y <= 3; y++) put('frame', 0, y * s, z);
-    for (let k = 0; k < 2; k++) put('radiator', k === 0 ? -1 : 1, 3 * s, z, k === 0 ? 1 : 0);
-    put('radiator', 0, 4 * s, z, s > 0 ? 2 : 3);
+  const parts = []; const occ = new Map(); const nodes = []; const PI = Math.PI;
+  const put = (t, x, y, z, d = 0, extra = null) => { const k = partKey(x, y, z); const q = { t, x, y, z, d, ...(extra || {}) }; if (occ.has(k)) { parts[occ.get(k)] = q; return; } occ.set(k, parts.length); parts.push(q); };
+  const node = (t, p, r, c, extra = null) => nodes.push({ t, p, r: r || [0, 0, 0], c, ...(extra || {}) });
+  const rad = (phi, r, z) => [[r * Math.cos(phi), r * Math.sin(phi), z], [0, 0, phi - PI / 2]];
+  const zr = (z) => Math.round(z / 40);
+  // spine: 38 truss segments, one cell each; the armoured forward third carries heavier frames
+  for (let k = 0; k < 38; k++) {
+    const z = -22 + k; const out = [16, 23, 30].includes(k);
+    put('frame', 0, 0, z, 0, { hm: z <= -11 ? 4 : 2.5 });
+    const c = [[0, 0, z]]; if (out) { put('frame', 1, 0, z); put('frame', -1, 0, z); c.push([1, 0, z], [-1, 0, z]); }
+    node(k === 12 || k === 34 || k === 36 ? 'frame_junction' : out ? 'frame_outrigger' : 'frame_straight', [0, 0, -900 + 40 * k], 0, c);
   }
-  // turrets along the dorsal and flank lines
-  for (const z of [z0 + 5, z0 + 9, -4, 0, 20]) { put('hp_turret', 0, 3, z); put('hp_turret', 0, -3, z); put('frame', 0, 2, z); put('frame', 0, -2, z); }
-  for (const z of [z0 + 7, -2, 2, 16]) { put('hp_turret', -3, 0, z); put('frame', -2, 0, z); }
-  put('hp_util', -2, 1, 0); put('hp_util', -2, -1, 0); put('hp_int', 0, 0, 1); put('hp_int', 0, 0, -1); put('hp_rig', 0, 0, 20);
-  for (const z of [-1, 1, 3]) put('cargo', -2, 0, z + 2 * 0);
-  // hangar: a lit bay built out from the starboard (+x) flank, open at the far side
-  const hz0 = -6, hz1 = 2;
-  for (let z = hz0; z <= hz1; z++) for (let x = 2; x <= 8; x++) {
-    put(z === -4 && x === 5 || z === 0 && x === 5 || z === -2 && x === 7 ? 'pad' : 'frame', x, -2, z);   // deck
-    put('frame', x, 2, z);                                                                                // roof
+  // nose: armour cone around the bow, the command block on top of it
+  put('armor_h', 0, 0, -23); put('armor_h', 0, 0, -24);
+  node('frame_endcap', [0, 0, -904], 0, [[0, 0, -22]]);
+  for (const zc of [-919, -957]) for (let j = 0; j < 6; j++) { const [p, r] = rad(PI / 6 + j * PI / 3, 14, zc); node('armour_curved', p, r, [[0, 0, zr(zc)]]); }
+  for (const z of [-24, -23]) put('crew', 0, 1, z); put('frame', 0, 1, -22);
+  node('crew_command', [0, 16, -890], 0, [[0, 1, -24], [0, 1, -23], [0, 1, -22]]);
+  for (let k = 0; k < 12; k++) { const z0 = -900 + 40 * k, zc = z0 + 20, c = [[0, 0, zr(zc)]];
+    if (k > 0) node('armour_flat', [0, 16, zc], 0, c);
+    node('armour_flat', [16, 0, zc], [0, 0, -PI / 2], c); node('armour_flat', [-16, 0, zc], [0, 0, PI / 2], c);
+    if (z0 >= -540) node('armour_flat', [0, -16, zc], [0, 0, PI], c); }
+  // hangar: a 400 m bay slung under the bow, open forward; deck, walls and roof are cells, the interior is not
+  const hc = []; const hp = (t, x, y, z) => { put(t, x, y, z); hc.push([x, y, z]); };
+  const pads = [-22, -19, -17];
+  for (let z = -24; z <= -15; z++) { for (let x = -1; x <= 1; x++) hp(x === 0 && pads.includes(z) ? 'pad' : 'frame', x, -2, z); for (const s of [1, -1]) { hp('frame', s, -1, z); if (z !== -19) hp('frame', s, 0, z); } }
+  for (let x = -1; x <= 1; x++) hp('frame', x, -1, -14);
+  node('hangar_bay', [0, -16, -780], 0, hc);
+  // habitat ring: hub on its own cell above the spine junction; the ring spins about the spine axis
+  put('hab_ring', 0, 1, -10); node('habring', [0, 0, -400], 0, [[0, 1, -10]], { ring: true });
+  // spine gun: the mass driver's barrel runs inside the truss, breech at z 300
+  node('hardpoint_massdriver', [0, 0, 300], 0, Array.from({ length: 32 }, (_, i) => [0, 0, -24 + i]));
+  // cargo
+  put('cargo_l', 0, 1, -20); put('cargo_l', 0, 1, -16);
+  node('cargo_stack', [0, 19, -800], 0, [[0, 1, -20]]); node('cargo_stack', [0, 19, -650], 0, [[0, 1, -16]]);
+  node('cargo_stack', [19, 0, -660], [0, 0, -PI / 2], [[1, 0, -16]]); node('cargo_stack', [-19, 0, -660], [0, 0, PI / 2], [[-1, 0, -16]]);
+  // radiator wings: one hinged wing per outrigger side, each a single big radiator cell with a 5-cell fin
+  for (const k of [16, 23, 30]) { const z = -22 + k;
+    for (const s of [1, -1]) { put('radiator', 2 * s, 0, z, s > 0 ? 0 : 1, { fin: 5, rk: 5, hm: 3 });
+      node('radiator', [52 * s, 0, 40 * z], s > 0 ? [0, 0, 0] : [0, PI, 0], [[2 * s, 0, z]], { h: s }); } }
+  // propellant: six long tanks around the aft spine, four spheres on the boom
+  for (let z = 12; z <= 14; z++) for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put('tank', x, y, z);
+  const tz = (x, y) => [12, 13, 14].map(z => [x, y, z]);
+  for (let j = 0; j < 6; j++) { const phi = PI / 6 + j * PI / 3; const [p, r] = rad(phi, 19, 540); const ax = Math.abs(Math.cos(phi)) > Math.abs(Math.sin(phi)); node('tank_cyl', p, r, tz(ax ? Math.sign(Math.cos(phi)) : 0, ax ? 0 : Math.sign(Math.sin(phi)))); }
+  put('frame', 0, 0, 16);
+  for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put('tank', x, y, 16);
+  for (let j = 0; j < 4; j++) { const phi = j * PI / 2; const [p, r] = rad(phi, 12, 660); node('tank_sphere', p, r, [[Math.round(Math.cos(phi)), Math.round(Math.sin(phi)), 16]]); }
+  // aft: endcap, boom, reactor, thrust frame, four main bells
+  node('frame_endcap', [0, 0, 620], 0, [[0, 0, 15]]);
+  for (let i = 0; i < 5; i++) { const z = 16 + i; put('frame', 0, 0, z, 0, { hm: 2.5 }); node('frame_boom', [0, 0, 624 + 40 * i], 0, [[0, 0, z]]); }
+  const rc = []; for (const z of [21, 22]) { put('frame', 0, 0, z, 0, { hm: 2.5 }); rc.push([0, 0, z]); for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { put('reactor_h', x, y, z); rc.push([x, y, z]); } }
+  node('reactor', [0, 0, 824], [PI / 2, 0, 0], rc);
+  const tf = []; for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) { put('frame', x, y, 23); tf.push([x, y, 23]); }
+  node('frame_thrust', [0, 0, 930], 0, tf);
+  for (const x of [-1, 1]) for (const y of [-1, 1]) { put('thruster_h', x, y, 24, 4); node('thruster_main', [x * 32, y * 32, 938], [PI / 2, 0, 0], [[x, y, 24]]); }
+  // turret batteries (15), each on its own cell
+  const T = [[PI / 2, 16, -260, [0, 1, -6]], [PI / 2, 16, 20, [0, 1, 1]], [PI / 2, 16, 300, [0, 1, 8]], [PI / 2, 19, -700, [0, 1, -18]],
+    [-PI / 2, 16, -300, [0, -1, -7]], [-PI / 2, 16, 20, [0, -1, 1]], [-PI / 2, 16, 300, [0, -1, 8]],
+    [0, 19, -760, [1, 0, -19]], [0, 19, -560, [1, 0, -14]], [PI, 19, -760, [-1, 0, -19]], [PI, 19, -560, [-1, 0, -14]],
+    [PI / 2, 54, -960, [0, 2, -24]], [PI / 2, 54, -910, [0, 2, -23]], [-PI / 2, 86, -900, [0, -3, -22]], [-PI / 2, 86, -700, [0, -3, -17]]];
+  for (const [f, r, z, c] of T) { put('hp_turret', ...c); const [p, ro] = rad(f, r, z); node('hardpoint_turret', p, ro, [c]); }
+  // attitude jets at the extremities
+  for (const s of [-1, 1]) {
+    put('rcs', s, 1, -24); node('thruster_rcs', [s * 28, 29, -995], [0, 0, -s * PI / 2], [[s, 1, -24]]);
+    put('rcs', 2 * s, -2, -24); node('thruster_rcs', [s * 55, -76, -975], [0, 0, -s * PI / 2], [[2 * s, -2, -24]]);
+    for (const y of [-1, 1]) { put('rcs', 2 * s, y, 23); node('thruster_rcs', [s * 60, y * 40, 934], [0, 0, -s * PI / 2], [[2 * s, y, 23]]); }
   }
-  for (let x = 2; x <= 8; x++) for (let y = -1; y <= 1; y++) { put('frame', x, y, hz0 - 1); put('frame', x, y, hz1 + 1); } // fore / aft bulkheads
-  for (let z = hz0; z <= hz1; z++) { put('frame', 1, -2, z); put('frame', 1, 2, z); }                  // deck and roof tie into the core
-  for (let z = hz0; z <= hz1; z++) for (let y = -1; y <= 1; y++) del(2, y, z);                           // bay interior opens onto the core wall
-  for (let z = hz0; z <= hz1; z++) for (let x = 3; x <= 8; x++) for (let y = -1; y <= 1; y++) del(x, y, z);
-  const D = { name, scale: 'capital', parts: parts.filter(Boolean), tint: opt.tint || 0x8a95a3, hangar: { x0: 2, x1: 8, y0: -1, y1: 1, z0: hz0, z1: hz1, mouthX: 9 } };
-  // trim: counter-mass so the thrust line runs through the centre of mass despite the hangar's weight
-  const occ2 = new Map(D.parts.map((p, i) => [partKey(p.x, p.y, p.z), i]));
-  const growFrom = (x, y, z, fx, fy) => {                           // extend one cell outward from an existing part
-    const nb = occ2.get(partKey(x - fx, y - fy, z)); if (nb == null || occ2.has(partKey(x, y, z))) return false;
-    const t = D.parts[nb]; const c = PARTS[t.t].cat;
-    if (c === 'hardpoint' || c === 'reactor' || c === 'radiator' || c === 'rcs' || c === 'thruster' || c === 'crew') return false;
-    if (!partIsStructural(t.t)) t.t = 'frame';
-    occ2.set(partKey(x, y, z), D.parts.length); D.parts.push({ t: 'armor_h', x, y, z, d: 0 }); return true;
-  };
-  for (let k = 0; k < 90; k++) {
-    const d = partDerive(D); const ox = d.com.x / 24, oy = d.com.y / 24;
-    if (Math.abs(ox) < 0.02 && Math.abs(oy) < 0.02) break;
-    let placed = false;
-    if (Math.abs(ox) >= Math.abs(oy)) { const s = -Math.sign(ox);
-      for (let r = 3; r <= 7 && !placed; r++) for (let z = -21; z <= 20 && !placed; z++) for (const y of [0, -1, 1]) if (growFrom(s * r, y, z, s, 0)) { placed = true; break; }
-    } else { const s = -Math.sign(oy);
-      for (let r = 3; r <= 7 && !placed; r++) for (let z = -20; z <= 6 && !placed; z++) for (const x of [0, -1, 1]) if (growFrom(x, s * r, z, 0, s)) { placed = true; break; }
-    }
-    if (!placed) break;
-  }
+  // fitting sockets inside the midships truss (no kit mesh — drawn as equipment blocks)
+  put('hp_util', 1, 0, -2); put('hp_util', -1, 0, -2); put('hp_int', 0, 1, -2); put('hp_int', 0, -1, -2); put('hp_rig', 0, 1, 4);
+  const D = { name, scale: 'capital', cs: 40, kit: 'titan', bridge: [0, 50, -1004], parts, tint: opt.tint || 0xd9d6ce,
+    hangar: { box: [-45, -80, -971, 45, -26, -583], mouth: [0, 0, -1], mouthP: [0, -50, -1060], light: [0, -40, -780],
+      padM: { [partKey(0, -2, -22)]: [0, -80.4, -870], [partKey(0, -2, -19)]: [0, -80.4, -770], [partKey(0, -2, -17)]: [0, -80.4, -670] } } };
+  PART_KIT.titan = { nodes };
   return D;
 }
 
@@ -8251,7 +8273,10 @@ function partDesignOf(ship) {
   if (h.designId) { const D = SBX.profile?.designs?.find(x => x.id === h.designId); if (D) return (ship.design = partClone(D)); }
   return null;
 }
-function partClone(D) { return { name: D.name, scale: D.scale, tint: D.tint, shell: !!D.shell, id: D.id, hangar: D.hangar ? { ...D.hangar } : undefined, parts: D.parts.map(p => ({ t: p.t, x: p.x, y: p.y, z: p.z, d: p.d | 0 })) }; }
+function partClone(D) {
+  const q = { name: D.name, scale: D.scale, tint: D.tint, shell: !!D.shell, id: D.id, hangar: D.hangar ? JSON.parse(JSON.stringify(D.hangar)) : undefined, parts: D.parts.map(p => { const o = { t: p.t, x: p.x, y: p.y, z: p.z, d: p.d | 0 }; if (p.hm) o.hm = p.hm; if (p.fin) o.fin = p.fin; if (p.rk) o.rk = p.rk; return o; }) };
+  if (D.cs) q.cs = D.cs; if (D.kit) q.kit = D.kit; if (D.bridge) q.bridge = D.bridge.slice(); return q;
+}
 
 // §PARTS.HULLS — Stage 2–3 hulls become preset designs; their table entries now come from their parts
 function partApplyHullPresets() {
@@ -8433,17 +8458,20 @@ class PartState {
     this.map = partIndexMap(D); const n = D.parts.length;
     this.pristine = partDerive(D); this.origin = opts.origin ? opts.origin.clone() : this.pristine.com.clone();          // entity origin sits at the design's centre of mass
     const hm = opts.hpMul ?? 1;
-    this.max = D.parts.map(p => { const def = PARTS[p.t]; let h = partStat(p.t, 'hp', this.S) * hm; if (this.capital && PART_CAP_HP[def.cat]) h = def.hp * PART_CAP_HP[def.cat] * hm; return Math.max(1, h); });
+    this.max = D.parts.map(p => { const def = PARTS[p.t]; let h = partStat(p.t, 'hp', this.S) * hm; if (this.capital && PART_CAP_HP[def.cat]) h = def.hp * PART_CAP_HP[def.cat] * hm; return Math.max(1, h * (p.hm || 1)); });
     this.hp = this.max.map((m, i) => m * clamp(opts.hpFrac?.[i] ?? 1, 0, 1));
     this.gone = new Uint8Array(n); for (let i = 0; i < n; i++) if (this.hp[i] <= 0) this.gone[i] = 1;
     this.heat = opts.heat ?? 0.22; this.prop = opts.prop ?? 1; this.radDeploy = 1; this.radWant = true;
     this.throttle = 0; this.breach = new Map(); this.sparkT = 0; this.flash = 0; this.lost = null; this.lastSource = null; this.lastAttacker = null;
     this.perf = 1; this.powerPerf = 1; this.perfFlight = 1; this.shotHeat = 0; this.dirty = true; this.bias = new THREE.Vector3(); this.hadCrew = this.pristine.crew > 0;
     this.der = this.pristine; this.recompute();
+    if (D.kit && PART_KIT[D.kit]) kitBuild(this);                      // S6-EDIT(§PARTRT PartState): kit designs draw from the titan kit meshes
+    else {
     this.mat = partMaterial();
     const G = partBuildGeometry(this); this.geo = G; this.mesh = new THREE.Mesh(G.g, this.mat); this.mesh.frustumCulled = !this.capital;
     this.root = this.mesh;
-    if (this.capital) {                                               // titans: detailed + one-box-per-part far LOD, both single draws
+    }
+    if (this.capital && !this.kit) {                                               // titans: detailed + one-box-per-part far LOD, both single draws
       const Gc = partBuildGeometry(this, true); this.geoC = Gc; const far = new THREE.Mesh(Gc.g, this.mat);
       this.lod = new THREE.LOD(); this.lod.addLevel(this.mesh, 0); this.lod.addLevel(far, 5200); this.root = new THREE.Group(); this.root.add(this.lod);
       this.rings = []; for (const i of this.pristine.rings) { const r = partRingMesh(this, i, this.mat); this.rings.push(r); this.root.add(r); }
@@ -8452,7 +8480,8 @@ class PartState {
     this.applyColors();
     // aft-facing thrusters carry the plume anchors (metres, ship-local)
     this.anchors = []; this.anchorPart = [];
-    D.parts.forEach((p, i) => { if (PARTS[p.t].cat === 'thruster' && (p.d ?? 4) === 4) { const c = this.cellCentre(i, new THREE.Vector3()); c.z += this.cs * 0.55; this.anchors.push(c); this.anchorPart.push(i); } });
+    if (this.kit) for (const a of this.kitAnchors) { this.anchors.push(a.p); this.anchorPart.push(a.i); }
+    else D.parts.forEach((p, i) => { if (PARTS[p.t].cat === 'thruster' && (p.d ?? 4) === 4) { const c = this.cellCentre(i, new THREE.Vector3()); c.z += this.cs * 0.55; this.anchors.push(c); this.anchorPart.push(i); } });
     const b = this.pristine; this.size = new THREE.Vector3((b.max.x - b.min.x + 1) * this.cs, (b.max.y - b.min.y + 1) * this.cs, (b.max.z - b.min.z + 1) * this.cs);
   }
   cellCentre(i, out) { const p = this.D.parts[i]; return out.set(p.x * this.cs - this.origin.x, p.y * this.cs - this.origin.y, p.z * this.cs - this.origin.z); }
@@ -8473,11 +8502,13 @@ class PartState {
   collapse(geo, r, i) { const a = geo.g.attributes.position.array; const c = this.cellCentre(i, _v[4]); for (let k = r[0] * 3, e = (r[0] + r[1]) * 3; k < e; k += 3) { a[k] = c.x; a[k + 1] = c.y; a[k + 2] = c.z; } }
   restore(geo, r) { const a = geo.g.attributes.position.array; for (let k = r[0] * 3, e = (r[0] + r[1]) * 3; k < e; k++) a[k] = geo.base[k]; }
   showDestroyed(i, silent) {
+    if (this.kit) return kitShowDestroyed(this, i);
     for (const geo of [this.geo, this.geoC]) { if (!geo) continue; this.collapse(geo, geo.ranges[i], i); if (geo.stumps[i] && !this.detached?.[i]) this.restore(geo, geo.stumps[i]); geo.g.attributes.position.needsUpdate = true; }
     const ring = this.rings?.find(r => r.userData.part === i); if (ring) ring.visible = false;
   }
-  hideStump(i) { for (const geo of [this.geo]) { if (!geo?.stumps[i]) continue; this.collapse(geo, geo.stumps[i], i); geo.g.attributes.position.needsUpdate = true; } }
+  hideStump(i) { if (this.kit) return kitHideStump(this, i); for (const geo of [this.geo]) { if (!geo?.stumps[i]) continue; this.collapse(geo, geo.stumps[i], i); geo.g.attributes.position.needsUpdate = true; } }
   applyColors(only = null) {
+    if (this.kit) return kitApplyColors(this, only);
     for (const geo of [this.geo, this.geoC]) {
       if (!geo) continue; const col = geo.g.attributes.color.array;
       const list = only != null ? [only] : this.D.parts.map((_, i) => i);
@@ -8485,7 +8516,7 @@ class PartState {
       geo.g.attributes.color.needsUpdate = true;
     }
   }
-  dispose() { const seen = new Set(); this.root.traverse(o => { if (o.geometry && !o.geometry.userData?.shared && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); } }); this.mat.dispose(); if (this.root.parent) this.root.parent.remove(this.root); }
+  dispose() { if (this.kit) return kitDispose(this); const seen = new Set(); this.root.traverse(o => { if (o.geometry && !o.geometry.userData?.shared && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); } }); this.mat.dispose(); if (this.root.parent) this.root.parent.remove(this.root); }
 }
 
 // §PARTRT.RAYCAST — march the projectile's own segment through the part grid
@@ -8502,7 +8533,7 @@ function partRaycast(ps, a, b, out) {
     let i = ps.map.get(key);
     if (i != null && !ps.hittable(i)) i = null;
     if (i == null && fins) { const f = fins.get(key); if (f != null && !ps.gone[f]) i = f; }
-    if (i == null && ps.rings) for (const r of ps.rings) { const j = r.userData.part; if (ps.gone[j]) continue; const p = ps.D.parts[j]; if (Math.abs(z - p.z) < 0.5 && Math.abs(Math.hypot(x - p.x, y - p.y) - PARTS[p.t].ring) < 0.55) { i = j; break; } }
+    if (i == null && ps.rings) for (const r of ps.rings) { const j = r.userData.part; if (ps.gone[j]) continue; const p = ps.D.parts[j]; const u = r.userData; const c = u.c || [p.x, p.y, p.z]; if (Math.abs(z - c[2]) < (u.W || 0.5) && Math.abs(Math.hypot(x - c[0], y - c[1]) - (u.R || PARTS[p.t].ring)) < 0.55) { i = j; break; } }
     if (i != null) { if (out) out.set(x, y, z).multiplyScalar(cs).sub(ps.origin).applyQuaternion(e.quat).add(e.pos); return i; }
   }
   return null;
@@ -8510,7 +8541,7 @@ function partRaycast(ps, a, b, out) {
 /** Deployed radiator fins occupy the cells they sweep through: big, fragile targets. */
 function partFinMap(ps) {
   if (ps._fins && ps._finsDeploy === ps.radDeploy > 0.5 && ps._finsGen === ps._gen) return ps._fins;
-  const m = new Map(); ps.D.parts.forEach((p, i) => { if (ps.gone[i] || PARTS[p.t].cat !== 'radiator') return; const v = PART_DIRS[p.d ?? 0]; for (let k = 1; k <= PARTS[p.t].fin; k++) m.set(partKey(p.x + v[0] * k, p.y + v[1] * k, p.z + v[2] * k), i); });
+  const m = new Map(); ps.D.parts.forEach((p, i) => { if (ps.gone[i] || PARTS[p.t].cat !== 'radiator') return; const v = PART_DIRS[p.d ?? 0]; for (let k = 1; k <= (p.fin || PARTS[p.t].fin); k++) m.set(partKey(p.x + v[0] * k, p.y + v[1] * k, p.z + v[2] * k), i); });
   ps._fins = m; ps._finsDeploy = ps.radDeploy > 0.5; ps._finsGen = ps._gen; return m;
 }
 function partNearest(ps, world, maxCells = 99) {
@@ -8593,7 +8624,7 @@ function partCheckDetach(ps) {
 }
 const PART_DEBRIS = [];
 function partSpawnDebris(ps, list) {
-  const D = ps.D; const sub = { name: 'debris', scale: D.scale, tint: D.tint, parts: list.map(j => ({ ...D.parts[j] })) };
+  const D = ps.D; const sub = { name: 'debris', scale: D.scale, tint: D.tint, cs: D.cs, kit: D.kit, parts: list.map(j => ({ ...D.parts[j] })) };
   const hp = list.map(j => clamp(ps.hp[j] / ps.max[j], 0.15, 1));
   // the chunk's own origin is its own centre of mass; its pose starts where it was on the ship
   const dS = partDerive(sub); const tmp = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -9014,7 +9045,7 @@ function yardMount() {
 function yardRebuild() {
   if (YARD.mesh) { YARD.scene.remove(YARD.mesh); YARD.ps?.dispose(); YARD.mesh = null; YARD.ps = null; }
   if (YARD.grid) { YARD.scene.remove(YARD.grid); YARD.grid.geometry.dispose(); }
-  const cs = PART_SCALES[YARD.scale].cs;
+  const cs = partScale(YARD.D).cs;
   YARD.grid = new THREE.GridHelper(cs * 40, 40, 0x2a5a66, 0x16303a); YARD.grid.position.y = (YARD.layer - 0.5) * cs; YARD.scene.add(YARD.grid);
   YARD.D.shell = YARD.shell; YARD.D.name = YARD.name;
   if (YARD.D.parts.length) {
@@ -9022,7 +9053,8 @@ function yardRebuild() {
     YARD.mesh = YARD.ps.root; YARD.scene.add(YARD.mesh); partVisualStep(YARD.ps, 0);
     // the structural graph, made visible: anything not on a load path to a crew module shows red
     const dd = partDerive(YARD.D); const bc = YARD.ps.geo.baseCol;
-    for (const i of dd.unreachable) { const r = YARD.ps.geo.ranges[i]; for (let k = r[0] * 3, e = (r[0] + r[1]) * 3; k < e; k += 3) { bc[k] = 1; bc[k + 1] = 0.22; bc[k + 2] = 0.16; } }
+    if (YARD.ps.kit) for (const i of dd.unreachable) kitMark(YARD.ps, i, [1, 0.22, 0.16]);
+    else for (const i of dd.unreachable) { const r = YARD.ps.geo.ranges[i]; for (let k = r[0] * 3, e = (r[0] + r[1]) * 3; k < e; k += 3) { bc[k] = 1; bc[k + 1] = 0.22; bc[k + 2] = 0.16; } }
     YARD.ps.applyColors();
   }
   const d = YARD.der = partDerive(YARD.D);
@@ -9041,7 +9073,7 @@ function yardRender() {
 const _yRay = new THREE.Raycaster(), _yM = new THREE.Vector2();
 function yardPick(ev) {
   const cv = YARD.canvas; const r = cv.getBoundingClientRect(); _yM.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
-  _yRay.setFromCamera(_yM, YARD.cam); const cs = PART_SCALES[YARD.scale].cs;
+  _yRay.setFromCamera(_yM, YARD.cam); const cs = partScale(YARD.D).cs;
   if (YARD.mesh) {
     const hit = _yRay.intersectObject(YARD.mesh, true)[0];
     if (hit) {
@@ -9059,7 +9091,7 @@ function yardBindInput(cv) {
   cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); YARD.drag = { x: e.clientX, y: e.clientY, moved: 0, btn: e.button }; });
   cv.addEventListener('pointermove', (e) => {
     if (YARD.drag) { const dx = e.clientX - YARD.drag.x, dy = e.clientY - YARD.drag.y; YARD.drag.moved += Math.abs(dx) + Math.abs(dy); YARD.drag.x = e.clientX; YARD.drag.y = e.clientY; if (YARD.drag.moved > 5) { YARD.yaw += dx * 0.008; YARD.pitch = clamp(YARD.pitch + dy * 0.008, -1.4, 1.4); } return; }
-    const pk = yardPick(e); YARD.hover = pk; const cs = PART_SCALES[YARD.scale].cs;
+    const pk = yardPick(e); YARD.hover = pk; const cs = partScale(YARD.D).cs;
     if (!pk) { YARD.ghost.visible = false; YARD.arrow.visible = false; return; }
     const c = YARD.tool === 'remove' ? pk.cell : pk.place; if (!c) { YARD.ghost.visible = false; return; }
     YARD.ghost.visible = true; YARD.ghost.position.set(c.x * cs, c.y * cs, c.z * cs); YARD.ghost.scale.setScalar(cs * 1.02);
@@ -9221,8 +9253,399 @@ function yardRefit() {
 }
 
 // =====================================================================================
+// §TITANKIT — the titan kit: part meshes, materials, and the per-cell merged titan mesh
+//  Geometry ported from the titan kit (units m, forward −Z, up +Y, starboard +X): truss spine,
+//  junctions and outriggers, command block, under-bow hangar bay, a 230 m spin-gravity ring,
+//  hinged radiator wings, four main bells, tanks, reactor, turrets and the spine mass driver.
+//  Six materials, vertex-colour weathering. A kit design (D.kit) is drawn from these meshes;
+//  every triangle belongs to one grid cell, so a destroyed cell tears exactly its piece out.
+// =====================================================================================
+const KIT_HULL = 0, KIT_TRUSS = 1, KIT_RAD = 2, KIT_ACC = 3, KIT_WIN = 4, KIT_HOT = 5;
+const KIT_MAT_DEFS = [
+  { color: 0xd9d6ce, roughness: 0.72, metalness: 0.12 },                               // hull_plating
+  { color: 0x9a968f, roughness: 0.48, metalness: 0.42 },                               // truss_metal
+  { color: 0x4a4b50, roughness: 0.55, metalness: 0.25 },                               // radiator_panel
+  { color: 0xc45a1c, roughness: 0.62, metalness: 0.1 },                                // faction_accent
+  { color: 0x101010, emissive: 0xffe6b8, emissiveIntensity: 1.3, roughness: 0.4 },    // emissive_window
+  { color: 0x1a0600, emissive: 0xff5a14, emissiveIntensity: 1.1, roughness: 0.4 },     // emissive_hot
+];
+// §TITANKIT.BUILDER — one merged, indexed, multi-material geometry per kit part
+let _kitRs = 7; const kitRnd = () => (_kitRs = (_kitRs * 16807) % 2147483647) / 2147483647;
+const kitH3 = (x, y, z) => { const s = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453; return s - Math.floor(s); };
+const kitCl = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+const kitSeg = (n, q) => Math.max(6, Math.round(n * q));
+class KitPB {
+  constructor(o) { this.o = o; this.it = []; }
+  add(g, mat, p = [0, 0, 0], r = [0, 0, 0], tint = 1, fn = null) {
+    if (this.o.dead && mat >= KIT_WIN) { g.dispose(); return this; }
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(...p), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(r || [0, 0, 0]))), new THREE.Vector3(1, 1, 1));
+    this.it.push({ g, mat, m, tint, fn }); return this;
+  }
+  box(w, h, d, mat, p, r, tint, fn) { const c = this.o.fine; const s = (v) => c ? Math.min(24, Math.max(1, Math.ceil(v / c))) : 1; return this.add(new THREE.BoxGeometry(w, h, d, s(w), s(h), s(d)), mat, p, r, tint, fn); }
+  cyl(rt, rb, h, n, mat, p, r, tint, fn, open = false) { const c = this.o.fine; return this.add(new THREE.CylinderGeometry(rt, rb, h, kitSeg(n, this.o.q), c ? Math.min(24, Math.max(1, Math.ceil(h / c))) : 1, open), mat, p, r, tint, fn); }
+  build() {
+    const it = this.it.slice().sort((a, b) => a.mat - b.mat);
+    const P = [], N = [], C = [], I = [], G = []; let vo = 0;
+    for (const x of it) {
+      const g = x.g; g.applyMatrix4(x.m);
+      const pos = g.attributes.position, nor = g.attributes.normal; const jit = 1 + (kitRnd() - 0.5) * 0.08;
+      const t = Array.isArray(x.tint) ? x.tint : [x.tint, x.tint, x.tint];
+      for (let i = 0; i < pos.count; i++) {
+        const px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i); P.push(px, py, pz); N.push(nor.getX(i), nor.getY(i), nor.getZ(i));
+        let w = 1; if (x.mat < KIT_WIN) w = jit * (1 - 0.07 * kitH3(Math.floor(px / 7), Math.floor(py / 7), Math.floor(pz / 7)) - (kitH3(px * 1.37, py * 1.91, pz * 2.3) > 0.975 ? 0.13 : 0));
+        let c = [t[0] * w, t[1] * w, t[2] * w]; if (x.fn) { const f = x.fn(px, py, pz); c = [c[0] * f[0], c[1] * f[1], c[2] * f[2]]; }
+        C.push(kitCl(c[0]), kitCl(c[1]), kitCl(c[2]));
+      }
+      const s = I.length;
+      if (g.index) { const a = g.index.array; for (let k = 0; k < a.length; k++) I.push(a[k] + vo); } else for (let k = 0; k < pos.count; k++) I.push(k + vo);
+      vo += pos.count; const last = G[G.length - 1];
+      if (last && last.m === x.mat) last.c += I.length - s; else G.push({ s, c: I.length - s, m: x.mat });
+      g.dispose();
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+    geo.setIndex(I); G.forEach(g => geo.addGroup(g.s, g.c, g.m)); geo.computeBoundingBox(); return geo;
+  }
+}
+function kitFrameRing(b, S, H, th, z, mat, tint) { const w = (S - H) / 2; for (const s of [-1, 1]) { b.box(S, w, th, mat, [0, s * (H / 2 + w / 2), z], 0, tint); b.box(w, H, th, mat, [s * (H / 2 + w / 2), 0, z], 0, tint); } }
+/** Destroyed stump: crush everything past a jagged break line, drop fully-severed triangles, scorch the edge. */
+function kitTear(src, ax, sg, cut, amp) {
+  const g = src.clone(), p = g.attributes.position, c = g.attributes.color, A = 'xyz'.indexOf(ax), o = [0, 1, 2].filter(i => i !== A);
+  const clamped = new Uint8Array(p.count);
+  for (let i = 0; i < p.count; i++) {
+    const v = [p.getX(i), p.getY(i), p.getZ(i)], u = v[o[0]], w = v[o[1]];
+    const lim = cut - amp * (0.5 + 0.3 * Math.sin(u * 0.21 + w * 0.13) + 0.3 * Math.sin(u * 0.57 - w * 0.41) + 0.35 * (kitH3(Math.round(u / 2.5), Math.round(w / 2.5), 7) - 0.5));
+    const val = v[A] * sg; if (val > lim) { v[A] = lim * sg; clamped[i] = 1; }
+    const d = lim - Math.min(val, lim), sc = d < amp * 0.9 ? 0.18 + 0.82 * (d / (amp * 0.9)) : 1;
+    p.setXYZ(i, v[0], v[1], v[2]); c.setXYZ(i, c.getX(i) * sc, c.getY(i) * sc * 0.95, c.getZ(i) * sc * 0.9);
+  }
+  const idx = g.index.array, ni = [], ng = [];
+  for (const gr of g.groups) { const s = ni.length; for (let k = gr.start; k < gr.start + gr.count; k += 3) { if (clamped[idx[k]] && clamped[idx[k + 1]] && clamped[idx[k + 2]]) continue; ni.push(idx[k], idx[k + 1], idx[k + 2]); } ng.push([s, ni.length - s, gr.materialIndex]); }
+  g.setIndex(ni); g.clearGroups(); ng.forEach(a => a[1] && g.addGroup(...a)); g.computeVertexNormals(); g.computeBoundingBox(); return g;
+}
+const kitHeatBell = (x, y) => { const t = kitCl((y - 32) / 55); return [0.48 + 0.52 * t, 0.4 + 0.6 * t, 0.42 + 0.58 * t]; };
+const kitHeatRad = (x) => { const t = kitCl((x - 42) / 120); return [1.4 - 0.4 * t, 1, 0.78 + 0.22 * t]; };
+
+// §TITANKIT.PARTS — the kit's part meshes (pivot at the attach face)
+const KIT_P = {};
+{
+  const PI = Math.PI, H = KIT_HULL, TR = KIT_TRUSS, RA = KIT_RAD, AC = KIT_ACC, WI = KIT_WIN, HO = KIT_HOT;
+  KIT_P.frame_straight = (o) => { const b = new KitPB(o), L = 40, t = 2.4, e = 14.8;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) b.box(t, t, L, TR, [sx * e, sy * e, L / 2], 0, 0.82);
+    for (const s of [-1, 1]) { b.box(32, t, t, TR, [0, s * e, t / 2], 0, 0.8); b.box(t, 32 - 2 * t, t, TR, [s * e, 0, t / 2], 0, 0.8); }
+    if (o.q > 0.2) { const dl = Math.hypot(L, 2 * e), a = Math.atan2(2 * e, L);
+      b.box(1.5, 1.5, dl, TR, [0, e, L / 2], [0, a, 0], 0.72); b.box(1.5, 1.5, dl, TR, [0, -e, L / 2], [0, -a, 0], 0.72);
+      b.box(1.5, 1.5, dl, TR, [e, 0, L / 2], [a, 0, 0], 0.72); b.box(1.5, 1.5, dl, TR, [-e, 0, L / 2], [-a, 0, 0], 0.72); }
+    if (o.q > 0.5) { b.box(1.2, 1.2, L, TR, [e - 3, -e + 3, L / 2], 0, 0.5); b.box(1.2, 1.2, L, TR, [-e + 3, e - 3, L / 2], 0, 0.5); }
+    return b; };
+  KIT_P.frame_junction = (o) => { const b = KIT_P.frame_straight(o);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) b.box(6, 6, 12, H, [sx * 14.8, sy * 14.8, 20], 0, 0.58);
+    kitFrameRing(b, 31, 20, 1.5, 20, H, 0.62); return b; };
+  KIT_P.frame_outrigger = (o) => { const b = KIT_P.frame_junction(o);
+    for (const s of [-1, 1]) { b.box(36, 3, 6, TR, [s * 34, 0, 20], 0, 0.8); b.box(4, 8, 5, H, [s * 52, 0, 20], 0, 0.55); if (o.q > 0.3) b.cyl(1, 1, 36, 8, TR, [s * 34, 2.6, 20], [0, 0, PI / 2], 0.55); }
+    return b; };
+  KIT_P.frame_endcap = (o) => { const b = new KitPB(o); kitFrameRing(b, 32, 18, 4, 2, H, 0.55); return b; };
+  KIT_P.frame_boom = (o) => { const b = new KitPB(o), L = 40, t = 1.6, e = 6.8;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) b.box(t, t, L, TR, [sx * e, sy * e, L / 2], 0, 0.82);
+    for (const s of [-1, 1]) { b.box(16, t, t, TR, [0, s * e, t / 2], 0, 0.8); b.box(t, 16 - 2 * t, t, TR, [s * e, 0, t / 2], 0, 0.8); }
+    if (o.q > 0.2) { const dl = Math.hypot(L, 2 * e), a = Math.atan2(2 * e, L);
+      b.box(1, 1, dl, TR, [0, e, L / 2], [0, a, 0], 0.72); b.box(1, 1, dl, TR, [0, -e, L / 2], [0, -a, 0], 0.72);
+      b.box(1, 1, dl, TR, [e, 0, L / 2], [a, 0, 0], 0.72); b.box(1, 1, dl, TR, [-e, 0, L / 2], [-a, 0, 0], 0.72); }
+    return b; };
+  KIT_P.frame_thrust = (o) => { const b = new KitPB(o), aft = (x, y, z) => z > 6 ? [0.62, 0.54, 0.48] : [1, 1, 1];
+    b.box(120, 120, 8, H, [0, 0, 4], 0, 0.5, aft); b.box(120, 6, 6, TR, [0, 0, 11], 0, 0.7); b.box(6, 120, 6, TR, [0, 0, 11], 0, 0.7);
+    if (o.q > 0.3) for (const s of [-1, 1]) { b.box(120, 3, 3, TR, [0, s * 58, 9.5], 0, 0.7); b.box(3, 120, 3, TR, [s * 58, 0, 9.5], 0, 0.7); }
+    return b; };
+  KIT_P.armour_flat = (o) => { const b = new KitPB(o);
+    for (const x of [-1, 1]) for (const z of [-1, 1]) b.box(14.8, 3, 18.8, H, [x * 7.6, 1.5, z * 9.6], 0, x * z > 0 ? 0.9 : 0.78);
+    if (o.q > 0.5) for (const x of [-1, 1]) for (const z of [-1, -0.33, 0.33, 1]) b.box(0.9, 0.5, 0.9, TR, [x * 14, 3.2, z * 18], 0, 0.6);
+    return b; };
+  KIT_P.armour_curved = (o) => { const b = new KitPB(o), s = new THREE.Shape(), n = kitSeg(14, o.q), a0 = PI / 3, a1 = 2 * PI / 3;
+    for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; s[i ? 'lineTo' : 'moveTo'](16 * Math.cos(a), 16 * Math.sin(a) - 14); }
+    for (let i = n; i >= 0; i--) { const a = a0 + (a1 - a0) * i / n; s.lineTo(14 * Math.cos(a), 14 * Math.sin(a) - 14); }
+    const g = new THREE.ExtrudeGeometry(s, { depth: 37.6, bevelEnabled: false }); g.translate(0, 0, -18.8); b.add(g, H, [0, 0, 0], 0, 0.74); return b; };
+  KIT_P.crew_command = (o) => { const b = new KitPB(o), q = o.q;
+    for (let i = 0; i < 5; i++) b.box(56, 26, 25.8, H, [0, 13, -110 + 13 + 26 * i], 0, i % 2 ? 0.92 : 0.86);
+    b.box(60, 4, 120, H, [0, 2, -45], 0, 0.58); b.box(40, 12, 96, H, [0, 32, -48], 0, 0.88); b.box(34, 9, 14, H, [0, 30.5, -103], 0, 0.8);
+    b.box(28, 1.6, 0.4, WI, [0, 31.5, -110.25]);
+    for (const s of [-1, 1]) { b.box(0.4, 1.4, 10, WI, [s * 17.25, 31.5, -103]); b.box(0.3, 5, 22, AC, [s * 28.2, 13, -90]);
+      const nw = q > 0.5 ? 14 : q > 0.2 ? 7 : 1, len = q > 0.2 ? 6 : 110;
+      for (const y of [7, 13, 19]) for (let i = 0; i < nw; i++) b.box(0.3, 1.1, len, WI, [s * 28.18, y, nw === 1 ? -45 : -100 + i * (110 / nw) + len / 2 + 1]);
+      b.box(1, 1, 1, WI, [s * 28.5, 25.5, -110.5]); }
+    if (q > 0.2) { b.cyl(1, 1, 14, 10, TR, [12, 45, -20]);
+      const pts = []; for (let i = 0; i <= 8; i++) { const r = 9 * i / 8; pts.push(new THREE.Vector2(r, r * r / 36)); }
+      b.add(new THREE.LatheGeometry(pts, kitSeg(28, q)), H, [12, 52, -20], [-0.6, 0, 0], 0.9);
+      b.box(8, 4, 8, H, [-12, 40, -30], 0, 0.6); b.box(5, 3, 5, H, [-12, 43.5, -30], 0, 0.5); }
+    return b; };
+  KIT_P.hangar_bay = (o) => { const b = new KitPB(o), q = o.q, Z = -200;
+    for (let i = 0; i < 10; i++) { const z = Z + 20 + 40 * i, t = i % 2 ? 0.9 : 0.82;
+      b.box(110, 5, 39.8, H, [0, -2.5, z], 0, t); b.box(110, 5, 39.8, H, [0, -67.5, z], 0, t * 0.8);
+      for (const s of [-1, 1]) b.box(5, 60, 39.8, H, [s * 52.5, -35, z], 0, t * 0.95); }
+    b.box(110, 70, 5, H, [0, -35, 202.5], 0, 0.75);
+    b.box(118, 8, 10, H, [0, -4, -196], 0, 0.52); b.box(118, 6, 10, H, [0, -69, -196], 0, 0.52);
+    for (const s of [-1, 1]) { b.box(8, 70, 10, H, [s * 56, -35, -196], 0, 0.52); for (const k of [0, 1]) b.box(14, 2.2, 0.3, AC, [s * 44, -3 - k * 4.5, -201.2], [0, 0, s * 0.5]); }
+    b.box(96, 0.6, 0.6, WI, [0, -8.6, -199]); for (const s of [-1, 1]) b.box(0.6, 56, 0.6, WI, [s * 51.7, -37, -199]);
+    for (let i = 0; i < 10; i++) { const z = Z + 20 + 40 * i;
+      for (const s of [-1, 1]) { b.box(3, 60, 4, TR, [s * 48.5, -35, z], 0, 0.75); b.box(0.3, 48, 0.8, WI, [s * 46.85, -36, z]); if (q > 0.5) b.box(1.5, 70, 3, H, [s * 55.8, -35, z], 0, 0.55); }
+      b.box(100, 4, 4, TR, [0, -7, z], 0, 0.75); b.box(90, 0.3, 0.8, WI, [0, -9.15, z]); }
+    for (const s of [-1, 1]) b.box(0.8, 0.2, 380, WI, [s * 40, -64.9, 0]);
+    for (const z of [-90, 10, 110]) { b.cyl(18, 18, 0.6, 48, H, [0, -64.7, z], 0, 0.42);
+      b.add(new THREE.RingGeometry(14, 15.6, kitSeg(48, q)), AC, [0, -64.35, z], [-PI / 2, 0, 0]);
+      if (q > 0.2) { b.box(10, 0.12, 1.2, AC, [0, -64.34, z]); b.box(1.2, 0.12, 10, AC, [0, -64.34, z]);
+        for (let k = 0; k < 8; k++) { const a = k * PI / 4; b.box(0.8, 0.4, 0.8, WI, [17 * Math.cos(a), -64.2, z + 17 * Math.sin(a)]); } } }
+    if (q > 0.2) for (const s of [-1, 1]) { b.box(4, 0.6, 390, TR, [s * 45, -35, 0], 0, 0.7); if (q > 0.5) b.box(0.2, 1.2, 390, TR, [s * 43.1, -34.1, 0], 0, 0.6); }
+    if (q > 0.2) b.box(86, 0.6, 4, TR, [0, -35, 190], 0, 0.7);
+    b.box(40, 4, 0.3, WI, [0, -22, 199.8]); return b; };
+  KIT_P.habring = (o) => { const b = new KitPB(o), q = o.q, Ro = 230, Ri = 205, W = 50, n = kitSeg(128, q);
+    b.add(new THREE.CylinderGeometry(Ro, Ro, W, n, 1, true), H, [0, 0, 0], [PI / 2, 0, 0], 0.88);
+    b.add(new THREE.CylinderGeometry(Ri, Ri, W, n, 1, true), H, [0, 0, 0], [PI / 2, 0, 0], 0.8);
+    b.add(new THREE.RingGeometry(Ri, Ro, n), H, [0, 0, W / 2], 0, 0.7); b.add(new THREE.RingGeometry(Ri, Ro, n), H, [0, 0, -W / 2], [0, PI, 0], 0.7);
+    const nr = Math.max(8, Math.round(24 * q)); for (let i = 0; i < nr; i++) { const a = i * 2 * PI / nr; b.box(3, Ro - Ri + 3, W + 2, H, [217.5 * Math.cos(a), 217.5 * Math.sin(a), 0], [0, 0, a - PI / 2], 0.55); }
+    if (q > 0.2) { const nw = Math.round(90 * q);
+      for (let i = 0; i < nw; i++) { const a = (i + 0.5) * 2 * PI / nw;
+        for (const z of [-12, 12]) { b.box(5, 0.3, 1.6, WI, [(Ro + 0.1) * Math.cos(a), (Ro + 0.1) * Math.sin(a), z], [0, 0, a - PI / 2]); b.box(5, 0.3, 1.6, WI, [(Ri - 0.1) * Math.cos(a), (Ri - 0.1) * Math.sin(a), z * 0.9], [0, 0, a - PI / 2]); } } }
+    else for (const z of [-12, 12]) { b.add(new THREE.CylinderGeometry(Ro + 0.1, Ro + 0.1, 1.4, n, 1, true), WI, [0, 0, z], [PI / 2, 0, 0]); b.add(new THREE.CylinderGeometry(Ri - 0.1, Ri - 0.1, 1.4, n, 1, true), WI, [0, 0, z], [PI / 2, 0, 0]); }
+    for (const a of [0, PI]) b.box(34, 0.3, 9, AC, [(Ro + 0.15) * Math.cos(a + 0.3), (Ro + 0.15) * Math.sin(a + 0.3), 0], [0, 0, a + 0.3 - PI / 2]);
+    for (let i = 0; i < 4; i++) { const a = PI / 4 + i * PI / 2, len = Ri - 36, m = 36 + len / 2;
+      b.cyl(4, 4, len, 16, H, [m * Math.cos(a), m * Math.sin(a), 0], [0, 0, a - PI / 2], 0.7);
+      if (q > 0.3) for (const z of [-6, 6]) b.box(1.2, len, 1.2, TR, [m * Math.cos(a), m * Math.sin(a), z], [0, 0, a - PI / 2], 0.7); }
+    b.add(new THREE.CylinderGeometry(36, 36, 70, kitSeg(48, q), 1, true), H, [0, 0, 0], [PI / 2, 0, 0], 0.6);
+    for (const z of [-35, 35]) b.add(new THREE.RingGeometry(26, 36, kitSeg(48, q)), H, [0, 0, z], z < 0 ? [0, PI, 0] : 0, 0.5);
+    for (const z of [-30, 30]) b.add(new THREE.TorusGeometry(36, 2, 8, kitSeg(48, q)), TR, [0, 0, z], 0, 0.7);
+    return b; };
+  KIT_P.radiator = (o) => { const b = new KitPB(o), q = o.q, x0 = 42, x1 = 250, C = 56, hc = C / 2;
+    b.cyl(1.6, 1.6, 10, 12, TR, [0, 0, 0], 0, 0.7); b.box(40, 2.4, 6, TR, [20, 0, 0], 0, 0.75);
+    for (const s of [-1, 1]) { const dx = 36, dz = s * (hc - 2), l = Math.hypot(dx, dz); b.box(l, 1.2, 1.2, TR, [4 + dx / 2, 0, dz / 2], [0, -Math.atan2(dz, dx), 0], 0.7); }
+    b.cyl(1.8, 1.8, C, 12, H, [40, 0, 0], [PI / 2, 0, 0], 0.5, () => [1.2, 0.85, 0.7]); b.box(0.6, 0.6, C - 2, HO, [41.9, 0.9, 0]);
+    const n = 4, w = (x1 - x0) / n; for (let i = 0; i < n; i++) b.box(w - 0.4, 0.8, C, RA, [x0 + w * (i + 0.5), 0, 0], 0, 0.55, kitHeatRad);
+    for (const s of [-1, 1]) b.box(x1 - x0, 1.4, 1.4, TR, [(x0 + x1) / 2, 0, s * (hc + 0.7)], 0, 0.72);
+    b.box(1.4, 1.4, C + 2.8, TR, [x1 + 0.7, 0, 0], 0, 0.72);
+    if (q > 0.4) for (const z of [-21, -7, 7, 21]) b.box(x1 - x0, 0.5, 0.5, TR, [(x0 + x1) / 2, 0.65, z * (hc / 28)], 0, 0.6);
+    for (const s of [-1, 1]) b.box(1, 1, 1, WI, [x1 + 1.8, 0, s * hc]); return b; };
+  KIT_P.thruster_main = (o) => { const b = new KitPB(o), q = o.q;
+    b.box(22, 8, 22, TR, [0, 4, 0], 0, 0.7); b.cyl(10, 10, 6, 24, H, [0, 11, 0], 0, 0.5); b.cyl(9, 9, 18, 32, H, [0, 23, 0], 0, 0.7, () => [0.6, 0.5, 0.44]);
+    if (q > 0.3) for (const [x, z] of [[10.5, 0], [-10.5, 0], [0, 10.5], [0, -10.5]]) b.box(1.2, 18, 1.2, TR, [x, 23, z], 0, 0.6);
+    const pts = [], np = kitSeg(14, q); for (let i = 0; i <= np; i++) { const y = 32 + 68 * i / np; pts.push(new THREE.Vector2(6 + 22 * Math.pow((y - 32) / 68, 0.6), y)); }
+    b.add(new THREE.LatheGeometry(pts, kitSeg(48, q)), H, [0, 0, 0], 0, 0.62, kitHeatBell);
+    b.add(new THREE.TorusGeometry(28, 0.8, 8, kitSeg(48, q)), TR, [0, 100, 0], [PI / 2, 0, 0], 0.55);
+    b.add(new THREE.CircleGeometry(6.2, kitSeg(24, q)), HO, [0, 32.3, 0], [-PI / 2, 0, 0]); return b; };
+  KIT_P.thruster_rcs = (o) => { const b = new KitPB(o); b.box(5, 5, 5, H, [0, 2.5, 0], 0, 0.6);
+    for (const r of [[0, 0, -PI / 2], [0, 0, PI / 2], [PI / 2, 0, 0], [-PI / 2, 0, 0]]) { const d = new THREE.Vector3(0, 1, 0).applyEuler(new THREE.Euler(...r)).multiplyScalar(3.7);
+      b.cyl(1.4, 0.6, 2.4, 12, TR, [d.x, 3 + d.y, d.z], r, 0.55, () => [0.8, 0.7, 0.62]); }
+    return b; };
+  KIT_P.tank_cyl = (o) => { const b = new KitPB(o), q = o.q, R = 17, L = 110, c = 21, n = kitSeg(32, q);
+    b.add(new THREE.CylinderGeometry(R, R, L, n, 1, true), H, [0, c, 0], [PI / 2, 0, 0], 0.9);
+    b.add(new THREE.SphereGeometry(R, n, Math.max(4, n / 4), 0, 2 * PI, 0, PI / 2), H, [0, c, L / 2], [PI / 2, 0, 0], 0.86);
+    b.add(new THREE.SphereGeometry(R, n, Math.max(4, n / 4), 0, 2 * PI, 0, PI / 2), H, [0, c, -L / 2], [-PI / 2, 0, 0], 0.86);
+    b.add(new THREE.CylinderGeometry(R + 0.12, R + 0.12, 3, n, 1, true), AC, [0, c, 30], [PI / 2, 0, 0]);
+    if (q > 0.5) for (const z of [-30, 0]) b.add(new THREE.CylinderGeometry(R + 0.08, R + 0.08, 1, n, 1, true), H, [0, c, z], [PI / 2, 0, 0], 0.6);
+    for (const z of [-40, 40]) b.box(14, 6, 5, TR, [0, 3, z], 0, 0.7); return b; };
+  KIT_P.tank_sphere = (o) => { const b = new KitPB(o), q = o.q, R = 22;
+    b.add(new THREE.SphereGeometry(R, kitSeg(32, q), kitSeg(16, q)), H, [0, 26, 0], 0, 0.9);
+    b.add(new THREE.TorusGeometry(R + 0.2, 0.9, 8, kitSeg(40, q)), TR, [0, 26, 0], [PI / 2, 0, 0], 0.7); b.box(8, 5, 8, TR, [0, 2.5, 0], 0, 0.7); return b; };
+  KIT_P.hardpoint_turret = (o) => { const b = new KitPB(o), q = o.q;
+    b.cyl(7, 8, 3, 24, H, [0, 1.5, 0], 0, 0.55); b.box(11, 5, 13, H, [0, 5.5, 0], 0, 0.8); b.box(6, 4, 3, H, [0, 5.5, -7.5], 0, 0.6);
+    for (const s of [-1, 1]) b.cyl(0.7, 0.7, 20, 10, TR, [s * 1.8, 5.5, -18], [PI / 2, 0, 0], 0.6);
+    if (q > 0.3) { b.box(2, 2, 2, H, [4, 9, 2], 0, 0.5); b.box(11.1, 1, 1.5, AC, [0, 6, 4]); }
+    return b; };
+  KIT_P.hardpoint_massdriver = (o) => { const b = new KitPB(o), q = o.q, L = 1300;
+    b.box(20, 20, 40, H, [0, 0, -20], 0, 0.55);
+    for (const s of [-1, 1]) b.box(2.5, 3, L - 40, TR, [s * 4.5, 0, -(40 + (L - 40) / 2)], 0, 0.75);
+    b.box(1.5, 1.5, L - 40, TR, [0, -6.5, -(40 + (L - 40) / 2)], 0, 0.6);
+    const st = q > 0.5 ? 30 : q > 0.2 ? 60 : 150; for (let z = 60; z < L - 10; z += st) b.cyl(7, 7, 3, 16, H, [0, 0, -z], [PI / 2, 0, 0], 0.68);
+    b.box(18, 18, 8, H, [0, 0, -L + 4], 0, 0.5); return b; };
+  KIT_P.cargo_stack = (o) => { const b = new KitPB(o), q = o.q, tints = [[0.92, H], [0.6, H], [0.85, AC], [0.78, H], [0.95, H], [0.55, H]];
+    b.box(38, 0.6, 32, TR, [0, 0.3, 0], 0, 0.7); let k = 0;
+    for (const y of [6.6, 18.8]) for (const x of [-12.3, 0, 12.3]) { const [t, m] = tints[k++]; b.box(12, 12, 30, m, [x, y, 0], 0, t); if (q > 0.5) for (const z of [-15, 15]) b.box(12.2, 12.2, 0.6, TR, [x, y, z], 0, 0.6); }
+    return b; };
+  KIT_P.reactor = (o) => { const b = new KitPB(o), q = o.q;
+    b.cyl(42, 42, 10, 64, H, [0, 5, 0], 0, 0.45); b.cyl(30, 42, 20, 64, H, [0, 20, 0], 0, 0.5);
+    b.cyl(30, 30, 70, 64, H, [0, 65, 0], 0, 0.72, (x, y) => y > 88 ? [0.8, 0.72, 0.64] : [1, 1, 1]);
+    if (q > 0.3) for (const y of [48, 60, 72, 84]) b.cyl(30.6, 30.6, 2.5, 64, TR, [0, y, 0], 0, 0.7);
+    b.cyl(30.4, 30.4, 4, 64, AC, [0, 38, 0]);
+    if (q > 0.4) for (let i = 0; i < 6; i++) { const a = i * PI / 3 + 0.26; b.box(2, 70, 2, TR, [31.8 * Math.cos(a), 65, 31.8 * Math.sin(a)], 0, 0.6); }
+    b.cyl(34, 34, 6, 64, H, [0, 103, 0], 0, 0.45, () => [0.7, 0.6, 0.52]); return b; };
+  // cells with no kit node (fitting sockets, player additions) render as an equipment block sized to the cell
+  KIT_P.module_block = (o) => { const b = new KitPB(o), s = o.cs || 40;
+    b.box(s * 0.62, s * 0.62, s * 0.62, H, [0, 0, 0], 0, 0.8); for (const y of [-1, 1]) b.box(s * 0.7, s * 0.06, s * 0.7, TR, [0, y * s * 0.28, 0], 0, 0.7);
+    b.box(s * 0.2, s * 0.64, s * 0.04, AC, [0, 0, s * 0.31]); b.box(s * 0.5, s * 0.03, s * 0.02, WI, [0, s * 0.18, -s * 0.315]); return b; };
+}
+// torn variants for single-cell kit parts: [axis, sign, cut, amplitude, subdivision]
+const KIT_TEAR = { radiator: ['x', 1, 110, 30, 8], thruster_main: ['y', 1, 55, 20, 4], hardpoint_turret: ['y', 1, 5, 3.5, 1.2] };
+const KIT_GEO = new Map();
+function kitGeo(t, q, dead = false, cs = 40) {
+  const k = t + '|' + q + '|' + (dead ? 1 : 0) + '|' + (t === 'module_block' ? cs : 0);
+  let g = KIT_GEO.get(k); if (g) return g;
+  _kitRs = 7;
+  if (dead) { const T = KIT_TEAR[t]; g = kitTear(KIT_P[t]({ q, fine: T[4], dead: true }).build(), T[0], T[1], T[2], T[3]); }
+  else g = KIT_P[t]({ q, cs }).build();
+  KIT_GEO.set(k, g); return g;
+}
+
+// §TITANKIT.MATERIAL — six kit materials per ship, sharing the part runtime's uniforms (deploy, heat, throttle, time)
+function kitMaterials(u) {
+  return KIT_MAT_DEFS.map((d, mi) => {
+    const m = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, vertexColors: mi < KIT_WIN, ...d }); m.userData.u = u;
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, u);
+      sh.vertexShader = 'attribute float aKind; attribute vec4 aHinge; uniform float uDeploy; varying float vKind;\nvec3 kitHinge(vec3 v, float a) { float c = cos(a), s = sin(a); return vec3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c); }\n' + sh.vertexShader
+        .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(normal); if (aHinge.w != 0.0) objectNormal = kitHinge(objectNormal, (1.0 - uDeploy) * aHinge.w * -1.5707963);')
+        .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position); vKind = aKind; if (aHinge.w != 0.0) transformed = aHinge.xyz + kitHinge(transformed - aHinge.xyz, (1.0 - uDeploy) * aHinge.w * -1.5707963);');
+      sh.fragmentShader = 'uniform float uThrottle; uniform float uHeat; uniform float uTime; varying float vKind;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        vec3 pe = vec3(0.0);
+        if (vKind > 1.5 && vKind < 2.5) totalEmissiveRadiance *= 0.25 + 1.6 * uThrottle;
+        else if (vKind > 2.5 && vKind < 3.5) { float h = clamp((uHeat - 0.2) / 1.2, 0.0, 1.0); pe = mix(vec3(0.5, 0.05, 0.0), vec3(1.0, 0.75, 0.4), h) * h * 1.6; }
+        else if (vKind > 4.5 && vKind < 5.5) pe = vec3(1.0, 0.3, 0.05) * (0.35 + 0.3 * sin(uTime * 9.0 + vViewPosition.x * 0.4));
+        pe += vec3(0.75, 0.15, 0.03) * smoothstep(1.0, 1.7, uHeat) * 0.5;
+        totalEmissiveRadiance += pe;`);
+    };
+    m.customProgramCacheKey = () => 'kitmat-v1-' + mi;
+    return m;
+  });
+}
+
+// §TITANKIT.ASSEMBLE — merge every kit node into one geometry; each triangle owned by one cell
+const _kv = new THREE.Vector3(), _kn = new THREE.Vector3(), _km = new THREE.Matrix4(), _kq = new THREE.Quaternion(), _ke = new THREE.Euler(), _knm = new THREE.Matrix3(), _kone = new THREE.Vector3(1, 1, 1);
+function kitAssemble(ps, q, nodes, opt = {}) {
+  const cs = ps.cs, O = ps.origin, map = ps.map, n = ps.D.parts.length;
+  const M = [0, 1, 2, 3, 4, 5].map(() => ({ P: [], N: [], C: [], K: [], H: [], I: [], T: [], S: [] }));   // T: owning part per triangle, S: 1 = stump triangle
+  const emitNode = (t, pos, rot, owners, cellKeys, extra, dead) => {
+    const g = kitGeo(t, q, dead, cs); const P = g.attributes.position, Nn = g.attributes.normal, Cc = g.attributes.color, idx = g.index.array;
+    _km.compose(_kv.set(pos[0], pos[1], pos[2]), _kq.setFromEuler(_ke.set(rot[0], rot[1], rot[2])), _kone); _knm.getNormalMatrix(_km);
+    const wx = new Float32Array(P.count * 3); for (let i = 0; i < P.count; i++) { _kv.fromBufferAttribute(P, i).applyMatrix4(_km); wx[i * 3] = _kv.x; wx[i * 3 + 1] = _kv.y; wx[i * 3 + 2] = _kv.z; }
+    for (const gr of g.groups) {
+      const B = M[gr.materialIndex]; const remap = new Map();
+      for (let k = gr.start; k < gr.start + gr.count; k += 3) {
+        const a = idx[k], b = idx[k + 1], c = idx[k + 2];
+        // the cell that owns this triangle: the node's own cell under its centroid, else the node's nearest cell
+        let own;
+        if (owners.length === 1) own = owners[0];
+        else {
+          const cx = (wx[a * 3] + wx[b * 3] + wx[c * 3]) / 3, cy = (wx[a * 3 + 1] + wx[b * 3 + 1] + wx[c * 3 + 1]) / 3, cz = (wx[a * 3 + 2] + wx[b * 3 + 2] + wx[c * 3 + 2]) / 3;
+          const key = partKey(Math.round(cx / cs), Math.round(cy / cs), Math.round(cz / cs));
+          let ck = cellKeys.has(key) ? key : null;
+          if (!ck) { let bd = Infinity; for (const k2 of cellKeys) { const [x, y, z] = k2.split(',').map(Number); const d = (x * cs - cx) ** 2 + (y * cs - cy) ** 2 + (z * cs - cz) ** 2; if (d < bd) { bd = d; ck = k2; } } }
+          own = map.get(ck); if (own == null) continue;                      // that cell is not in this design (refit, or a torn-off chunk)
+        }
+        for (const v of [a, b, c]) {
+          let o = remap.get(v);
+          if (o == null) {
+            o = B.P.length / 3; remap.set(v, o);
+            B.P.push(wx[v * 3] - O.x, wx[v * 3 + 1] - O.y, wx[v * 3 + 2] - O.z);
+            _kn.fromBufferAttribute(Nn, v).applyMatrix3(_knm).normalize(); B.N.push(_kn.x, _kn.y, _kn.z);
+            B.C.push(Cc.getX(v), Cc.getY(v), Cc.getZ(v));
+            const mi = gr.materialIndex; B.K.push(mi === KIT_HOT ? (t === 'radiator' ? 3 : 2) : mi === KIT_RAD ? 3 : 0);
+            if (extra.h) B.H.push(extra.pivot[0] - O.x, extra.pivot[1] - O.y, extra.pivot[2] - O.z, extra.h); else B.H.push(0, 0, 0, 0);
+          }
+          B.I.push(o);
+        }
+        B.T.push(own); B.S.push(dead ? 1 : 0);
+      }
+    }
+  };
+  const covered = new Uint8Array(n);
+  for (const nd of nodes) {
+    if (nd.ring && !opt.rings) continue; if (opt.only && !opt.only(nd)) continue;
+    const keys = new Set(nd.c.map(c => partKey(c[0], c[1], c[2])));
+    const owners = [...keys].map(k => map.get(k)).filter(i => i != null); if (!owners.length) continue;
+    for (const i of owners) covered[i] = 1;
+    const extra = nd.h ? { h: nd.h, pivot: nd.p } : {};
+    const pos = opt.at ? opt.at(nd) : nd.p, rot = opt.at ? [0, 0, 0] : nd.r;
+    emitNode(nd.t, pos, rot, owners.length === 1 && keys.size === 1 ? owners : owners, keys, extra, false);
+    if (!opt.rings && KIT_TEAR[nd.t] && keys.size === 1) emitNode(nd.t, pos, rot, owners, keys, extra, true);
+  }
+  if (!opt.rings) for (let i = 0; i < n; i++) { if (covered[i]) continue; const p = ps.D.parts[i]; if (PARTS[p.t]?.ring && nodes.some(nd => nd.ring)) continue; emitNode('module_block', [p.x * cs, p.y * cs, p.z * cs], [0, 0, 0], [i], new Set([partKey(p.x, p.y, p.z)]), {}, false); }
+  // pack: vertices material by material, one index group per material
+  const P = [], N = [], C = [], K = [], H = [], I = [], T = [], S = []; const groups = []; let vo = 0;
+  for (let m = 0; m < 6; m++) {
+    const B = M[m]; if (!B.I.length) continue; const s = I.length;
+    for (const [dst, src] of [[P, B.P], [N, B.N], [C, B.C], [K, B.K], [H, B.H], [T, B.T], [S, B.S]]) for (let k = 0; k < src.length; k++) dst.push(src[k]);
+    for (const v of B.I) I.push(v + vo); groups.push([s, B.I.length, m]); vo += B.P.length / 3;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('aKind', new THREE.Float32BufferAttribute(K, 1).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('aHinge', new THREE.Float32BufferAttribute(H, 4));
+  const index = new THREE.Uint32BufferAttribute(I, 1).setUsage(THREE.DynamicDrawUsage); g.setIndex(index); for (const [s, c, m] of groups) g.addGroup(s, c, m);
+  g.computeBoundingSphere();
+  // per-part triangle lists (live and stump), per-part vertex lists — compressed rows
+  const nt = T.length; const tri = kitRows(n, nt, (k) => S[k] ? -1 : T[k]); const stump = kitRows(n, nt, (k) => S[k] ? T[k] : -1);
+  const vOwn = new Int32Array(P.length / 3).fill(-1); for (let k = 0; k < nt; k++) for (let j = 0; j < 3; j++) { const v = I[k * 3 + j]; if (vOwn[v] < 0) vOwn[v] = T[k]; }
+  const vert = kitRows(n, vOwn.length, (v) => vOwn[v]);
+  const base = new Uint32Array(I); const G = { g, tri, stump, vert, vOwn, base, baseCol: g.attributes.color.array.slice(), kit: true };
+  for (let i = 0; i < n; i++) kitTris(G, G.stump, i, false);          // stumps hidden until their part dies
+  return G;
+}
+function kitRows(n, count, f) { const cnt = new Int32Array(n + 1); for (let k = 0; k < count; k++) { const o = f(k); if (o >= 0) cnt[o + 1]++; } for (let i = 0; i < n; i++) cnt[i + 1] += cnt[i]; const at = cnt.slice(0, n); const list = new Int32Array(cnt[n]); for (let k = 0; k < count; k++) { const o = f(k); if (o >= 0) list[at[o]++] = k; } return { start: cnt, list }; }
+/** Show (restore) or hide (collapse to a point) part i's rows of triangles. */
+function kitTris(G, R, i, show) {
+  const a = G.g.index.array; for (let k = R.start[i]; k < R.start[i + 1]; k++) { const t = R.list[k] * 3; if (show) { a[t] = G.base[t]; a[t + 1] = G.base[t + 1]; a[t + 2] = G.base[t + 2]; } else a[t + 1] = a[t + 2] = a[t]; }
+  G.g.index.needsUpdate = true;
+}
+
+// §TITANKIT.STATE — PartState hooks for kit designs: build, destroy, scorch, colour, dispose
+function kitBuild(ps) {
+  const L = PART_KIT[ps.D.kit]; ps.kit = true;
+  const u = { uDeploy: { value: 1 }, uThrottle: { value: 0 }, uHeat: { value: 0.2 }, uTime: { value: 0 } };
+  ps.mats = kitMaterials(u); ps.mat = ps.mats[0];                     // the hull material carries the uniforms the runtime drives
+  const full = !!ps.ent?.isTitan || ps.ent?.isPlayer;                 // live titans get three LODs; yard previews and wreck chunks one
+  const Q = full ? [[1, 0], [0.4, 2600], [0.12, 7500]] : [[0.4, 0]];
+  ps.geos = Q.map(([q]) => kitAssemble(ps, q, L.nodes)); ps.geo = ps.geos[0];
+  ps.lod = new THREE.LOD(); ps.geos.forEach((G, k) => { const m = new THREE.Mesh(G.g, ps.mats); m.frustumCulled = false; ps.lod.addLevel(m, Q[k][1]); });
+  ps.mesh = ps.lod.levels[0].object; ps.root = new THREE.Group(); ps.root.add(ps.lod);
+  // habitat rings: their own meshes, spinning about the spine axis at ω = √(g/R)
+  ps.rings = [];
+  for (const nd of L.nodes) {
+    if (!nd.ring) continue; const i = ps.map.get(partKey(...nd.c[0])); if (i == null) continue;
+    const at = () => [0, 0, 0]; const lod = new THREE.LOD();
+    for (const [q, d] of full ? [[1, 0], [0.12, 2600]] : [[0.4, 0]]) {
+      const G = kitAssemble({ ...ps, origin: new THREE.Vector3() }, q, [nd], { rings: true, at });
+      lod.addLevel(Object.assign(new THREE.Mesh(G.g, ps.mats), { frustumCulled: false }), d);
+    }
+    lod.position.set(nd.p[0], nd.p[1], nd.p[2]).sub(ps.origin); lod.userData = { omega: Math.sqrt(9.81 / 230), part: i, c: [nd.p[0] / ps.cs, nd.p[1] / ps.cs, nd.p[2] / ps.cs], R: 230 / ps.cs, W: 25 / ps.cs };
+    ps.rings.push(lod); ps.root.add(lod);
+  }
+  // plume anchors at the bell exits
+  ps.kitAnchors = L.nodes.filter(nd => nd.t === 'thruster_main' && ps.map.has(partKey(...nd.c[0]))).map(nd => ({ p: new THREE.Vector3(nd.p[0], nd.p[1], nd.p[2] + 100).sub(ps.origin), i: ps.map.get(partKey(...nd.c[0])) }));
+}
+function kitShowDestroyed(ps, i) {
+  for (const G of ps.geos) { kitTris(G, G.tri, i, false); if (!ps.detached?.[i]) kitTris(G, G.stump, i, true); }
+  const ring = ps.rings?.find(r => r.userData.part === i); if (ring) ring.visible = false;
+  kitScorch(ps, i);
+}
+function kitHideStump(ps, i) { for (const G of ps.geos) kitTris(G, G.stump, i, false); }
+/** Burn marks where a cell was torn out: neighbouring geometry darkens, the torn edge glows. */
+function kitScorch(ps, i) {
+  const c = ps.cellCentre(i, _kv); const cs = ps.cs; const r1 = cs * 0.95, r0 = cs * 0.62;
+  for (const G of ps.geos) {
+    const P = G.g.attributes.position.array, K = G.g.attributes.aKind.array; let any = false;
+    for (let v = 0, n = P.length / 3; v < n; v++) {
+      const o = G.vOwn[v]; if (o === i || o < 0 || ps.gone[o]) continue;
+      const d = Math.hypot(P[v * 3] - c.x, P[v * 3 + 1] - c.y, P[v * 3 + 2] - c.z); if (d > r1) continue;
+      const k = d < r0 ? 0.22 : 0.22 + 0.78 * (d - r0) / (r1 - r0); G.baseCol[v * 3] *= k; G.baseCol[v * 3 + 1] *= k * 0.9; G.baseCol[v * 3 + 2] *= k * 0.8;
+      if (d < r0 && K[v] < 1.5) K[v] = 5; any = true;
+    }
+    if (any) G.g.attributes.aKind.needsUpdate = true;
+  }
+  ps.applyColors();
+}
+function kitApplyColors(ps, only) {
+  for (const G of ps.geos) {
+    const col = G.g.attributes.color.array; const list = only != null ? [only] : ps.D.parts.map((_, i) => i);
+    for (const i of list) { const f = 0.35 + 0.65 * ps.frac(i); const R = G.vert; for (let k = R.start[i]; k < R.start[i + 1]; k++) { const v = R.list[k] * 3; col[v] = G.baseCol[v] * f; col[v + 1] = G.baseCol[v + 1] * f; col[v + 2] = G.baseCol[v + 2] * f; } }
+    G.g.attributes.color.needsUpdate = true;
+  }
+}
+/** Tint one part's vertices (the shipyard marks unattached parts red). */
+function kitMark(ps, i, rgb) { for (const G of ps.geos) { const R = G.vert; for (let k = R.start[i]; k < R.start[i + 1]; k++) { const v = R.list[k] * 3; G.baseCol[v] = rgb[0]; G.baseCol[v + 1] = rgb[1]; G.baseCol[v + 2] = rgb[2]; } } }
+function kitDispose(ps) {
+  const seen = new Set(); ps.root.traverse(o => { if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); } });
+  for (const m of ps.mats) m.dispose(); if (ps.root.parent) ps.root.parent.remove(ps.root);
+}
+
+// =====================================================================================
 // §TITAN — capital ships: rings, enterable hangar, pads, turret AI, heat death, bridge command, launch and return
-//  Built from the same parts at 24 m a cell: a kilometre of spine, spin-gravity habitat rings, a lit hangar small craft can fly into and land in, turret
+//  The preset is the titan kit on 40 m cells: nearly two kilometres of spine, a spin-gravity habitat ring, a lit under-bow hangar small craft can fly into and land in, turret
 //  batteries, and radiator wings that are the only thing keeping the reactors from
 //  cooking the crew. NPC titans are faction flagships; a player can build, command
 //  (bridge view + tactical overlay), launch a fighter from, and return to their own.
@@ -9252,9 +9675,14 @@ class Titan {
   get dead() { return !this.alive; }
   forward(out) { return out.set(0, 0, -1).applyQuaternion(this.quat); }
   snapshot() { this.prevPos.copy(this.pos); this.prevQuat.copy(this.quat); }
-  padLocal(i, out) { const cs = this.ps.cs; this.ps.cellCentre(i, out); out.y += cs * 0.62; return out; }
+  padLocal(i, out) { const cs = this.ps.cs; const p = this.ps.D.parts[i]; const m = this.ps.D.hangar?.padM?.[partKey(p.x, p.y, p.z)];
+    if (m) return out.set(m[0], m[1], m[2]).sub(this.ps.origin);                      // kit bays: the painted pad itself
+    this.ps.cellCentre(i, out); out.y += cs * 0.62; return out; }
   padWorld(i, out) { return this.padLocal(i, out).applyQuaternion(this.quat).add(this.pos); }
-  mouthDir(out) { return out.set(1, 0, 0).applyQuaternion(this.quat); }            // the preset bay opens to starboard
+  mouthDir(out) { const m = this.ps.D.hangar?.mouth; return (m ? out.set(m[0], m[1], m[2]) : out.set(1, 0, 0)).applyQuaternion(this.quat); }   // the kit bay opens forward; older capital bays to starboard
+  /** Ship-local metres of the bay mouth and of the bay's middle (for lights, traffic and approach). */
+  mouthLocal(out) { const H = this.ps.D.hangar, cs = this.ps.cs; if (H?.mouthP) return out.set(H.mouthP[0], H.mouthP[1], H.mouthP[2]).sub(this.ps.origin); return out.set((H?.mouthX ?? 9) * cs + 320, 0, ((H?.z0 ?? 0) + (H?.z1 ?? 0)) / 2 * cs).sub(this.ps.origin); }
+  bayLocal(out) { const H = this.ps.D.hangar, cs = this.ps.cs; if (H?.light) return out.set(H.light[0], H.light[1], H.light[2]).sub(this.ps.origin); return out.set(((H.x0 + H.x1) / 2) * cs, 0, ((H.z0 + H.z1) / 2) * cs).sub(this.ps.origin); }
   hostileTo(ent) {
     if (ent === world.player || ent?.isPlayer) {
       if (this.owner === 'player') return false;
@@ -9305,7 +9733,7 @@ function titanAdd(t) {
   SBX.points.push({ kind: 'titan', name: t.name, pos: t.pos, titan: t, sub: t.owner === 'player' ? 'own' : t.faction });
   if (!TITAN.seen && SBX.profile && !SBX.profile.titans.seen && t.owner !== 'player') {
     SBX.profile.titans.seen = true; TITAN.seen = true;
-    setTimeout(() => sbxToast(`${t.name} holds station ${(t.pos.distanceTo(world.player.pos) / 1000).toFixed(1)} km out — ${(t.ps.size.z / 1000).toFixed(1)} km of hull, two spinning habitat rings, and a hangar you could fly a destroyer into.`), 600);
+    setTimeout(() => sbxToast(`${t.name} holds station ${(t.pos.distanceTo(world.player.pos) / 1000).toFixed(1)} km out — ${(t.ps.size.z / 1000).toFixed(1)} km of hull, a spinning habitat ring, and a hangar you could fly a destroyer into.`), 600);
   }
 }
 function titanRemove(t) {
@@ -9448,6 +9876,8 @@ function titanCellSolid(t, lx, ly, lz) { const cs = t.ps.cs; const i = t.ps.map.
 function titanCollide(t, ent, dt) {
   if (ent.pos.distanceTo(t.pos) > t.radius + 40) return false;
   const r = (ent.radius || 5) * 0.55; const L = titanLocal(t, ent.pos, _tl);            // hull-sized probe: the bounding radius includes deployed fins
+  const B = t.ps.D.hangar?.box;
+  if (B && L.x > B[0] && L.x < B[3] && L.y > B[1] && L.y < B[4] && L.z > B[2] - 90 && L.z < B[5]) return titanBayWalls(t, ent, L, B, r);
   let hit = null;
   for (const [dx, dy, dz] of [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) { const i = titanCellSolid(t, L.x + dx * r, L.y + dy * r, L.z + dz * r); if (i != null) { hit = i; break; } }
   if (hit == null) return false;
@@ -9460,9 +9890,27 @@ function titanCollide(t, ent, dt) {
   if (ent === world.player) shake.add(clamp(-into / 80, 0.05, 0.5));
   return true;
 }
+/** Inside a kit bay: the deck, roof, side walls and back wall are the walls; the mouth is open. */
+function titanBayWalls(t, ent, L, B, r) {
+  const lo = [B[0] + r, B[1] + r, -Infinity], hi = [B[3] - r, B[4] - r, B[5] - r]; const n = _v[0].set(0, 0, 0); const c = [L.x, L.y, L.z];
+  for (let k = 0; k < 3; k++) { if (c[k] < lo[k]) n.setComponent(k, 1); else if (c[k] > hi[k]) n.setComponent(k, -1); }
+  if (n.lengthSq() === 0) return false;
+  n.normalize().applyQuaternion(t.quat);
+  ent.pos.copy(ent.prevPos).add(_v[1].subVectors(t.pos, t.prevPos));
+  const rel = _v[2].subVectors(ent.vel, t.vel); const into = rel.dot(n);
+  if (into < 0) { rel.addScaledVector(n, -1.6 * into); ent.vel.copy(t.vel).addScaledVector(rel, 0.5); if (ent.speed != null) ent.speed *= 0.5; }
+  if (-into > 28) world.hitShip(ent, -into * 0.35, ent.pos, 'collision');
+  if (ent === world.player) shake.add(clamp(-into / 80, 0.05, 0.5));
+  return true;
+}
+/** World point `dist` metres out in front of the bay mouth, on the bay's axis (for pilots and tests). */
+function titanBayApproach(t, dist, out = new THREE.Vector3()) { const m = t.mouthLocal(_v[3]); const d = t.ps.D.hangar?.mouth; const dir = d ? _v[4].set(d[0], d[1], d[2]) : _v[4].set(1, 0, 0); return out.copy(m).addScaledVector(dir, dist).applyQuaternion(t.quat).add(t.pos); }
+/** Is a world point inside the titan's hangar bay? */
+function titanInBay(t, p) { const L = titanLocal(t, p, new THREE.Vector3()); const H = t.ps.D.hangar; if (!H) return false; if (H.box) { const B = H.box; return L.x > B[0] - 5 && L.x < B[3] + 5 && L.y > B[1] - 10 && L.y < B[4] + 5 && L.z > B[2] - 5 && L.z < B[5] + 5; } const cs = t.ps.cs; L.multiplyScalar(1 / cs); return L.x >= H.x0 - 0.5 && L.x <= H.x1 + 0.5 && L.y >= H.y0 - 1 && L.y <= H.y1 + 0.5 && L.z >= H.z0 - 0.5 && L.z <= H.z1 + 0.5; }
 function titanPadUnder(t, ent) {
   if (!t.pads.length) return null; const L = titanLocal(t, ent.pos, _tl); const cs = t.ps.cs;
-  for (const i of t.pads) { if (t.ps.gone[i]) continue; const p = t.padLocal(i, _tl2).add(t.ps.origin); const dy = L.y - p.y; if (Math.abs(L.x - p.x) < cs * 0.75 && Math.abs(L.z - p.z) < cs * 0.75 && dy > -2 && dy < 20) return i; }   // the pad plus its apron
+  const kit = !!t.ps.D.hangar?.padM; const hw = kit ? 24 : cs * 0.75, top = kit ? 32 : 20;
+  for (const i of t.pads) { if (t.ps.gone[i]) continue; const p = t.padLocal(i, _tl2).add(t.ps.origin); const dy = L.y - p.y; if (Math.abs(L.x - p.x) < hw && Math.abs(L.z - p.z) < hw && dy > -2 && dy < top) return i; }   // the pad plus its apron
   return null;
 }
 function titanLand(t, pad) {
@@ -9500,19 +9948,19 @@ function titanRender(alpha, dt, time) {
     const R = t.ps.root; R.position.lerpVectors(t.prevPos, t.pos, alpha); R.quaternion.slerpQuaternions(t.prevQuat, t.quat, alpha);
     partVisualStep(t.ps, time);
     const far = camera.position.distanceTo(R.position) > 5200;          // past the LOD switch the titan is its one coarse mesh
-    if (t.ps.rings) for (const r of t.ps.rings) r.visible = !far && !t.ps.gone[r.userData.part];
+    if (t.ps.rings) for (const r of t.ps.rings) r.visible = (t.ps.kit || !far) && !t.ps.gone[r.userData.part];
     for (const s of t.shuttles) s.visible = !far && t.alive;
     if (far) continue;
     for (const s of t.shuttles) {
       s.userData.t = (s.userData.t + dt * 0.03) % 1; const u = s.userData.t; const cs = t.ps.cs;
-      const pad = t.padLocal(s.userData.pad, _v[0]); const mouth = _v[1].set((t.ps.D.hangar?.mouthX ?? 9) * cs - t.ps.origin.x + 320, pad.y + cs * 0.8, pad.z);
-      const k = u < 0.5 ? smooth01(u * 2) : smooth01((1 - u) * 2); s.position.lerpVectors(pad, mouth, k); s.position.y += Math.sin(k * Math.PI) * cs * 0.5 + 5;
-      s.rotation.y = u < 0.5 ? -Math.PI / 2 : Math.PI / 2;
+      const pad = t.padLocal(s.userData.pad, _v[0]); const mouth = t.mouthLocal(_v[1]); if (!t.ps.D.hangar?.mouthP) { mouth.y = pad.y + cs * 0.8; mouth.z = pad.z; }
+      const kit = !!t.ps.D.hangar?.mouthP; const k = u < 0.5 ? smooth01(u * 2) : smooth01((1 - u) * 2); s.position.lerpVectors(pad, mouth, k); s.position.y += Math.sin(k * Math.PI) * (kit ? 14 : cs * 0.5) + 5;
+      s.rotation.y = kit ? 0 : u < 0.5 ? -Math.PI / 2 : Math.PI / 2;
     }
     const d = t.pos.distanceTo(world.player.pos); if (t.pads.length && d < t.radius + bd) { bd = d - t.radius; best = t; }
   }
   // one shared bay light — follows whichever hangar the pilot is near
-  if (best) { const H = best.ps.D.hangar; const cs = best.ps.cs; _v[0].set(((H.x0 + H.x1) / 2) * cs, 0, ((H.z0 + H.z1) / 2) * cs).sub(best.ps.origin).applyQuaternion(best.quat).add(best.pos); TITAN.light.position.copy(_v[0]); TITAN.light.intensity = 380; TITAN.light.distance = cs * 10; }
+  if (best) { const cs = best.ps.cs; best.bayLocal(_v[0]).applyQuaternion(best.quat).add(best.pos); TITAN.light.position.copy(_v[0]); TITAN.light.intensity = 380; TITAN.light.distance = best.ps.D.hangar?.light ? 520 : cs * 10; }
   else TITAN.light.intensity = 0;
   titanTactical();
 }
@@ -9523,7 +9971,7 @@ function titanCamera(dt, alpha) {
   pl.interp(alpha, _v[0], _q[0]); const ps = pl.ps;
   if (TITAN.view === 'bridge') {
     const bi = ps.D.parts.findIndex((p, i) => PARTS[p.t].cat === 'crew' && !PARTS[p.t].ring && !ps.gone[i]);
-    const c = bi >= 0 ? ps.cellCentre(bi, _v[1]) : _v[1].set(0, 0, 0); c.y += ps.cs * 1.2; c.z -= ps.cs * 0.8;
+    const B = ps.D.bridge; const c = B && bi >= 0 ? _v[1].set(B[0], B[1], B[2]).sub(ps.origin) : bi >= 0 ? ps.cellCentre(bi, _v[1]) : _v[1].set(0, 0, 0); if (!B) { c.y += ps.cs * 1.2; c.z -= ps.cs * 0.8; }
     camera.position.copy(c).applyQuaternion(_q[0]).add(_v[0]); camera.quaternion.copy(_q[0]);
     if (Math.abs(camera.fov - 62) > 0.01) { camera.fov = 62; camera.updateProjectionMatrix(); }
   } else {
@@ -9587,7 +10035,7 @@ function titanLaunch() {
   fighter.location = null; p.activeShip = fighter.uid;
   sbxBoardVisual(); titanAdd(t);
   const pad = t.pads.find(i => !t.ps.gone[i]); t.padWorld(pad, pl.pos); pl.pos.addScaledVector(_v[0].set(0, 1, 0).applyQuaternion(t.quat), 10);
-  pl.prevPos.copy(pl.pos); pl.quat.copy(t.quat).multiply(_tq.setFromAxisAngle(WORLD_UP, -Math.PI / 2)); pl.prevQuat.copy(pl.quat);
+  const md = t.ps.D.hangar?.mouth; pl.prevPos.copy(pl.pos); pl.quat.copy(t.quat).multiply(md ? _tq.setFromUnitVectors(FORWARD, _v[2].set(md[0], md[1], md[2])) : _tq.setFromAxisAngle(WORLD_UP, -Math.PI / 2)); pl.prevQuat.copy(pl.quat);
   pl.vel.copy(t.vel).addScaledVector(t.mouthDir(_v[1]), 45); pl.speed = 45; pl.throttle = 0.5; pl.alive = true; cam.init = false;
   TITAN.view = 'bridge'; sbxToast(`Launched in ${fighter.name}. ${t.name} holds position and engages anything hostile.`); sbxSave('launch');
 }
@@ -10199,7 +10647,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
