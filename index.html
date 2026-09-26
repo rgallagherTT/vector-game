@@ -5,83 +5,119 @@
   is regenerated from those anchors on every build, so it always matches the code.
 
   SECTIONS (in file order)
-    §CSS                 the whole stylesheet: HUD, screens, sandbox, surface, shipyard, thermal panel
-      §CSS.PARTS           part-built ships have no shield pool; the thermal panel replaces the weapon heat bar
-    §DOM                 markup: canvases, HUD panels, screens, station / map / help / survey overlays, touch controls
-    §CONFIG              imports, CONFIG tuning, math helpers, input, synthesized audio, lobby settings
-    §RENDER              renderer, scene, post-processing, procedural textures, skybox, planet and sun, asteroids, ship model templates
-    §ENTITIES            object pools, Entity / Ship / PlayerShip (flight model: §FLIGHT), steering primitives, enemy archetypes and AI (§ENEMYAI)
-    §FLIGHT              the Stage 1 arcade flight model: mouse-rate steering, throttle, boost, drift (part physics feed its parameters)
-    §ENEMYAI             EnemyShip: pooled; archetype mode tables over the shared steering primitives
-    §WORLD               particles, debris, shockwaves, the World: projectiles, missiles, damage routing, collisions, render sync
-    §CAMERA              chase / cockpit camera, then the HUD (§HUD): reticles, radar, speed lines, objective handlers
-    §HUD                 DOM HUD: reticles, lead indicator, target bracket, off-screen arrow, radar, speed lines
-    §SHIPS               campaign ship catalogue, upgrade modules, secondary weapons
-    §CAPITALS            campaign capital ships, subsystems, bosses
-    §MISSIONS            mission definitions, objective handlers, environment application
-    §ALLIES              wingmen, then touch controls (§TOUCH) and the contextual mobile strip
-    §TOUCH               touch controls and the contextual sandbox strip
-    §VERSUS              versus mode, nametags, lobby
-    §SBXDATA             sandbox universe, items, hulls, modules, the SBX singleton, save IO
-    §FITTING             fitting stats, capacitor, module cycles, damage types, nav assists
-    §PROGRESSION         skills, recipes and blueprints, structure defs, save v2, net worth, the offline engine
-    §INDUSTRY            industry jobs, market orders, trade routes, structures live, fleet, exploration, incursions
-    §SYSTEM              the current system: stations, gates, belts, NPC traffic, wrecks, mining, warp
-    §ECONOMY             per-station markets, trading, refining, agents, insurance, permanent loss
-    §SBXUI               sandbox HUD, toasts, the overview, station tabs (market, fitting, ships, cargo, missions, repair, insurance, save)
-    §SBXUI4              skills, industry, trade and fleet station tabs, fleet HUD
-    §SBXNET              sandbox multiplayer co-presence
-    §PLANETS             planets, landing sites, biomes, the height field, save v3, surface activities data
-    §TERRAIN             pooled terrain engine
-    §SURFACE             descent, atmospheric flight, landing, rover, surface activities, takeoff
-    §ORBITAL             orbital survey globe, surface HUD, prospector
-    §CLARITY             context hint bar, help overlay, tab explainers
-    §PARTS               Stage 6 data layer: part catalog, design physics, flight mapping, presets, part items, save v4
-      §PARTS.CATALOG       part definitions at fighter scale; capital variants multiply these
-      §PARTS.GRAPH         structural connectivity: load paths run only through frames and crew modules
-      §PARTS.DERIVE        every number the builder shows and the flight model consumes
-      §PARTS.WARNINGS      warnings, never blocks
-      §PARTS.FLIGHT        derived physics feed the Stage 1 arcade parameters; the reference fighter maps to CONFIG.flight exactly
-      §PARTS.PRESETS       the Stage 1 fighter by hand; everything else from a symmetric generator
-      §PARTS.TITAN         the titan preset, laid out part-for-part on the titan kit (40 m cells; kit metres = cell × 40)
-      §PARTS.ITEMS         every part is a market item, manufacturable, with a blueprint; damaged salvage is a graded variant
-      §PARTS.DESIGNS       player blueprints: a design becomes a virtual hull, a kit item, a recipe and a blueprint original
-      §PARTS.HULLS         Stage 2–3 hulls become preset designs; their table entries now come from their parts
-      §PARTS.NEWSHIP       S6-EDIT(§SBXDATA sbxNewShip): every new ship carries its part design and per-part integrity
-      §PARTS.SAVE_V4       v3 → v4: hulls become their preset designs; fits are preserved slot for slot
-    §PARTRT              Stage 6 runtime: per-part hits, stumps, structural detachment, thermal model, part rendering
-      §PARTRT.GEOMETRY     shape templates and the per-part visual recipe
-      §PARTRT.STATE        per-ship runtime state
-      §PARTRT.RAYCAST      march the projectile's own segment through the part grid
-      §PARTRT.DAMAGE       damage lands on a part, ablates, penetrates, destroys, detaches
-      §PARTRT.DETACH       anything that lost its load path to the core breaks off as its own body
-      §PARTRT.HIT          World hook: every hit on a part-based ship resolves here
-      §PARTRT.THERMAL      heat in from reactors, drives, guns; out only through radiators
-      §PARTRT.PLAYER       the player's ship: boarding builds the state; the flight hook reads it
-      §PARTRT.NPC          sandbox NPCs are part-built: their tuned stats degrade as their parts go
-      §PARTRT.SALVAGE      wrecks drop parts with their integrity carried over
-      §PARTRT.STATION      dock refuels and cools; repairs rebuild destroyed parts; the record keeps the parts
-      §PARTRT.HOOKS        S6-EDIT(§SBXCONTROL sbxBoardVisual): part ships board through partBoardVisual
-      §PARTRT.RENDER       per-frame visual state for every part-built body
-    §THERMALHUD          the ship-wide thermal readout that replaces the per-weapon heat bar
-    §SHIPYARD            the station-side part builder: 3D grid editor, readouts, warnings, blueprints, assembly, refit
-    §SHIPBUILD           alias anchor for §SHIPYARD: the part-based ship builder lives here
-    §TITANKIT            the titan kit: part meshes, materials, and the per-cell merged titan mesh
-      §TITANKIT.BUILDER    one merged, indexed, multi-material geometry per kit part
-      §TITANKIT.PARTS      the kit's part meshes (pivot at the attach face)
-      §TITANKIT.MATERIAL   six kit materials per ship, sharing the part runtime's uniforms (deploy, heat, throttle, time)
-      §TITANKIT.ASSEMBLE   merge every kit node into one geometry; each triangle owned by one cell
-      §TITANKIT.STATE      PartState hooks for kit designs: build, destroy, scorch, colour, dispose
-    §TITAN               capital ships: rings, enterable hangar, pads, turret AI, heat death, bridge command, launch and return
-      §TITAN.SPAWN         flagships live in fixed systems; the player's own titan waits where it was parked
-      §TITAN.AI            a platform, not a fighter: slow turns, turret batteries, radiator doctrine
-      §TITAN.SHOTS         every projectile checks titans: bounding sphere first, then the part grid
-      §TITAN.HANGAR        grid collision, pad landing, lights and traffic inside the bay
-      §TITAN.RENDER        interpolated pose, spinning rings, bay lights, shuttle traffic
-      §TITAN.COMMAND       the player's titan: bridge view, tactical overlay, turret control, launch and return
-      §TITAN.HOOKS         S6-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxTryDock): titans populate with the system; titans do not dock
-    §SBXCONTROL          sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
-    §BOOT                mission runner, hangar, screen state machine, main loop, boot, test exports
+    §CSS                   the whole stylesheet: HUD, screens, sandbox, surface, shipyard, thermal panel
+      §CSS.PARTS             part-built ships have no shield pool; the thermal panel replaces the weapon heat bar
+      §CSS.RELATIVITY        the dilation ratio, the well, the throat, the star
+    §DOM                   markup: canvases, HUD panels, screens, station / map / help / survey overlays, touch controls
+    §CONFIG                imports, CONFIG tuning, math helpers, input, synthesized audio, lobby settings
+    §RENDER                renderer, scene, post-processing, procedural textures, skybox, planet and sun, asteroids, ship model templates
+    §ENTITIES              object pools, Entity / Ship / PlayerShip (flight model: §FLIGHT), steering primitives, enemy archetypes and AI (§ENEMYAI)
+    §FLIGHT                the Stage 1 arcade flight model: mouse-rate steering, throttle, boost, drift (part physics feed its parameters)
+    §ENEMYAI               EnemyShip: pooled; archetype mode tables over the shared steering primitives
+    §WORLD                 particles, debris, shockwaves, the World: projectiles, missiles, damage routing, collisions, render sync
+    §CAMERA                chase / cockpit camera, then the HUD (§HUD): reticles, radar, speed lines, objective handlers
+    §HUD                   DOM HUD: reticles, lead indicator, target bracket, off-screen arrow, radar, speed lines
+    §SHIPS                 campaign ship catalogue, upgrade modules, secondary weapons
+    §CAPITALS              campaign capital ships, subsystems, bosses
+    §MISSIONS              mission definitions, objective handlers, environment application
+    §ALLIES                wingmen, then touch controls (§TOUCH) and the contextual mobile strip
+    §TOUCH                 touch controls and the contextual sandbox strip
+    §VERSUS                versus mode, nametags, lobby
+    §SBXDATA               sandbox universe, items, hulls, modules, the SBX singleton, save IO
+    §FITTING               fitting stats, capacitor, module cycles, damage types, nav assists
+    §PROGRESSION           skills, recipes and blueprints, structure defs, save v2, net worth, the offline engine
+    §INDUSTRY              industry jobs, market orders, trade routes, structures live, fleet, exploration, incursions
+    §SYSTEM                the current system: stations, gates, belts, NPC traffic, wrecks, mining, warp
+    §ECONOMY               per-station markets, trading, refining, agents, insurance, permanent loss
+    §SBXUI                 sandbox HUD, toasts, the overview, station tabs (market, fitting, ships, cargo, missions, repair, insurance, save)
+    §SBXUI4                skills, industry, trade and fleet station tabs, fleet HUD
+    §SBXNET                sandbox multiplayer co-presence
+    §PLANETS               planets, landing sites, biomes, the height field, save v3, surface activities data
+    §TERRAIN               pooled terrain engine
+    §SURFACE               descent, atmospheric flight, landing, rover, surface activities, takeoff
+    §ORBITAL               orbital survey globe, surface HUD, prospector
+    §CLARITY               context hint bar, help overlay, tab explainers
+    §PARTS                 Stage 6 data layer: part catalog, design physics, flight mapping, presets, part items, save v4
+      §PARTS.CATALOG         part definitions at fighter scale; capital variants multiply these
+      §PARTS.GRAPH           structural connectivity: load paths run only through frames and crew modules
+      §PARTS.DERIVE          every number the builder shows and the flight model consumes
+      §PARTS.WARNINGS        warnings, never blocks
+      §PARTS.FLIGHT          derived physics feed the Stage 1 arcade parameters; the reference fighter maps to CONFIG.flight exactly
+      §PARTS.PRESETS         the Stage 1 fighter by hand; everything else from a symmetric generator
+      §PARTS.TITAN           the titan preset, laid out part-for-part on the titan kit (40 m cells; kit metres = cell × 40)
+      §PARTS.ITEMS           every part is a market item, manufacturable, with a blueprint; damaged salvage is a graded variant
+      §PARTS.DESIGNS         player blueprints: a design becomes a virtual hull, a kit item, a recipe and a blueprint original
+      §PARTS.HULLS           Stage 2–3 hulls become preset designs; their table entries now come from their parts
+      §PARTS.NEWSHIP         S6-EDIT(§SBXDATA sbxNewShip): every new ship carries its part design and per-part integrity
+      §PARTS.SAVE_V4         v3 → v4: hulls become their preset designs; fits are preserved slot for slot
+    §PARTRT                Stage 6 runtime: per-part hits, stumps, structural detachment, thermal model, part rendering
+      §PARTRT.GEOMETRY       shape templates and the per-part visual recipe
+      §PARTRT.STATE          per-ship runtime state
+      §PARTRT.RAYCAST        march the projectile's own segment through the part grid
+      §PARTRT.DAMAGE         damage lands on a part, ablates, penetrates, destroys, detaches
+      §PARTRT.DETACH         anything that lost its load path to the core breaks off as its own body
+      §PARTRT.HIT            World hook: every hit on a part-based ship resolves here
+      §PARTRT.THERMAL        heat in from reactors, drives, guns; out only through radiators
+      §PARTRT.PLAYER         the player's ship: boarding builds the state; the flight hook reads it
+      §PARTRT.NPC            sandbox NPCs are part-built: their tuned stats degrade as their parts go
+      §PARTRT.SALVAGE        wrecks drop parts with their integrity carried over
+      §PARTRT.STATION        dock refuels and cools; repairs rebuild destroyed parts; the record keeps the parts
+      §PARTRT.HOOKS          S6-EDIT(§SBXCONTROL sbxBoardVisual): part ships board through partBoardVisual
+      §PARTRT.RENDER         per-frame visual state for every part-built body
+    §THERMALHUD            the ship-wide thermal readout that replaces the per-weapon heat bar
+    §SHIPYARD              the station-side part builder: 3D grid editor, readouts, warnings, blueprints, assembly, refit
+    §SHIPBUILD             alias anchor for §SHIPYARD: the part-based ship builder lives here
+    §TITANKIT              the titan kit: part meshes, materials, and the per-cell merged titan mesh
+      §TITANKIT.BUILDER      one merged, indexed, multi-material geometry per kit part
+      §TITANKIT.PARTS        the kit's part meshes (pivot at the attach face)
+      §TITANKIT.MATERIAL     six kit materials per ship, sharing the part runtime's uniforms (deploy, heat, throttle, time)
+      §TITANKIT.ASSEMBLE     merge every kit node into one geometry; each triangle owned by one cell
+      §TITANKIT.STATE        PartState hooks for kit designs: build, destroy, scorch, colour, dispose
+    §TITAN                 capital ships: rings, enterable hangar, pads, turret AI, heat death, bridge command, launch and return
+      §TITAN.SPAWN           flagships live in fixed systems; the player's own titan waits where it was parked
+      §TITAN.AI              a platform, not a fighter: slow turns, turret batteries, radiator doctrine
+      §TITAN.SHOTS           every projectile checks titans: bounding sphere first, then the part grid
+      §TITAN.HANGAR          grid collision, pad landing, lights and traffic inside the bay
+      §TITAN.RENDER          interpolated pose, spinning rings, bay lights, shuttle traffic
+      §TITAN.COMMAND         the player's titan: bridge view, tactical overlay, turret control, launch and return
+      §TITAN.HOOKS           S6-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxTryDock): titans populate with the system; titans do not dock
+    §RELATIVITY            Stage 7 core: light speed, time dilation, the galaxy clock, ballistic flight, tides
+      §RELATIVITY.SOURCES    gravity sources register per system; each moves analytically
+      §RELATIVITY.FLIGHT     Newtonian flight inside a well: gravity + burns, relativistic mass, no speed cap
+      §RELATIVITY.PREDICT    the navigation computer: coast the current state forward, find the flyby, report the gain
+      §RELATIVITY.DILATION   gravitational (Schwarzschild lapse) × kinematic (γ); the ratio the HUD shows
+      §RELATIVITY.CLOCK      the galaxy runs ahead: deadlines move closer, the progression engine runs longer slices
+      §RELATIVITY.TIDES      the tidal tensor applied to a part-built ship, carried by its structural links
+      §RELATIVITY.HUD        the dilation ratio, the well, the nav computer
+      §RELATIVITY.TICK       per-sim-tick: sources move, dilation accrues galaxy time, the well is tracked
+      §RELATIVITY.HOOKS      S7-EDIT(§SYSTEM sbxLoadSystem, sbxWarpTo): sources per system; no warp bubble inside a well
+    §BLACKHOLE             stellar-mass black holes: gravity, the ISCO, tides, the horizon, and Gargantua's light
+      §BLACKHOLE.SYSTEMS     which systems hold one, where, and how it is oriented
+      §BLACKHOLE.PHYSICS     the horizon, tides, the disk's glare, station-keeping below the ISCO
+      §BLACKHOLE.WARP        the warp point and the nav computer's orbit insertion on arrival
+      §BLACKHOLE.LOSS        S7-EDIT(§ECONOMY sbxDeath, §SBXUI sbxShowLoss): the horizon voids insurance and leaves no wreck
+      §BLACKHOLE.LENS        the ray-marched lensing pass (gated, quality-scaled) and its static sprite fallback
+    §WORMHOLE              traversable wormholes: a lensed throat, an exotic-matter budget, and mass limits
+      §WORMHOLE.BUDGET       each pair shares one exotic-matter budget, saved with the profile
+      §WORMHOLE.VISUAL       the throat: a sphere showing the far side, refreshed at a low rate
+      §WORMHOLE.TRANSIT      S7-EDIT(§INDUSTRY sbxWormholeTransit): mass spends stability; too much and it collapses
+    §MOONS                 small moons on analytic orbits: gravity-assist bodies, and targets
+    §RKV                   relativistic kill vehicles: the spinal mass driver, analytic flight, interception, impact
+      §RKV.IMPACT            what a slug does to what it hits; all of it persists
+      §RKV.VISUAL            slugs in this system draw as a hot streak on their closed-form line
+      §RKV.CONSOLE           the fire-control console (U on a titan's bridge): targets, energy, outcome, the atrocity warning
+      §RKV.CRATERS           S7-EDIT(§PLANETS srfMakeHeight, srfDeposits, srfSiteDef; §SURFACE hazards, dayNight): struck sites stay struck
+      §RKV.RINGS             a shattered moon's debris shears into a ring around its primary over real hours
+      §RKV.HOOKS             S7-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxStep/sbxEnter): moons and rings with the system; slugs resolve on load and every tick
+    §SUPERNOVA             one star, one date, one permanent change to the map
+      §SUPERNOVA.RUN_UP      evacuation, market instability, abandoned assets
+      §SUPERNOVA.EVENT       core collapse: the system is gone, the remnant stays, the shock reaches the neighbours
+      §SUPERNOVA.REMNANT     a neutron star: a tiny hot point, two sweeping beams, a young nebula
+      §SUPERNOVA.HOOKS       S7-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxEnter, §BOOT title): applied on every load; the date on the title screen
+      §SUPERNOVA.MAP         S7-EDIT(§SBXUI sbxDrawMap): the doomed star, the remnant, the shock front, the black holes
+      §SUPERNOVA.SAVE_V5     v4 → v5: the galaxy clock, wormhole budgets, moons, craters, slugs, the star
+    §SBXCONTROL            sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
+    §BOOT                  mission runner, hangar, screen state machine, main loop, boot, test exports
 
   STAGE 6 CHANGES TO EARLIER SECTIONS (each marked in place with "S6-EDIT")
     §ENTITIES PlayerShip.build — a part-built ship brings its own merged mesh as the body
@@ -106,6 +142,24 @@
     §SBXCONTROL sbxStep — ticks the part runtime, NPC parts, debris and titans
     §SBXCONTROL sbxKeys — titan command keys + board-from-pad take E/Tab/T/L first
     §SBXCONTROL sbxKeys — radiators
+
+  STAGE 7 CHANGES TO EARLIER SECTIONS (each marked in place with "S7-EDIT")
+    §FLIGHT flightUpdate — inside a gravity well flight is Newtonian — gravity pulls, W burns, orbits hold
+    §CLARITY HINTS.pick — ballistic flight and orbit hold
+    §PARTRT partPlayerLoad — ballistic burns spend propellant and heat like the arcade throttle
+    §SYSTEM sbxLoadSystem, sbxWarpTo — sources per system; no warp bubble inside a well
+    §SBXDATA generateUniverse — three systems gain a black hole
+    §ECONOMY sbxDeath, §SBXUI sbxShowLoss — the horizon voids insurance and leaves no wreck
+    §PARTRT partRenderHook — lens gating and the relativity HUD each frame
+    §INDUSTRY sbxWormholeTransit — mass spends stability; too much and it collapses
+    §PLANETS srfMakeHeight, srfDeposits, srfSiteDef; §SURFACE hazards, dayNight — struck sites stay struck
+    §SYSTEM sbxLoadSystem, §SBXCONTROL sbxStep/sbxEnter — moons and rings with the system; slugs resolve on load and every tick
+    §SBXDATA generateUniverse — one star is doomed
+    §ECONOMY ecoPrice — the doomed region's markets come apart
+    §SYSTEM sbxLoadSystem, §SBXCONTROL sbxEnter, §BOOT title — applied on every load; the date on the title screen
+    §SBXUI sbxDrawMap — the doomed star, the remnant, the shock front, the black holes
+    §SBXCONTROL sbxStep — gravity sources, dilation, black-hole well, slugs, the star
+    §SBXCONTROL sbxStep — the slice is the galaxy's time — dilation makes it longer
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -499,6 +553,17 @@
   body.touch-mode #th-schem { display: none; } body.sandbox.touch-mode #p-thermal { transform: scale(0.8); transform-origin: bottom right; bottom: 30%; right: 4px; }
   #tactical { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9; display: none; }
   #tactical.on { display: block; }
+  /* §CSS.RELATIVITY — the dilation ratio, the well, the throat, the star */
+  #p-rel { left: 50%; top: 14px; transform: translateX(-50%); min-width: 380px; max-width: 560px; display: none; text-transform: none; letter-spacing: 0.03em; pointer-events: auto; }
+  body.sandbox #p-rel.on { display: block; }
+  #p-rel .rel-ratio { font-size: 17px; color: var(--amber); text-shadow: var(--glow-a); letter-spacing: 0.06em; }
+  #p-rel .small { margin-top: 2px; } #p-rel [data-lensq] { cursor: pointer; font-weight: 400; color: var(--cyan); }
+  #p-rel .rel-assist { color: #ffd166; }
+  #p-wh { left: 50%; top: 150px; transform: translateX(-50%); min-width: 360px; max-width: 520px; display: none; text-transform: none; letter-spacing: 0.03em; }
+  body.sandbox #p-wh.on { display: block; } #p-wh .bar { width: 140px; }
+  #sys-sn { max-width: 260px; margin-top: 3px; text-transform: none; letter-spacing: 0.02em; }
+  .mode-card .sn-title { color: #ff8a7a; font-size: 10px; letter-spacing: 0.04em; }
+  body.touch-mode #p-rel { transform: translateX(-50%) scale(0.78); transform-origin: top center; top: 50px; }
   /* §CSS.SHIPYARD */
   .yard { display: grid; grid-template-columns: 1fr 330px; gap: 14px; }
   .yard-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
@@ -551,7 +616,9 @@
     <div class="row sbxrow"><div class="label">Capacitor</div><div class="bar"><i id="h-cap"></i></div><span id="h-cap-t">--</span></div>
     <div class="row sbxrow"><div class="label">Cargo</div><div class="bar amber"><i id="h-cargo"></i></div><span id="h-cargo-t">--</span></div>
   </div>
-  <div class="panel" id="p-sys"><div id="sys-name">--</div><div id="sys-sub"></div></div>
+  <div class="panel" id="p-sys"><div id="sys-name">--</div><div id="sys-sub"></div><div id="sys-sn" class="small"></div></div>
+  <div class="panel" id="p-rel"></div>
+  <div class="panel" id="p-wh"></div>
   <div id="mod-rack"></div>
   <div class="panel" id="p-fleet"><div class="label">Fleet</div><div id="fleet-list"></div><div id="fleet-cmds"><button data-cmd="engage">Engage</button><button data-cmd="defend">Defend</button><button data-cmd="mine">Mine</button><button data-cmd="hold">Hold</button><button data-cmd="deploy">Anchor [B]</button></div></div>
   <div class="panel" id="scan-panel"><div class="label">Probe scanner [P]</div><div class="small" id="scan-sigs"></div><div id="scan-range"></div><div id="scan-out"></div><div class="scan-btns"><button id="scan-pulse">Pulse</button><button id="scan-close">Close</button></div></div>
@@ -668,6 +735,8 @@
   <p class="small hp">Every ship is built from parts on a grid, and hits land on the part they strike. Lose a thruster and the ship <b>yaws toward the dead engine</b> under power; lose the frame that holds a wing and the wing drifts away. <b>Heat</b> is the real limit: reactors, drives and guns make it, and only <b>radiators</b> shed it. <b>G</b> deploys them (fast cooling, fragile) or retracts them (safe, on a heat clock). Past 100% parts start failing; past 130% the crew cooks. Build and refit ships in the station <b>Shipyard</b>; wrecks drop salvaged parts.</p>
   <h3>Titans</h3>
   <p class="small hp">Kilometre-long capital ships with spinning habitat rings and a hangar you can fly into — line up with the lit bay and land on a green pad. Strip a titan's radiators and it cooks itself. Your own titan: land in its hangar, <b>E</b> takes the bridge, <b>T</b> toggles tactical view, <b>L</b> launches your fighter.</p>
+  <h3>Relativity</h3>
+  <p class="small hp">Light is slow here (3 km/s) and gravity is real. Near a <b>black hole</b> or a moon, flight turns <b>ballistic</b>: gravity pulls, <b>W</b> burns along the nose, <b>S</b> retro, <b>Space</b> matches the local frame, and the green arc is the nav computer's prediction (gold when a flyby will <b>gain</b> speed). Deep in a black hole's well your clock runs slow — the top panel reads it as "1 hour here = N hours outside" and the whole galaxy (skills, jobs, orders, markets, structures, factions) runs at the outside rate. <b>H</b> holds an orbit (nose prograde, so tides compress the hull); below 3 Rs no orbit holds by itself, and every second costs propellant and heat. Long, thin hulls break in the tides. The horizon is final. <b>Wormholes</b> show the far side; each transit spends stability by mass — the panel says whether your fleet fits. On a titan's bridge, <b>U</b> opens mass-driver fire control: a relativistic slug shatters moons and scars planets for good. One star is going <b>supernova</b> on the date on the title screen. <b>F8</b> sets lensing quality.</p>
   <h3>Planets</h3>
   <p class="small hp">Warp to a planet, hold orbit, press <b>E</b> — one site is always ready — and descend. Land gently on flat ground. You start with a rover in the hold: <b>R</b> deploys it. Drive it (<b>P</b> prospects) to drill deposits, grab salvage crates, ride geyser vents for gas, clear fauna nests, and run the timed <b>circuit</b> through the amber rings for ISK. Settlements on green worlds buy ore and artifacts on the spot. <b>B</b> anchors a mining outpost. Climb past 900 m to leave.</p>
   <h3>Multiplayer</h3>
@@ -681,6 +750,16 @@
     <canvas id="planetcanvas" style="width:100%;height:420px;border:var(--line) solid var(--cyan-faint);background:#02050b;cursor:grab"></canvas>
     <div id="orb-info"></div>
   </div>
+</div></div>
+<div class="sb-overlay" id="sb-absence"><div class="sb-card">
+  <h1>Out of the well</h1><h3>What the galaxy did while your clock crawled</h3>
+  <div id="abs-body"></div>
+  <div class="actions" style="margin-top:14px"><button id="abs-close" class="amber">Back to it</button></div>
+</div></div>
+<div class="sb-overlay" id="sb-rkv"><div class="sb-card">
+  <h1>Spinal mass driver — fire control</h1><h3>Relativistic kill vehicle · energy is (γ − 1) m c²</h3>
+  <div id="rkv-body"></div>
+  <div class="actions" style="margin-top:14px"><button id="rkv-close">Close [U]</button></div>
 </div></div>
 <div class="sb-overlay" id="sb-loss"><div class="sb-card">
   <h1>Ship destroyed</h1><h3>Everything fitted went with it</h3>
@@ -705,7 +784,7 @@
   <div class="wordmark">Vector</div>
   <div class="tagline">Fly · Fight · Mine · Trade · Land</div>
   <div class="mode-cards">
-    <button class="mode-card sandbox" id="btn-sandbox"><b>Sandbox</b><span id="sbx-sub">The open universe — mine, trade, fight, build, land on planets. Progress saves.</span></button>
+    <button class="mode-card sandbox" id="btn-sandbox"><b>Sandbox</b><span id="sn-title" class="sn-title"></span><span id="sbx-sub">The open universe — mine, trade, fight, build, land on planets. Progress saves.</span></button>
     <div class="mode-card campaign">
       <b>Campaign</b>
       <span class="mc-mission" id="b-name">1. Perimeter Sweep</span>
@@ -1861,6 +1940,7 @@ class PlayerShip extends Ship {
     this.boosting = wantBoost;
     if (this.boosting) { this.boostPool = Math.max(0, this.boostPool - dt); this.sinceBoost = 0; }
     else { this.sinceBoost += dt; if (this.sinceBoost >= F.boostRechargeDelay) this.boostPool = Math.min(F.boostPool, this.boostPool + F.boostRecharge * dt); }
+    if (this === world.player && typeof relFlight === 'function' && relFlight(this, dt, F)) return;   // S7-EDIT(§FLIGHT flightUpdate): inside a gravity well flight is Newtonian — gravity pulls, W burns, orbits hold
     // speed
     let targetSpeed = lerp(F.minSpeed, F.maxSpeed, this.throttle) + (this.boosting ? F.boostSpeed : 0);
     if (this.braking) targetSpeed = F.airbrakeSpeed;
@@ -7690,6 +7770,7 @@ const HINTS = {
     const ps = pl.ps;
     if (ps?.capital) return `You have the bridge. ${K('T')} bridge / tactical · ${K('Tab')} target · hold ${K('click')} to fire the turrets · ${K('G')} radiators · ${K('L')} launch your fighter.`;
     if (typeof TITAN !== 'undefined' && TITAN.landed) return TITAN.landed.titan.owner === 'player' ? `On your titan's deck. ${K('E')} takes the bridge (your fighter stays aboard) · ${K('W')} lifts off.` : `Clamped to the deck — refuelled. ${K('W')} lifts off.`;
+    if (pl.ballistic) return typeof BH !== 'undefined' && BH.hold ? `Orbit hold on — ${K('H')} releases. Watch heat, propellant and tidal stress; ${K('W')}/${K('S')} still burn.` : `Ballistic in a gravity well — ${K('W')} burn · ${K('S')} retro · ${K('Space')} match frame${typeof bhSourceOf === 'function' && bhSourceOf() ? ` · ${K('H')} hold this orbit` : ''}. Follow the arc; gold means a speed-gaining flyby.`;   // S7-EDIT(§CLARITY HINTS.pick): ballistic flight and orbit hold
     if (ps && ps.heat > 1.0) return `OVERHEATING — parts are taking damage. ${ps.radDeploy < 0.5 ? `${K('G')} deploys the radiators.` : 'Stop firing and throttle down until it bleeds off.'}`;
     if (ps && ps.heat > 0.72 && ps.radDeploy < 0.5) return `Heat ${Math.round(ps.heat * 100)}% on a retracted heat clock — ${K('G')} deploys the radiators (they can be shot off).`;
     if (ps && ps.prop < 0.15) return `Propellant ${Math.round(ps.prop * 100)}% — dock or land on a titan pad to refuel before the engines go cold.`;
@@ -7783,6 +7864,7 @@ const PARTS = {
   cargo_l:   { cat: 'cargo',    name: 'Bulk hold',         mass: 1.1,  hp: 90,  cost: 3800,  vol: 180, color: 0x857a5c, desc: 'A pressurised box six times the size of a cargo bay. Freighters are mostly these.' },
   crew:      { cat: 'crew',     name: 'Crew module',       mass: 1.3,  hp: 70,  cost: 5000,  cpu: 70, draw: 0.8, heatIdle: 0.08, structural: true, color: 0xc9ccd1, desc: 'People and the computers they fly with. Required above 24 parts. If every one is lost, so is the ship.' },
   pad:       { cat: 'frame',    name: 'Landing pad deck',  mass: 0.5,  hp: 70,  cost: 1800,  structural: true, capitalOnly: true, pad: true, color: 0x3f454c, desc: 'Hangar deck plating with a lit landing pad. Leave open cells above it and small craft can land inside.' },
+  massdriver:{ cat: 'frame',    name: 'Spinal mass driver', mass: 6.0, hp: 180, cost: 120000, structural: true, capitalOnly: true, driver: true, color: 0x6b6f76, desc: 'The breech of a kilometre-long coilgun running inside the spine. Throws a dense slug at a tenth of light speed — a relativistic kill vehicle.' },
   hab_ring:  { cat: 'crew',     name: 'Habitat ring',      mass: 3.0,  hp: 120, cost: 26000, cpu: 110, draw: 1.6, heatIdle: 0.2, structural: true, capitalOnly: true, ring: 5, color: 0xd4d7dc, desc: 'A spinning ring around the spine that gives the crew weight. Counts as a crew module.' },
 };
 const PART_ORDER = Object.keys(PARTS);
@@ -8156,6 +8238,7 @@ function partTitanDesign(name = 'Leviathan-class titan', opt = {}) {
   // habitat ring: hub on its own cell above the spine junction; the ring spins about the spine axis
   put('hab_ring', 0, 1, -10); node('habring', [0, 0, -400], 0, [[0, 1, -10]], { ring: true });
   // spine gun: the mass driver's barrel runs inside the truss, breech at z 300
+  put('massdriver', 0, 0, 7, 0, { hm: 2.5 });                          // S7: the breech cell — Stage 7's RKV launcher
   node('hardpoint_massdriver', [0, 0, 300], 0, Array.from({ length: 32 }, (_, i) => [0, 0, -24 + i]));
   // cargo
   put('cargo_l', 0, 1, -20); put('cargo_l', 0, 1, -16);
@@ -8212,6 +8295,7 @@ const PART_MATS = {
   hp_turret: { min_ferrite: 75, min_silica: 20 }, hp_util: { min_ferrite: 65, min_silica: 22 }, hp_int: { min_ferrite: 60, min_silica: 18 }, hp_rig: { min_ferrite: 45, min_silica: 16 },
   cargo: { min_ferrite: 50 }, crew: { min_ferrite: 120, min_silica: 90, min_nobelium: 6 },
   pad: { min_ferrite: 60, min_silica: 20 }, hab_ring: { min_ferrite: 500, min_silica: 300, min_nobelium: 30 },
+  massdriver: { min_ferrite: 900, min_silica: 600, min_nobelium: 120 },
 };
 function partRegisterItems() {
   for (const t of PART_ORDER) for (const scale of ['fighter', 'capital']) {
@@ -8769,7 +8853,8 @@ function partFlightFor(pl) { return partFlight(pl.ps.der, CONFIG.flight, pl.ps.p
 function partPlayerLoad(pl) {
   const S = pl.sbx?.fitStats; const firing = pl.firedTick ? 1 : 0;
   let moduleHeat = 0; for (const rt of pl.sbx?.actives || []) if (rt.on) moduleHeat += (rt.def.active.cap / rt.def.active.cycle) * 0.05 * (pl.ps.capital ? 90 : 1);
-  return { throttle: pl.parked || pl.hangared ? 0 : (pl.boosting ? 1 : pl.throttle), boost: pl.boosting, firing, pgUsed: S?.pgUsed || 0, moduleHeat };
+  const thr = pl.relBurn != null ? Math.min(1, pl.relBurn) : (pl.boosting ? 1 : pl.throttle);   // S7-EDIT(§PARTRT partPlayerLoad): ballistic burns spend propellant and heat like the arcade throttle
+  return { throttle: pl.parked || pl.hangared ? 0 : thr, boost: pl.boosting || (pl.relBurn || 0) > 1, firing, pgUsed: S?.pgUsed || 0, moduleHeat };
 }
 /** Weapon heat per shot = the fitted guns' continuous heat × the fire interval. */
 function partWeaponHeatMW(ship, capital) { return fitModules(ship).reduce((a, m) => a + (m.def.gun ? 0.3 * m.def.gun.heat : m.def.mine ? 0.2 : 0), 0) * (capital ? 90 : 1); }
@@ -10058,6 +10143,1350 @@ const _titanDockBase = sbxTryDock;
 sbxTryDock = function () { if (world.player.ps?.capital) return sbxToast('A titan does not fit in a station. Launch a small craft (L) and dock that.'); return _titanDockBase(); };
 OV_COLOR.titan = '#ffb347';
 
+// =====================================================================================
+// §RELATIVITY — Stage 7 core: light speed, time dilation, the galaxy clock, ballistic flight, tides
+//  Distances in this universe are compressed, so is light: c is 3 km/s here and every
+//  relativistic formula uses it (γ, the dilation of clocks, relativistic kinetic energy).
+//  The player's proper time and the galaxy's coordinate time separate near a black hole
+//  and at relativistic speed; the galaxy's clock drives the Stage 4 progression engine, so
+//  a deep orbit is a time machine into the future: skills, jobs, orders, structures,
+//  markets and factions all run at the outside rate. Inside a gravity well the arcade
+//  drive gives way to Newtonian flight: gravity pulls, thrust is a burn, orbits hold.
+//  The warp drive is a flat-spacetime bubble (no time dilation inside, no bubble in a well).
+// =====================================================================================
+const REL = {
+  c: 3000, cReal: 299792458,
+  D: 1, Dgrav: 1, Dkin: 1, beta: 0,
+  sources: [], builders: [], stepHooks: [], accelHooks: [],
+  extraAcc: 0, deep: null, lowT: 0, burn: 0,
+  predict: { line: null, t: 0, gain: 0, exitSpeed: 0, peri: null, body: null, pts: null },
+  quality: (() => { try { return localStorage.getItem('vector-lens-q') || 'high'; } catch (e) { return 'high'; } })(),
+  tide: 0, tideCap: 0.4,
+};
+const relGamma = (beta) => 1 / Math.sqrt(Math.max(1e-9, 1 - beta * beta));
+/** The galaxy's clock: wall time plus every hour the player's own clock skipped in a well. */
+function galaxyNow() { return Date.now() + (SBX.profile?.galaxySkew || 0); }
+/** Relativistic kinetic energy of `mTonnes` at β, in joules (real c: the game's c is a compressed scale, the energy is not). */
+function relKineticJ(mTonnes, beta) { return (relGamma(beta) - 1) * mTonnes * 1000 * REL.cReal * REL.cReal; }
+const relMegatons = (J) => J / 4.184e15;
+
+// §RELATIVITY.SOURCES — gravity sources register per system; each moves analytically
+/** {kind, name, pos:V3, vel:V3, mu, rMin, soi, warpR, accel(p,out), update(t)} — rebuilt on every system load. */
+function relSourcesFor(sysIdx) { REL.sources = []; for (const b of REL.builders) b(sysIdx, REL.sources); }
+function relSourceTime() { return (SBX.profile?.time || 0) + (SBX.profile?.galaxySkew || 0) / 1000; }
+function relUpdateSources(t = relSourceTime()) { for (const s of REL.sources) s.update?.(t); }
+function relGravity(p, out, t = null) {
+  out.set(0, 0, 0);
+  for (const s of REL.sources) {
+    if (t != null && s.update) s.update(t);
+    const dx = p.x - s.pos.x, dy = p.y - s.pos.y, dz = p.z - s.pos.z; const r = Math.hypot(dx, dy, dz); if (r > s.soi || r < 1e-3) continue;
+    const a = s.accelMag(r); out.x -= dx / r * a; out.y -= dy / r * a; out.z -= dz / r * a;
+  }
+  return out;
+}
+/** The dominant source (deepest potential) at p, or null outside every sphere of influence. */
+function relDominant(p) { let best = null, bw = 0; for (const s of REL.sources) { const r = p.distanceTo(s.pos); if (r > s.soi) continue; const w = s.mu / Math.max(1, r - (s.rMin || 0)); if (w > bw) { bw = w; best = s; } } return best; }
+function relInWarpShadow(p) { for (const s of REL.sources) if (p.distanceTo(s.pos) < s.warpR) return s; return null; }
+
+// §RELATIVITY.FLIGHT — Newtonian flight inside a well: gravity + burns, relativistic mass, no speed cap
+const _rg = new THREE.Vector3(), _ra = new THREE.Vector3(), _rf = new THREE.Vector3(), _rv = new THREE.Vector3();
+/** S7-EDIT hook from flightUpdate. Returns true when it moved the ship (the arcade path is skipped). */
+function relFlight(pl, dt, F) {
+  if (game.mode !== 'sandbox' || !SBX.active || SRF.active || pl.warping || pl.parked || pl.hangared || SBX.profile?.docked) { pl.ballistic = false; pl.relBurn = null; return false; }
+  const inWell = !!relDominant(pl.pos);
+  if (!inWell && pl.ballistic) {                                        // coasting out of a well keeps the momentum until the pilot flies again
+    const drive = pl.input.isDown('KeyW') || pl.input.isDown('KeyS') || pl.input.isDown('Space') || pl.boosting;
+    if (drive) { pl.ballistic = false; pl.speed = Math.min(pl.vel.length(), F.speedCap); pl.relBurn = null; return false; }
+  }
+  if (!inWell && !pl.ballistic) { pl.relBurn = null; return false; }
+  if (!pl.ballistic) { pl.ballistic = true; sbxToast('Ballistic flight — gravity has you. W burns along the nose, S retro, Space matches the local frame. The arcade drive returns once you are clear and fly.'); }
+  const A = F.accel * Math.max(0.05, pl.ps ? pl.ps.perfFlight : 1);
+  const fwd = pl.forward(_rf);
+  let burn = 0; _ra.set(0, 0, 0);
+  if (pl.input.isDown('KeyW') || pl.boosting) { burn = pl.boosting ? 2.2 : 1; _ra.addScaledVector(fwd, A * burn); }
+  else if (pl.input.isDown('KeyS')) { burn = 0.6; _ra.addScaledVector(fwd, -A * 0.6); }
+  if (pl.input.isDown('Space')) {                                        // match the dominant body's frame with the RCS
+    const s = relDominant(pl.pos); if (s) _rv.subVectors(pl.vel, s.vel); else _rv.copy(pl.vel); const m = _rv.length();
+    if (m > 0.5) { _ra.addScaledVector(_rv, -Math.min(A * 0.6, m / dt) / m); burn = Math.max(burn, 0.6); }
+  }
+  for (const h of REL.accelHooks) burn = Math.max(burn, h(pl, dt, _ra, A) || 0);
+  if (pl.ps && pl.ps.prop <= 0) { _ra.set(0, 0, 0); burn = 0; }           // no propellant, no burn
+  pl.relBurn = burn; REL.burn = burn;
+  // relativistic dynamics: thrust along the velocity is resisted by γ³, across it by γ
+  const n = clamp(Math.ceil(pl.vel.length() * dt / 40), 1, 24); const h = dt / n; const t0 = relSourceTime() - dt;
+  for (let k = 0; k < n; k++) {
+    relGravity(pl.pos, _rg, t0 + (k + 1) * h);
+    const v = pl.vel.length(); const g = relGamma(v / REL.c);
+    if (v > 1e-3 && _ra.lengthSq() > 0) { const vh = _rv.copy(pl.vel).multiplyScalar(1 / v); const par = _ra.dot(vh); pl.vel.addScaledVector(vh, par / (g * g * g) * h).addScaledVector(_ra, h / g).addScaledVector(vh, -par / g * h); }
+    else pl.vel.addScaledVector(_ra, h);
+    pl.vel.addScaledVector(_rg, h);
+    const vm = pl.vel.length(); if (vm > REL.c * 0.995) pl.vel.multiplyScalar(REL.c * 0.995 / vm);
+    pl.pos.addScaledVector(pl.vel, h);
+    for (const hk of REL.stepHooks) hk(pl, h);
+  }
+  pl.speed = pl.vel.length();
+  return true;
+}
+/** Put the ship on a circular orbit around `s` right where it is (the nav computer after a warp drop). */
+function relCircularize(pl, s, axis = null) {
+  const r = _rv.subVectors(pl.pos, s.pos); const R = r.length(); const up = axis || _rf.set(0, 1, 0);
+  let t = _ra.crossVectors(up, r); if (t.lengthSq() < 1e-6) t.set(1, 0, 0); t.normalize();
+  const v = Math.min(REL.c * 0.98, Math.sqrt(s.accelMag(R) * R));
+  pl.vel.copy(s.vel).addScaledVector(t, v); pl.speed = pl.vel.length(); pl.ballistic = true;
+  pl.quat.setFromRotationMatrix(_m.lookAt(_v[0].set(0, 0, 0), _v[1].copy(t).negate(), up));
+}
+
+// §RELATIVITY.PREDICT — the navigation computer: coast the current state forward, find the flyby, report the gain
+function relPredict(pl, seconds = 60, dt = 1 / 30) {
+  const p = pl.pos.clone(), v = pl.vel.clone(); const t0 = relSourceTime(); const pts = [p.clone()];
+  const v0 = v.length(); let best = null, bestD = Infinity, lastInside = null; const steps = Math.ceil(seconds / dt);
+  let exitSpeed = null, crashed = null;
+  for (let k = 1; k <= steps; k++) {
+    const t = t0 + k * dt; relGravity(p, _rg, t); v.addScaledVector(_rg, dt);
+    const vm = v.length(); if (vm > REL.c * 0.995) v.multiplyScalar(REL.c * 0.995 / vm);
+    p.addScaledVector(v, dt);
+    for (const s of REL.sources) {
+      if (s.kind === 'bh') continue;
+      const d = p.distanceTo(s.pos);
+      if (d < s.soi) { lastInside = s; if (d < bestD) { bestD = d; best = s; } if (d < s.rMin) crashed = s; }
+    }
+    if (lastInside && p.distanceTo(lastInside.pos) > lastInside.soi && exitSpeed == null) exitSpeed = v.length();
+    for (const s of REL.sources) if (s.kind === 'bh' && p.distanceTo(s.pos) < s.rMin) crashed = s;
+    if (k % 6 === 0) pts.push(p.clone());
+    if (crashed) break;
+  }
+  relUpdateSources();
+  const exit = exitSpeed ?? v.length();
+  return { pts, body: best, peri: best ? bestD : null, exitSpeed: exit, gain: exit - v0, crashed };
+}
+function relPredictStep(dt) {
+  const pl = world.player; const P = REL.predict;
+  if (!pl.ballistic || !pl.alive || SRF.active) { if (P.line) P.line.visible = false; return; }
+  P.t -= dt; if (P.t > 0) return; P.t = 0.25;
+  const r = relPredict(pl); Object.assign(P, r);
+  if (!P.line) {
+    P.line = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x7dffb0, dashSize: 40, gapSize: 25, transparent: true, opacity: 0.75, depthWrite: false, fog: false }));
+    P.line.frustumCulled = false; scene.add(P.line);
+  }
+  P.line.geometry.dispose(); P.line.geometry = new THREE.BufferGeometry().setFromPoints(r.pts); P.line.computeLineDistances(); P.line.visible = true;
+  P.line.material.color.setHex(r.crashed ? 0xff5a5a : r.body && r.gain > 5 ? 0xffd166 : 0x7dffb0);
+}
+
+// §RELATIVITY.DILATION — gravitational (Schwarzschild lapse) × kinematic (γ); the ratio the HUD shows
+function relDilation(pl) {
+  let dg = 1;
+  for (const s of REL.sources) if (s.kind === 'bh') { const r = pl.pos.distanceTo(s.pos); dg *= 1 / Math.sqrt(Math.max(1e-4, 1 - s.Rs / Math.max(r, s.Rs * 1.0001))); }
+  const beta = pl.warping || pl.hangared || SBX.profile?.docked ? 0 : Math.min(0.9999, pl.vel.length() / REL.c);   // a warp bubble carries its own flat frame
+  REL.Dgrav = dg; REL.beta = beta; REL.Dkin = relGamma(beta);
+  REL.D = Math.min(60, dg * REL.Dkin);
+  return REL.D;
+}
+function relRatioText(D) {
+  if (D < 1.0005) return '1 hour here = 1 hour outside';
+  if (D < 1.1) return `1 hour here = ${(60 * D).toFixed(1)} min outside`;
+  return `1 hour here = ${D < 10 ? D.toFixed(1) : D.toFixed(0)} hours outside`;
+}
+
+// §RELATIVITY.CLOCK — the galaxy runs ahead: deadlines move closer, the progression engine runs longer slices
+/** Advance the galaxy by `ms` of extra time beyond the player's own: every absolute deadline slides earlier. */
+function relTimeSkip(ms) {
+  const p = SBX.profile; if (!p || ms <= 0) return;
+  const sh = (o, k) => { if (o && typeof o[k] === 'number' && o[k] > 0) o[k] -= ms; };
+  for (const j of p.industry?.jobs || []) sh(j, 'endT');
+  for (const j of p.industry?.research || []) sh(j, 'endT');
+  for (const o of p.orders || []) sh(o, 'expiresT');
+  for (const st of p.structures || []) { sh(st, 'onlineT'); sh(st, 'nextAttackT'); sh(st, 'reinforceUntil'); }
+  for (const inc of p.incursions || []) sh(inc, 'endT');
+  sh(p, 'nextIncursionT');
+  for (const f of p.fleet || []) sh(f, 'endT');
+  for (const st of Object.values(SBX.sysState || {})) { for (const sig of st.sigs || []) sh(sig, 'expiresT'); sh(st, 'sigRespawnT'); }
+  if (p.titans?.kills) for (const k of Object.keys(p.titans.kills)) p.titans.kills[k] -= ms;
+  p.galaxySkew = (p.galaxySkew || 0) + ms;
+}
+function relEmptyReport() { return { skills: [], jobs: [], research: [], fills: 0, income: 0, structEvents: [], incursions: 0, ecoTicks: 0 }; }
+/** S7-EDIT hook for the once-a-second progression slice: the slice is the galaxy's time, not the pilot's. */
+function relAdvance(chunkMs) {
+  const extra = Math.max(0, Math.round(REL.extraAcc)); REL.extraAcc = 0;
+  if (extra > 0) relTimeSkip(extra);
+  const isk0 = SBX.profile.isk;
+  const rep = sbxAdvance(chunkMs + extra, { live: true });
+  const d = REL.deep;
+  if (d && rep) {
+    d.localMs += chunkMs; d.extMs += chunkMs + extra;
+    for (const k of ['skills', 'jobs', 'research', 'structEvents']) d.rep[k].push(...rep[k]);
+    d.rep.fills += rep.fills; d.rep.income += rep.income; d.rep.incursions += rep.incursions; d.rep.ecoMs = (d.rep.ecoMs || 0) + chunkMs + extra; d.rep.ecoTicks = Math.floor(d.rep.ecoMs / 1000 / CONFIG.sbx.eco.tick);
+    d.iskDelta += SBX.profile.isk - isk0;
+  }
+  return rep;
+}
+function relPriceSnapshot() {
+  const out = {}; const p = SBX.profile; const ids = ['min_ferrite', 'min_silica', 'min_nobelium', 'ore_cindrite', 'ore_auberite', 'tg_rations', 'tg_medical', 'tg_luxuries', 'ammo_cells'];
+  const st = p.docked ? p.stationId : p.home;
+  for (const id of ids) { const v = ecoPrice(st, id); if (v != null) out[id] = v; }
+  return { st, prices: out };
+}
+function relDeepTrack(dt) {
+  const D = REL.D;
+  if (D >= 1.2 && !REL.deep) { REL.deep = { localMs: 0, extMs: 0, rep: relEmptyReport(), iskDelta: 0, snap: relPriceSnapshot(), incur0: SBX.profile.incursions.map(i => i.sys), maxD: D, t0: Date.now() }; REL.lowT = 0; }
+  if (!REL.deep) return;
+  REL.deep.maxD = Math.max(REL.deep.maxD, D);
+  if (D < 1.08) { REL.lowT += dt; if (REL.lowT > 3) relEmerge(); } else REL.lowT = 0;
+}
+/** Out of the well: what the galaxy did while the pilot's clock crawled. */
+function relEmerge(force = false) {
+  const d = REL.deep; REL.deep = null; if (!d) return null;
+  const skipped = d.extMs - d.localMs; if (skipped < 30000 && !force) return null;
+  const p = SBX.profile; const r = d.rep; const L = [];
+  L.push(`<p>You lived <b>${fmtDur(d.localMs)}</b>. The galaxy lived <b>${fmtDur(d.extMs)}</b> — ${fmtDur(skipped)} skipped at up to ${d.maxD.toFixed(1)}× dilation.</p>`);
+  const row = (k, v) => `<div><span>${k}</span><span>${v}</span></div>`;
+  let g = '';
+  if (r.skills.length) g += row('Skills trained', r.skills.join(', '));
+  if (r.jobs.length) g += row('Jobs delivered', r.jobs.join(', '));
+  if (r.research.length) g += row('Research', r.research.join(', '));
+  if (r.fills) g += row('Market orders filled', `${r.fills} units`);
+  if (r.income) g += row('Structure income', `${fmtIsk(r.income)} ISK`);
+  g += row('Wallet change', `${d.iskDelta >= 0 ? '+' : ''}${fmtIsk(d.iskDelta)} ISK`);
+  g += row('Economy ticks elapsed', `${r.ecoTicks}`);
+  L.push(`<div class="grid">${g}</div>`);
+  // markets moved
+  const now = relPriceSnapshot(); const moves = [];
+  for (const [id, v0] of Object.entries(d.snap.prices)) { const v1 = now.prices[id]; if (v1 == null) continue; const pct = (v1 - v0) / v0 * 100; if (Math.abs(pct) >= 2) moves.push([Math.abs(pct), `${ITEMS[id].name} ${pct > 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}% (${fmtIsk(v0)} → ${fmtIsk(v1)})`]); }
+  moves.sort((a, b) => b[0] - a[0]);
+  L.push(`<h3>Markets at ${SBX.station(d.snap.st)?.name || 'home'}</h3><p class="small">${moves.length ? moves.slice(0, 6).map(m => m[1]).join('<br>') : 'Prices held within 2%.'}</p>`);
+  // structures and factions
+  const ev = r.structEvents.length ? r.structEvents.slice(0, 8).join('<br>') : 'No attacks on your structures.';
+  L.push(`<h3>Your structures</h3><p class="small">${ev}</p>`);
+  const newInc = p.incursions.filter(i => !d.incur0.includes(i.sys)).map(i => SBX.systems[i.sys].name);
+  const fac = [];
+  if (r.incursions || newInc.length) fac.push(`Verge incursions flared ${r.incursions} time${r.incursions === 1 ? '' : 's'}${newInc.length ? ' — active now in ' + newInc.join(', ') : ''}.`);
+  if (typeof snStatusLine === 'function') { const s = snStatusLine(); if (s) fac.push(s); }
+  L.push(`<h3>Factions</h3><p class="small">${fac.join('<br>') || 'The factions held their lines.'}</p>`);
+  $('abs-body').innerHTML = L.join(''); $('sb-absence').classList.add('on');
+  sbxToast(`Out of the well: ${fmtDur(skipped)} passed outside.`);
+  return { localMs: d.localMs, extMs: d.extMs, skipped, rep: r };
+}
+
+// §RELATIVITY.TIDES — the tidal tensor applied to a part-built ship, carried by its structural links
+/**
+ * Tidal load on part-state `ps` from a point mass whose tidal strength is `k` (s⁻²) along world unit vector `nW`
+ * (from the mass to the ship). a(x) = k (3 (x·n) n − x). The ship is a beam along its long axis: the tension across
+ * each slice is carried only by the structural links that cross it. Links over their capacity fail; a section whose
+ * last link fails breaks away through the Stage 6 structural graph. Returns the peak stress ratio.
+ */
+function relTidalStep(ps, ent, k, nW, dt, apply = true) {
+  if (!ps || k <= 0) return 0;
+  const nL = _v[9].copy(nW).applyQuaternion(_q[3].copy(ent.quat).invert()).normalize();
+  const b = ps.pristine; const ext = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z]; const ax = ext[2] >= ext[0] && ext[2] >= ext[1] ? 2 : ext[0] >= ext[1] ? 0 : 1;
+  const P = ps.D.parts, cs = ps.cs, S = ps.S; const key = ['x', 'y', 'z'][ax];
+  const lo = b.min[key], hi = b.max[key]; const nS = hi - lo + 1; if (nS < 2) return 0;
+  const F = new Float64Array(nS);                                     // net axial tidal force of each slice (kN)
+  const cx = new THREE.Vector3();
+  for (let i = 0; i < P.length; i++) {
+    if (ps.gone[i]) continue; const p = P[i]; const def = PARTS[p.t]; let m = partStat(p.t, 'mass', S); if (def.prop) m += partStat(p.t, 'prop', S) * ps.prop;
+    ps.cellCentre(i, cx); const xn = cx.dot(nL); const ai = k * (3 * xn * nL.getComponent(ax) - cx.getComponent(ax));
+    F[p[key] - lo] += m * ai;
+  }
+  let peak = 0;
+  for (let s = 0; s < nS - 1; s++) {
+    let T = 0; for (let j = s + 1; j < nS; j++) T += F[j];            // what the far side pulls with, relative to the centre of mass
+    const links = [];
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i]; if (ps.gone[i] || p[key] - lo !== s || !partIsStructural(p.t)) continue;
+      const q = { x: p.x, y: p.y, z: p.z }; q[key]++; const j = ps.map.get(partKey(q.x, q.y, q.z));
+      if (j != null && !ps.gone[j] && partIsStructural(P[j].t)) links.push([i, j]);
+    }
+    if (!links.length) continue;
+    const cap = links.reduce((a, [i, j]) => a + Math.min(ps.hp[i], ps.hp[j]), 0) * REL.tideCap * (T < 0 ? 3 : 1);
+    const stress = Math.abs(T) / Math.max(1e-6, cap); peak = Math.max(peak, stress);
+    if (apply && stress > 1) for (const [i, j] of links) { const w = ps.hp[i] <= ps.hp[j] ? i : j; if (!ps.gone[w]) { ps.hp[w] -= ps.max[w] * Math.min(2, (stress - 1) * 0.6) * dt; ps.flash = 1; if (ps.hp[w] <= 0) { ps.hp[w] = 0; partDestroy(ps, w); } else ps.applyColors(w); } }
+  }
+  if (apply && ps.dirty) ps.recompute();
+  return peak;
+}
+
+// §RELATIVITY.HUD — the dilation ratio, the well, the nav computer
+function relHUD(dt) {
+  const el = $('p-rel'); const pl = world.player; const on = SBX.active && !SRF.active && (REL.D > 1.0005 || pl.ballistic || REL.sources.some(s => pl.pos.distanceTo(s.pos) < s.soi * 1.3) || (REL.deep != null));
+  el.classList.toggle('on', on); if (!on) return;
+  const L = [];
+  L.push(`<div class="rel-ratio">${relRatioText(REL.D)}</div>`);
+  L.push(`<div class="small">dilation ${REL.D.toFixed(REL.D < 2 ? 3 : 2)}× · gravitational ${REL.Dgrav.toFixed(3)} · kinematic ${REL.Dkin.toFixed(4)} (β ${REL.beta.toFixed(3)})</div>`);
+  if (REL.deep) L.push(`<div class="small">galaxy time skipped this dive: <b>${fmtDur(REL.deep.extMs - REL.deep.localMs)}</b></div>`);
+  if (typeof bhHUDLines === 'function') L.push(...bhHUDLines(pl));
+  if (pl.ballistic) {
+    const P = REL.predict; L.push(`<div class="small">BALLISTIC · ${fmt(pl.vel.length())} m/s (${(pl.vel.length() / REL.c).toFixed(3)} c) · burn ${Math.round(REL.burn * 100)}%</div>`);
+    if (P.body) L.push(`<div class="small rel-assist">NAV: flyby of ${P.body.name} · periapsis ${fmt(P.peri)} m · exit ${fmt(P.exitSpeed)} m/s · Δv <b>${P.gain >= 0 ? '+' : ''}${fmt(P.gain)} m/s</b></div>`);
+    if (P.crashed) L.push(`<div class="small" style="color:var(--red)">NAV: trajectory ends in ${P.crashed.name}</div>`);
+  }
+  if (REL.tide > 0.05) L.push(`<div class="small" style="color:${REL.tide > 1 ? 'var(--red)' : REL.tide > 0.6 ? 'var(--amber)' : 'inherit'}">TIDAL STRESS ${Math.round(REL.tide * 100)}% of the frame's limit</div>`);
+  L.push(`<div class="small">lens <b data-lensq="1">${REL.quality.toUpperCase()}</b> [F8]</div>`);
+  const html = L.join(''); if (el._h !== html) { el.innerHTML = html; el._h = html; }
+}
+function relSetQuality(q) { REL.quality = q; try { localStorage.setItem('vector-lens-q', q); } catch (e) {} sbxToast(`Lensing quality: ${q.toUpperCase()}${q === 'off' ? ' — the black hole draws as a static lensed sprite.' : ''}`); }
+function relCycleQuality() { relSetQuality({ high: 'low', low: 'off', off: 'high' }[REL.quality] || 'high'); }
+
+// §RELATIVITY.TICK — per-sim-tick: sources move, dilation accrues galaxy time, the well is tracked
+function relStep(dt) {
+  if (!SBX.active) return;
+  relUpdateSources();
+  if (typeof rkvTick === 'function') rkvTick(dt);                     // slugs and the star run on the galaxy clock whatever the pilot is doing
+  if (typeof snTick === 'function') snTick(dt);
+  const pl = world.player;
+  if (SRF.active || !pl.alive) { REL.D = 1; REL.Dgrav = 1; REL.Dkin = 1; REL.beta = 0; return; }
+  relDilation(pl);
+  REL.extraAcc += dt * 1000 * (REL.D - 1);
+  if (typeof bhStep === 'function') bhStep(dt);
+  if (typeof whStep === 'function') { whStep(dt); whHUD(); }
+  relDeepTrack(dt);
+  relPredictStep(dt);
+  if (input.consume('F8')) relCycleQuality();
+  if (input.consume('KeyH') && typeof bhToggleHold === 'function') bhToggleHold();
+}
+
+// §RELATIVITY.HOOKS — S7-EDIT(§SYSTEM sbxLoadSystem, sbxWarpTo): sources per system; no warp bubble inside a well
+const _relLoadBase = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) { relSourcesFor(sysIdx); const r = _relLoadBase(sysIdx, entryPos); relUpdateSources(); world.player.ballistic = false; return r; };
+const _relWarpBase = sbxWarpTo;
+sbxWarpTo = function (point, name) {
+  const s = relInWarpShadow(world.player.pos);
+  if (s) return sbxToast(`No warp bubble forms this deep in ${s.name}'s well — climb past ${fmt(s.warpR - s.pos.distanceTo(world.player.pos) + world.player.pos.distanceTo(s.pos))} m from its centre first.`);
+  return _relWarpBase(point, name);
+};
+$('abs-close').onclick = () => { $('sb-absence').classList.remove('on'); audio.click(); };
+$('p-rel').addEventListener('click', (e) => { if (e.target.closest('[data-lensq]')) relCycleQuality(); });
+
+// =====================================================================================
+// §BLACKHOLE — stellar-mass black holes: gravity, the ISCO, tides, the horizon, and Gargantua's light
+//  Three systems hold a black hole fed by its companion star through an accretion disk.
+//  Gravity is the Paczyński–Wiita pseudo-Newtonian potential Φ = −GM/(r − Rs): it pulls
+//  as inverse square far out, dominates near the horizon, and puts the innermost stable
+//  circular orbit at 3 Rs exactly as Schwarzschild does — below it no orbit holds and the
+//  ship spirals in unless it burns. Clocks run at the Schwarzschild lapse √(1 − Rs/r)
+//  times 1/γ. Tides are the r⁻³ gradient, carried by the ship's structural graph.
+//  The horizon is final. The picture is a screen-space ray-march of null geodesics in the
+//  Schwarzschild metric: the shadow at √27/2 Rs ≈ 2.6 Rs, the Einstein ring, the disk's
+//  far side lensed over and under the shadow, and relativistic Doppler beaming.
+// =====================================================================================
+const BH = { Rs: 3000, diskIn: 3, diskOut: 12, soiRs: 40, warpRs: 12, lensRangeRs: 420, hold: null, holdFailT: 0, lastR: null, sprite: null, spriteTex: null, pass: null, frameMs: 16, slowT: 0 };
+
+// §BLACKHOLE.SYSTEMS — which systems hold one, where, and how it is oriented
+function bhDesignate(systems) {
+  const rng = makeRng(CONFIG.sbx.seed ^ 0xb1ac4);
+  const cands = systems.map((s, i) => i).filter(i => i !== 0 && !systems[i].wh && systems[i].sec < 0.5);
+  const pick = [];
+  while (pick.length < 2 && cands.length) pick.push(cands.splice(Math.floor(rng() * cands.length), 1)[0]);
+  const wh0 = systems.findIndex(s => s.wh); if (wh0 >= 0) pick.push(wh0);
+  for (const i of pick) {
+    const s = systems[i]; const a = rng() * Math.PI * 2; const D = 180000;
+    const tilt = (rng() - 0.5) * 0.5; const ax = new THREE.Vector3(Math.sin(tilt) * 0.4, Math.cos(tilt), Math.sin(tilt) * 0.3).normalize();
+    s.bh = { name: `${s.name} X-1`, Rs: BH.Rs, pos: [Math.cos(a) * D, (rng() - 0.5) * 8000, Math.sin(a) * D], axis: ax.toArray() };
+  }
+  return systems;
+}
+const _bhGenBase = generateUniverse;
+generateUniverse = function (seed) { return bhDesignate(_bhGenBase(seed)); };   // S7-EDIT(§SBXDATA generateUniverse): three systems gain a black hole
+function bhSourceOf(sysIdx) { return REL.sources.find(s => s.kind === 'bh') || null; }
+REL.builders.push((sysIdx, out) => {
+  const b = SBX.systems[sysIdx]?.bh; if (!b) return;
+  const mu = b.Rs * REL.c * REL.c / 2;
+  out.push({ kind: 'bh', name: b.name, pos: new THREE.Vector3(...b.pos), vel: new THREE.Vector3(), mu, Rs: b.Rs, rMin: b.Rs, soi: BH.soiRs * b.Rs, warpR: BH.warpRs * b.Rs,
+    axis: new THREE.Vector3(...b.axis), accelMag: (r) => mu / Math.pow(Math.max(r - b.Rs, b.Rs * 0.004), 2) });
+});
+/** Circular-orbit speed at r in the PW potential (reaches c at 2 Rs, the marginally bound orbit). */
+function bhCircV(s, r) { return Math.min(REL.c * 0.995, Math.sqrt(s.accelMag(r) * r)); }
+
+// §BLACKHOLE.PHYSICS — the horizon, tides, the disk's glare, station-keeping below the ISCO
+REL.stepHooks.push((pl, h) => {
+  const s = bhSourceOf(); if (!s || !pl.alive) return;
+  const r = pl.pos.distanceTo(s.pos);
+  if (r <= s.Rs) bhSwallow(pl, s);
+});
+function bhSwallow(pl, s) {
+  if (!pl.alive || REL.horizonLoss) return;
+  REL.horizonLoss = s.name; pl.lastAttacker = `the event horizon of ${s.name}`;
+  pl.alive = false; pl.vel.set(0, 0, 0); if (pl.mesh) pl.mesh.visible = false;
+  world.onPlayerKilled?.(pl); shake.add(0.6);
+  sbxToast(`Crossed the event horizon of ${s.name}. Nothing comes back.`);
+}
+/** Per-tick well effects on the player: tides through the structure, disk radiation into the thermal model. */
+function bhStep(dt) {
+  const s = bhSourceOf(); const pl = world.player; REL.tide = 0; if (!s || !pl.alive || SRF.active || SBX.profile.docked) { BH.hold = null; return; }
+  const rel = _v[8].subVectors(pl.pos, s.pos); const r = rel.length(); BH.lastR = r;
+  if (r > s.soi) { BH.hold = null; return; }
+  const k = s.mu / Math.pow(Math.max(r - s.Rs, s.Rs * 0.01), 3);
+  if (BH.hold) {                                                        // attitude hold: nose prograde, long axis along the orbit — tides compress it instead of pulling it apart
+    const pro = _v[9].subVectors(pl.vel, s.vel); if (pro.lengthSq() > 1) { pro.normalize(); _q[3].setFromRotationMatrix(_m.lookAt(_v[10].set(0, 0, 0), _v[11].copy(pro).negate(), rel.clone().normalize())); pl.quat.slerp(_q[3], 1 - Math.exp(-3 * dt)); pl.pitchRate = pl.yawRate = pl.rollRate = 0; }
+  }
+  if (pl.ps) REL.tide = relTidalStep(pl.ps, pl, k, rel.normalize(), dt, true);
+  // the inner disk is the brightest thing in the sky: its radiation lands on the hull as heat (≈ r⁻³ flux)
+  if (pl.ps) { const f = Math.pow(3 * s.Rs / Math.max(r, 1.05 * s.Rs), 3); pl.ps.shotHeat += f * (pl.ps.capital ? 240 : 1.1) * dt; }
+  if (BH.hold && BH.holdFailT > 3) { sbxToast('Orbit hold failing — not enough thrust this deep. Burn out or fall.'); BH.hold = null; BH.holdFailT = 0; }
+}
+/** Orbit hold: the nav computer station-keeps a circular orbit at the radius where it was engaged. */
+REL.accelHooks.push((pl, dt, a, A) => {
+  const s = bhSourceOf(); if (!BH.hold || !s) return 0;
+  const rv = _v[10].subVectors(pl.pos, s.pos); const r = rv.length(); const rh = rv.multiplyScalar(1 / r);
+  const vrel = _v[11].subVectors(pl.vel, s.vel); const vr = vrel.dot(rh);
+  const nrm = BH.hold.n; const vt = _v[7].copy(vrel).addScaledVector(rh, -vr).addScaledVector(nrm, -vrel.dot(nrm)); const vtm = vt.length() || 1;
+  const want = bhCircV(s, BH.hold.r);
+  const w = Math.sqrt(s.accelMag(BH.hold.r) / BH.hold.r);              // orbital angular rate — the controller's natural frequency
+  const ar = -(r - BH.hold.r) * w * w * 3 - vr * w * 2.8;               // radial PD about the held radius
+  const at = (want - vtm) * w * 1.5; const an = -vrel.dot(nrm) * w * 2;
+  const need = _v[6].copy(rh).multiplyScalar(ar).addScaledVector(vt, at / vtm).addScaledVector(nrm, an);
+  const cap = A * 2.2; const m = need.length();
+  if (m > cap) { need.multiplyScalar(cap / m); BH.holdFailT += dt; } else BH.holdFailT = Math.max(0, BH.holdFailT - dt);
+  a.add(need); return Math.min(2.2, m / A);
+});
+function bhToggleHold() {
+  const s = bhSourceOf(); const pl = world.player; if (!s || pl.pos.distanceTo(s.pos) > s.soi) return sbxToast('Orbit hold works inside a black hole\'s well.');
+  if (BH.hold) { BH.hold = null; BH.holdFailT = 0; return sbxToast('Orbit hold released.'); }
+  const rv = _v[0].subVectors(pl.pos, s.pos); const r = rv.length(); const n = _v[1].crossVectors(rv, _v[2].subVectors(pl.vel, s.vel));
+  if (n.lengthSq() < 1e-6) n.copy(s.axis); n.normalize();
+  BH.hold = { r, n: n.clone() }; BH.holdFailT = 0;
+  sbxToast(`Orbit hold at ${(r / s.Rs).toFixed(2)} Rs, nose prograde to keep the tides compressing the hull${r < 3 * s.Rs ? ' — below the ISCO: this costs propellant and heat every second.' : '.'}`);
+}
+function bhHUDLines(pl) {
+  const s = bhSourceOf(); if (!s) return [];
+  const r = pl.pos.distanceTo(s.pos); if (r > s.soi * 1.3) return [];
+  const x = r / s.Rs; const L = [];
+  L.push(`<div class="small">${s.name}: r = <b>${x.toFixed(2)} Rs</b> (${fmt(r - s.Rs)} m above the horizon) · ISCO 3.00 Rs${x < 3 ? ' — <b style="color:var(--amber)">BELOW: no orbit holds</b>' : ''}</div>`);
+  const vc = bhCircV(s, r); L.push(`<div class="small">circular here ${fmt(vc)} m/s (${(vc / REL.c).toFixed(2)} c) · ${BH.hold ? `<b>ORBIT HOLD ON</b> at ${(BH.hold.r / s.Rs).toFixed(2)} Rs [H]` : 'orbit hold [H]'}</div>`);
+  return L;
+}
+REL.builders.push(() => { BH.hold = null; BH.holdFailT = 0; });
+
+// §BLACKHOLE.WARP — the warp point and the nav computer's orbit insertion on arrival
+const _bhLoadBase = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) {
+  const r = _bhLoadBase(sysIdx, entryPos);
+  const s = bhSourceOf();
+  if (s) {
+    const up = s.axis; const side = _v[0].crossVectors(up, _v[1].set(0.3, 0.1, 1)).normalize();
+    SBX.points.push({ kind: 'bh', name: `${s.name} — high orbit (20 Rs)`, pos: s.pos.clone().addScaledVector(side, 20 * s.Rs), bh: s });
+    SBX.points.push({ kind: 'bh', name: `${s.name} — ISCO approach (12.5 Rs)`, pos: s.pos.clone().addScaledVector(side, -12.5 * s.Rs).addScaledVector(up, 0.4 * s.Rs), bh: s });
+  }
+  bhSetupVisuals(s);
+  return r;
+};
+const _bhWarpExitBase = sbxWarpExit;
+sbxWarpExit = function (msg) {
+  const r = _bhWarpExitBase(msg); const s = bhSourceOf(); const pl = world.player;
+  if (s && pl.pos.distanceTo(s.pos) < s.soi) { relCircularize(pl, s, s.axis); sbxToast(`Orbit insertion: ${(pl.pos.distanceTo(s.pos) / s.Rs).toFixed(1)} Rs, ${fmt(pl.vel.length())} m/s. Your clock now runs ${REL.D.toFixed(2)}× slow. H holds this orbit.`); }
+  return r;
+};
+OV_COLOR.bh = '#ffcf8a';
+
+// §BLACKHOLE.LOSS — S7-EDIT(§ECONOMY sbxDeath, §SBXUI sbxShowLoss): the horizon voids insurance and leaves no wreck
+const _bhDeathBase = sbxDeath;
+sbxDeath = function (killer) {
+  if (!REL.horizonLoss && !REL.voidLoss) return _bhDeathBase(killer);
+  const ship = SBX.ship(); const D = CONFIG.sbx.death; const keep = D.moduleDropChance, keepC = D.cargoDropChance;
+  if (ship) ship.insured = false;
+  D.moduleDropChance = 0; D.cargoDropChance = -1;
+  const cargo = ship ? { ...ship.cargo } : {}; if (ship) ship.cargo = {};
+  let km; try { km = _bhDeathBase(killer); } finally { D.moduleDropChance = keep; D.cargoDropChance = keepC; }
+  km.horizon = REL.horizonLoss || null; km.void = REL.voidLoss || null; km.cargoLost = cargo; REL.horizonLoss = null; REL.voidLoss = null;
+  return km;
+};
+const _bhShowLossBase = sbxShowLoss;
+sbxShowLoss = function (km) {
+  _bhShowLossBase(km);
+  if (km.horizon) $('loss-body').insertAdjacentHTML('afterbegin', `<p style="color:var(--red)">Crossed the event horizon of ${km.horizon}. No wreck, no salvage, no insurance claim: nothing that crosses comes back. The loss is permanent.</p>`);
+  else if (km.void) $('loss-body').insertAdjacentHTML('afterbegin', `<p style="color:var(--red)">${km.void} No wreck, no insurance claim.</p>`);
+};
+
+// §BLACKHOLE.LENS — the ray-marched lensing pass (gated, quality-scaled) and its static sprite fallback
+const BH_LENS_VS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+const BH_LENS_FS = `
+precision highp float;
+uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform float uHasDepth;
+uniform vec3 uCam; uniform mat4 uInvProj; uniform mat4 uCamWorld; uniform mat4 uProj; uniform mat4 uViewRot;
+uniform vec3 uBH; uniform float uRs; uniform vec3 uAxis; uniform float uDiskIn; uniform float uDiskOut; uniform float uTime;
+uniform float uSteps; uniform float uStepK; uniform float uNear; uniform float uFar; uniform float uSprite; uniform vec3 uTint; uniform float uGain;
+varying vec2 vUv;
+float hash13(vec3 p){ p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+vec3 stars(vec3 d){
+  vec3 q = d * 520.0; vec3 i = floor(q); float h = hash13(i); float s = smoothstep(0.9965, 1.0, h) * 0.7;
+  vec3 c = mix(vec3(0.75, 0.82, 1.0), vec3(1.0, 0.85, 0.7), hash13(i + 7.0)) * s * 2.2;
+  return c + uTint * 0.05 * (0.6 + 0.4 * d.y);
+}
+float noise3(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash13(i), hash13(i + vec3(1,0,0)), f.x), mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x), mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y), f.z); }
+vec3 blackbody(float t){                                     // t = observed temperature / inner-edge rest temperature
+  t = clamp(t, 0.0, 4.0);
+  vec3 c = vec3(1.0, clamp(0.18 + 0.62 * t, 0.0, 1.0), clamp(-0.35 + 0.95 * t, 0.0, 1.25));
+  c.r *= clamp(1.35 - 0.28 * max(t - 1.2, 0.0), 0.45, 1.0);
+  return c;
+}
+vec3 background(vec3 d){
+  if (uSprite > 0.5) return stars(d);
+  vec4 v = uViewRot * vec4(d, 0.0); if (v.z > -0.02) return stars(d);
+  vec4 cl = uProj * vec4(v.xyz, 1.0); vec2 uv = cl.xy / cl.w * 0.5 + 0.5;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return stars(d);
+  if (uHasDepth > 0.5 && texture2D(tDepth, uv).x < 0.99999) return stars(d);   // don't smear foreground ships into the sky
+  return texture2D(tDiffuse, uv).rgb;
+}
+void main(){
+  vec4 scene = uSprite > 0.5 ? vec4(0.0) : texture2D(tDiffuse, vUv);
+  vec2 ndc = vUv * 2.0 - 1.0; vec4 vv = uInvProj * vec4(ndc, 1.0, 1.0); vv /= vv.w;
+  vec3 dir = normalize((uCamWorld * vec4(vv.xyz, 0.0)).xyz);
+  vec3 toBH = uBH - uCam; float dBH = length(toBH); float Rb = uDiskOut * 1.35 * uRs;
+  if (dBH > Rb) { float cc = sqrt(max(0.0, 1.0 - (Rb * Rb) / (dBH * dBH))); if (dot(dir, toBH / dBH) < cc) { gl_FragColor = vec4(scene.rgb, 0.0); return; } }
+  if (uHasDepth > 0.5 && uSprite < 0.5) {
+    float z = texture2D(tDepth, vUv).x;
+    if (z < 0.99999) { float ndcZ = z * 2.0 - 1.0; float vz = 2.0 * uNear * uFar / (uFar + uNear - ndcZ * (uFar - uNear));
+      vec3 fwd = normalize((uCamWorld * vec4(0.0, 0.0, -1.0, 0.0)).xyz); float dist = vz / max(0.05, dot(dir, fwd));
+      if (dist < max(dBH - 13.0 * uRs, 0.35 * (dBH - uRs))) { gl_FragColor = vec4(scene.rgb, 0.0); return; } }
+  }
+  // null geodesics in Schwarzschild, units of Rs: a = -3/2 h² x / r⁵ (h = |x × v| conserved)
+  vec3 p = (uCam - uBH) / uRs; vec3 v = dir; float Rbu = uDiskOut * 1.35;
+  float r0 = length(p);
+  if (r0 > Rbu) { float b = dot(p, v); float c = dot(p, p) - Rbu * Rbu; float disc = b * b - c; if (disc < 0.0 || b > 0.0) { gl_FragColor = vec4(scene.rgb, 0.0); return; } p += v * (-b - sqrt(disc)); }
+  vec3 hv = cross(p, v); float h2 = dot(hv, hv);
+  vec3 col = vec3(0.0); float alpha = 0.0; bool captured = false; bool escaped = false; float rCam = max(1.001, r0);
+  for (int i = 0; i < 260; i++) {
+    if (float(i) >= uSteps) break;
+    float r2 = dot(p, p); float r = sqrt(r2);
+    float dt = clamp(uStepK * r, 0.012, 1.5);
+    vec3 acc = -1.5 * h2 * p / (r2 * r2 * r);
+    vec3 v2 = v + acc * dt; vec3 pn = p + v2 * dt;
+    float s0 = dot(p, uAxis), s1 = dot(pn, uAxis);
+    if (s0 * s1 < 0.0 && alpha < 0.995) {
+      float f = s0 / (s0 - s1); vec3 q = mix(p, pn, f); float rq = length(q);
+      if (rq > uDiskIn && rq < uDiskOut) {
+        float T = pow(uDiskIn / rq, 0.75) * pow(max(0.0, 1.0 - sqrt(uDiskIn * 0.985 / rq)), 0.25) * 1.9;
+        vec3 vd = normalize(cross(uAxis, q)); float beta = min(0.7, sqrt(1.0 / (2.0 * (rq - 1.0)))); float gam = 1.0 / sqrt(1.0 - beta * beta);
+        float cosT = dot(vd, -normalize(v2));
+        float g = 1.0 / (gam * (1.0 - beta * cosT)) * sqrt(1.0 - 1.0 / rq) / sqrt(1.0 - 1.0 / rCam);
+        float ang = atan(dot(q, cross(uAxis, vd)), dot(q, vd));
+        float om = pow(rq, -1.5) * 0.35;                          // Keplerian shear: inner streaks lap outer ones
+        vec3 bas = normalize(q); float swirl = noise3(vec3(rq * 1.7, (atan(bas.z, bas.x) + uTime * om) * 3.0, 0.0)) * 0.6 + noise3(vec3(rq * 5.3, (atan(bas.z, bas.x) + uTime * om) * 9.0, 1.7)) * 0.4;
+        float edge = smoothstep(uDiskIn, uDiskIn + 0.35, rq) * (1.0 - smoothstep(uDiskOut * 0.62, uDiskOut, rq));
+        float I = pow(g, 4.0) * T * T * (0.55 + 0.9 * swirl);
+        vec3 e = blackbody(T * g) * I * uGain;
+        float a = clamp(edge * (0.55 + 0.45 * swirl) * 0.97, 0.0, 1.0);
+        col += (1.0 - alpha) * e * a; alpha += (1.0 - alpha) * a;
+      }
+    }
+    p = pn; v = v2;
+    if (dot(p, p) < 1.0) { captured = true; break; }
+    if (dot(p, p) > Rbu * Rbu * 1.02 && dot(p, v) > 0.0) { escaped = true; break; }
+  }
+  if (!escaped && !captured && dot(p, p) < 6.76) captured = true;          // still winding inside the photon region when the budget ran out: it falls in
+  vec3 bg = captured ? vec3(0.0) : background(normalize(v));
+  // the photon ring: light that orbited once before escaping piles up just outside the shadow
+  float bImp = sqrt(h2); float ring = captured ? 0.0 : exp(-pow((bImp - 2.598) * 9.0, 2.0)) * 0.35;
+  vec3 outc = col + (1.0 - alpha) * bg + vec3(1.0, 0.8, 0.6) * ring * uGain * 0.4;
+  float cover = uSprite > 0.5 ? clamp(max(alpha, captured ? 1.0 : 0.0) + dot(outc, vec3(0.33)), 0.0, 1.0) : 1.0;
+  gl_FragColor = vec4(outc, cover);
+}`;
+const BH_COMP_FS = `uniform sampler2D tScene; uniform sampler2D tLens; varying vec2 vUv;
+void main(){ vec4 l = texture2D(tLens, vUv); vec4 s = texture2D(tScene, vUv); gl_FragColor = vec4(mix(s.rgb, l.rgb, l.a), 1.0); }`;
+class BHLensPass {
+  constructor() {
+    this.enabled = false; this.needsSwap = true; this.clear = false; this.renderToScreen = false;
+    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); this.qscene = new THREE.Scene(); this.qscene.add(this.quad); this.quad.frustumCulled = false;
+    this.mat = new THREE.ShaderMaterial({ vertexShader: BH_LENS_VS, fragmentShader: BH_LENS_FS, depthTest: false, depthWrite: false, uniforms: {
+      tDiffuse: { value: null }, tDepth: { value: null }, uHasDepth: { value: 0 }, uCam: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
+      uProj: { value: new THREE.Matrix4() }, uViewRot: { value: new THREE.Matrix4() }, uBH: { value: new THREE.Vector3() }, uRs: { value: BH.Rs }, uAxis: { value: new THREE.Vector3(0, 1, 0) },
+      uDiskIn: { value: BH.diskIn }, uDiskOut: { value: BH.diskOut }, uTime: { value: 0 }, uSteps: { value: 140 }, uStepK: { value: 0.06 }, uNear: { value: 0.5 }, uFar: { value: 20000 }, uSprite: { value: 0 }, uTint: { value: new THREE.Color(0x2b4a8a) }, uGain: { value: 0.5 } } });
+    this.comp = new THREE.ShaderMaterial({ vertexShader: BH_LENS_VS, fragmentShader: BH_COMP_FS, depthTest: false, depthWrite: false, uniforms: { tScene: { value: null }, tLens: { value: null } } });
+    this.rtHalf = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+  }
+  setSize(w, h) { this.rtHalf.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1)); }
+  render(renderer, writeBuffer, readBuffer) {
+    const u = this.mat.uniforms; u.tDiffuse.value = readBuffer.texture; u.tDepth.value = readBuffer.depthTexture || null; u.uHasDepth.value = readBuffer.depthTexture ? 1 : 0;
+    const half = REL.quality === 'low';
+    if (half) {
+      this.quad.material = this.mat; renderer.setRenderTarget(this.rtHalf); renderer.render(this.qscene, this.qcam);
+      this.comp.uniforms.tScene.value = readBuffer.texture; this.comp.uniforms.tLens.value = this.rtHalf.texture; this.quad.material = this.comp;
+    } else this.quad.material = this.mat;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); renderer.render(this.qscene, this.qcam);
+  }
+  dispose() { this.mat.dispose(); this.comp.dispose(); this.rtHalf.dispose(); }
+}
+function bhInstallPass() {
+  if (BH.pass) return BH.pass;
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const rt of [composer.renderTarget1, composer.renderTarget2]) { if (!rt.depthTexture) { rt.dispose(); rt.depthTexture = new THREE.DepthTexture(rt.width || w, rt.height || h); rt.depthTexture.type = THREE.UnsignedIntType; } }
+  BH.pass = new BHLensPass(); BH.pass.setSize(w * renderer.getPixelRatio(), h * renderer.getPixelRatio()); composer.insertPass(BH.pass, 1);
+  window.addEventListener('resize', () => BH.pass.setSize(window.innerWidth * renderer.getPixelRatio(), window.innerHeight * renderer.getPixelRatio()));
+  return BH.pass;
+}
+/** Static fallback: the lensing shader rendered once, offline, into a sprite (quality off, or too far to matter). */
+function bhMakeSprite(s) {
+  const pass = bhInstallPass(); const u = pass.mat.uniforms; const N = 256;
+  const rt = new THREE.WebGLRenderTarget(N, N); const cam = new THREE.PerspectiveCamera(30, 1, 1, 1e7);
+  const dist = 60 * s.Rs; const side = _v[0].crossVectors(s.axis, _v[1].set(1, 0, 0)).normalize();
+  cam.position.copy(s.pos).addScaledVector(side, dist * Math.cos(0.2)).addScaledVector(s.axis, dist * Math.sin(0.2)); cam.up.copy(s.axis); cam.lookAt(s.pos); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+  bhSetUniforms(u, s, cam); u.uSprite.value = 1; u.uSteps.value = 240; u.uStepK.value = 0.04; u.tDiffuse.value = null; u.uHasDepth.value = 0;
+  pass.quad.material = pass.mat; const prev = renderer.getRenderTarget(); renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pass.qscene, pass.qcam); renderer.setRenderTarget(prev);
+  u.uSprite.value = 0;
+  const half = Math.tan(THREE.MathUtils.degToRad(15)) * dist;           // world half-size the 30° frame covers at the hole
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: rt.texture, transparent: true, depthWrite: false, fog: false }));
+  spr.scale.set(half * 2, half * 2, 1); spr.position.copy(s.pos); spr.renderOrder = -1; spr.userData.rt = rt;
+  return spr;
+}
+function bhSetUniforms(u, s, cam) {
+  u.uCam.value.copy(cam.position); u.uInvProj.value.copy(cam.projectionMatrixInverse); u.uCamWorld.value.copy(cam.matrixWorld);
+  u.uProj.value.copy(cam.projectionMatrix); u.uViewRot.value.copy(cam.matrixWorldInverse).setPosition(0, 0, 0);
+  u.uBH.value.copy(s.pos); u.uRs.value = s.Rs; u.uAxis.value.copy(s.axis); u.uNear.value = cam.near; u.uFar.value = cam.far; u.uTime.value = performance.now() / 1000;
+  u.uSteps.value = REL.quality === 'low' ? 72 : 180; u.uStepK.value = REL.quality === 'low' ? 0.085 : 0.05;
+}
+function bhSetupVisuals(s) {
+  if (BH.sprite) { scene.remove(BH.sprite); BH.sprite.material.dispose(); BH.sprite.userData.rt.dispose(); BH.sprite = null; }
+  if (!s) { if (BH.pass) BH.pass.enabled = false; return; }
+  bhInstallPass(); BH.sprite = bhMakeSprite(s); scene.add(BH.sprite);
+  BH.pass.mat.uniforms.uTint.value.setHex(SBX.sys?.env?.skyboxTint ?? 0x2b4a8a);
+}
+/** Gate the expensive pass: only with a hole on screen and in range, at the chosen quality; auto-fallback if frames suffer. */
+function bhRenderGate(dt) {
+  const s = bhSourceOf(); const pass = BH.pass;
+  if (!pass) return;
+  if (!s || SRF.active || !SBX.active || game.mode !== 'sandbox') { pass.enabled = false; if (BH.sprite) BH.sprite.visible = false; return; }
+  const d = camera.position.distanceTo(s.pos); const Rb = BH.diskOut * 1.35 * s.Rs;
+  const ang = Math.asin(Math.min(1, Rb / Math.max(d, Rb)));
+  const fwd = _v[0].set(0, 0, -1).applyQuaternion(camera.quaternion); const toBH = _v[1].subVectors(s.pos, camera.position).normalize();
+  const halfFov = THREE.MathUtils.degToRad(camera.fov) * 0.5 * Math.max(1, camera.aspect);
+  const onScreen = d < Rb || Math.acos(clamp(fwd.dot(toBH), -1, 1)) < halfFov + ang;
+  const inRange = d < BH.lensRangeRs * s.Rs && ang > 0.012;
+  const want = onScreen && inRange && REL.quality !== 'off';
+  pass.enabled = want; if (BH.sprite) BH.sprite.visible = !want && onScreen;
+  if (want) {
+    camera.updateMatrixWorld(); bhSetUniforms(pass.mat.uniforms, s, camera);
+    // auto fallback: sustained slow frames with the lens on step the quality down once each time
+    BH.frameMs = BH.frameMs * 0.9 + (dt * 1000) * 0.1;
+    if (BH.frameMs > 24 && !BH.noAutoFallback) { BH.slowT += dt; if (BH.slowT > 3) { BH.slowT = 0; BH.frameMs = 16; relSetQuality(REL.quality === 'high' ? 'low' : 'off'); sbxToast('Frame budget exceeded — lensing quality stepped down (F8 to change).'); } } else BH.slowT = 0;
+  }
+}
+const _bhRenderHookBase = partRenderHook;
+partRenderHook = function (alpha, dt) { _bhRenderHookBase(alpha, dt); bhRenderGate(dt); relHUD(dt); };   // S7-EDIT(§PARTRT partRenderHook): lens gating and the relativity HUD each frame
+
+/** Render one frame from an arbitrary eye (tests and screenshots): the gate, then the full post chain. */
+function bhDebugRender(eye, target, up = null) {
+  const s = bhSourceOf(); camera.position.copy(eye); camera.up.copy(up || s?.axis || WORLD_UP); camera.lookAt(target); camera.updateMatrixWorld();
+  if (world.player.mesh) world.player.mesh.visible = false;
+  bhRenderGate(0.016); composer.render();
+}
+
+// =====================================================================================
+// §WORMHOLE — traversable wormholes: a lensed throat, an exotic-matter budget, and mass limits
+//  A Morris–Thorne throat held open by a finite budget of exotic matter. Every transit
+//  spends stability in proportion to the mass that passes; spend it all and the throat
+//  pinches shut — behind you, splitting your fleet across two systems, or around you.
+//  The throat is a sphere that shows the other side: a low-resolution cubemap of the far
+//  system, refreshed at a low rate, sampled through a lensing shader that folds the whole
+//  far sky into the disk. Tides at the throat scale as 1/R² — small throats shred long hulls.
+// =====================================================================================
+const WH = { vis: new Map(), K: 12, near: null, cubeSize: 96, refresh: 1.5 };
+
+// §WORMHOLE.BUDGET — each pair shares one exotic-matter budget, saved with the profile
+function whRecord(sig) {
+  const p = SBX.profile; p.wormholes = p.wormholes || {};
+  if (!sig.pair) sig.pair = 'wh' + Math.floor(Math.random() * 1e9).toString(36);
+  let r = p.wormholes[sig.pair];
+  if (!r) {
+    const u = Math.random(); const throat = Math.round(60 + 340 * u * u);                  // most throats are narrow
+    const max = Math.round(throat * throat * 1.1 + 25000);                                // mass capacity grows with the throat's area
+    r = p.wormholes[sig.pair] = { max, left: max, throat, collapsed: false, transits: 0 };
+  }
+  return r;
+}
+/** Mass that goes through with you: your hull (its derived part mass) and every hired wingmate on grid, in order. */
+function whShipMass() { const pl = world.player; if (pl.ps) return pl.ps.der.mass; const h = SBX_HULLS[SBX.ship()?.hull]; return (h?.mass || 1) * partRef().d.mass; }
+function whFleetMasses() {
+  const out = []; const ref = partRef().d.mass;
+  world.allies.forEachActive(a => { if (!a.alive || !a.contract) return; const c = FLEET_CONTRACTS[a.contract.kind]; const hid = Object.keys(SBX_HULLS).find(k => SBX_HULLS[k].name === c.hull); out.push({ a, f: a.contract, name: a.contract.name, mass: (SBX_HULLS[hid]?.mass || 1.5) * ref }); });
+  return out;
+}
+/** What would happen if you went through now. */
+function whForecast(rec) {
+  const me = whShipMass(); const fleet = whFleetMasses(); let left = rec.left;
+  if (me > left) return { me, fleet, verdict: 'death', text: `COLLAPSE — your ${fmt(me)} t is ${fmt(me - left)} t over. The throat pinches shut mid-transit.` };
+  left -= me; const through = [], stranded = []; let caught = null;
+  for (const m of fleet) { if (caught) { stranded.push(m); continue; } if (m.mass <= left) { left -= m.mass; through.push(m); } else caught = m; }
+  if (caught) return { me, fleet, verdict: 'split', caught, through, stranded, left: 0, text: `FLEET SPLIT — the hole collapses under ${caught.name}${stranded.length ? `; ${stranded.length} more stranded behind` : ''}.` };
+  return { me, fleet, verdict: 'ok', through, left, text: `FITS — leaves ${fmt(left)} t of stability.` };
+}
+
+// §WORMHOLE.VISUAL — the throat: a sphere showing the far side, refreshed at a low rate
+const WH_VS = `varying vec3 vW; varying vec3 vN; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }`;
+const WH_FS = `uniform samplerCube tFar; uniform vec3 uC; uniform float uR; uniform float uStab; uniform float uTime; uniform vec3 uGlow; varying vec3 vW; varying vec3 vN;
+vec3 rot(vec3 v, vec3 k, float a){ return v * cos(a) + cross(k, v) * sin(a) + k * dot(k, v) * (1.0 - cos(a)); }
+void main(){
+  vec3 I = normalize(vW - cameraPosition); vec3 toC = uC - cameraPosition;
+  float b = clamp(length(cross(toC, I)) / uR, 0.0, 1.0);                    // impact parameter through the throat
+  vec3 ax = cross(I, normalize(toC)); float la = length(ax); ax = la > 1e-5 ? ax / la : vec3(0.0, 1.0, 0.0);
+  float bend = 3.14159 * pow(b, 1.6);                                        // the rim sees the far side's whole sky
+  vec3 d = rot(I, ax, -bend);
+  vec3 far = textureCube(tFar, d).rgb;
+  float rim = smoothstep(0.82, 1.0, b); float ring = exp(-pow((b - 0.965) * 28.0, 2.0));
+  float flick = uStab < 0.25 ? 0.55 + 0.45 * sin(uTime * 23.0 + b * 40.0) : 1.0;
+  vec3 col = far * (1.0 + 0.35 * rim) * flick + uGlow * ring * (0.7 + 0.3 * sin(uTime * 2.0)) + mix(vec3(0.7, 0.15, 0.1), uGlow, uStab) * rim * 0.25;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+function whFarScene(sysIdx) {
+  const sys = SBX.systems[sysIdx]; const sc = new THREE.Scene();
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(50000, 32, 16), new THREE.MeshBasicMaterial({ map: buildSkyboxTexture(sys.env.skyboxTint), side: THREE.BackSide, color: new THREE.Color(1.8, 1.8, 1.8), fog: false, depthWrite: false })); sc.add(sky);
+  // the far sky's own stars and nebulae, seeded by the destination
+  const rng = makeRng(sysIdx * 7919 + 17); const N = 420; const sp = new Float32Array(N * 3); const sc2 = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { const u = rng() * 2 - 1, a = rng() * Math.PI * 2, r = Math.sqrt(1 - u * u); sp.set([Math.cos(a) * r * 40000, u * 40000, Math.sin(a) * r * 40000], i * 3); const b = 0.25 + Math.pow(rng(), 5) * 1.2; sc2.set([b, b, b * (0.9 + rng() * 0.25)], i * 3); }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('color', new THREE.BufferAttribute(sc2, 3));
+  sc.add(new THREE.Points(sg, new THREE.PointsMaterial({ size: 1, sizeAttenuation: false, vertexColors: true, depthWrite: false, fog: false })));
+  const tint = new THREE.Color(sys.env.skyboxTint);
+  for (let i = 0; i < 5; i++) { const n = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: tint.clone().multiplyScalar(1.6), transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    const u = rng() * 1.2 - 0.6, a = rng() * Math.PI * 2; n.position.set(Math.cos(a) * 30000, u * 30000, Math.sin(a) * 30000); n.scale.setScalar(26000 + rng() * 22000); sc.add(n); }
+  const sunDir = new THREE.Vector3(-0.55, 0.33, -0.77).normalize();
+  const sunS = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color().setHSL(sys.env.sunHue * 0.15, 0.5, 0.8), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  sunS.position.copy(sunDir).multiplyScalar(9000); sunS.scale.set(2600, 2600, 1); sc.add(sunS);
+  sc.add(new THREE.HemisphereLight(0x8fb3d9, 0x1a1208, 0.6)); const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.copy(sunDir); sc.add(dl);
+  if (sys.env.hasPlanet) { const pm = new THREE.Mesh(new THREE.SphereGeometry(2600, 24, 16), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(sys.env.planetHue, 0.45, 0.5), roughness: 1 })); pm.position.set(0.4, -0.2, -0.85).normalize().multiplyScalar(7000); sc.add(pm); }
+  for (const st of sys.stations) { const m = new THREE.Mesh(new THREE.BoxGeometry(220, 160, 420), new THREE.MeshStandardMaterial({ color: 0x9aa6b4, emissive: 0x223344 })); m.position.set(st.pos.x, st.pos.y, st.pos.z); sc.add(m); }
+  if (sys.bh && BH.sprite?.material?.map) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: BH.sprite.material.map, transparent: true, depthWrite: false })); s.position.set(...sys.bh.pos).normalize().multiplyScalar(40000); s.scale.set(26000, 26000, 1); sc.add(s); }
+  return sc;
+}
+function whMakeVisual(pt) {
+  const sig = pt.sig; const rec = whRecord(sig);
+  const cubeRT = new THREE.WebGLCubeRenderTarget(WH.cubeSize, { type: THREE.HalfFloatType }); const cubeCam = new THREE.CubeCamera(1, 60000, cubeRT);
+  const farScene = whFarScene(sig.to);
+  const mat = new THREE.ShaderMaterial({ vertexShader: WH_VS, fragmentShader: WH_FS, uniforms: { tFar: { value: cubeRT.texture }, uC: { value: pt.pos.clone() }, uR: { value: rec.throat }, uStab: { value: 1 }, uTime: { value: 0 }, uGlow: { value: new THREE.Color(0xc98cff) } } });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(rec.throat, 48, 32), mat); mesh.position.copy(pt.pos); scene.add(mesh); SBX.sceneObjs.push(mesh);
+  const v = { pt, sig, rec, mesh, cubeRT, cubeCam, farScene, t: 0 }; WH.vis.set(sig.id, v);
+  whRefresh(v); return v;
+}
+function whRefresh(v) { v.cubeCam.position.set(0, 0, 0); v.cubeCam.update(renderer, v.farScene); }
+function whDisposeAll() { for (const v of WH.vis.values()) { v.cubeRT.dispose(); v.mesh.material.dispose(); v.mesh.geometry.dispose(); v.farScene.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); } WH.vis.clear(); }
+function whSyncVisuals() {
+  for (const pt of SBX.points) if (pt.kind === 'wormhole' && pt.sig && !WH.vis.has(pt.sig.id)) { const rec = whRecord(pt.sig); if (!rec.collapsed) whMakeVisual(pt); }
+}
+function whStep(dt) {
+  if (!SBX.active || SRF.active) return;
+  whSyncVisuals();
+  const pl = world.player; WH.near = null; let nd = Infinity;
+  for (const v of WH.vis.values()) {
+    const u = v.mesh.material.uniforms; u.uTime.value += dt; u.uStab.value = v.rec.left / v.rec.max;
+    const d = pl.pos.distanceTo(v.pt.pos); if (d < nd) { nd = d; WH.near = v; }
+    v.t -= dt; if (d < 9000 && v.t <= 0) { v.t = WH.refresh; whRefresh(v); }             // the far side at a reduced rate, only when near
+    if (v.rec.collapsed) { v.mesh.scale.multiplyScalar(Math.max(0, 1 - dt * 1.5)); if (v.mesh.scale.x < 0.02) { scene.remove(v.mesh); WH.vis.delete(v.sig.id); const i = SBX.points.indexOf(v.pt); if (i >= 0) SBX.points.splice(i, 1); } }
+  }
+  if (WH.near && nd > 6000) WH.near = null;
+}
+function whHUD() {
+  const el = $('p-wh'); const v = WH.near; const on = !!v && SBX.active && !SRF.active && !SBX.profile.docked;
+  el.classList.toggle('on', on); if (!on) return;
+  const r = v.rec; const f = whForecast(r); const frac = r.left / r.max;
+  const pl = world.player; const k = WH.K / (r.throat * r.throat); const peak = pl.ps ? relTidalStep(pl.ps, pl, k, pl.forward(_v[0]), 0, false) : 0;
+  const html = `<div class="label">Wormhole → ${SBX.systems[v.sig.to].name}${SBX.systems[v.sig.to].wh ? ' (J-space)' : ''}</div>
+    <div class="row"><div class="label">Stability</div><div class="bar ${frac < 0.3 ? 'red' : 'amber'}"><i style="transform:scaleX(${frac.toFixed(3)})"></i></div><span class="small">${fmt(r.left)} / ${fmt(r.max)} t</span></div>
+    <div class="small">throat ${r.throat} m · your ship <b>${fmt(f.me)} t</b>${f.fleet.length ? ` · fleet ${f.fleet.length} ship${f.fleet.length > 1 ? 's' : ''} ${fmt(f.fleet.reduce((a, m) => a + m.mass, 0))} t` : ''}</div>
+    <div class="small">throat tides on your frame: ${Math.round(peak * 100)}%${peak > 1 ? ' — <b style="color:var(--red)">the throat will tear this hull</b>' : ''}</div>
+    <div class="small" style="color:${f.verdict === 'ok' ? 'var(--green)' : 'var(--red)'}">${f.text}</div>`;
+  if (el._h !== html) { el.innerHTML = html; el._h = html; }
+}
+
+// §WORMHOLE.TRANSIT — S7-EDIT(§INDUSTRY sbxWormholeTransit): mass spends stability; too much and it collapses
+sbxWormholeTransit = function (pt) {
+  const sig = pt.sig; if (!sig || sig.to == null) return;
+  if (sig.expiresT && sig.expiresT < Date.now()) { sbxToast('The wormhole shivers and is gone.'); return; }
+  const rec = whRecord(sig); if (rec.collapsed) return sbxToast('The throat has collapsed.');
+  const from = SBX.profile.systemId; const pl = world.player; const f = whForecast(rec);
+  // throat tides act on the way through: the narrower the throat, the harder they pull a long hull apart
+  if (pl.ps) { const k = WH.K / (rec.throat * rec.throat); for (let i = 0; i < 12; i++) relTidalStep(pl.ps, pl, k, pl.forward(_v[0]), 0.15, true); partSyncProxies(pl);
+    if (pl.ps.lost) { REL.voidLoss = `Torn apart by the tides of a ${rec.throat} m throat.`; pl.lastAttacker = 'wormhole tides'; pl.alive = false; world.onPlayerKilled?.(pl); return; } }
+  if (f.verdict === 'death') {
+    const had = rec.left; rec.left = 0; rec.transits++;
+    REL.voidLoss = `Caught mid-transit: ${fmt(f.me)} t of ship against ${fmt(had)} t of remaining stability — the throat pinched shut around the hull.`;
+    whCollapsePair(sig, from); pl.lastAttacker = 'a collapsing wormhole'; pl.alive = false; if (pl.mesh) pl.mesh.visible = false; world.onPlayerKilled?.(pl);
+    sbxToast('The throat collapses mid-transit.'); return;
+  }
+  rec.transits++;
+  rec.left = f.verdict === 'ok' ? f.left : 0;
+  const lost = [];
+  if (f.verdict === 'split') {
+    // the one in the throat when it closed is gone; everyone behind it is stranded on this side
+    const c = f.caught; lost.push(c.name); c.a.alive = false; sbxOnFleetMemberKilled(c.a);
+    for (const m of f.stranded) m.f.stranded = { sys: from, t: Date.now() };
+  }
+  // the far side gets (or reuses) a return hole on the same budget
+  const farState = sbxSysState(sig.to); farState.sigs = farState.sigs || [];
+  let back = farState.sigs.find(s => s.kind === 'wormhole' && s.pair === sig.pair);
+  if (!back) { back = { id: 'sig' + Date.now(), kind: 'wormhole', resolved: true, spawned: true, to: from, pair: sig.pair, expiresT: sig.expiresT, pos: { x: rand(-3000, 3000), y: rand(-500, 500), z: rand(-3000, 3000) } }; farState.sigs.push(back); }
+  if (f.verdict === 'split') whCollapsePair(sig, from);
+  sbxLoadSystem(sig.to, _v[0].set(back.pos.x, back.pos.y, back.pos.z).add(_v[1].set(0, 60, rec.throat + 350)));
+  if (f.verdict === 'split') sbxToast(`Transit complete — but the hole collapsed behind you. ${lost.join(', ')} was caught in the throat${f.stranded.length ? `; ${f.stranded.map(m => m.name).join(', ')} stranded in ${SBX.systems[from].name}` : ''}.`);
+  else sbxToast(`Transit complete — ${SBX.systems[sig.to].name}. Stability left ${fmt(rec.left)} / ${fmt(rec.max)} t; the hole decays ${fmtDur(sig.expiresT - Date.now())} from now.`);
+  SBX.dirty = true; sbxSave('wormhole');
+};
+function whCollapsePair(sig, fromSys) {
+  const rec = whRecord(sig); rec.collapsed = true; rec.left = 0;
+  for (const st of Object.values(SBX.sysState)) if (st.sigs) st.sigs = st.sigs.filter(s => s.pair !== sig.pair);
+  for (const v of WH.vis.values()) if (v.sig.pair === sig.pair) v.rec.collapsed = true;
+}
+// stranded wingmates wait where the collapse left them, and rejoin when you come back for them
+const _whSpawnFleetBase = sbxSpawnFleet;
+sbxSpawnFleet = function () {
+  const p = SBX.profile; if (!p) return _whSpawnFleetBase();
+  for (const f of p.fleet) if (f.stranded && f.stranded.sys === p.systemId) { f.stranded = null; sbxToast(`${f.name} rejoins — they waited out the collapse here.`); }
+  const all = p.fleet; p.fleet = all.filter(f => !f.stranded);
+  try { return _whSpawnFleetBase(); } finally { p.fleet = all; }
+};
+const _whLoadBase = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) { whDisposeAll(); const r = _whLoadBase(sysIdx, entryPos); whSyncVisuals(); return r; };
+
+// =====================================================================================
+// §MOONS — small moons on analytic orbits: gravity-assist bodies, and targets
+//  Each planet keeps one or two small moons on circular orbits computed in closed form
+//  from the galaxy clock. Inside a moon's sphere of influence flight goes ballistic; a
+//  flyby turns the ship in the moon's frame and hands it the moon's motion — a real
+//  velocity gain, computed from the body's velocity, predicted by the nav computer.
+//  The world is drawn compressed (a 250 m moon stands in for a Deimos-class body):
+//  flight uses the drawn scale, energy budgets use the physical one.
+// =====================================================================================
+const MOON = { list: [], mat: null, geo: null };
+const MOON_PRIMARY_DIR = new THREE.Vector3(0.4, -0.2, -0.85).normalize();         // matches sbxEnvFor's planet direction
+function moonPrimaryPos(out) { return out.copy(MOON_PRIMARY_DIR).multiplyScalar(CONFIG.environment.planetDistance); }
+function moonDefs(sysIdx) {
+  const sys = SBX.systems[sysIdx]; if (!sys?.env?.hasPlanet || sys.bh || sys.wh) return [];
+  const rng = makeRng(CONFIG.sbx.seed ^ (sysIdx * 9973 + 3)); const n = 1 + (rng() < 0.5 ? 1 : 0); const out = [];
+  for (let k = 0; k < n; k++) {
+    const a = 5200 + rng() * 2600, R = 160 + rng() * 170, speed = 260 + rng() * 140, dirn = rng() < 0.5 ? 1 : -1;
+    const incl = (rng() - 0.5) * 0.5, node = rng() * Math.PI * 2, phase = rng() * Math.PI * 2, vs = 190 + rng() * 60;
+    const Rkm = 5 + rng() * 9, Mkg = 1850 * 4 / 3 * Math.PI * Math.pow(Rkm * 1000, 3);
+    out.push({ key: `m${sysIdx}_${k}`, sys: sysIdx, k, name: `${sys.name} I-${'ab'[k]}`, a, R, omega: dirn * speed / a, incl, node, phase, mu: vs * vs * R, Rkm, Mkg,
+      bind: 0.6 * 6.674e-11 * Mkg * Mkg / (Rkm * 1000) });
+  }
+  return out;
+}
+/** Closed-form moon state at galaxy time t (s). */
+function moonState(m, t, pos, vel) {
+  const u = _v[10].set(Math.cos(m.node), 0, Math.sin(m.node)); const n = _v[11].set(0, 1, 0).applyAxisAngle(u, m.incl); const w = _v[9].crossVectors(n, u);
+  const th = m.phase + m.omega * t; const P0 = moonPrimaryPos(_v[8]);
+  pos.copy(P0).addScaledVector(u, m.a * Math.cos(th)).addScaledVector(w, m.a * Math.sin(th));
+  if (vel) vel.copy(u).multiplyScalar(-Math.sin(th) * m.a * m.omega).addScaledVector(w, Math.cos(th) * m.a * m.omega);
+  return pos;
+}
+const moonAlive = (m) => !SBX.profile?.moons?.[m.key]?.destroyed;
+REL.builders.push((sysIdx, out) => {
+  for (const m of moonDefs(sysIdx)) {
+    if (!moonAlive(m)) continue;
+    const src = { kind: 'moon', name: m.name, moon: m, pos: new THREE.Vector3(), vel: new THREE.Vector3(), mu: m.mu, rMin: m.R, soi: m.R * 12, warpR: m.R * 3,
+      accelMag: (r) => m.mu / (r * r), update(t) { moonState(m, t, this.pos, this.vel); } };
+    src.update(relSourceTime()); out.push(src);
+  }
+});
+function moonBuildVisuals() {
+  for (const v of MOON.list) { scene.remove(v.mesh); } MOON.list = [];
+  if (!MOON.geo) { const g = new THREE.IcosahedronGeometry(1, 4); const P = g.attributes.position; const n1 = skyNoise(4242);
+    for (let i = 0; i < P.count; i++) { _v[0].fromBufferAttribute(P, i); const d = 1 + (n1(_v[0].x * 2 + 3, _v[0].y * 2 + _v[0].z) - 0.5) * 0.22; P.setXYZ(i, _v[0].x * d, _v[0].y * d, _v[0].z * d); }
+    g.computeVertexNormals(); MOON.geo = g; MOON.mat = new THREE.MeshStandardMaterial({ color: 0x8a847a, roughness: 0.95, metalness: 0.02, flatShading: true }); }
+  for (const s of REL.sources) if (s.kind === 'moon') {
+    const mesh = new THREE.Mesh(MOON.geo, MOON.mat); mesh.scale.setScalar(s.moon.R); mesh.position.copy(s.pos); scene.add(mesh); SBX.sceneObjs.push(mesh);
+    const ob = { pos: s.pos, radius: s.moon.R * 0.98 }; world.obstacles.push(ob);
+    SBX.points.push({ kind: 'moon', name: s.name, pos: s.pos, moon: s.moon, src: s });
+    MOON.list.push({ s, mesh, ob });
+  }
+}
+function moonRender() { for (const v of MOON.list) { v.mesh.position.copy(v.s.pos); v.mesh.rotation.y += 0.0008; } }
+OV_COLOR.moon = '#c9c1b2';
+
+// =====================================================================================
+// §RKV — relativistic kill vehicles: the spinal mass driver, analytic flight, interception, impact
+//  A dense slug thrown at a good fraction of c. Its energy is (γ − 1) m c² — at 0.1 c a
+//  tonne carries ~100 megatons. Flight is a straight line in closed form, so a slug keeps
+//  flying while you are in another system or offline; the galaxy clock decides when it
+//  lands. Defended worlds see the launch flash after d/c and can intercept only early;
+//  the slug's own clock runs slow by γ. Asteroids and small moons shatter (a moon's
+//  debris shears into a ring over real hours, persistent and mineable); planets cannot
+//  be destroyed — a strike scars a landing site forever. Hitting an inhabited world is
+//  an atrocity every faction remembers.
+// =====================================================================================
+const RKV = { vis: new Map(), open: false, sel: null, beta: 0.1, mass: 1, chargeT: 0, refJ: null, lastErr: null };
+const RKV_CHARGE_S = 45;
+function rkvRefJ() { return RKV.refJ || (RKV.refJ = relKineticJ(1, 0.1)); }
+/** The launcher: the player's own titan with a live spinal breech. */
+function rkvDriverIndex(ps) { if (!ps) return -1; return ps.D.parts.findIndex((p, i) => PARTS[p.t]?.driver && !ps.gone[i]); }
+function rkvMuzzle(ent, out) {
+  const ps = ent.ps; if (ps.kit) return out.set(0, 0, -1020).sub(ps.origin).applyQuaternion(ent.quat).add(ent.pos);
+  const i = rkvDriverIndex(ps); return ps.worldOf(i, out).addScaledVector(_v[0].set(0, 0, -1).applyQuaternion(ent.quat), ps.cs * 2);
+}
+// targets in the current system: rocks, moons, the planet's landing sites
+function rkvTargets() {
+  const out = []; const sys = SBX.sys; const sysIdx = SBX.profile.systemId;
+  for (const s of REL.sources) if (s.kind === 'moon') out.push({ kind: 'moon', key: s.moon.key, name: `${s.moon.name} (moon, ${s.moon.Rkm.toFixed(1)} km)`, moon: s.moon, bind: s.moon.bind });
+  const planet = sbxPlanetOf(sysIdx);
+  if (planet) for (let i = 0; i < planet.nSites; i++) { const site = srfSiteDef(planet, i); out.push({ kind: 'site', key: planet.key + ':' + i, name: `${site.name} (${BIOMES[site.biome].name})`, planet, site: i, inhabited: rkvInhabited(planet), defended: rkvInhabited(planet) }); }
+  const byBelt = {}; for (const r of SBX.rocks) { if (r.units <= 0 || byBelt[r.belt.id]) continue; byBelt[r.belt.id] = r; }
+  for (const r of Object.values(byBelt)) out.push({ kind: 'rock', key: r.belt.id + ':' + r.k, name: `Asteroid in ${r.belt.name}`, belt: r.belt.id, k: r.k, pos: r.pos.clone() });
+  return out;
+}
+function rkvInhabited(planet) { const sys = SBX.systems[planet.sys]; return sys.stations.length > 0 && !sys.snDestroyed; }
+/** Where the target will be when a slug launched now from `from` at β arrives (closed-form lead for a moon). */
+function rkvAim(from, tgt, beta, tNow) {
+  const v = beta * REL.c;
+  if (tgt.kind === 'moon') { const p = new THREE.Vector3(); let T = moonState(tgt.moon, tNow, p).distanceTo(from) / v; for (let k = 0; k < 8; k++) T = moonState(tgt.moon, tNow + T, p).distanceTo(from) / v; return { pos: p, T }; }
+  if (tgt.kind === 'site') { const p = moonPrimaryPos(new THREE.Vector3()); const surf = p.clone().add(_v[0].subVectors(from, p).setLength(CONFIG.environment.planetRadius)); return { pos: surf, T: surf.distanceTo(from) / v }; }
+  return { pos: tgt.pos.clone(), T: tgt.pos.distanceTo(from) / v };
+}
+function rkvOutcome(tgt, E) {
+  if (tgt.kind === 'moon') return E > tgt.bind ? { text: `SHATTERS — ${(E / tgt.bind).toFixed(1)}× its gravitational binding energy. The debris will spread into a ring.`, ok: true } : { text: `Cratered, not shattered — ${(E / tgt.bind * 100).toFixed(0)}% of its binding energy.`, ok: false };
+  if (tgt.kind === 'site') return { text: `Planets cannot be destroyed (binding ~10³² J). A permanent crater at this landing site, an ejecta field, and dust in the sky for days.`, ok: true };
+  return { text: 'The asteroid shatters into fragments.', ok: true };
+}
+/** Fire. `launcher` = {pos, quat, vel, ps}; returns the in-flight record or {err}. */
+function rkvLaunch(launcher, tgt, beta = RKV.beta, mass = RKV.mass, opts = {}) {
+  const ps = launcher.ps; if (rkvDriverIndex(ps) < 0) return { err: 'No intact spinal mass driver.' };
+  if (!opts.force) {
+    if (RKV.chargeT > 0) return { err: `Capacitor banks charging — ${RKV.chargeT.toFixed(0)} s.` };
+    if (ps.powerPerf < 0.5) return { err: 'Reactors cannot feed the driver.' };
+    if (ps.prop < 0.2) return { err: 'Not enough propellant to cool the rails and counter the recoil.' };
+  }
+  const from = rkvMuzzle(launcher, new THREE.Vector3()); const tNow = galaxyNow() / 1000; const aim = rkvAim(from, tgt, beta, relSourceTime());
+  const dir = aim.pos.clone().sub(from).normalize();
+  if (!opts.force) { const fwd = _v[0].set(0, 0, -1).applyQuaternion(launcher.quat); const off = Math.acos(clamp(fwd.dot(dir), -1, 1)); if (off > 0.09) return { err: `Spine is ${THREE.MathUtils.radToDeg(off).toFixed(1)}° off the firing solution — align the ship (A to auto-align).`, off }; }
+  const E = relKineticJ(mass, beta); const k = E / rkvRefJ();
+  ps.shotHeat += 26000 * k * (ps.capital ? 1 : 0.02); ps.prop = Math.max(0, ps.prop - 0.12 * Math.min(3, k));
+  RKV.chargeT = RKV_CHARGE_S;
+  const p = SBX.profile; p.rkvs = p.rkvs || [];
+  const r = { id: 'rkv' + Date.now().toString(36) + Math.floor(Math.random() * 999), sys: p.systemId, from: from.toArray(), dir: dir.toArray(), beta, mass, E, t0: galaxyNow(), T: aim.T,
+    target: { kind: tgt.kind, key: tgt.key, name: tgt.name, site: tgt.site, planet: tgt.planet?.key, belt: tgt.belt, k: tgt.k, moon: tgt.moon?.key, inhabited: !!tgt.inhabited, defended: !!tgt.defended, aim: aim.pos.toArray() },
+    status: 'flight', dist: aim.pos.distanceTo(from) };
+  p.rkvs.push(r); shake.add(0.5); audio.missile?.(); world.explode(from, 2.5, 0x9fdcff);
+  launcher.vel?.addScaledVector(dir, -Math.min(4, mass * beta * 40));                  // recoil
+  sbxToast(`RKV away: ${mass} t at ${beta.toFixed(2)} c — ${relMegatons(E).toFixed(0)} Mt. Impact in ${r.T.toFixed(1)} s galaxy time.`);
+  SBX.dirty = true; sbxSave('rkv');
+  return r;
+}
+/** Seeded interception: the defender sees the flash after d/c, then gets tries until the slug is too close to stop. */
+function rkvInterceptCheck(r, el) {
+  if (!r.target.defended) return false;
+  const tDetect = r.dist / REL.c; const react = 3;                                     // light lag, then scramble
+  const rng = makeRng(parseInt(r.id.slice(3, 10), 36) ^ 0x5eed);
+  for (let t = tDetect + react, k = 0; t < Math.min(el, r.T); t += 2, k++) {
+    const remain = 1 - t / r.T; if (remain < 0.35) break;                                // once close it is effectively unstoppable
+    const pk = 0.22 * remain * remain / Math.max(0.3, r.beta * 10);                     // faster slugs are harder to catch
+    if (rng() < pk) { r.interceptT = t; return true; }
+  }
+  return false;
+}
+function rkvStep(dt, offline = false) {
+  if (RKV.chargeT > 0) RKV.chargeT = Math.max(0, RKV.chargeT - dt);
+  const p = SBX.profile; if (!p?.rkvs?.length) return;
+  const now = galaxyNow();
+  for (const r of p.rkvs) {
+    if (r.status !== 'flight') continue;
+    const el = (now - r.t0) / 1000;
+    if (rkvInterceptCheck(r, el)) { r.status = 'intercepted'; if (!offline) sbxToast(`RKV intercepted ${(r.T - r.interceptT).toFixed(1)} s short of ${r.target.name} — they saw the launch flash in time.`); rkvDropVis(r); continue; }
+    if (el >= r.T) rkvImpact(r, offline);
+  }
+  p.rkvs = p.rkvs.filter(r => r.status === 'flight' || (now - r.t0) < 600000);           // keep recent history for the console
+  if (!offline) rkvRender();
+}
+// §RKV.IMPACT — what a slug does to what it hits; all of it persists
+function rkvImpact(r, offline) {
+  r.status = 'hit'; r.hitT = galaxyNow(); const p = SBX.profile; const here = SBX.active && p.systemId === r.sys && !SRF.active;
+  const at = new THREE.Vector3(...r.target.aim); rkvDropVis(r);
+  if (here) { world.explode(at, 9, 0xfff0d0); world.shockwaves.emit(at, 1800); shake.add(clamp(1 - at.distanceTo(world.player.pos) / 20000, 0.1, 1)); }
+  const t = r.target;
+  if (t.kind === 'rock') {
+    const st = SBX.sysState[r.sys] || (SBX.sysState[r.sys] = { belts: {}, wrecks: [], pirateT: 0 }); const bs = st.belts[t.belt];
+    if (bs) { const u = bs.units[t.k] || 0; bs.units[t.k] = 0; for (let d = 1; d <= 3; d++) { const j = (t.k + d) % bs.units.length; bs.units[j] = (bs.units[j] || 0) + Math.round(u / 3 + 60); } }
+    if (here) { for (const rk of SBX.rocks) if (rk.belt.id === t.belt) sbxRockMatrix(rk); for (let i = 0; i < 40; i++) world.particles.emit(at, randomUnit(_v[5]).multiplyScalar(rand(40, 300)), rand(1, 3), rand(4, 12), 0xb8a890, 0.8); }
+    sbxToast(`RKV impact: the asteroid in ${t.name.replace('Asteroid in ', '')} is gravel.`);
+  } else if (t.kind === 'moon') {
+    const m = moonDefs(r.sys).find(x => x.key === t.moon);
+    p.moons = p.moons || {};
+    if (m && r.E > m.bind) {
+      p.moons[m.key] = { destroyed: r.hitT, sys: r.sys, a: m.a, omega: m.omega, incl: m.incl, node: m.node, theta0: rkvMoonAngle(m), name: m.name };
+      sbxToast(`${m.name} is gone — ${(r.E / m.bind).toFixed(1)}× its binding energy. Its debris cloud will shear into a ring over the next hours.`);
+      if (here) { relSourcesFor(r.sys); moonBuildVisuals(); ringBuild(); for (let i = 0; i < 120; i++) world.particles.emit(at, randomUnit(_v[5]).multiplyScalar(rand(80, 700)), rand(2, 6), rand(10, 40), 0xa89c88, 0.6); }
+    } else sbxToast(`${t.name} cratered but holding together.`);
+  } else if (t.kind === 'site') rkvCrater(r, here);
+  SBX.dirty = true; if (!offline) sbxSave('rkv-impact');
+}
+function rkvMoonAngle(m) { return m.phase + m.omega * relSourceTime(); }
+/** A strike on a planet: a crater at the landing site, forever — plus ejecta, dust, radiation and the politics. */
+function rkvCrater(r, here) {
+  const p = SBX.profile; const t = r.target; const planet = sbxPlanetOf(r.sys); if (!planet) return;
+  const site = srfSiteDef(planet, t.site);
+  const Ekt = r.E / 4.184e12; const Dkm = 0.07 * Math.pow(Ekt, 1 / 3.4);            // gravity-regime crater scaling
+  const rad = clamp(Dkm * 500, 260, 1500); const rng = makeRng(site.seed ^ 0xc0ffee);
+  const ang = rng() * Math.PI * 2; const off = 700 + rad * 0.9;
+  p.craters = p.craters || {};
+  p.craters[site.seed] = { planet: planet.key, site: t.site, x: Math.cos(ang) * off, z: Math.sin(ang) * off, r: rad, d: rad * 0.34, t: r.hitT, E: r.E, name: site.name };
+  const ps = srfPState(planet); ps.dustUntil = Math.max(ps.dustUntil || 0, r.hitT + 3 * 86400000); ps.struck = (ps.struck || 0) + 1;
+  // outposts on that site are gone
+  for (const st of [...p.structures]) if (st.srf?.pk === planet.key && st.srf?.site === t.site) sbxStructureDestroyed(st, { structEvents: [] });
+  const ss = srfSiteState(planet, t.site); ss.bases[0] = true; ss.struck = r.hitT;
+  if (t.inhabited) rkvAtrocity(planet, r);
+  sbxToast(`Impact on ${planet.name}: a ${(rad * 2 / 1000).toFixed(1)} km crater at ${site.name}. Dust will darken its sky for days.`);
+  if (here) { const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xfff4e0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); flash.position.set(...t.aim); flash.scale.setScalar(4000); scene.add(flash); SBX.sceneObjs.push(flash); RKV.flash = { spr: flash, t: 3 }; }
+}
+function rkvAtrocity(planet, r) {
+  const p = SBX.profile; const fac = planet.faction;
+  for (const k of Object.keys(p.standings)) p.standings[k] = clamp(p.standings[k] - (k === fac ? 10 : 5), -10, 10);
+  p.secStatus = -10; p.atrocities = p.atrocities || []; p.atrocities.push({ t: r.hitT, planet: planet.name, faction: fac, E: r.E });
+  sbxToast(`ATROCITY: you struck an inhabited world. Every faction's standing has collapsed; the Authority will shoot on sight. This is permanent.`);
+}
+// §RKV.VISUAL — slugs in this system draw as a hot streak on their closed-form line
+function rkvRender() {
+  const p = SBX.profile; const now = galaxyNow();
+  for (const r of p.rkvs) {
+    if (r.status !== 'flight' || r.sys !== p.systemId || SRF.active) { rkvDropVis(r); continue; }
+    let v = RKV.vis.get(r.id);
+    if (!v) { const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]); const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.9, fog: false })); line.frustumCulled = false; const head = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xdff4ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); head.scale.setScalar(90); scene.add(line); scene.add(head); v = { line, head }; RKV.vis.set(r.id, v); }
+    const el = (now - r.t0) / 1000; const d = r.beta * REL.c * el; const from = _v[0].fromArray(r.from), dir = _v[1].fromArray(r.dir);
+    const head = _v[2].copy(from).addScaledVector(dir, d); v.head.position.copy(head);
+    const P = v.line.geometry.attributes.position; P.setXYZ(0, head.x, head.y, head.z); const tail = _v[3].copy(head).addScaledVector(dir, -Math.min(d, 1600)); P.setXYZ(1, tail.x, tail.y, tail.z); P.needsUpdate = true;
+  }
+  if (RKV.flash) { RKV.flash.t -= 1 / 60; RKV.flash.spr.material.opacity = clamp(RKV.flash.t / 3, 0, 1); if (RKV.flash.t <= 0) { scene.remove(RKV.flash.spr); RKV.flash = null; } }
+}
+function rkvDropVis(r) { const v = RKV.vis.get(r.id); if (!v) return; scene.remove(v.line); scene.remove(v.head); v.line.geometry.dispose(); v.line.material.dispose(); v.head.material.dispose(); RKV.vis.delete(r.id); }
+function rkvClearVis() { for (const id of [...RKV.vis.keys()]) rkvDropVis({ id }); }
+
+// §RKV.CONSOLE — the fire-control console (U on a titan's bridge): targets, energy, outcome, the atrocity warning
+function rkvConsole(show) {
+  RKV.open = show; $('sb-rkv').classList.toggle('on', show); if (show) rkvRenderConsole();
+}
+function rkvRenderConsole() {
+  const pl = world.player; const ps = pl.ps; const T = rkvTargets(); if (!RKV.sel || !T.find(x => x.key === RKV.sel)) RKV.sel = T[0]?.key || null;
+  const E = relKineticJ(RKV.mass, RKV.beta); const g = relGamma(RKV.beta); const tgt = T.find(x => x.key === RKV.sel);
+  const from = ps ? rkvMuzzle(pl, new THREE.Vector3()) : pl.pos; const aim = tgt ? rkvAim(from, tgt, RKV.beta, relSourceTime()) : null;
+  const rows = T.map(t => `<div class="item ${t.key === RKV.sel ? 'sel' : ''}" data-rkvt="${t.key}"><span class="tag">${t.inhabited ? 'INHABITED' : t.defended ? 'DEFENDED' : ''}</span><div class="name">${t.name}</div></div>`).join('');
+  const out = tgt ? rkvOutcome(tgt, E) : null;
+  const inflight = (SBX.profile.rkvs || []).map(r => { const el = (galaxyNow() - r.t0) / 1000; const gam = relGamma(r.beta); return `<div class="ovrow"><span class="n">${r.target.name}</span><span class="d">${r.status === 'flight' ? `${Math.min(el, r.T).toFixed(1)} / ${r.T.toFixed(1)} s · slug clock ${(Math.min(el, r.T) / gam).toFixed(2)} s` : r.status.toUpperCase()}</span></div>`; }).join('') || '<p class="small">None in flight.</p>';
+  $('rkv-body').innerHTML = `
+    <div class="hgrid"><div><h3>Targets in ${SBX.sys.name}</h3><div class="list">${rows || '<p class="small">Nothing to aim at here.</p>'}</div></div>
+    <div><h3>Firing solution</h3>
+      <div class="fitslot"><span class="small">Slug</span><b>${[0.5, 1, 5].map(m => `<button data-rkvm="${m}" class="${m === RKV.mass ? 'amber' : ''}">${m} t</button>`).join('')}</b></div>
+      <div class="fitslot"><span class="small">Speed</span><b>${[0.05, 0.1, 0.2, 0.3].map(b => `<button data-rkvb="${b}" class="${b === RKV.beta ? 'amber' : ''}">${b} c</button>`).join('')}</b></div>
+      <table class="stats"><tr><td>Kinetic energy (γ−1)mc²</td><td>${E.toExponential(2)} J · <b>${relMegatons(E).toFixed(0)} Mt</b></td></tr>
+      <tr><td>Lorentz factor γ</td><td>${g.toFixed(5)}</td></tr>
+      ${aim ? `<tr><td>Flight time (galaxy)</td><td>${aim.T.toFixed(1)} s · slug's clock ${(aim.T / g).toFixed(2)} s</td></tr><tr><td>Range</td><td>${(aim.pos.distanceTo(from) / 1000).toFixed(1)} km</td></tr>` : ''}
+      ${tgt?.defended ? `<tr><td>Interception</td><td>defenders see the flash ${(aim.pos.distanceTo(from) / REL.c).toFixed(1)} s after launch; stoppable only while far</td></tr>` : ''}
+      <tr><td>Driver</td><td>${rkvDriverIndex(ps) >= 0 ? (RKV.chargeT > 0 ? `charging ${RKV.chargeT.toFixed(0)} s` : 'ready') : 'NO INTACT BREECH'} · cost ~${Math.round(26000 * E / rkvRefJ() / 575)}% heat, ${Math.round(12 * Math.min(3, E / rkvRefJ()))}% propellant</td></tr></table>
+      ${out ? `<p class="small">${out.text}</p>` : ''}
+      ${tgt?.inhabited ? `<p style="color:var(--red)">${tgt.planet.name} is inhabited. Striking it kills everyone near ${SBX.systems[tgt.planet.sys].name}'s colonies. It is an atrocity: every faction's standing with you collapses, permanently.</p><label><input type="checkbox" id="rkv-atro"> I understand. Fire anyway.</label>` : ''}
+      <div class="actions"><button data-rkvalign="1">Align spine (A)</button><button data-rkvfire="1" class="amber">Fire</button></div>
+      <p class="small" id="rkv-err" style="color:var(--amber)">${RKV.lastErr || ''}</p></div></div>
+    <h3>Slugs in flight</h3>${inflight}`;
+}
+$('sb-rkv').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-rkvt]'); if (t) { RKV.sel = t.dataset.rkvt; RKV.lastErr = null; return rkvRenderConsole(); }
+  const m = e.target.closest('[data-rkvm]'); if (m) { RKV.mass = +m.dataset.rkvm; return rkvRenderConsole(); }
+  const b = e.target.closest('[data-rkvb]'); if (b) { RKV.beta = +b.dataset.rkvb; return rkvRenderConsole(); }
+  if (e.target.closest('[data-rkvalign]')) { rkvAlign(); return; }
+  if (e.target.closest('[data-rkvfire]')) {
+    const tgt = rkvTargets().find(x => x.key === RKV.sel); if (!tgt) return;
+    if (tgt.inhabited && !$('rkv-atro')?.checked) { RKV.lastErr = 'Confirm the atrocity warning first.'; return rkvRenderConsole(); }
+    const r = rkvLaunch(world.player, tgt); RKV.lastErr = r.err || null; rkvRenderConsole();
+  }
+  if (e.target.closest('#rkv-close')) rkvConsole(false);
+});
+function rkvAlign() { const tgt = rkvTargets().find(x => x.key === RKV.sel); if (!tgt) return; const pl = world.player; const aim = rkvAim(rkvMuzzle(pl, new THREE.Vector3()), tgt, RKV.beta, relSourceTime()); assist.set('align', { pos: aim.pos, alive: true }, null); rkvConsole(false); sbxToast('Aligning the spine on the firing solution. U reopens fire control.'); }
+function rkvKeys() {
+  const pl = world.player;
+  if (input.consume('KeyU')) { if (!pl.ps?.capital) return sbxToast('Fire control needs a titan with a spinal mass driver — take a titan\'s bridge.'); rkvConsole(!RKV.open); }
+}
+
+// §RKV.CRATERS — S7-EDIT(§PLANETS srfMakeHeight, srfDeposits, srfSiteDef; §SURFACE hazards, dayNight): struck sites stay struck
+function rkvCraterOf(site) { return SBX.profile?.craters?.[site.seed] || null; }
+const _rkvHeightBase = srfMakeHeight;
+srfMakeHeight = function (site) {
+  const H = _rkvHeightBase(site); const c = rkvCraterOf(site); if (!c) return H;
+  const n = skyNoise(site.seed ^ 0x51ab);
+  return (x, z) => {
+    let h = H(x, z); const dx = x - c.x, dz = z - c.z; const d = Math.hypot(dx, dz) / c.r;
+    if (d < 3.2) {
+      const bowl = d < 1 ? (1 - d * d) : 0; const rim = Math.exp(-(d - 1) * (d - 1) * 9) * 0.28;
+      const peak = c.r > 900 ? Math.exp(-d * d * 60) * 0.35 : 0;                          // large craters rebound into a central peak
+      const rays = d > 1 ? (n(Math.atan2(dz, dx) * 3 + 11, d * 0.6) - 0.5) * 0.12 * Math.exp(-(d - 1) * 1.4) : 0;   // ejecta blanket
+      h = h * (d < 1 ? 0.25 + 0.75 * d : 1) + (rim + rays - bowl + peak) * c.d;
+    }
+    return h;
+  };
+};
+const _rkvDepBase = srfDeposits;
+srfDeposits = function (site) {
+  const out = _rkvDepBase(site); const c = rkvCraterOf(site); if (!c) return out;
+  const rng = makeRng(site.seed ^ 0xdee9);
+  for (let k = 0; k < 5; k++) { const a = rng() * Math.PI * 2, rr = c.r * (0.15 + rng() * 0.55); out.push({ i: 100 + k, x: c.x + Math.cos(a) * rr, z: c.z + Math.sin(a) * rr, ore: k % 2 ? 'ore_thorite' : 'ore_vexcry', units0: 1400 + Math.floor(rng() * 900), cave: false, deep: true }); }
+  return out;
+};
+const _rkvSiteBase = srfSiteDef;
+srfSiteDef = function (planet, i) { const s = _rkvSiteBase(planet, i); const c = SBX.profile?.craters?.[s.seed]; if (c) { s.hasBase = false; s.struck = c; s.name = s.name + ' (struck)'; s.hazard = Math.min(5, s.hazard + 1); } return s; };
+const _rkvHazBase = SRF.hazards;
+SRF.hazards = function (dt) {
+  _rkvHazBase.call(this, dt); if (this.hazT !== 0) return;
+  const c = rkvCraterOf(this.site); if (!c) return; const pl = world.player; const at = this.mode === 'rover' && this.rover ? this.rover.pos : pl.pos;
+  const days = Math.max(0.02, (galaxyNow() - c.t) / 86400000); const d = Math.hypot(at.x - c.x, at.z - c.z) / c.r;
+  if (d > 1.6) return; const dose = 7 * Math.pow(days, -1.2) * (1.6 - d);                // fission-product decay: the t^-1.2 rule
+  if (dose < 0.2) return;
+  if (pl.alive) { const r = sbxDamagePlayer(pl, dose, pl.pos, [0, 1, 0, 0]); if (r?.killed) { pl.lastAttacker = 'crater radiation'; world.hitShip(pl, 9, pl.pos, 'enemy', { name: 'crater radiation' }); } }
+  if (this.rover) this.damageRover(dose * 0.5, 'radiation');
+  if ((this.radT = (this.radT || 0) - 1) <= 0) { this.radT = 8; sbxToast(`RADIATION — ${dose.toFixed(1)} per second inside the crater. It decays as t^-1.2; it will be quieter in days.`); }
+};
+const _rkvDayBase = SRF.dayNight;
+SRF.dayNight = function (dt) {
+  _rkvDayBase.call(this, dt);
+  const ps = srfPState(this.planet); if (!ps.dustUntil) return; const left = (ps.dustUntil - galaxyNow()) / (3 * 86400000); if (left <= 0) return;
+  const k = clamp(left, 0, 1) * 0.85; sun.intensity *= 1 - k; hemi.intensity *= 1 - k * 0.6;
+  if (scene.background?.isColor) scene.background.lerp(_c.setHex(0x2a2018), k * 0.8);
+  if (this.fog) this.fog.color.lerp(_c.setHex(0x3a2c1c), k * 0.7);
+};
+
+// §RKV.RINGS — a shattered moon's debris shears into a ring around its primary over real hours
+const RING = { pts: null, band: null, sysRings: [] };
+const RING_FORM_MS = 2 * 3600000;                                                         // the arc closes in about two hours of galaxy time
+function ringsIn(sysIdx) { return Object.entries(SBX.profile?.moons || {}).filter(([k, m]) => m.sys === sysIdx && m.destroyed).map(([key, m]) => ({ key, ...m })); }
+function ringProgress(m) { return clamp((galaxyNow() - m.destroyed) / RING_FORM_MS, 0, 1); }
+function ringBuild() {
+  if (RING.pts) { scene.remove(RING.pts); RING.pts.geometry.dispose(); RING.pts.material.dispose(); RING.pts = null; }
+  if (RING.band) { scene.remove(RING.band); RING.band.geometry.dispose(); RING.band.material.dispose(); RING.band = null; }
+  const rings = ringsIn(SBX.profile.systemId); RING.sysRings = rings; if (!rings.length) return;
+  const N = 5000 * rings.length; const a0 = new Float32Array(N * 4); let o = 0;
+  for (const m of rings) { const rng = makeRng(m.key.length * 131 + 7); for (let i = 0; i < 5000; i++) { a0[o++] = m.a * (1 + (rng() - 0.5) * 0.12); a0[o++] = (rng() - 0.5) * 0.04; a0[o++] = (rng() - 0.5) * 2 * 0.25; a0[o++] = rng(); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3)); g.userData.el = a0;
+  RING.pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xb9ab94, size: 7, sizeAttenuation: true, transparent: true, opacity: 0.85, depthWrite: false })); RING.pts.frustumCulled = false; scene.add(RING.pts);
+  const m0 = rings[0]; RING.band = new THREE.Mesh(new THREE.RingGeometry(m0.a * 0.93, m0.a * 1.07, 128, 1), new THREE.MeshBasicMaterial({ color: 0xb09f84, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+  scene.add(RING.band); SBX.sceneObjs.push(RING.band);
+  ringUpdate();
+}
+/** Each particle keeps its own Keplerian rate (ω(1 + δ)); the spread in δ is what shears a cloud into a ring. */
+function ringUpdate() {
+  if (!RING.pts) return; const P = RING.pts.geometry.attributes.position; const el = RING.pts.geometry.userData.el; let o = 0, i = 0;
+  const C = moonPrimaryPos(_v[0]);
+  for (const m of RING.sysRings) {
+    const dtS = (galaxyNow() - m.destroyed) / 1000; const prog = ringProgress(m);
+    const u = _v[1].set(Math.cos(m.node), 0, Math.sin(m.node)); const n = _v[2].set(0, 1, 0).applyAxisAngle(u, m.incl); const w = _v[3].crossVectors(n, u);
+    const shear = 2 * Math.PI / (Math.abs(m.omega) * RING_FORM_MS / 1000);                // δ spread that wraps the arc in RING_FORM_MS
+    for (let k = 0; k < 5000; k++, i++) {
+      const a = el[o++], dz = el[o++], d = el[o++], ph = el[o++];
+      const th = m.theta0 + m.omega * dtS * (1 + d * shear * 2) + (ph - 0.5) * 0.08;
+      const puff = Math.exp(-dtS / 1800);                                                    // the initial cloud collapses to the plane
+      P.setXYZ(i, C.x + u.x * a * Math.cos(th) + w.x * a * Math.sin(th) + n.x * a * dz * (0.2 + puff), C.y + u.y * a * Math.cos(th) + w.y * a * Math.sin(th) + n.y * a * dz * (0.2 + puff), C.z + u.z * a * Math.cos(th) + w.z * a * Math.sin(th) + n.z * a * dz * (0.2 + puff));
+    }
+    if (RING.band && m === RING.sysRings[0]) { RING.band.position.copy(C); RING.band.lookAt(_v[4].copy(C).add(n)); RING.band.material.opacity = 0.22 * prog * prog; }
+  }
+  P.needsUpdate = true;
+}
+/** Once the arc has spread, the ring is a belt: segments along it hold minable rubble (persisted like any belt). */
+function ringBelts(sysIdx) {
+  const out = []; const C = moonPrimaryPos(new THREE.Vector3());
+  for (const m of ringsIn(sysIdx)) {
+    const prog = ringProgress(m); const nSeg = Math.max(1, Math.round(1 + prog * 7));
+    const u = new THREE.Vector3(Math.cos(m.node), 0, Math.sin(m.node)); const n = new THREE.Vector3(0, 1, 0).applyAxisAngle(u, m.incl); const w = new THREE.Vector3().crossVectors(n, u);
+    const dtS = (galaxyNow() - m.destroyed) / 1000;
+    for (let s = 0; s < nSeg; s++) {
+      const th = m.theta0 + m.omega * dtS + (s / 8) * Math.PI * 2 * Math.sign(m.omega);
+      const pos = C.clone().addScaledVector(u, m.a * Math.cos(th)).addScaledVector(w, m.a * Math.sin(th));
+      out.push({ id: `ring_${m.key}_${s}`, name: `${m.name} ring ${s + 1}`, mix: { ore_thorite: 0.4, ore_vexcry: 0.3, ore_auberite: 0.3 }, pos: { x: pos.x, y: pos.y, z: pos.z }, ring: true });
+    }
+  }
+  return out;
+}
+
+// §RKV.HOOKS — S7-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxStep/sbxEnter): moons and rings with the system; slugs resolve on load and every tick
+const _rkvLoadBase = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) {
+  const sys = SBX.systems[sysIdx]; const base = sys._baseBelts || (sys._baseBelts = sys.belts.filter(b => !b.ring)); sys.belts = base.concat(ringBelts(sysIdx));
+  const r = _rkvLoadBase(sysIdx, entryPos);
+  rkvClearVis(); moonBuildVisuals(); ringBuild();
+  return r;
+};
+function rkvTick(dt) { rkvStep(dt); moonRender(); RING.t = (RING.t || 0) - dt; if (RING.t <= 0) { RING.t = 0.1; ringUpdate(); } if (!SRF.active) rkvKeys(); }
+$('rkv-close').onclick = () => rkvConsole(false);
+
+// =====================================================================================
+// §SUPERNOVA — one star, one date, one permanent change to the map
+//  A massive star is scheduled to collapse at a real-world time about a month after the
+//  first load; the date is on the title screen from the start. As it nears, its
+//  factions evacuate, services shut, markets across the region destabilise, and the
+//  abandoned stations and wrecks become a gold rush. At the moment itself the core
+//  collapses: everything in the star's system is destroyed for good, a neutron star or
+//  a black hole is left behind, and a shock front sweeps out through the gates to damage
+//  the neighbours. The galaxy clock decides the moment, so a deep orbit brings it closer.
+// =====================================================================================
+const SN = { key: 'vector-supernova', warnDays: 7, shockMs: 10 * 60000, lastLine: '', shock: null };
+/** The date, fixed at the very first load of this page and shared by every save. */
+function snScheduledT() {
+  let t = null; try { t = +localStorage.getItem(SN.key) || null; } catch (e) {}
+  if (!t) { t = Math.ceil((Date.now() + 30 * 86400000) / 3600000) * 3600000; try { localStorage.setItem(SN.key, String(t)); } catch (e) {} }
+  return t;
+}
+SN.t0 = snScheduledT();
+function snPickStar(systems) {
+  const rng = makeRng(CONFIG.sbx.seed ^ 0x5a5a5);
+  const c = systems.map((s, i) => i).filter(i => i !== 0 && !systems[i].wh && !systems[i].bh && systems[i].sec > 0 && systems[i].sec < 0.5 && systems[i].gates.length >= 2 && !systems[i].gates.includes(0));
+  const pool = c.length ? c : systems.map((s, i) => i).filter(i => i !== 0 && !systems[i].wh && !systems[i].bh);
+  return pool[Math.floor(rng() * pool.length)];
+}
+const _snGenBase = generateUniverse;
+generateUniverse = function (seed) { const s = _snGenBase(seed); const i = snPickStar(s); s[i].snStar = true; s.snIdx = i; return s; };   // S7-EDIT(§SBXDATA generateUniverse): one star is doomed
+function snRec() {
+  const p = SBX.profile; if (!p) return null;
+  if (!p.supernova) p.supernova = { sys: SBX.systems.snIdx, t: SN.t0, done: false };
+  return p.supernova;
+}
+/** Long countdowns read in days. */
+function snDur(ms) { ms = Math.max(0, ms); const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.floor(ms % 3600000 / 60000); return d ? `${d} d ${h} h` : h ? `${h} h ${m} m` : fmtDur(ms); }
+const snLeft = () => { const r = snRec(); return r ? r.t - galaxyNow() : Infinity; };
+const snRegion = (r = snRec()) => r ? [r.sys, ...SBX.systems[r.sys].gates] : [];
+function snDateText(t) { const d = new Date(t); return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+function snStatusLine() {
+  const r = snRec(); if (!r) return '';
+  const name = SBX.systems[r.sys].name;
+  if (r.done) return `${name} went supernova ${snDur(galaxyNow() - r.t)} ago — a ${r.remnant === 'bh' ? 'black hole' : 'neutron star'} remains.`;
+  return `Supernova: ${name} — ${snDateText(r.t)} (galaxy time) · in ${snDur(snLeft())}`;
+}
+
+// §SUPERNOVA.RUN_UP — evacuation, market instability, abandoned assets
+/** Apply the star's state to the (regenerated) system table: evacuation before, destruction after. */
+function snApply() {
+  const r = snRec(); if (!r) return; const sys = SBX.systems[r.sys]; const left = r.t - galaxyNow();
+  if (r.done) {
+    if (!sys.snDestroyed) {
+      sys.snDestroyed = true; sys.stations = []; sys.belts = [{ id: `snbelt_${r.sys}`, name: `${sys.name} remnant ejecta`, mix: { ore_vexcry: 0.5, ore_thorite: 0.5 }, pos: { x: 9000, y: 0, z: -4000 } }];
+      sys.env = { ...sys.env, hasPlanet: false, skyboxTint: 0x8a3a5a, fog: true, sunHue: 0.6 };
+      if (r.remnant === 'bh' && !sys.bh) sys.bh = { name: `${sys.name} remnant`, Rs: BH.Rs, pos: [0, 0, -120000], axis: [0, 1, 0] };
+      if (r.remnant === 'ns') sys.ns = { name: `${sys.name} pulsar`, pos: [0, 0, -60000] };
+      sys.sec = 0;
+    }
+    for (const j of sys.gates) { const n = SBX.systems[j]; if (n.snShocked) continue; n.snShocked = true; for (const st of n.stations) if (r.damaged?.[st.id] > galaxyNow()) for (const k of ['repair', 'fitting', 'hulls']) st.services[k] = false; }
+    return;
+  }
+  if (left < SN.warnDays * 86400000) {
+    // the faction pulls out in stages: yards and fitting first, the market last
+    for (const st of sys.stations) { if (left < 5 * 86400000) { st.services.hulls = false; st.services.fitting = false; st.services.agents = false; } if (left < 3 * 86400000) st.services.repair = false; if (left < 86400000) st.services.market = false; }
+  }
+}
+const _snPriceBase = ecoPrice;
+ecoPrice = function (stId, id) {                                                          // S7-EDIT(§ECONOMY ecoPrice): the doomed region's markets come apart
+  const v = _snPriceBase(stId, id); if (v == null) return v; const r = snRec(); if (!r || r.done) return v;
+  const left = r.t - galaxyNow(); if (left > SN.warnDays * 86400000) return v;
+  const si = sbxStationSysIdx(stId); const reg = snRegion(r); const near = reg.includes(si) ? 1 : SBX.systems[si]?.gates.some(g => reg.includes(g)) ? 0.5 : 0; if (!near) return v;
+  const urgency = 1 - left / (SN.warnDays * 86400000); const hour = Math.floor(galaxyNow() / 3600000);
+  const h = makeRng((stId.length * 977 + id.length * 131 + hour) >>> 0)();
+  let k = 1 + (h - 0.5) * 0.8 * urgency * near;                                           // volatility climbs as the date nears
+  if (si === r.sys) k *= 1 - 0.55 * urgency;                                              // fire sale: the evacuees dump stock
+  return v * k;
+};
+/** Abandoned wrecks drift in the doomed system during the last week — the gold rush. */
+function snGoldRush(sysIdx) {
+  const r = snRec(); if (!r || r.done || sysIdx !== r.sys) return; const left = r.t - galaxyNow(); if (left > SN.warnDays * 86400000) return;
+  const st = sbxSysState(sysIdx); const day = Math.floor(galaxyNow() / 86400000); if (st.snRushDay === day) return; st.snRushDay = day;
+  const rng = makeRng(day ^ 0xa11); const mods = Object.keys(SBX_MODULES); const bpcs = Object.keys(ITEMS).filter(i => i.startsWith('bpc_'));
+  for (let i = 0; i < 4; i++) {
+    const items = { [mods[Math.floor(rng() * mods.length)]]: 1, min_nobelium: 40 + Math.floor(rng() * 120), tg_luxuries: 4 + Math.floor(rng() * 12) };
+    if (rng() < 0.5) items[bpcs[Math.floor(rng() * bpcs.length)]] = 1;
+    st.wrecks.push({ x: (rng() - 0.5) * 12000, y: (rng() - 0.5) * 1500, z: (rng() - 0.5) * 12000, items, abandoned: true });
+  }
+  sbxToast(`Evacuation convoys left cargo drifting in ${SBX.systems[sysIdx].name} — ${fmtDur(left)} before the star goes.`);
+}
+
+// §SUPERNOVA.EVENT — core collapse: the system is gone, the remnant stays, the shock reaches the neighbours
+function snDetonate() {
+  const r = snRec(); if (!r || r.done) return; const p = SBX.profile;
+  r.done = true; const rng = makeRng(CONFIG.sbx.seed ^ 0xde7); r.remnant = rng() < 0.4 ? 'bh' : 'ns'; r.shockT = galaxyNow();
+  const sys = SBX.systems[r.sys]; const stIds = sys.stations.map(s => s.id); const losses = [];
+  // every asset in the star's system is destroyed: ships in its stations, hangars, orders, jobs, structures
+  for (const s of [...p.ships]) { const loc = s.location || ''; const at = loc.startsWith('station:') ? loc.slice(8) : null; if (at && stIds.includes(at) && s.uid !== p.activeShip) { p.ships.splice(p.ships.indexOf(s), 1); p.totalLost += fitValue(s) + cargoValue(s); losses.push(s.name); } }
+  for (const id of stIds) { const hg = p.hangars[id]; if (hg) { for (const [it, q] of Object.entries(hg)) p.totalLost += itemValue(it) * q; delete p.hangars[id]; } }
+  p.orders = p.orders.filter(o => !stIds.includes(o.station)); p.industry.jobs = p.industry.jobs.filter(j => !stIds.includes(j.station));
+  for (const st of [...p.structures]) if (st.sys === r.sys) sbxStructureDestroyed(st, { structEvents: [] });
+  const ss = SBX.sysState[r.sys]; if (ss) { ss.wrecks = []; ss.sigs = []; ss.belts = {}; }
+  if (p.planets?.['p' + r.sys]) p.planets['p' + r.sys].sterilised = true;
+  if (stIds.includes(p.home)) p.home = 'st_0_0';
+  // the neighbours: services knocked out for days, structures battered
+  r.damaged = {}; for (const j of sys.gates) { for (const st of SBX.systems[j].stations) r.damaged[st.id] = galaxyNow() + 2 * 86400000; for (const st of p.structures) if (st.sys === j) { st.shield = 0; st.armor = Math.max(0, st.armor * 0.4); } }
+  snApply();
+  // the pilot: inside the system is death; a neighbour gets the flash now and the shock front later
+  const pl = world.player; const here = SBX.active && p.systemId === r.sys;
+  if (here) {
+    REL.voidLoss = `Vaporised in the supernova of ${sys.name}.`; pl.lastAttacker = `the supernova of ${sys.name}`;
+    if (p.docked) { sbxShowStation(false); p.docked = false; pl.hangared = false; }
+    pl.alive = false; world.onPlayerKilled?.(pl);
+  } else if (SBX.active && sys.gates.includes(p.systemId)) { snFlash(1); SN.shock = { t: SN.shockMs / 1000 * 0.02 + 8 }; sbxToast(`${sys.name} has gone supernova next door. The shock front arrives in seconds — get behind something big or get out.`); }
+  sbxToast(`SUPERNOVA — ${sys.name} is gone. ${losses.length ? `Lost with it: ${losses.join(', ')}.` : ''} A ${r.remnant === 'bh' ? 'black hole' : 'neutron star'} remains.`);
+  SBX.dirty = true; sbxSave('supernova');
+}
+function snFlash(k) {
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xdfe8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  const dir = _v[0].set(0.3, 0.2, -1).normalize(); spr.position.copy(camera.position).addScaledVector(dir, 15000); spr.scale.setScalar(60000 * k); scene.add(spr); SN.flash = { spr, t: 6 };
+}
+function snTick(dt) {
+  const r = snRec(); if (!r) return;
+  if (!r.done && galaxyNow() >= r.t) snDetonate();
+  // the shock front in a neighbouring system: a visible wall of light and plasma, then damage
+  if (SN.shock) { SN.shock.t -= dt; if (SN.shock.t <= 0) { SN.shock = null; const pl = world.player; if (pl.alive && !SBX.profile.docked) { world.explode(pl.pos, 6, 0xbfd4ff); shake.add(1); const r2 = world.hitShip(pl, pl.maxHull * 0.45 + 40, pl.pos, 'enemy', { name: 'the supernova shock front' }); sbxToast('The shock front passes — hull scoured.'); } } }
+  if (SN.flash) { SN.flash.t -= dt; SN.flash.spr.material.opacity = clamp(SN.flash.t / 6, 0, 1); if (SN.flash.t <= 0) { scene.remove(SN.flash.spr); SN.flash.spr.material.dispose(); SN.flash = null; } }
+  const el = $('sys-sn'); const line = snStatusLine(); const inReg = snRegion(r).includes(SBX.profile.systemId);
+  if (el && line !== SN.lastLine) { SN.lastLine = line; el.textContent = line; }
+  if (el) el.style.color = r.done ? 'var(--cyan-dim)' : snLeft() < SN.warnDays * 86400000 || inReg ? 'var(--red)' : 'var(--amber)';
+  if (NS.pulsar) nsRender(dt);
+}
+
+// §SUPERNOVA.REMNANT — a neutron star: a tiny hot point, two sweeping beams, a young nebula
+const NS = { pulsar: null };
+REL.builders.push((sysIdx, out) => {
+  const n = SBX.systems[sysIdx]?.ns; if (!n) return;
+  const mu = 8e9; out.push({ kind: 'ns', name: n.name, pos: new THREE.Vector3(...n.pos), vel: new THREE.Vector3(), mu, rMin: 400, soi: 40000, warpR: 6000, accelMag: (r) => mu / (r * r) });
+});
+REL.stepHooks.push((pl) => { for (const s of REL.sources) if (s.kind === 'ns' && pl.alive && pl.pos.distanceTo(s.pos) < s.rMin) { REL.voidLoss = `Crushed onto the surface of ${s.name}.`; pl.lastAttacker = s.name; pl.alive = false; world.onPlayerKilled?.(pl); } });
+function nsBuild(sysIdx) {
+  if (NS.pulsar) { scene.remove(NS.pulsar); NS.pulsar = null; }
+  const n = SBX.systems[sysIdx]?.ns; if (!n) return;
+  const g = new THREE.Group(); g.position.set(...n.pos);
+  const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xcfe4ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); core.scale.setScalar(5000); g.add(core);
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0x9fc8ff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const beams = new THREE.Group(); for (const s of [1, -1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(1800, 40000, 24, 1, true), beamMat); c.position.y = s * 20000; c.rotation.x = s > 0 ? Math.PI : 0; beams.add(c); }
+  beams.rotation.z = 0.5; g.add(beams); g.userData.beams = beams; scene.add(g); SBX.sceneObjs.push(g); NS.pulsar = g;
+  SBX.points.push({ kind: 'bh', name: `${n.name} (neutron star)`, pos: g.position.clone().add(_v[0].set(12000, 0, 0)) });
+}
+function nsRender(dt) { const b = NS.pulsar.userData.beams; b.rotation.y += dt * 3.1; }
+
+// §SUPERNOVA.HOOKS — S7-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxEnter, §BOOT title): applied on every load; the date on the title screen
+const _snLoadBase = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) { snApply(); snGoldRush(sysIdx); const r = _snLoadBase(sysIdx, entryPos); nsBuild(sysIdx); return r; };
+function snTitleLine() {
+  try { if (!SBX.systems) SBX.systems = generateUniverse(); } catch (e) { return; }
+  const i = SBX.systems.snIdx; const el = $('sn-title'); if (!el) return;
+  const left = SN.t0 - Date.now();
+  el.textContent = left > 0 ? `⚠ Supernova scheduled: ${SBX.systems[i].name}, ${snDateText(SN.t0)} — ${snDur(left)} from now. It will change the map for good.` : `${SBX.systems[i].name} has gone supernova. The map is not what it was.`;
+}
+
+// §SUPERNOVA.MAP — S7-EDIT(§SBXUI sbxDrawMap): the doomed star, the remnant, the shock front, the black holes
+const _snMapBase = sbxDrawMap;
+sbxDrawMap = function () {
+  _snMapBase(); const r = snRec(); if (!r) return;
+  const c = $('mapcanvas'); const g = c.getContext('2d'); const W = c.width, H = c.height;
+  const xs = SBX.systems.map(s => s.pos.x), ys = SBX.systems.map(s => s.pos.y);
+  const mnx = Math.min(...xs) - 60, mxx = Math.max(...xs) + 60, mny = Math.min(...ys) - 60, mxy = Math.max(...ys) + 60;
+  const X = (x) => (x - mnx) / (mxx - mnx) * (W - 80) + 40, Y = (y) => (y - mny) / (mxy - mny) * (H - 100) + 60;
+  const s = SBX.systems[r.sys]; const x = X(s.pos.x), y = Y(s.pos.y); g.textAlign = 'center'; g.font = '20px monospace';
+  if (!r.done) {
+    g.strokeStyle = 'rgba(255,90,90,0.8)'; g.lineWidth = 3; g.setLineDash([10, 8]); g.beginPath(); g.arc(x, y, 44 + Math.sin(Date.now() * 0.003) * 4, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#ff5a5a'; g.fillText(`SUPERNOVA ${snDur(snLeft())}`, x, y - 52);
+  } else {
+    const k = clamp((galaxyNow() - r.shockT) / SN.shockMs, 0, 1); let reach = 0; for (const j of s.gates) reach = Math.max(reach, Math.hypot(X(SBX.systems[j].pos.x) - x, Y(SBX.systems[j].pos.y) - y));
+    g.strokeStyle = `rgba(190,210,255,${0.9 - 0.6 * k})`; g.lineWidth = 4; g.beginPath(); g.arc(x, y, 30 + (reach + 30) * k, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#bfd4ff'; g.fillText(r.remnant === 'bh' ? 'REMNANT: BLACK HOLE' : 'REMNANT: PULSAR', x, y - 52);
+  }
+  SBX.systems.forEach((q, i) => { if (!q.bh || (q.wh && i !== SBX.profile.systemId) || (r.done && i === r.sys)) return; g.fillStyle = '#ffcf8a'; g.fillText('● BH', X(q.pos.x), Y(q.pos.y) - 30); });
+};
+
+// §SUPERNOVA.SAVE_V5 — v4 → v5: the galaxy clock, wormhole budgets, moons, craters, slugs, the star
+CONFIG.sbx.saveVersion = 5;
+const _mig5base = sbxMigrateProfile;
+sbxMigrateProfile = function (p) {
+  p = _mig5base(p);
+  if (p.galaxySkew == null) p.galaxySkew = 0;
+  for (const k of ['wormholes', 'moons', 'craters']) if (!p[k]) p[k] = {};
+  if (!p.rkvs) p.rkvs = []; if (!p.atrocities) p.atrocities = [];
+  p.v = CONFIG.sbx.saveVersion;
+  return p;
+};
+
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
 //  part18 — Sandbox controller: enter/exit, docking, the per-tick step, input, hooks
@@ -10189,6 +11618,7 @@ function sbxStep(dt) {
   p.time += dt;
   sbxMiningFX(dt);
   if (typeof partPlayerStep === 'function') { partPlayerStep(dt); partDebrisStep(dt); if (!SRF.active) { partNpcStep(dt); if (typeof titanStep === 'function') titanStep(dt); } } // S6-EDIT(§SBXCONTROL sbxStep): ticks the part runtime, NPC parts, debris and titans
+  if (typeof relStep === 'function') relStep(dt);                   // S7-EDIT(§SBXCONTROL sbxStep): gravity sources, dilation, black-hole well, slugs, the star
   if (SBX.deathT != null) { SBX.deathT -= dt; if (SBX.deathT <= 0) { SBX.deathT = null; sbxDeathResolve(); } return; }
   if (pl.target && (!pl.target.alive || pl.target.active === false)) pl.target = null;
   if (SRF.active) {
@@ -10209,7 +11639,7 @@ function sbxStep(dt) {
   SBX.advAcc = (SBX.advAcc || 0) + dt * 1000;
   if (SBX.advAcc >= 1000) {
     const chunk = SBX.advAcc; SBX.advAcc = 0;
-    const rep = sbxAdvance(chunk, { live: true });
+    const rep = typeof relAdvance === 'function' ? relAdvance(chunk) : sbxAdvance(chunk, { live: true });   // S7-EDIT(§SBXCONTROL sbxStep): the slice is the galaxy's time — dilation makes it longer
     if (rep) { for (const j of rep.jobs) sbxToast(`Job complete: ${j}.`); for (const sname of rep.skills) sbxToast(`Skill trained: ${sname}.`); for (const ev of rep.structEvents) sbxToast(ev); }
     if (p.docked && $('sb-station').classList.contains('on') && (stationUI.tab === 'market' || (rep && (rep.jobs.length || rep.skills.length)))) sbxRenderStation();
   }
@@ -10534,7 +11964,7 @@ function currentMissionDef() { return game.mode === 'versus' ? VERSUS_MISSION : 
 function refreshScreen() { SCREEN_HANDLERS[screen]?.enter?.(screen); }
 const SCREEN_HANDLERS = {
   COOP: { enter() { net.setStatus(net.status); const roomMode = !net.rtcAvailable && !!net.room; $('coop-mode').textContent = roomMode ? 'This page uses the live room: anyone with this artifact open can host or join with one click, no codes.' : net.rtcAvailable ? 'Joining opens a direct link between the two of you; the lobby only introduces you. Strict firewalls can block it — then use the codes.' : 'Connections are blocked on this page and no live room is available.'; $('lobby-name').value = game.profile.name; lobby.render(); lobby.track(); } },
-  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; $('sbx-sub').textContent = sbxUnlocked() ? 'The open universe — mine, trade, fight, build, land on planets. Progress saves.' : 'Skip the tutorial — jump straight into the open universe. Progress saves.'; audio.engineOff(); } },
+  BRIEFING: { enter() { const guest = net.role === 'guest'; const vs = game.mode === 'versus'; const needOpponent = vs && net.role === 'host' && !net.peers.length; $('btn-launch').disabled = guest || needOpponent; $('btn-launch').textContent = guest ? 'Waiting for host' : needOpponent ? 'Waiting for an opponent' : 'Launch'; if (guest) net.sendCfg(); const d = currentMissionDef(); const i = MISSIONS.indexOf(d); $('b-name').textContent = vs ? d.name : `${i + 1}. ${d.name}`; $('b-sub').textContent = vs ? `${1 + net.peers.length + (guest ? world.players.filter(p => p && p !== world.player).length : 0)} pilots — ${d.objectives[0].text}` : `Briefing — ${d.objectives.map(o => o.text).join(' → ')}`; $('b-dialogue').textContent = (d.dialogue?.briefing || []).join('\n'); $('b-text').textContent = d.briefingText; $('b-credits').textContent = game.credits; $('b-ship').textContent = `${SHIPS[game.selectedShip].name} · hull ${fmt(game.hullFraction * 100)}%`; if (typeof snTitleLine === 'function') snTitleLine(); $('sbx-sub').textContent = sbxUnlocked() ? 'The open universe — mine, trade, fight, build, land on planets. Progress saves.' : 'Skip the tutorial — jump straight into the open universe. Progress saves.'; audio.engineOff(); } },
   PLAYING: { enter(from) { if (from !== SCREEN.PAUSED && game.mode !== 'sandbox') startMission(currentMissionDef()); resetClock(); audio.resume(); if (net.role === 'guest') { net.lastSnapT = 0; net.prevSnapT = 0; } } },
   PAUSED: { enter() { audio.suspend(); $('btn-abort').textContent = game.mode === 'sandbox' ? 'Save & leave sandbox' : 'Abort mission'; }, exit() { resetClock(); } },
   DEBRIEF: { enter() { audio.engineOff(); } },
@@ -10590,6 +12020,7 @@ function resetClock() { lastTime = performance.now(); accumulator = 0; }
 function simulate(dt) { world.step(dt); if (game.mode === 'sandbox') sbxStep(dt); else missionUpdate(dt); }
 function frame(now) {
   requestAnimationFrame(frame);
+  if (window.__vectorFreeze) { lastTime = now; return; }              // test harness: hold the last frame for screenshots
   let dt = (now - lastTime) / 1000; lastTime = now; dt = Math.min(Math.max(dt, 0), CONFIG.sim.maxFrameDelta);
   if (input.consume('KeyM')) audio.setMuted(!game.muted);
   if (input.consume('Backquote')) CONFIG.render.showFps = !CONFIG.render.showFps;
@@ -10647,7 +12078,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo, REL, relGamma, galaxyNow, relKineticJ, relMegatons, relSourcesFor, relUpdateSources, relGravity, relDominant, relFlight, relCircularize, relPredict, relDilation, relRatioText, relTimeSkip, relAdvance, relEmerge, relTidalStep, relStep, relSetQuality, BH, bhSourceOf, bhCircV, bhToggleHold, bhSwallow, bhStep, bhRenderGate, bhInstallPass, WH, whRecord, whForecast, whShipMass, whFleetMasses, MOON, moonDefs, moonState, RKV, rkvTargets, rkvLaunch, rkvAim, rkvStep, rkvImpact, rkvCraterOf, rkvConsole, RING, ringsIn, ringProgress, ringBelts, SN, snRec, snDetonate, snApply, snStatusLine, snLeft, NS, sbxDrawMap, sbxShowMap, bhDebugRender, composer, sbxSysState,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
