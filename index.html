@@ -116,6 +116,15 @@
       §SUPERNOVA.HOOKS       S7-EDIT(§SYSTEM sbxLoadSystem, §SBXCONTROL sbxEnter, §BOOT title): applied on every load; the date on the title screen
       §SUPERNOVA.MAP         S7-EDIT(§SBXUI sbxDrawMap): the doomed star, the remnant, the shock front, the black holes
       §SUPERNOVA.SAVE_V5     v4 → v5: the galaxy clock, wormhole budgets, moons, craters, slugs, the star
+    §WORLDS                living planets: shaded globes, weather, night-side cities, orbital traffic,
+      §WORLDS.PROFILE        what a planet is, who lives there, where the cities stand
+      §WORLDS.GLOBE          the planet shader (and its cloud deck), shared by space, the survey globe and screenshots
+      §WORLDS.SPACE          the planet in the sky of its system, its clouds, its orbital life
+      §WORLDS.SURVEY         S8-EDIT(§ORBITAL srfRenderOrbital): the survey globe is the real planet, rendered
+      §WORLDS.SKY            on the ground: a sky dome with the sun in it, a cloud deck, and the plasma of entry
+      §WORLDS.CITY           civilization on the ground: blocks of towers with lit windows, roads, air traffic, a spaceport
+      §WORLDS.PORT           spaceport services: sell, refuel, repair, the local market
+      §WORLDS.HOOKS          S8-EDIT(§MISSIONS applyEnvironment, §SURFACE enterScene/spawnSiteObjects/shutdownVisuals/step, §ORBITAL srfRenderOrbital)
     §SBXCONTROL            sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                  mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -160,6 +169,15 @@
     §SBXUI sbxDrawMap — the doomed star, the remnant, the shock front, the black holes
     §SBXCONTROL sbxStep — gravity sources, dilation, black-hole well, slugs, the star
     §SBXCONTROL sbxStep — the slice is the galaxy's time — dilation makes it longer
+
+  STAGE 8 (WORLDS) CHANGES TO EARLIER SECTIONS (each marked in place with "S8-EDIT")
+    §ORBITAL srfRenderOrbital — the survey globe is the planet itself when WebGL allows
+    §ORBITAL srfRenderOrbital — population and settlements on the survey
+    §ORBITAL srfRenderOrbital — the survey globe is the real planet, rendered
+    §PLANETS srfMakeHeight — cities sit on graded ground
+    §SURFACE groundY — buildings are ground
+    §SURFACE useKey — E on the spaceport pad opens its services
+    §MISSIONS applyEnvironment, §SURFACE enterScene/spawnSiteObjects/shutdownVisuals/step, §ORBITAL srfRenderOrbital
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -738,6 +756,7 @@
   <h3>Relativity</h3>
   <p class="small hp">Light is slow here (3 km/s) and gravity is real. Near a <b>black hole</b> or a moon, flight turns <b>ballistic</b>: gravity pulls, <b>W</b> burns along the nose, <b>S</b> retro, <b>Space</b> matches the local frame, and the green arc is the nav computer's prediction (gold when a flyby will <b>gain</b> speed). Deep in a black hole's well your clock runs slow — the top panel reads it as "1 hour here = N hours outside" and the whole galaxy (skills, jobs, orders, markets, structures, factions) runs at the outside rate. <b>H</b> holds an orbit (nose prograde, so tides compress the hull); below 3 Rs no orbit holds by itself, and every second costs propellant and heat. Long, thin hulls break in the tides. The horizon is final. <b>Wormholes</b> show the far side; each transit spends stability by mass — the panel says whether your fleet fits. On a titan's bridge, <b>U</b> opens mass-driver fire control: a relativistic slug shatters moons and scars planets for good. One star is going <b>supernova</b> on the date on the title screen. <b>F8</b> sets lensing quality.</p>
   <h3>Planets</h3>
+  <p class="small hp">Inhabited worlds show it: city lights on the night side, orbital habitats and shuttle traffic, and in high sec a space elevator. Each planet's capital stands near its first landing site; smaller settlements dot some of the others (the survey card says which). Cities have a <b>spaceport pad</b> beside the landing zone — land on it and press <b>E</b> to sell ore and relics, refuel, patch the hull or buy local goods. Rooftops are solid. A city under an RKV strike stays a ruin.</p>
   <p class="small hp">Warp to a planet, hold orbit, press <b>E</b> — one site is always ready — and descend. Land gently on flat ground. You start with a rover in the hold: <b>R</b> deploys it. Drive it (<b>P</b> prospects) to drill deposits, grab salvage crates, ride geyser vents for gas, clear fauna nests, and run the timed <b>circuit</b> through the amber rings for ISK. Settlements on green worlds buy ore and artifacts on the spot. <b>B</b> anchors a mining outpost. Climb past 900 m to leave.</p>
   <h3>Multiplayer</h3>
   <p class="small hp">Everyone playing shares space. Pilots in your system appear with nametags — in low/null sec (below 0.5) they can shoot you, and you them. The lobby on the title screen hosts co-op and versus matches.</p>
@@ -760,6 +779,11 @@
   <h1>Spinal mass driver — fire control</h1><h3>Relativistic kill vehicle · energy is (γ − 1) m c²</h3>
   <div id="rkv-body"></div>
   <div class="actions" style="margin-top:14px"><button id="rkv-close">Close [U]</button></div>
+</div></div>
+<div class="sb-overlay" id="sb-port"><div class="sb-card">
+  <h1>Spaceport services</h1><h3>Planetside — sell, refuel, patch, buy local</h3>
+  <div id="port-body"></div>
+  <div class="actions" style="margin-top:14px"><button id="port-close">Close</button></div>
 </div></div>
 <div class="sb-overlay" id="sb-loss"><div class="sb-card">
   <h1>Ship destroyed</h1><h3>Everything fitted went with it</h3>
@@ -7632,10 +7656,12 @@ function srfRenderOrbital() {
   g.clearRect(0, 0, W, H);
   const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.4;
   // the globe
-  const grd = g.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R);
-  const hue = Math.round(p.hue * 360);
-  grd.addColorStop(0, `hsl(${hue},38%,46%)`); grd.addColorStop(0.75, `hsl(${hue},42%,26%)`); grd.addColorStop(1, `hsl(${hue},45%,10%)`);
-  g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+  if (!(typeof worldGlobeDraw === 'function' && worldGlobeDraw(g, cx, cy, R, p))) {   // S8-EDIT(§ORBITAL srfRenderOrbital): the survey globe is the planet itself when WebGL allows
+    const grd = g.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R);
+    const hue = Math.round(p.hue * 360);
+    grd.addColorStop(0, `hsl(${hue},38%,46%)`); grd.addColorStop(0.75, `hsl(${hue},42%,26%)`); grd.addColorStop(1, `hsl(${hue},45%,10%)`);
+    g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+  }
   g.strokeStyle = 'rgba(95,242,255,0.16)'; g.lineWidth = 1;
   for (let lat = -60; lat <= 60; lat += 30) { const r = Math.cos(lat * Math.PI / 180) * R, y = cy - Math.sin(lat * Math.PI / 180) * R * 0.999; g.beginPath(); g.ellipse(cx, y, r, r * 0.16, 0, 0, Math.PI * 2); g.stroke(); }
   g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
@@ -7656,7 +7682,7 @@ function srfRenderOrbital() {
     g.fillStyle = 'rgba(230,246,255,0.85)'; g.font = '10px monospace'; g.fillText(s.name.split('· ')[1] || s.name, x + 10, y + 3);
     ORB.markers.push({ i, x, y });
   }
-  $('orb-title').textContent = `${p.name} — ${p.g} g · ${ps.scanned}/${p.nSites} sites surveyed`;
+  $('orb-title').textContent = `${p.name} — ${p.g} g · ${ps.scanned}/${p.nSites} sites surveyed` + (typeof worldProfile === 'function' ? (() => { const W = worldProfile(p.sys); return W?.inhabited ? ` · pop. ${worldPopText(W.pop)}` : ' · uninhabited'; })() : '');   // S8-EDIT(§ORBITAL srfRenderOrbital): population and settlements on the survey
   $('orb-hint').textContent = ps.scanned < p.nSites ? 'Cycle a fitted Surface surveyor in orbit to resolve more sites. Drag to rotate.' : 'Fully surveyed. Drag to rotate.';
   // detail card for the selection
   const sel = ORB.sel != null ? srfSiteDef(p, ORB.sel) : null;
@@ -7670,6 +7696,7 @@ function srfRenderOrbital() {
       <div class="ovrow"><span class="k">Hazard</span><span class="n">${'▮'.repeat(sel.hazard)}${'▯'.repeat(5 - sel.hazard)}</span></div>
       <div class="ovrow"><span class="k">Signature</span><span class="n">${ITEMS[sel.ore].name}</span></div>
       <div class="ovrow"><span class="k">Gravity</span><span class="n">${p.g} g · thrust margin ${(srfTW(p.g) * 100 - 100).toFixed(0)}%</span></div>
+      ${(() => { const c = typeof worldCityOf === 'function' ? worldCityOf(p, sel) : null; return c ? `<div class="ovrow"><span class="k">Settlement</span><span class="n">${c.name}${rkvCraterOf(sel) ? ' · RUINED' : c.capital ? ' · capital, spaceport' : ' · spaceport'}</span></div>` : ''; })()}
       <div class="ovrow"><span class="k">Status</span><span class="n">${st.visited ? 'VISITED' : 'unvisited'}${sel.hasBase && !st.bases[0] ? ' · hostile signals' : ''}</span></div>
       ${sel.gateMod ? `<div class="ovrow"><span class="k">Requires</span><span class="n">${SBX_MODULES[sel.gateMod].name}</span></div>` : ''}
       ${why ? `<p class="small" style="color:var(--red)">${why}</p>` : ''}
@@ -11487,6 +11514,441 @@ sbxMigrateProfile = function (p) {
   return p;
 };
 
+// =====================================================================================
+// §WORLDS — living planets: shaded globes, weather, night-side cities, orbital traffic,
+//  a real atmospheric entry, a sky, and civilization on the ground
+//  Every planet is drawn by one shader from its own seed and surface type: oceans and
+//  continents, ice caps, lava seas or toxic haze, a moving cloud deck, a soft terminator,
+//  and — on inhabited worlds — city lights on the night side exactly where the landing
+//  sites' cities stand. Inhabited worlds have orbital habitats, shuttle traffic and (in
+//  high sec) a space elevator. On the ground: a sky dome, a cloud deck you fall through,
+//  a plasma sheath on entry, and cities — towers with lit windows, roads, streetlights,
+//  air traffic, a spaceport with services. RKV strikes leave ruins and scorched globes.
+// =====================================================================================
+const WORLD = { mat: null, cloudMat: null, clouds: null, stdMat: null, orb: null, prof: null, sky: null, deck: null, sheath: null, city: null, cloudTex: null, gl: null, glScene: null };
+const WORLD_TYPES = {
+  temperate: { ocean: 0x0a2c52, low: 0x3c6a2c, high: 0x8a7a5c, ice: 0xeef4fa, sea: 0.50, clouds: 0.55, cloudCol: 0xffffff, polar: 0.80, spec: 1.0 },
+  ice:       { ocean: 0x7ea4bf, low: 0xcfe0ea, high: 0xf2f7fb, ice: 0xffffff, sea: 0.40, clouds: 0.35, cloudCol: 0xf4f8ff, polar: 0.45, spec: 0.5 },
+  barren:    { ocean: 0x4a4540, low: 0x6e665c, high: 0x9c9284, ice: 0xd4d4d4, sea: -1.0, clouds: 0.0, cloudCol: 0xffffff, polar: 0.93, spec: 0.0 },
+  volcanic:  { ocean: 0xff5a14, low: 0x1e1512, high: 0x4a382e, ice: 0x6a5a50, sea: 0.40, clouds: 0.30, cloudCol: 0x4a4440, polar: 2.00, spec: 0.0, lava: 1 },
+  toxic:     { ocean: 0x5a6a1c, low: 0x7c8a3a, high: 0xa4a860, ice: 0xd8d8a0, sea: 0.45, clouds: 0.85, cloudCol: 0xd8dc80, polar: 2.00, spec: 0.3 },
+};
+const FACTION_CITY = { authority: { wall: 0xdfe6ee, glass: 0x9fc4e8, win: 0xfff2d8, beacon: 0x7fc8ff }, combine: { wall: 0x8c8a84, glass: 0x6a6c70, win: 0xffc47a, beacon: 0xffa040 },
+  guild: { wall: 0xcbb592, glass: 0x9a8a6a, win: 0xffe0a8, beacon: 0xffd166 }, syndicate: { wall: 0x3a3438, glass: 0x2a2226, win: 0xff7a6a, beacon: 0xff3a3a } };
+
+// §WORLDS.PROFILE — what a planet is, who lives there, where the cities stand
+const worldSiteDir = (s) => { const la = s.lat / 2 * Math.PI / 180, lo = s.lon * Math.PI / 180; return new THREE.Vector3(Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)); };
+/** The capital stands on the first temperate site — people build where they can breathe — else on the first site. */
+function worldCapitalIdx(planet) { for (let i = 0; i < planet.nSites; i++) if (srfSiteDef(planet, i).biome === 'temperate') return i; return 0; }
+function worldCityOf(planet, site) {
+  if (!planet || !rkvInhabited(planet)) return null;
+  const rng = makeRng(site.seed ^ 0xc17e);
+  const capital = site.i === worldCapitalIdx(planet); const harsh = site.biome === 'volcanic' || site.biome === 'toxic';
+  if (!capital && (rng() > (harsh ? 0.25 : 0.55))) return null;
+  const sys = SBX.systems[planet.sys]; const big = sys.sec >= 0.5 ? 1 : sys.sec > 0 ? 0.7 : 0.45;
+  const a = rng() * Math.PI * 2; const R = capital ? 380 + 160 * big : 200 + 80 * big;
+  const names = ['Port', 'Haven', 'Reach', 'Landing', 'Hold', 'Crossing', 'Spire', 'Gate'];
+  return { capital, R, x: Math.cos(a) * (R + 560), z: Math.sin(a) * (R + 560), seed: site.seed ^ 0x5eed, big, faction: planet.faction,
+    name: capital ? `${planet.name.replace(/ I$/, '')} ${names[Math.floor(rng() * names.length)]}` : `${site.name.split('· ')[1] || 'Town'} settlement` };
+}
+function worldProfile(sysIdx) {
+  const planet = sbxPlanetOf(sysIdx); if (!planet) return null;
+  const site0 = srfSiteDef(planet, 0); const sys = SBX.systems[sysIdx];
+  const inhabited = rkvInhabited(planet); const rng = makeRng(CONFIG.sbx.seed ^ (sysIdx * 131 + 77));
+  const pop = !inhabited ? 0 : sys.sec >= 0.5 ? 0.8e9 + rng() * 3.2e9 : sys.sec > 0 ? 5e7 + rng() * 5.5e8 : 2e6 + rng() * 3.8e7;
+  const cities = []; const craters = []; const count = {};
+  for (let i = 0; i < planet.nSites; i++) {
+    const s = srfSiteDef(planet, i); count[s.biome] = (count[s.biome] || 0) + 1; const c = worldCityOf(planet, s); const cr = SBX.profile?.craters?.[s.seed];
+    if (c) cities.push({ dir: worldSiteDir(s), size: c.capital ? 1 : 0.55, struck: !!cr, site: i, city: c });
+    if (cr) craters.push({ dir: worldSiteDir(s), r: clamp(cr.r / 1500, 0.2, 1), age: (galaxyNow() - cr.t) / 86400000 });
+  }
+  const dust = clamp(((srfPState(planet).dustUntil || 0) - galaxyNow()) / (3 * 86400000), 0, 1);
+  // the face of the world: a living world wherever any of it is temperate, else its commonest ground
+  const type = inhabited && count.temperate ? 'temperate' : Object.entries(count).sort((a, b) => b[1] - a[1] || (a[0] === site0.biome ? -1 : 1))[0][0];
+  return { planet, type, inhabited, pop, cities, craters, dust, seed: (CONFIG.sbx.seed ^ sysIdx * 977) % 1000 / 10, faction: planet.faction, sec: sys.sec, elevator: inhabited && sys.sec >= 0.5 };
+}
+function worldPopText(n) { return n >= 1e9 ? `${(n / 1e9).toFixed(1)} billion` : n >= 1e6 ? `${Math.round(n / 1e6)} million` : `${Math.round(n / 1e3)} thousand`; }
+
+// §WORLDS.GLOBE — the planet shader (and its cloud deck), shared by space, the survey globe and screenshots
+const WORLD_NOISE = `
+float wh3(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float wn3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(wh3(i), wh3(i + vec3(1,0,0)), f.x), mix(wh3(i + vec3(0,1,0)), wh3(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(wh3(i + vec3(0,0,1)), wh3(i + vec3(1,0,1)), f.x), mix(wh3(i + vec3(0,1,1)), wh3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float wfbm(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 6; i++) { s += a * wn3(p); p = p * 2.03 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return s; }`;
+const WORLD_VS = `varying vec3 vObj; varying vec3 vWN; varying vec3 vWP; void main(){ vObj = normalize(position); vWN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vWP = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const WORLD_FS = `
+uniform vec3 uSun; uniform vec3 uCamObj; uniform float uSeed; uniform float uTime;
+uniform vec3 uOcean, uLow, uHigh, uIce; uniform float uSea, uPolar, uSpec, uLava, uPop, uDust;
+uniform vec4 uCity[8]; uniform float uNCity; uniform vec4 uCrater[4]; uniform float uNCrater; uniform vec3 uWin;
+varying vec3 vObj; varying vec3 vWN; varying vec3 vWP;
+${WORLD_NOISE}
+void main(){
+  vec3 n = normalize(vObj); vec3 sp = n * 2.2 + uSeed;
+  float h = wfbm(sp) * 0.75 + wfbm(n * 7.0 + uSeed * 1.7) * 0.25;
+  float lat = abs(n.y) + (wn3(n * 9.0 + uSeed) - 0.5) * 0.12;
+  bool sea = h < uSea;
+  vec3 col; vec3 emis = vec3(0.0);
+  if (sea) { float depth = clamp((uSea - h) * 5.0, 0.0, 1.0); col = uOcean * (1.0 - 0.45 * depth);
+    if (uLava > 0.5) { emis += uOcean * (0.55 + 0.45 * wn3(n * 40.0 + uTime * 0.05)) * (1.0 - depth * 0.6) * 1.4; col = vec3(0.05, 0.02, 0.01); } }
+  else { float e = smoothstep(uSea, uSea + 0.28, h); col = mix(uLow, uHigh, e) * (0.85 + 0.3 * wn3(n * 30.0 + uSeed));
+    if (uLava > 0.5) emis += vec3(1.0, 0.3, 0.05) * pow(max(0.0, 1.0 - abs(wn3(n * 18.0 + uSeed) - 0.5) * 18.0), 3.0) * 0.8; }   // cracks in the crust
+  if (lat > uPolar) col = mix(col, uIce, smoothstep(uPolar, uPolar + 0.06, lat));
+  // cities: urban grey by day, light by night — clustered on the landing sites that host them
+  float urban = 0.0;
+  for (int i = 0; i < 8; i++) { if (float(i) >= uNCity) break; vec4 c = uCity[i]; float d = acos(clamp(dot(n, c.xyz), -1.0, 1.0));
+    float rad = 0.1 * abs(c.w); float core = smoothstep(rad, 0.0, d); float m = core * (0.12 + 0.88 * step(0.62 - core * 0.3, wn3(n * 75.0 + float(i) * 7.0))) * (0.55 + 0.45 * wn3(n * 23.0));   // districts, not a disc
+    urban += c.w > 0.0 ? m : -m * 0.8; }
+  if (!sea && uPop > 0.0) urban += smoothstep(0.66 - uPop * 0.1, 0.8, wfbm(n * 13.0 + uSeed * 3.1)) * step(0.72, wn3(n * 220.0)) * uPop;   // scattered towns
+  col = mix(col, vec3(0.42, 0.42, 0.44), clamp(urban, 0.0, 1.0) * 0.45);
+  // strike scars: dark basins with a glowing rim while young
+  for (int i = 0; i < 4; i++) { if (float(i) >= uNCrater) break; vec4 c = uCrater[i]; float d = acos(clamp(dot(n, c.xyz), -1.0, 1.0)); float r = 0.05 * c.w;
+    col *= mix(1.0, 0.25, smoothstep(r, r * 0.4, d)); emis += vec3(1.0, 0.35, 0.08) * exp(-pow((d - r * 0.8) / (r * 0.18), 2.0)) * clamp(1.0 - uDust * 0.2, 0.0, 1.0) * 0.8; }
+  col = mix(col, vec3(0.32, 0.26, 0.2), uDust * 0.55);
+  vec3 L = normalize(uSun); float ndl = dot(n, L);
+  float day = smoothstep(-0.12, 0.3, ndl);
+  vec3 V = normalize(uCamObj - n); vec3 R = reflect(-L, n);
+  float spec = sea ? pow(max(dot(R, V), 0.0), 60.0) * uSpec * 0.4 : 0.0;
+  vec3 lit = col * (0.035 + 1.15 * max(ndl, 0.0) * day) + vec3(1.0, 0.95, 0.85) * spec * day;
+  float night = smoothstep(0.1, -0.2, ndl);
+  emis += uWin * clamp(urban, 0.0, 1.0) * night * 1.7 * (1.0 - uDust * 0.7);
+  gl_FragColor = vec4(lit + emis, 1.0);
+}`;
+const WORLD_CLOUD_FS = `
+uniform vec3 uSun; uniform float uSeed; uniform float uTime; uniform float uCov; uniform vec3 uCol; uniform float uDust;
+varying vec3 vObj; varying vec3 vWN; varying vec3 vWP;
+${WORLD_NOISE}
+void main(){
+  vec3 n = normalize(vObj); float t = uTime * 0.004;
+  vec3 q = n * 3.2 + vec3(t, 0.0, -t * 0.6) + uSeed * 0.31;
+  float c = wfbm(q + wfbm(q * 1.7) * 0.6);
+  float th = 0.64 - uCov * 0.3; float a = smoothstep(th, th + 0.16, c) * 0.9 + uDust * 0.35;
+  float ndl = dot(n, normalize(uSun)); float day = smoothstep(-0.15, 0.25, ndl);
+  gl_FragColor = vec4(mix(uCol, vec3(0.42, 0.34, 0.26), uDust) * (0.006 + 1.05 * max(ndl, 0.0) * day), clamp(a * (0.55 + 0.45 * day), 0.0, 1.0));   // thin at night: city light shows through
+}`;
+function worldMaterials() {
+  if (WORLD.mat) return;
+  const u = { uSun: { value: new THREE.Vector3(1, 0, 0) }, uCamObj: { value: new THREE.Vector3(0, 0, 3) }, uSeed: { value: 0 }, uTime: { value: 0 },
+    uOcean: { value: new THREE.Color() }, uLow: { value: new THREE.Color() }, uHigh: { value: new THREE.Color() }, uIce: { value: new THREE.Color() },
+    uSea: { value: 0.5 }, uPolar: { value: 0.8 }, uSpec: { value: 1 }, uLava: { value: 0 }, uPop: { value: 0 }, uDust: { value: 0 }, uWin: { value: new THREE.Color(0xffc880) },
+    uCity: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) }, uNCity: { value: 0 }, uCrater: { value: Array.from({ length: 4 }, () => new THREE.Vector4()) }, uNCrater: { value: 0 } };
+  WORLD.mat = new THREE.ShaderMaterial({ uniforms: u, vertexShader: WORLD_VS, fragmentShader: WORLD_FS });
+  WORLD.cloudMat = new THREE.ShaderMaterial({ uniforms: { uSun: u.uSun, uSeed: u.uSeed, uTime: u.uTime, uCov: { value: 0.5 }, uCol: { value: new THREE.Color() }, uDust: u.uDust },
+    vertexShader: WORLD_VS, fragmentShader: WORLD_CLOUD_FS, transparent: true, depthWrite: false });
+}
+/** Load a profile into the shared uniforms. */
+function worldApplyProfile(P, mat = WORLD.mat, cloudMat = WORLD.cloudMat) {
+  const T = WORLD_TYPES[P.type] || WORLD_TYPES.barren; const u = mat.uniforms;
+  u.uSeed.value = P.seed; u.uOcean.value.setHex(T.ocean); u.uLow.value.setHex(T.low); u.uHigh.value.setHex(T.high); u.uIce.value.setHex(T.ice);
+  u.uSea.value = T.sea; u.uPolar.value = T.polar; u.uSpec.value = T.spec; u.uLava.value = T.lava ? 1 : 0; u.uPop.value = P.inhabited ? clamp(Math.log10(P.pop) / 9.6, 0, 1) : 0; u.uDust.value = P.dust;
+  u.uWin.value.setHex(FACTION_CITY[P.faction]?.win || 0xffc880);
+  u.uNCity.value = Math.min(8, P.cities.length); P.cities.slice(0, 8).forEach((c, i) => u.uCity.value[i].set(c.dir.x, c.dir.y, c.dir.z, c.struck ? -c.size : c.size));
+  u.uNCrater.value = Math.min(4, P.craters.length); P.craters.slice(0, 4).forEach((c, i) => u.uCrater.value[i].set(c.dir.x, c.dir.y, c.dir.z, c.r));
+  cloudMat.uniforms.uCov.value = T.clouds; cloudMat.uniforms.uCol.value.setHex(T.cloudCol);
+}
+
+// §WORLDS.SPACE — the planet in the sky of its system, its clouds, its orbital life
+const _wSun = new THREE.Vector3(), _wInv = new THREE.Quaternion();
+function worldInstall(sysIdx) {
+  worldMaterials();
+  if (!WORLD.stdMat) WORLD.stdMat = env.planet.material;
+  worldClearOrbitals();
+  const P = SBX.active && game.mode === 'sandbox' ? worldProfile(sysIdx) : null; WORLD.prof = P;
+  if (!P || !env.planet.visible) { env.planet.material = WORLD.stdMat; if (WORLD.stdShell) env.atmoShell.material = WORLD.stdShell; if (WORLD.clouds) WORLD.clouds.visible = false; return; }
+  if (env.planet.geometry.parameters?.widthSegments < 96) { env.planet.geometry.dispose(); env.planet.geometry = new THREE.SphereGeometry(CONFIG.environment.planetRadius, 128, 96); }
+  env.planet.material = WORLD.mat; worldApplyProfile(P);
+  if (!WORLD.shellMat) {
+    WORLD.stdShell = env.atmoShell.material;
+    WORLD.shellMat = new THREE.ShaderMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, uniforms: { c: { value: new THREE.Color() }, sun: { value: new THREE.Vector3(1, 0, 0) } },
+      vertexShader: 'varying vec3 vN, vV, vW; void main(){ vN = normalize(normalMatrix * normal); vW = normalize(mat3(modelMatrix) * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform vec3 c, sun; varying vec3 vN, vV, vW; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 3.0); float lit = smoothstep(-0.35, 0.45, dot(normalize(vW), sun)); gl_FragColor = vec4(c * (0.25 + 0.75 * lit), f * (0.08 + 0.85 * lit)); }' });
+  }
+  WORLD.shellMat.uniforms.c.value.copy(WORLD.stdShell.uniforms.c.value); env.atmoShell.material = WORLD.shellMat;
+  if (!WORLD.clouds) { WORLD.clouds = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.environment.planetRadius * 1.012, 96, 64), WORLD.cloudMat); env.planet.add(WORLD.clouds); }
+  WORLD.clouds.visible = WORLD_TYPES[P.type].clouds > 0 || P.dust > 0;
+  if (P.inhabited) worldBuildOrbitals(P);
+}
+function worldClearOrbitals() { if (WORLD.orb) { for (const o of WORLD.orb.objs) { o.parent?.remove(o); o.traverse?.(x => { x.geometry?.dispose?.(); }); } WORLD.orb = null; } }
+function worldBuildOrbitals(P) {
+  const R = CONFIG.environment.planetRadius; const C = env.planet.position; const rng = makeRng(Math.round(P.seed * 1000) ^ 0x0b17);
+  const objs = [], habs = [], shuttles = []; const F = FACTION_CITY[P.faction] || FACTION_CITY.authority;
+  const habMat = new THREE.MeshStandardMaterial({ color: F.wall, roughness: 0.5, metalness: 0.5, emissive: new THREE.Color(F.win).multiplyScalar(0.25) });
+  const nHab = 2 + Math.round(clamp(Math.log10(P.pop) - 6, 0, 3.6));
+  for (let i = 0; i < nHab; i++) {
+    const g = new THREE.Group(); const ring = new THREE.Mesh(new THREE.TorusGeometry(46 + rng() * 30, 7, 8, 28), habMat); const hub = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 90, 10), habMat); hub.rotation.x = Math.PI / 2; g.add(ring, hub);
+    const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: F.beacon, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); beacon.scale.setScalar(70); beacon.position.set(0, 0, 50); g.add(beacon);
+    scene.add(g); objs.push(g);
+    habs.push({ g, beacon, r: R * (1.28 + rng() * 0.45), w: (0.01 + rng() * 0.012) * (rng() < 0.5 ? 1 : -1), ph: rng() * 6.28, incl: (rng() - 0.5) * 0.9, node: rng() * 6.28 });
+  }
+  // a space elevator: anchored on the equator, turning with the planet, climbers riding the tether
+  let elev = null;
+  if (P.elevator) {
+    const tip = 2.35; const tether = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, R * (tip - 1), 6), new THREE.MeshBasicMaterial({ color: 0x9fb4c8, transparent: true, opacity: 0.6 }));
+    tether.position.set(R * (1 + tip) / 2, 0, 0); tether.rotation.z = Math.PI / 2;
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(160, 90, 90), habMat); cw.position.set(R * tip, 0, 0);
+    const climber = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xffe0a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); climber.scale.setScalar(90);
+    const grp = new THREE.Group(); grp.add(tether, cw, climber); grp.rotation.y = 0.9; env.planet.add(grp); objs.push(grp); elev = { grp, climber, tip };
+  }
+  // shuttle traffic between the surface cities and the habitats
+  const shMat = new THREE.SpriteMaterial({ map: TEX.glow, color: 0xcfe6ff, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+  const nSh = Math.round(6 + 16 * clamp(Math.log10(P.pop) / 9.6, 0, 1));
+  for (let i = 0; i < nSh; i++) { const s = new THREE.Sprite(shMat); s.scale.setScalar(16); scene.add(s); objs.push(s); shuttles.push({ s, t: rng(), sp: 0.02 + rng() * 0.03, city: P.cities.length ? P.cities[i % P.cities.length] : null, hab: habs[i % habs.length], lift: rng() }); }
+  WORLD.orb = { objs, habs, shuttles, elev };
+}
+function worldSpaceStep(dt) {
+  if (!WORLD.prof || !env.planet.visible || SRF.active) return;
+  const P = env.planet; P.rotation.y += dt * 0.0035; if (WORLD.clouds) WORLD.clouds.rotation.y += dt * 0.0012;
+  const u = WORLD.mat.uniforms; u.uTime.value += dt;
+  // the sun and the eye, in the planet's own frame
+  _wInv.copy(P.quaternion).invert();
+  u.uSun.value.copy(env.sunSprite.position).sub(P.position).normalize(); if (WORLD.shellMat) WORLD.shellMat.uniforms.sun.value.copy(u.uSun.value); u.uSun.value.applyQuaternion(_wInv);
+  u.uCamObj.value.copy(camera.position).sub(P.position).multiplyScalar(1 / CONFIG.environment.planetRadius).applyQuaternion(_wInv);
+  const O = WORLD.orb; if (!O) return; const C = P.position; const R = CONFIG.environment.planetRadius;
+  for (const h of O.habs) { h.ph += h.w * dt; const u2 = _v[0].set(Math.cos(h.node), 0, Math.sin(h.node)); const n = _v[1].set(0, 1, 0).applyAxisAngle(u2, h.incl); const w = _v[2].crossVectors(n, u2);
+    h.g.position.copy(C).addScaledVector(u2, h.r * Math.cos(h.ph)).addScaledVector(w, h.r * Math.sin(h.ph)); h.g.lookAt(C); h.g.rotation.z += dt * 0.2;
+    h.beacon.material.opacity = 0.35 + 0.65 * (Math.sin(performance.now() / 300 + h.ph * 7) > 0.6 ? 1 : 0); }
+  if (O.elev) { const k = (performance.now() / 1000 * 0.03) % 2; const f = k < 1 ? k : 2 - k; O.elev.climber.position.set(R * (1 + (O.elev.tip - 1) * f), 0, 0); }
+  for (const s of O.shuttles) {
+    s.t = (s.t + dt * s.sp) % 1; const k = s.t < 0.5 ? s.t * 2 : (1 - s.t) * 2; const e = smooth01(k);
+    const from = _v[3].copy(s.city ? s.city.dir : _v[4].set(0, 1, 0)).applyQuaternion(P.quaternion).multiplyScalar(R * 1.004).add(C);
+    const to = s.hab ? s.hab.g.position : _v[5].copy(from).sub(C).multiplyScalar(1.5).add(C);
+    const mid = _v[6].copy(from).sub(C).normalize().multiplyScalar(R * (1.15 + s.lift * 0.25)).add(C);
+    s.s.position.copy(from).multiplyScalar((1 - e) * (1 - e)).addScaledVector(mid, 2 * e * (1 - e)).addScaledVector(to, e * e);
+    s.s.visible = camera.position.distanceTo(s.s.position) < 30000;
+  }
+}
+
+// §WORLDS.SURVEY — S8-EDIT(§ORBITAL srfRenderOrbital): the survey globe is the real planet, rendered
+function worldGlobeDraw(g, cx, cy, R, planet) {
+  try {
+    worldMaterials();
+    if (!WORLD.gl) {
+      const c = document.createElement('canvas'); c.width = c.height = 512;
+      const r = new THREE.WebGLRenderer({ canvas: c, alpha: true, antialias: true, preserveDrawingBuffer: true }); r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace;
+      const sc = new THREE.Scene(); const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100); cam.position.set(0, 0, 4.2); cam.lookAt(0, 0, 0);
+      const m = WORLD.mat.clone(); const cm = WORLD.cloudMat.clone(); const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), m); const cl = new THREE.Mesh(new THREE.SphereGeometry(1.012, 64, 48), cm);
+      const atm = new THREE.Mesh(new THREE.SphereGeometry(1.06, 64, 48), new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(0x6aa8ff) } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide,
+        vertexShader: 'varying vec3 vN, vV; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'uniform vec3 c; varying vec3 vN, vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.2); gl_FragColor = vec4(c, f * 0.9); }' }));
+      globe.add(cl); sc.add(globe, atm); WORLD.gl = { c, r, sc, cam, globe, m, cm, atm };
+    }
+    const G = WORLD.gl; const P = worldProfile(planet.sys); if (!P) return false;
+    worldApplyProfile(P, G.m, G.cm); G.m.uniforms.uSun.value.set(-0.55, 0.35, 0.75).normalize().applyAxisAngle(_v[0].set(0, 1, 0), -ORB.yaw);
+    G.m.uniforms.uCamObj.value.set(0, 0, 4.2).applyAxisAngle(_v[0].set(0, 1, 0), -ORB.yaw); G.cm.uniforms.uSun.value.copy(G.m.uniforms.uSun.value); G.m.uniforms.uTime.value = performance.now() / 1000;
+    G.globe.rotation.y = ORB.yaw; G.atm.material.uniforms.c.value.setHSL((planet.hue + 0.1) % 1, 0.7, 0.6);
+    G.r.render(G.sc, G.cam);
+    const k = Math.tan(Math.asin(1 / 4.2)) / Math.tan(15 * Math.PI / 180);            // the unit globe's silhouette as a fraction of the 30° frame
+    const size = R * 2 / k; g.drawImage(G.c, cx - size / 2, cy - size / 2, size, size);
+    return true;
+  } catch (e) { return false; }
+}
+
+// §WORLDS.SKY — on the ground: a sky dome with the sun in it, a cloud deck, and the plasma of entry
+function worldCloudTexture() {
+  if (WORLD.cloudTex) return WORLD.cloudTex;
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'); const img = g.createImageData(S, S); const n = skyNoise(0xc10d), n2 = skyNoise(0xc10e);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const dx = (x - S / 2) / (S / 2), dy = (y - S / 2) / (S / 2); const r = Math.hypot(dx, dy); const v = (n(x / 26, y / 26) * 0.6 + n2(x / 11, y / 11) * 0.4) * Math.max(0, 1 - r * r) * 1.6; const i = (y * S + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = clamp(v * 255 - 40, 0, 255); }
+  g.putImageData(img, 0, 0); WORLD.cloudTex = new THREE.CanvasTexture(c); return WORLD.cloudTex;
+}
+function worldSkyBuild() {
+  if (!WORLD.sky) {
+    WORLD.sky = new THREE.Mesh(new THREE.SphereGeometry(17000, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
+      uniforms: { zen: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, space: { value: 0 } },
+      vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform vec3 zen, hor, sunDir, sunCol; uniform float space; varying vec3 vD;
+        void main(){ float y = clamp(vD.y, -0.2, 1.0); vec3 c = mix(hor, zen, pow(max(y, 0.0), 0.55));
+          float s = max(dot(vD, normalize(sunDir)), 0.0); c += sunCol * (pow(s, 600.0) * 3.0 + pow(s, 12.0) * 0.25 + pow(s, 3.0) * 0.08 * (1.0 - space));
+          c = mix(c, vec3(0.0), space); gl_FragColor = vec4(c, 1.0); }` }));
+    WORLD.sky.renderOrder = -1000; WORLD.sky.frustumCulled = false;
+  }
+  if (!WORLD.sky.parent) scene.add(WORLD.sky);
+  // the cloud deck: billboards scattered through the layer the ship falls through
+  const B = SRF.B; const n = B.atmo > 0.3 ? Math.round(30 + B.atmo * 30) : 0;
+  if (WORLD.deck) { scene.remove(WORLD.deck); WORLD.deck.children[0]?.material.dispose(); WORLD.deck = null; }
+  if (n) {
+    const grp = new THREE.Group(); const rng = makeRng(SRF.site.seed ^ 0xc1d); const col = new THREE.Color(WORLD_TYPES[SRF.site.biome]?.cloudCol || 0xffffff);
+    const mat = new THREE.SpriteMaterial({ map: worldCloudTexture(), color: col, transparent: true, opacity: 0.8, depthWrite: false, fog: true });
+    for (let i = 0; i < n; i++) {                                                        // each cloud is a cluster of puffs: a flat base, a heaped top
+      const cx = (rng() - 0.5) * 9000, cy = 1100 + rng() * 900, cz = (rng() - 0.5) * 9000, w = 500 + rng() * 700; const k = 4 + Math.floor(rng() * 4);
+      for (let j = 0; j < k; j++) { const s = new THREE.Sprite(mat); const u = (j / (k - 1) - 0.5) * 2; const sz = w * (0.45 + 0.35 * (1 - Math.abs(u)) + rng() * 0.2);
+        s.position.set(cx + u * w * 0.55, cy + sz * 0.22 * (1 - Math.abs(u)) + rng() * 40, cz + (rng() - 0.5) * w * 0.4); s.scale.set(sz, sz * 0.62, 1); grp.add(s); }
+    }
+    scene.add(grp); WORLD.deck = grp;
+  }
+}
+function worldSkyStep(dt) {
+  if (!WORLD.sky?.parent || !SRF.active) return;
+  const pl = world.player; WORLD.sky.position.copy(camera.position);
+  const u = WORLD.sky.material.uniforms; const el = SRF.sunEl ?? 1; const day = clamp(el * 1.4 + 0.1, 0, 1);
+  const B = SRF.B; const sky = _v[0]; u.zen.value.setHex(B.sky).multiplyScalar(0.05 + 0.75 * day); u.hor.value.setHex(B.fog[0]).lerp(_c.setHex(0xffb080), clamp(1 - Math.abs(el) * 4, 0, 1) * 0.5).multiplyScalar(0.06 + 0.95 * day);
+  u.sunDir.value.copy(sun.position).normalize();
+  if (TERRA.mat) { TERRA.mat.uniforms.ambS.value.setHex(B.ambS).multiplyScalar(0.1 + 0.9 * day); TERRA.mat.uniforms.ambG.value.setHex(B.ambG).multiplyScalar(0.1 + 0.9 * day); } u.sunCol.value.setHex(B.sun).multiplyScalar(el > -0.05 ? 1 : 0);
+  // entry: from black space through the blue into the local sky
+  const alt = SRF.cine ? pl.pos.y - SRF.groundY(pl.pos.x, pl.pos.z) : 0; u.space.value = SRF.cine ? clamp((alt - 900) / 2400, 0, 1) * (B.atmo > 0.05 ? 1 : 0.4) : 0;
+  if (B.atmo < 0.1) u.space.value = Math.max(u.space.value, 0.85);                        // an airless world keeps a black sky
+  if (WORLD.deck) { for (const s of WORLD.deck.children) { s.position.x += dt * 6; if (s.position.x > 4800) s.position.x -= 9600; } WORLD.deck.children[0]?.material.color.setHex(WORLD_TYPES[SRF.site.biome]?.cloudCol || 0xffffff).multiplyScalar(0.12 + 0.88 * day); }
+  // plasma sheath around the ship while the heat of entry lasts
+  if (!WORLD.sheath) { WORLD.sheath = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.ShaderMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, uniforms: { k: { value: 0 }, t: { value: 0 } },
+    vertexShader: 'varying vec3 vN, vV, vP; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); vP = position; gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform float k, t; varying vec3 vN, vV, vP; void main(){ float front = smoothstep(0.05, 1.0, -vP.z); float f = pow(1.0 - abs(dot(vN, vV)), 1.3) * 0.6 + 0.4 * front * front; float flick = 0.7 + 0.3 * sin(t * 37.0 + vP.y * 11.0 + vP.x * 7.0); vec3 col = mix(vec3(1.0, 0.32, 0.08), vec3(1.0, 0.8, 0.95), front * front); gl_FragColor = vec4(col * f * k * flick * front * 1.3, 1.0); }' })); scene.add(WORLD.sheath); }   // a bow shock: additive, only on the side facing the airflow
+  const h = SRF.cine ? SRF.fxHeat * B.atmo : 0; WORLD.sheath.visible = h > 0.02;
+  if (WORLD.sheath.visible) { const vd = _v[1].copy(pl.vel).normalize(); if (vd.lengthSq() < 0.5) vd.set(0, -1, 0); WORLD.sheath.quaternion.setFromUnitVectors(_v[2].set(0, 0, -1), vd); WORLD.sheath.position.copy(pl.pos).addScaledVector(vd, pl.radius * 0.35); WORLD.sheath.scale.set(pl.radius * 1.15, pl.radius * 1.15, pl.radius * 1.5); WORLD.sheath.material.uniforms.k.value = clamp(h * 1.6, 0, 1.4); WORLD.sheath.material.uniforms.t.value += dt; }
+}
+
+// §WORLDS.CITY — civilization on the ground: blocks of towers with lit windows, roads, air traffic, a spaceport
+function worldCityDef(site) { const planet = SRF.planet || sbxPlanetOf(SBX.profile?.systemId); return planet ? worldCityOf(planet, site) : null; }
+function worldCityLayout(c, H0) {
+  const rng = makeRng(c.seed); const blds = []; const roads = []; const block = 64, street = 16;
+  const n = Math.ceil(c.R / block);
+  for (let bx = -n; bx <= n; bx++) for (let bz = -n; bz <= n; bz++) {
+    const x0 = c.x + bx * block, z0 = c.z + bz * block; const d = Math.hypot(x0 - c.x, z0 - c.z) / c.R; if (d > 1) continue;
+    const k = 1 + Math.floor(rng() * (d < 0.4 ? 2 : 4));
+    for (let i = 0; i < k; i++) {
+      const w = (block - street) / (k > 1 ? 2 : 1) - 4 - rng() * 8, dd = w * (0.7 + rng() * 0.5);
+      const ox = k > 1 ? ((i % 2) - 0.5) * (block - street) / 2 : 0, oz = k > 2 ? (Math.floor(i / 2) - 0.5) * (block - street) / 2 : 0;
+      const tall = c.capital ? 18 + 210 * Math.pow(1 - d, 2.2) * (0.35 + 0.65 * Math.pow(rng(), 1.6)) : 8 + 34 * (1 - d) * rng();
+      blds.push({ x: x0 + ox, z: z0 + oz, w: Math.max(8, w), d: Math.max(8, dd), h: tall, y: H0 });
+    }
+  }
+  for (let i = -n; i <= n; i++) { const L = Math.sqrt(Math.max(0, 1 - Math.pow(i * block / c.R, 2))) * c.R; roads.push({ x: c.x + i * block - block / 2, z: c.z, len: L * 2, ax: 'z' }, { x: c.x, z: c.z + i * block - block / 2, len: L * 2, ax: 'x' }); }
+  return { blds, roads };
+}
+/** City ground is graded flat; the spaceport road runs from the landing zone. */
+const _worldHBase = srfMakeHeight;
+srfMakeHeight = function (site) {                                                          // S8-EDIT(§PLANETS srfMakeHeight): cities sit on graded ground
+  const H = _worldHBase(site); const c = worldCityDef(site); if (!c || rkvCraterOf(site)) return H;   // a struck city keeps the crater's torn ground
+  const H0 = H(c.x, c.z) * 0.3 + 6; c.H0 = H0; const Hp = H(0, 0); c.Hp = Hp;
+  const D = Math.hypot(c.x, c.z), ux = c.x / D, uz = c.z / D; const run = D - c.R - 70;
+  return (x, z) => {
+    let h = H(x, z);
+    const d = Math.hypot(x - c.x, z - c.z); if (d < c.R + 160) h = lerp(H0, h, smooth01((d - c.R) / 160));
+    // the spaceport road: a straight graded ramp from the pad to the city edge
+    const s = x * ux + z * uz, perp = Math.abs(x * uz - z * ux);
+    if (s > 0 && s < D - c.R + 40 && perp < 60) h = lerp(lerp(Hp, H0, clamp((s - 70) / run, 0, 1)), h, smooth01((perp - 12) / 40));
+    const dp = Math.hypot(x, z); if (dp < 150) h = lerp(Hp, h, smooth01((dp - 80) / 70));
+    return h;
+  };
+};
+function worldCityBuild() {
+  worldCityClear();
+  const site = SRF.site; WORLD.citySeed = site.seed; const c = worldCityDef(site); if (!c) return;
+  const H0 = SRF.H(c.x, c.z); const L = worldCityLayout(c, H0); const struck = !!rkvCraterOf(site);
+  const F = FACTION_CITY[c.faction] || FACTION_CITY.authority; const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0.35 });
+  const uNight = { value: 0 }; mat.userData.uNight = uNight;
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uNight = uNight; sh.uniforms.uWin = { value: new THREE.Color(struck ? 0x000000 : F.win) };
+    sh.vertexShader = 'varying vec3 vWP; varying vec3 vON;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec4 wpp = modelMatrix * instanceMatrix * vec4(position, 1.0); vWP = wpp.xyz; vON = normal;');
+    sh.fragmentShader = 'uniform float uNight; uniform vec3 uWin; varying vec3 vWP; varying vec3 vON;\nfloat bh(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      if (abs(vON.y) < 0.5) { float fl = vWP.y / 3.6; float cl = (abs(vON.x) > 0.5 ? vWP.z : vWP.x) / 2.9; vec2 cell = floor(vec2(cl, fl)); vec2 f = fract(vec2(cl, fl));
+        float win = step(0.2, f.x) * step(f.x, 0.8) * step(0.3, f.y) * step(f.y, 0.85); float on = step(0.42, bh(cell + floor(vWP.xz * 0.013)));
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.55 + vec3(0.05, 0.07, 0.1), win);
+        totalEmissiveRadiance += uWin * win * on * (0.12 + 1.6 * uNight); }`);
+  };
+  mat.customProgramCacheKey = () => 'worldcity-' + (struck ? 1 : 0);
+  const bm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), mat, L.blds.length); bm.frustumCulled = false;
+  const rng = makeRng(c.seed ^ 0x77); const beacons = [];
+  L.blds.forEach((b, i) => {
+    if (struck) b.y = SRF.H(b.x, b.z) - 1.5;
+    const h = struck ? b.h * (0.12 + rng() * 0.25) : b.h; b.top = b.y + h;
+    SRF_DUMMY.position.set(b.x, b.y - 2, b.z); SRF_DUMMY.rotation.set(0, 0, struck ? (rng() - 0.5) * 0.3 : 0); SRF_DUMMY.scale.set(b.w, h + 2, b.d); SRF_DUMMY.updateMatrix(); bm.setMatrixAt(i, SRF_DUMMY.matrix);
+    bm.setColorAt(i, _c.setHex(struck ? 0x2a2522 : rng() < 0.35 ? F.glass : F.wall).offsetHSL(0, 0, (rng() - 0.5) * 0.1));
+    if (!struck && h > 70) beacons.push(new THREE.Vector3(b.x, b.top + 2, b.z));
+  });
+  grp.add(bm);
+  // roads and streetlights
+  const road = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.4, 1), new THREE.MeshStandardMaterial({ color: 0x46494e, roughness: 0.9 }), L.roads.length + 1); road.frustumCulled = false; const lamps = [];
+  L.roads.forEach((r, i) => { SRF_DUMMY.position.set(r.x, H0 + 0.25, r.z); SRF_DUMMY.rotation.set(0, 0, 0); SRF_DUMMY.scale.set(r.ax === 'x' ? r.len : 12, 1, r.ax === 'z' ? r.len : 12); SRF_DUMMY.updateMatrix(); road.setMatrixAt(i, SRF_DUMMY.matrix);
+    for (let t = -r.len / 2; t < r.len / 2; t += 34) lamps.push(r.ax === 'x' ? r.x + t : r.x + 7, H0 + 7, r.ax === 'z' ? r.z + t : r.z + 7); });
+  // the spaceport road from the landing zone to the city edge
+  const ang = Math.atan2(c.z, c.x); const run = Math.hypot(c.x, c.z) - c.R - 70; const Hp = c.Hp ?? SRF.H(0, 0); const pitch = Math.atan2(H0 - Hp, run); const len = Math.hypot(run, H0 - Hp) + 8;
+  SRF_DUMMY.position.set(Math.cos(ang) * (70 + run / 2), (Hp + H0) / 2 + 0.3, Math.sin(ang) * (70 + run / 2));
+  SRF_DUMMY.rotation.set(0, -ang, pitch); SRF_DUMMY.scale.set(len, 1, 14); SRF_DUMMY.updateMatrix(); road.setMatrixAt(L.roads.length, SRF_DUMMY.matrix); road.visible = !struck; grp.add(road);
+  const lampGeo = new THREE.BufferGeometry(); lampGeo.setAttribute('position', new THREE.Float32BufferAttribute(struck ? [] : lamps, 3));
+  const lampPts = new THREE.Points(lampGeo, new THREE.PointsMaterial({ map: TEX.glow, color: 0xffd8a0, size: 9, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); grp.add(lampPts);
+  const bGeo = new THREE.BufferGeometry().setFromPoints(beacons); const bPts = new THREE.Points(bGeo, new THREE.PointsMaterial({ map: TEX.glow, color: F.beacon, size: 16, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); grp.add(bPts);
+  // air traffic: lanes above the avenues
+  const nCars = struck ? 0 : Math.round(30 + 60 * c.big * (c.capital ? 1 : 0.4));
+  const carMat = new THREE.MeshStandardMaterial({ color: 0xc8ccd2, emissive: new THREE.Color(F.win).multiplyScalar(0.8), roughness: 0.4, metalness: 0.6 });
+  const cars = new THREE.InstancedMesh(new THREE.BoxGeometry(2.2, 1.1, 4.6), carMat, Math.max(1, nCars)); cars.count = nCars; cars.frustumCulled = false; grp.add(cars);
+  const lanes = []; for (let i = 0; i < nCars; i++) { const r = L.roads[Math.floor(rng() * L.roads.length)]; lanes.push({ r, t: rng(), sp: (0.02 + rng() * 0.04) * (rng() < 0.5 ? 1 : -1), y: H0 + 26 + Math.floor(rng() * 4) * 12 }); }
+  // the spaceport: a lit pad, a tower and the pad beacons — services when landed on it
+  const port = new THREE.Group(); const py = SRF.H(0, 0);
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(62, 66, 1.6, 40), new THREE.MeshStandardMaterial({ color: 0x4c545c, roughness: 0.7, metalness: 0.3 })); pad.position.set(0, py + 0.4, 0); port.add(pad);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(48, 52, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color(F.beacon), side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(0, py + 1.3, 0); port.add(ring);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(4, 6, 46, 10).translate(0, 23, 0), mat.clone()); tower.position.set(92, SRF.H(92, 30), 30); port.add(tower);
+  const cab = new THREE.Mesh(new THREE.CylinderGeometry(9, 7, 7, 12), new THREE.MeshStandardMaterial({ color: 0x223040, emissive: new THREE.Color(F.win).multiplyScalar(0.6) })); cab.position.set(92, tower.position.y + 49, 30); port.add(cab);
+  const padLights = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; padLights.push(Math.cos(a) * 64, py + 2, Math.sin(a) * 64); }
+  const plg = new THREE.BufferGeometry(); plg.setAttribute('position', new THREE.Float32BufferAttribute(padLights, 3)); const padPts = new THREE.Points(plg, new THREE.PointsMaterial({ map: TEX.glow, color: F.beacon, size: 12, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); port.add(padPts);
+  grp.add(port); if (struck) port.visible = false;
+  // shuttles lifting off from the spaceport into the sky
+  const shMat = new THREE.MeshStandardMaterial({ color: 0xd8dde2, emissive: 0x335577, roughness: 0.4, metalness: 0.6 }); const shuttles = [];
+  if (!struck) for (let i = 0; i < (c.capital ? 3 : 1); i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(7, 3, 16), shMat); const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0x9fd8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.setScalar(26); glow.position.z = 9; m.add(glow); grp.add(m); shuttles.push({ m, t: i / 3, from: new THREE.Vector3(Math.cos(i * 2.1) * 30, py + 2, Math.sin(i * 2.1) * 30), dir: new THREE.Vector3(Math.cos(i * 2.1 + 1), 0, Math.sin(i * 2.1 + 1)) }); }
+  scene.add(grp);
+  // collision: rooftops are ground (a hash of footprints on a 24 m grid)
+  const hash = new Map(); for (const b of L.blds) { for (let x = Math.floor((b.x - b.w / 2) / 24); x <= Math.floor((b.x + b.w / 2) / 24); x++) for (let z = Math.floor((b.z - b.d / 2) / 24); z <= Math.floor((b.z + b.d / 2) / 24); z++) { const k = x + ',' + z; (hash.get(k) || hash.set(k, []).get(k)).push(b); } }
+  WORLD.city = { c, grp, bm, mat, uNight, cars, lanes, shuttles, hash, blds: L.blds, struck, bPts, port, H0 };
+  // trees and rocks never grow through the streets
+  const dummy = new THREE.Matrix4(); const pos = new THREE.Vector3();
+  for (const m of Object.values(TERRA.props)) { for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, dummy); pos.setFromMatrixPosition(dummy); if (Math.hypot(pos.x - c.x, pos.z - c.z) < c.R + 40 || Math.hypot(pos.x, pos.z) < 140) { dummy.makeScale(0.0001, 0.0001, 0.0001); dummy.setPosition(pos); m.setMatrixAt(i, dummy); } } m.instanceMatrix.needsUpdate = true; }
+  if (!SRF.siteSt.cityMet) { SRF.siteSt.cityMet = true; const P = worldProfile(SRF.planet.sys); sbxToast(struck ? `${c.name} is a burned-out ruin. Nothing answers on any frequency.` : `${c.name} — ${c.capital ? `capital of ${SRF.planet.name}, ${worldPopText(P.pop)} people` : 'a frontier settlement'}. The spaceport pad by the landing zone offers services: land on it and press E.`); }
+}
+function worldCityClear() { WORLD.citySeed = null; const C = WORLD.city; if (!C) return; C.grp.parent?.remove(C.grp); C.grp.traverse(o => { o.geometry?.dispose?.(); }); WORLD.city = null; }
+function worldCityStep(dt) {
+  const C = WORLD.city; if (!C || !SRF.active) return;
+  const night = clamp(0.3 - (SRF.sunEl ?? 1) * 2, 0, 1); C.uNight.value = night;
+  C.bPts.material.opacity = Math.sin(performance.now() / 400) > 0 ? 1 : 0.15;
+  for (let i = 0; i < C.lanes.length; i++) { const l = C.lanes[i]; l.t = (l.t + l.sp * dt + 1) % 1; const r = l.r; const s = (l.t - 0.5) * r.len;
+    SRF_DUMMY.position.set(r.ax === 'x' ? r.x + s : r.x + (l.sp > 0 ? 4 : -4), l.y, r.ax === 'z' ? r.z + s : r.z + (l.sp > 0 ? 4 : -4)); SRF_DUMMY.rotation.set(0, r.ax === 'x' ? Math.PI / 2 : 0, 0); SRF_DUMMY.scale.setScalar(1); SRF_DUMMY.updateMatrix(); C.cars.setMatrixAt(i, SRF_DUMMY.matrix); }
+  C.cars.instanceMatrix.needsUpdate = true;
+  for (const s of C.shuttles) { s.t = (s.t + dt * 0.018) % 1; const k = s.t; const up = Math.pow(k, 1.6) * 3400; s.m.position.copy(s.from).addScaledVector(s.dir, Math.pow(k, 2.2) * 2600); s.m.position.y += up; s.m.lookAt(_v[0].copy(s.m.position).addScaledVector(s.dir, 10).add(_v[1].set(0, 8 * (1 - k) + 2, 0))); s.m.visible = k > 0.02 && k < 0.97; }
+}
+/** Rooftops are solid ground for anything that flies or drives. */
+const _worldGroundBase = SRF.groundY;
+SRF.groundY = function (x, z) { let h = _worldGroundBase.call(this, x, z); const C = WORLD.city; if (C) { const L = C.hash.get(Math.floor(x / 24) + ',' + Math.floor(z / 24)); if (L) for (const b of L) if (Math.abs(x - b.x) < b.w / 2 && Math.abs(z - b.z) < b.d / 2) h = Math.max(h, b.top); } return h; };   // S8-EDIT(§SURFACE groundY): buildings are ground
+
+// §WORLDS.PORT — spaceport services: sell, refuel, repair, the local market
+function worldAtPort() { const pl = world.player; return !!WORLD.city && !WORLD.city.struck && SRF.landed && SRF.mode === 'ship' && Math.hypot(pl.pos.x, pl.pos.z) < 75; }
+function worldPortOpen(show = true) { $('sb-port').classList.toggle('on', show); if (show) worldPortRender(); }
+function worldPortRender() {
+  const C = WORLD.city; const pl = world.player; const p = SBX.profile; const ship = SBX.ship(); const ps = pl.ps;
+  const propCost = ps ? Math.ceil((1 - ps.prop) * ps.pristine.propCap * 34) : 0; const hullFrac = ps ? ps.structFrac() : pl.hull / pl.maxHull; const repCost = ship ? Math.ceil((1 - hullFrac) * (SBX_HULLS[ship.hull]?.price || 50000) * 0.2) : 0;
+  const sell = Object.entries(ship.cargo).filter(([id]) => ['ore', 'trade'].includes(ITEMS[id]?.cat) || id === 'gas_mist').map(([id, q]) => `${q}× ${ITEMS[id].name}`).join(', ') || 'nothing sellable aboard';
+  const goods = [['tg_rations', 0.8], ['tg_medical', 0.9], ['tg_machinery', 0.95], ['tg_luxuries', 1.1]];
+  $('port-body').innerHTML = `<p>${C.c.name} · ${FACTIONS[C.c.faction]?.name || C.c.faction} · planetside prices, no broker.</p>
+    <div class="fitslot"><span class="small">Sell</span><b>${sell}</b><button data-port="sell">Sell ores &amp; relics (90%)</button></div>
+    <div class="fitslot"><span class="small">Fuel</span><b>${ps ? Math.round(ps.prop * 100) + '%' : '—'}</b><button data-port="fuel" ${propCost > 0 && p.isk >= propCost ? '' : 'disabled'}>Refuel (${fmtIsk(propCost)} ISK)</button></div>
+    <div class="fitslot"><span class="small">Hull</span><b>${Math.round(hullFrac * 100)}%</b><button data-port="repair" ${repCost > 0 && p.isk >= repCost ? '' : 'disabled'}>Patch the hull (${fmtIsk(repCost)} ISK)</button></div>
+    <h3>Local goods</h3>${goods.map(([id, k]) => `<div class="fitslot"><span class="small">${ITEMS[id].name}</span><b>${fmtIsk(itemValue(id) * k)} ISK</b><button data-port="buy:${id}:${k}">Buy 10</button></div>`).join('')}
+    <p class="small">Wallet ${fmtIsk(p.isk)} ISK.</p>`;
+}
+$('sb-port').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-port]'); if (!b) { if (e.target.closest('#port-close')) worldPortOpen(false); return; }
+  const a = b.dataset.port; const pl = world.player; const p = SBX.profile; const ship = SBX.ship(); const ps = pl.ps;
+  if (a === 'sell') { let paid = 0; for (const [id, q] of Object.entries({ ...ship.cargo })) { const it = ITEMS[id]; if (!it || !(['ore', 'trade'].includes(it.cat) || id === 'gas_mist')) continue; paid += Math.round(itemValue(id) * 0.9 * q); delete ship.cargo[id]; } p.isk += paid; sbxToast(paid ? `Sold for ${fmtIsk(paid)} ISK.` : 'Nothing to sell.'); }
+  else if (a === 'fuel' && ps) { const cost = Math.ceil((1 - ps.prop) * ps.pristine.propCap * 34); if (p.isk >= cost) { p.isk -= cost; ps.prop = 1; ps.heat = Math.min(ps.heat, 0.25); sbxToast('Tanks full.'); } }
+  else if (a === 'repair') { const hullFrac = ps ? ps.structFrac() : pl.hull / pl.maxHull; const cost = Math.ceil((1 - hullFrac) * (SBX_HULLS[ship.hull]?.price || 50000) * 0.2); if (p.isk >= cost) { p.isk -= cost; if (ps) { for (let i = 0; i < ps.hp.length; i++) if (!ps.gone[i]) ps.hp[i] = ps.max[i]; ps.applyColors(); ps.dirty = true; } pl.hull = pl.maxHull; sbxToast('Hull patched — destroyed parts need a station yard.'); } }
+  else if (a.startsWith('buy:')) { const [, id, k] = a.split(':'); const cost = Math.round(itemValue(id) * +k * 10); if (p.isk >= cost) { const got = SBX.addCargo(ship, id, 10); if (got > 0) { p.isk -= Math.round(cost * got / 10); sbxToast(`Bought ${got}× ${ITEMS[id].name}.`); } else sbxToast('No room in the hold.'); } }
+  audio.click(); SBX.dirty = true; worldPortRender();
+});
+const _worldUseKey = SRF.useKey;
+SRF.useKey = function () { if (worldAtPort()) return worldPortOpen(true); return _worldUseKey.call(this); };   // S8-EDIT(§SURFACE useKey): E on the spaceport pad opens its services
+
+// §WORLDS.HOOKS — S8-EDIT(§MISSIONS applyEnvironment, §SURFACE enterScene/spawnSiteObjects/shutdownVisuals/step, §ORBITAL srfRenderOrbital)
+const _worldEnvBase = applyEnvironment;
+applyEnvironment = function (def) { if (WORLD.stdMat) env.planet.material = WORLD.stdMat; if (WORLD.stdShell) env.atmoShell.material = WORLD.stdShell; const r = _worldEnvBase(def); if (WORLD.stdMat && !(SBX.active && game.mode === 'sandbox')) { env.planet.material = WORLD.stdMat; if (WORLD.clouds) WORLD.clouds.visible = false; worldClearOrbitals(); WORLD.prof = null; } return r; };
+const _worldLoadBase = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) { const r = _worldLoadBase(sysIdx, entryPos); worldInstall(sysIdx); return r; };
+const _worldEnterScene = SRF.enterScene;
+SRF.enterScene = function () { _worldEnterScene.call(this); worldClearOrbitals(); worldSkyBuild(); };
+const _worldSpawn = SRF.spawnSiteObjects;
+SRF.spawnSiteObjects = function () { _worldSpawn.call(this); if (WORLD.citySeed !== this.site.seed) worldCityBuild(); };
+const _worldShutdown = SRF.shutdownVisuals;
+SRF.shutdownVisuals = function () { worldCityClear(); if (WORLD.sky) scene.remove(WORLD.sky); if (WORLD.deck) { scene.remove(WORLD.deck); WORLD.deck = null; } if (WORLD.sheath) WORLD.sheath.visible = false; worldPortOpen(false); return _worldShutdown.call(this); };
+function worldTick(dt) { if (SRF.active && SRF.cine && TERRA.ready && WORLD.citySeed !== SRF.site.seed) worldCityBuild(); worldSpaceStep(dt); worldSkyStep(dt); worldCityStep(dt); if (SRF.active && worldAtPort() && !WORLD.portHinted) { WORLD.portHinted = true; sbxToast(`On the ${WORLD.city.c.name} spaceport pad — E for services.`); } if (!worldAtPort()) WORLD.portHinted = false; }
+const _worldRenderHook = partRenderHook;
+partRenderHook = function (alpha, dt) { worldTick(dt); return _worldRenderHook(alpha, dt); };
+
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
 //  part18 — Sandbox controller: enter/exit, docking, the per-tick step, input, hooks
@@ -12078,7 +12540,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo, REL, relGamma, galaxyNow, relKineticJ, relMegatons, relSourcesFor, relUpdateSources, relGravity, relDominant, relFlight, relCircularize, relPredict, relDilation, relRatioText, relTimeSkip, relAdvance, relEmerge, relTidalStep, relStep, relSetQuality, BH, bhSourceOf, bhCircV, bhToggleHold, bhSwallow, bhStep, bhRenderGate, bhInstallPass, WH, whRecord, whForecast, whShipMass, whFleetMasses, MOON, moonDefs, moonState, RKV, rkvTargets, rkvLaunch, rkvAim, rkvStep, rkvImpact, rkvCraterOf, rkvConsole, RING, ringsIn, ringProgress, ringBelts, SN, snRec, snDetonate, snApply, snStatusLine, snLeft, NS, sbxDrawMap, sbxShowMap, bhDebugRender, composer, sbxSysState,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo, REL, relGamma, galaxyNow, relKineticJ, relMegatons, relSourcesFor, relUpdateSources, relGravity, relDominant, relFlight, relCircularize, relPredict, relDilation, relRatioText, relTimeSkip, relAdvance, relEmerge, relTidalStep, relStep, relSetQuality, BH, bhSourceOf, bhCircV, bhToggleHold, bhSwallow, bhStep, bhRenderGate, bhInstallPass, WH, whRecord, whForecast, whShipMass, whFleetMasses, MOON, moonDefs, moonState, RKV, rkvTargets, rkvLaunch, rkvAim, rkvStep, rkvImpact, rkvCraterOf, rkvConsole, RING, ringsIn, ringProgress, ringBelts, SN, snRec, snDetonate, snApply, snStatusLine, snLeft, NS, sbxDrawMap, sbxShowMap, bhDebugRender, composer, sbxSysState, WORLD, WORLD_TYPES, worldCapitalIdx, applyEnvironment, worldProfile, worldCityOf, worldInstall, worldAtPort, worldPortOpen, worldGlobeDraw, worldCityBuild, worldPopText,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
