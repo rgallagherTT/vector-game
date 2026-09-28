@@ -158,6 +158,7 @@
       §PLAYERFACTION.UI       the intel panel: the feed, the factions, the wars, the swarm, the structures, you
       §PLAYERFACTION.MAP      territory, fronts, convoys, the swarm and the structures on the star map
       §PLAYERFACTION.HOOKS    research survives loading; the intel button appears with the sandbox
+    §SCANNER                finding signatures without a manual: every ship listens, every pulse reports
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -204,6 +205,7 @@
     §SBXCONTROL sbxStep — the slice is the galaxy's time — dilation makes it longer
 
   STAGE 8 CHANGES TO EARLIER SECTIONS (each marked in place with "S8-EDIT")
+    §INDUSTRY sbxEnsureSignatures — wormholes are twice as common out here
     §SYSTEM sbxPopulate — a stripped system has no belts left to lurk in
     §ORBITAL srfRenderOrbital — the survey globe is the planet itself when WebGL allows
     §ORBITAL srfRenderOrbital — population and settlements on the survey
@@ -233,6 +235,10 @@
     §PLANETS srfTW — an elevator removes the takeoff mass penalty on its planet
     §WORLDS.PROFILE worldProfile — tethers are megastructures now
     §SBXUI sbxDrawMap — the living galaxy drawn over the chart
+    §INDUSTRY sbxScanToggle — no launcher needed — the ship's own sensors scan, a launcher scans better
+    §INDUSTRY sbxScanPulse — one pulse hears every signature, names the strong ones, places fixes
+    §INDUSTRY sbxScanRender — every signature on one list, with what to do next
+    §SBXUI sbxDrawMap — open wormholes are marked on the chart
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -661,6 +667,7 @@
   #sb-help .hp { text-transform: none; letter-spacing: 0.03em; font-size: 12px; color: #b9e9ee; line-height: 1.65; }
   #sb-help .hp b { color: var(--amber); font-weight: 400; }
   /* §CSS.GALAXY — the intel panel */
+  .scanrow { font-size: 12px; padding: 3px 0; text-transform: none; letter-spacing: 0.02em; }
   .newsrow { display: grid; grid-template-columns: 132px 44px 1fr; gap: 10px; padding: 5px 2px; border-bottom: 1px solid rgba(95,242,255,0.08); font-size: 12px; text-transform: none; letter-spacing: 0.02em; }
   .newsrow.fresh { background: rgba(255,209,102,0.06); }
   .newsrow .nt { color: var(--cyan-dim); } .newsrow .ns { color: #d8eef2; }
@@ -820,6 +827,8 @@
   <p class="small hp">Kilometre-long capital ships with spinning habitat rings and a hangar you can fly into — line up with the lit bay and land on a green pad. Strip a titan's radiators and it cooks itself. Your own titan: land in its hangar, <b>E</b> takes the bridge, <b>T</b> toggles tactical view, <b>L</b> launches your fighter.</p>
   <h3>Relativity</h3>
   <p class="small hp">Light is slow here (3 km/s) and gravity is real. Near a <b>black hole</b> or a moon, flight turns <b>ballistic</b>: gravity pulls, <b>W</b> burns along the nose, <b>S</b> retro, <b>Space</b> matches the local frame, and the green arc is the nav computer's prediction (gold when a flyby will <b>gain</b> speed). Deep in a black hole's well your clock runs slow — the top panel reads it as "1 hour here = N hours outside" and the whole galaxy (skills, jobs, orders, markets, structures, factions) runs at the outside rate. <b>H</b> holds an orbit (nose prograde, so tides compress the hull); below 3 Rs no orbit holds by itself, and every second costs propellant and heat. Long, thin hulls break in the tides. The horizon is final. <b>Wormholes</b> show the far side; each transit spends stability by mass — the panel says whether your fleet fits. On a titan's bridge, <b>U</b> opens mass-driver fire control: a relativistic slug shatters moons and scars planets for good. One star is going <b>supernova</b> on the date on the title screen. <b>F8</b> sets lensing quality.</p>
+  <h3>Wormholes and signatures</h3>
+  <p class="small hp">Low- and null-sec systems hide <b>signatures</b> — relic sites, gas, pirate hideouts and <b>wormholes</b> (the star map rings systems with an open one in purple). Press <b>P</b> and <b>Pulse</b> at the widest range: every signature in the system is listed, named once the return is strong, and gets a <b>fix</b> on your overview. Warp to the fix, pick a tighter range, pulse again; inside the resolve distance at the tightest range it resolves into a warpable site. Fly into a wormhole and press <b>E</b>. Every ship can scan with its own sensors; a Probe launcher adds the 1 km range for tighter fixes. Wormholes last about three hours and have a mass limit.</p>
   <h3>The living galaxy</h3>
   <p class="small hp">The galaxy runs without you. Press <b>I</b> (or the Intel button) for the feed and the state of things. Factions wage their own wars: <b>war buying</b> drains minerals from the aggressor's markets first — prices climb before any system falls. Fronts are fed by <b>supply convoys</b> that fly the jump route; shoot the haulers and the front starves. A <b>von Neumann swarm</b> wakes in the far null-sec: it eats belts and moons, copies itself and spreads along gates and open wormholes; eaten systems are stripped for good. Kill replication hubs, crack infested moons with an RKV, collapse wormholes to seal what is beyond, and research its salvage into parts nobody else has. <b>Megastructures</b> go up over weeks: Dyson swarms that dim their stars, an O'Neill cylinder you can fly into, space elevators (no takeoff mass penalty on their planet), mass driver arrays. Enlist with a faction, hire mercenaries, found your own, sponsor a structure, or lead the coalition against the swarm. In cities, the spaceport terminal has jobs, an air taxi, a sky circuit, property and a cantina.</p>
   <h3>Planets</h3>
@@ -5122,7 +5131,7 @@ function sbxEnsureSignatures(sysIdx) {
   state.sigRespawnT = state.sigRespawnT ?? 0;
   const want = sys.wh ? 1 : sys.sec >= 0.5 ? 1 : 2;
   if (state.sigs.length < want && Date.now() >= state.sigRespawnT) {
-    const kinds = sys.wh ? ['wormhole'] : sys.sec >= 0.5 ? ['relic', 'gas'] : ['relic', 'gas', 'wormhole', 'hideout'];
+    const kinds = sys.wh ? ['wormhole'] : sys.sec >= 0.5 ? ['relic', 'gas'] : ['relic', 'gas', 'wormhole', 'wormhole', 'hideout'];   // S8-EDIT(§INDUSTRY sbxEnsureSignatures): wormholes are twice as common out here
     const kind = kinds[Math.floor(Math.random() * kinds.length)];
     const sig = { id: 'sig' + Date.now() + Math.floor(Math.random() * 999), kind, resolved: false,
       pos: { x: rand(-7000, 7000), y: rand(-900, 900), z: rand(-7000, 7000) }, spawned: false };
@@ -12882,7 +12891,7 @@ sbxEnsureSignatures = function (sysIdx) {                                       
   _swSigs(sysIdx); const S = gsState(); if (!S) return; const st = sbxSysState(sysIdx); st.sigs = st.sigs || [];
   for (const l of gsWormholeLinks(S)) {
     if (l.a !== sysIdx && l.b !== sysIdx) continue; const to = l.a === sysIdx ? l.b : l.a;
-    if (st.sigs.some(s => s.pair === l.key) || whRecord({ pair: l.key }).collapsed) continue;
+    if (st.sigs.some(s => s.pair === l.key) || SBX.profile.wormholes?.[l.key]?.collapsed) continue;
     const r = makeRng((S.seed ^ l.key.length ^ (sysIdx * 7717)) >>> 0);
     st.sigs.push({ id: 'sig_' + l.key, kind: 'wormhole', resolved: false, spawned: false, to, pair: l.key, expiresT: Date.now() + 3 * 86400000, pos: { x: (r() - 0.5) * 12000, y: (r() - 0.5) * 1600, z: (r() - 0.5) * 12000 } });
   }
@@ -13439,6 +13448,104 @@ const _gspApply = sbxApplyState;
 sbxApplyState = function (s) { const r = _gspApply(s); swarmResearchApply(); return r; };
 const _gspEnter = sbxEnter;
 sbxEnter = function () { const r = _gspEnter(); swarmResearchApply(); return r; };
+
+// =====================================================================================
+// §SCANNER — finding signatures without a manual: every ship listens, every pulse reports
+//  Every hull can scan with its own sensors (8, 4 and 2 km); a Probe launcher adds the
+//  1 km range for tighter fixes. One pulse hears every unresolved signature in
+//  the system, names it once the return is strong, and drops a warpable fix on the overview
+//  whose error shrinks with the range. Warp to the fix, tighten the range, pulse again;
+//  inside the resolve distance at the tightest range it resolves. Wormholes last hours,
+//  low/null space holds more of them, and the star map marks where one is open.
+// =====================================================================================
+CONFIG.sbx4.explore.whLifetimeMin = 180;
+OV_COLOR.sigfix = '#e0b8ff';
+const scanHasLauncher = () => fitModules(SBX.ship()).some(m => m.def.scanner);
+const scanSensor = () => SBX_HULLS[SBX.ship()?.hull]?.scanBonus || 1;
+function scanRanges() { const R = CONFIG.sbx4.explore.scanRanges; return scanHasLauncher() ? R : R.slice(0, 3); }
+const scanResolveDist = () => CONFIG.sbx4.explore.resolveDist * scanSensor();
+const SCAN_NAMES = { relic: 'Relic site', gas: 'Gas cloud', wormhole: 'Wormhole', hideout: 'Pirate hideout' };
+// S8-EDIT(§INDUSTRY sbxScanToggle): no launcher needed — the ship's own sensors scan, a launcher scans better
+sbxScanToggle = function () {
+  scanUI.open = !scanUI.open; $('scan-panel').classList.toggle('on', scanUI.open);
+  if (scanUI.open) { scanUI.rangeIdx = Math.min(scanUI.rangeIdx, scanRanges().length - 1); scanUI.last = null; sbxScanRender();
+    if (!scanHasLauncher() && !SCAN_TIPPED) { SCAN_TIPPED = true; sbxToast('Scanning on ship sensors: 8, 4 and 2 km. A Probe launcher (high slot) adds the 1 km range for tighter fixes.'); } }
+};
+let SCAN_TIPPED = false;
+/** Where the scanner thinks a signature is at a given range: the truth plus an error that shrinks with the range. */
+function scanFix(sig, range) {
+  const h = [...String(sig.id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) ^ Math.round(range);
+  const r = makeRng(h >>> 0); const err = range * 0.12;
+  const e = _v[1].set(r() - 0.5, (r() - 0.5) * 0.4, r() - 0.5).normalize().multiplyScalar(err * (0.5 + r() * 0.5));
+  return { pos: V3(sig.pos.x + e.x, sig.pos.y + e.y, sig.pos.z + e.z), err: Math.round(err) };
+}
+// S8-EDIT(§INDUSTRY sbxScanPulse): one pulse hears every signature, names the strong ones, places fixes
+sbxScanPulse = function () {
+  const pl = world.player; const state = sbxSysState(); const R = scanRanges(); scanUI.rangeIdx = Math.min(scanUI.rangeIdx, R.length - 1);
+  const range = R[scanUI.rangeIdx] * scanSensor(); const tight = scanUI.rangeIdx === R.length - 1; const rd = scanResolveDist();
+  const un = (state.sigs || []).filter(s => !s.resolved); if (!un.length) { scanUI.last = { none: true }; audio.click(true); return sbxScanRender(); }
+  const rows = [];
+  for (const sig of un) {
+    const d = _v[0].set(sig.pos.x, sig.pos.y, sig.pos.z).distanceTo(pl.pos);
+    const strength = d > range ? Math.round(clamp(22 * range / d, 2, 40)) : Math.round(clamp(100 - 70 * d / range, 40, 99));
+    const known = strength >= 55; const name = known ? SCAN_NAMES[sig.kind] : 'Unknown signature';
+    const dir = _v[0].set(sig.pos.x - pl.pos.x, sig.pos.y - pl.pos.y, sig.pos.z - pl.pos.z);
+    const hint = `${dir.z < 0 ? 'N' : 'S'}${dir.x < 0 ? 'W' : 'E'}${dir.y > 200 ? ' +up' : dir.y < -200 ? ' +down' : ''}`;
+    const old = SBX.points.findIndex(p => p.kind === 'sigfix' && p.sig === sig);
+    if (tight && d < rd) {                                                                 // resolved: the fix becomes the site
+      sig.resolved = true; if (old >= 0) SBX.points.splice(old, 1); SBX.points.push(sbxSigPoint(sig));
+      rows.push({ name: SCAN_NAMES[sig.kind], strength: 100, resolved: true, wh: sig.kind === 'wormhole', to: sig.to });
+      sbxToast(`Signature resolved: ${SCAN_NAMES[sig.kind]}${sig.kind === 'wormhole' && sig.to != null ? ` → ${SBX.systems[sig.to].name}` : ''}. It is on your overview — warp to it${sig.kind === 'wormhole' ? ' and press E to enter' : ''}.`);
+      continue;
+    }
+    let fix = null;
+    if (d <= range) {                                                                     // in range: a warpable fix whose error shrinks with the range
+      const f = scanFix(sig, range); fix = f.err; const pt = { kind: 'sigfix', name: `${name} — fix ±${f.err} m`, pos: f.pos, sig };
+      if (old >= 0) SBX.points[old] = pt; else SBX.points.push(pt);
+    }
+    rows.push({ name, strength, known, wh: known && sig.kind === 'wormhole', d: Math.round(d), fix, hint, far: d > range, near: d < rd });
+  }
+  rows.sort((a, b) => (b.resolved ? 200 : b.strength) - (a.resolved ? 200 : a.strength));
+  scanUI.last = { rows, range, tight, rd: Math.round(rd) }; audio.click(true); sbxScanRender();
+};
+// S8-EDIT(§INDUSTRY sbxScanRender): every signature on one list, with what to do next
+sbxScanRender = function () {
+  const sigs = (sbxSysState().sigs || []); const un = sigs.filter(s => !s.resolved).length; const R = scanRanges();
+  $('scan-sigs').textContent = `${sigs.length} signature${sigs.length === 1 ? '' : 's'} in system · ${un} unresolved${scanHasLauncher() ? '' : ' · ship sensors'}`;
+  $('scan-range').innerHTML = R.map((r, i) => `<button data-range="${i}" class="${i === scanUI.rangeIdx ? 'on' : ''}">${r / 1000}km</button>`).join('');
+  const L = scanUI.last;
+  if (!L) { $('scan-out').innerHTML = '<span class="small">Pulse to listen. Start wide; each fix appears on your overview.</span>'; return; }
+  if (L.none) { $('scan-out').innerHTML = '<span class="small">Nothing unresolved in this system.</span>'; return; }
+  $('scan-out').innerHTML = L.rows.map(r => r.resolved ? `<div class="scanrow"><b style="color:#7dffb0">RESOLVED</b> ${r.name}${r.to != null ? ` → ${SBX.systems[r.to].name}` : ''}</div>`
+    : `<div class="scanrow"><b style="${r.wh ? 'color:#c98cff' : ''}">${r.strength}%</b> ${r.name} <span class="small">${r.far ? `out of range — fly ${r.hint}` : r.near && !L.tight ? `close — tighten to ${R[R.length - 1] / 1000} km and pulse` : r.fix != null ? `fix ±${r.fix} m on overview — warp to it, tighten, pulse` : ''}</span></div>`).join('');
+};
+// low/null space holds more wormholes; arrival tells you what is listening
+const _scanLoad = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) {
+  const r = _scanLoad(sysIdx, entryPos);
+  const st = SBX.sysState?.[sysIdx]; const un = (st?.sigs || []).filter(s => !s.resolved && (!s.expiresT || s.expiresT > Date.now()));
+  if (un.length && SBX.active && !SRF.active) setTimeout(() => sbxToast(`${un.length} unresolved signature${un.length > 1 ? 's' : ''} in ${SBX.systems[sysIdx].name}${un.some(s => s.kind === 'wormhole') ? ' — one of them is a wormhole' : ''}. Press P to scan.`), 1500);
+  return r;
+};
+/** Systems where a hole is open right now: the simulation's static holes and any you have resolved. */
+function scanOpenHoles() {
+  const out = new Map(); const S = gsState();
+  if (S && typeof gsWormholeLinks === 'function') for (const l of gsWormholeLinks(S)) if (!SBX.profile.wormholes?.[l.key]?.collapsed) { out.set(l.a, l.b); out.set(l.b, l.a); }
+  for (const [iS, st] of Object.entries(SBX.sysState || {})) for (const s of st.sigs || []) if (s.kind === 'wormhole' && s.resolved && s.to != null && (!s.expiresT || s.expiresT > Date.now())) out.set(+iS, s.to);
+  return out;
+}
+const _scanMap = sbxDrawMap;
+sbxDrawMap = function () {                                                                // S8-EDIT(§SBXUI sbxDrawMap): open wormholes are marked on the chart
+  _scanMap(); const c = $('mapcanvas'); const g = c.getContext('2d'); const W = c.width, H = c.height;
+  const xs = SBX.systems.map(s => s.pos.x), ys = SBX.systems.map(s => s.pos.y);
+  const mnx = Math.min(...xs) - 60, mxx = Math.max(...xs) + 60, mny = Math.min(...ys) - 60, mxy = Math.max(...ys) + 60;
+  const X = (x) => (x - mnx) / (mxx - mnx) * (W - 80) + 40, Y = (y) => (y - mny) / (mxy - mny) * (H - 100) + 60;
+  g.save(); g.textAlign = 'left'; g.font = '17px monospace';
+  for (const [i, to] of scanOpenHoles()) { const s = SBX.systems[i]; if (s.wh && i !== SBX.profile.systemId) continue; const x = X(s.pos.x), y = Y(s.pos.y);
+    g.strokeStyle = '#c98cff'; g.lineWidth = 3; g.setLineDash([5, 5]); g.beginPath(); g.arc(x, y, 30, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#c98cff'; g.fillText(`◌ wormhole → ${SBX.systems[to].name}`, x + 34, y + 20); }
+  g.restore();
+};
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
@@ -14031,7 +14138,7 @@ async function boot() {
 }
 // Hooks for tooling / tests (not used by gameplay)
 window.__game = { render, lobby, VERSUS_MISSION, finishVersus, versusSpawn, currentMissionDef, updateNametags, updateSquadHUD, net, touch, AllyShip, updateBase, spawnWingman, dropshipTemplate, TEMPLATES, CONFIG, game, world, MISSIONS, OBJECTIVE_HANDLERS, ARCHETYPES, STEER, SCREEN, setScreen, startMission, get screen() { return screen; }, loadShipTemplate, shipTemplate, applyModifiers, solveLead, verifyLeadSolver, input, audio, camera, renderer, mission, simulate, Pool, Entity, Ship, PlayerShip, EnemyShip, CapitalShip, BOSS_DEFS, SHIPS, MODULES, SECONDARIES, equipShip, setLoadout, repairHull, resetCampaign, renderHangar, hangar, nextTarget, derivedStats, rebuildModifiers, abortMission, env, scene,
-  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo, REL, relGamma, galaxyNow, relKineticJ, relMegatons, relSourcesFor, relUpdateSources, relGravity, relDominant, relFlight, relCircularize, relPredict, relDilation, relRatioText, relTimeSkip, relAdvance, relEmerge, relTidalStep, relStep, relSetQuality, BH, bhSourceOf, bhCircV, bhToggleHold, bhSwallow, bhStep, bhRenderGate, bhInstallPass, WH, whRecord, whForecast, whShipMass, whFleetMasses, MOON, moonDefs, moonState, RKV, rkvTargets, rkvLaunch, rkvAim, rkvStep, rkvImpact, rkvCraterOf, rkvConsole, RING, ringsIn, ringProgress, ringBelts, SN, snRec, snDetonate, snApply, snStatusLine, snLeft, NS, sbxDrawMap, sbxShowMap, bhDebugRender, composer, sbxSysState, NEWS, newsPush, newsPlayer, newsList, newsOpen, newsRender, GS, GS_CLS, GS_W, gsState, gsEnsure, gsInit, gsTick, gsAdvanceTo, gsEvent, gsHash, gsStr, gsOwned, gsAtWar, gsWarsOf, gsPath, gsHub, gsDeclare, gsApplyUniverse, gsLocalSync, gsLocalClear, gsNow, gsBase, SWARM, swarmSeedSys, swarmDead, swarmFeed, swarmStripped, gsWormholeLinks, swarmResearch, swarmResearchState, SWARM_TIERS, MEGA, megaAt, megaDoneAt, megaElevatorOn, megaDim, megaDeliverHere, dysonSync, oneillInside, oneillLocal, whCollapsePair, snDetonate, snRec, moonDefs, ecoCatalog, oneillScope, PART_ORDER, gsPortTabs, GSP, gsMercStr, gspHire, gspFound, gspCoalition, gspSponsor, CITY, CITY_PROPS, cityState, cityHere, cityAll, cityOffers, cityAccept, cityDeliver, cityTaxiStart, cityRaceStart, cityRaceGates, cityProp, cityBuyProp, cityRentDue, cityRumours, cityRoofs, WORLD, WORLD_TYPES, worldCapitalIdx, applyEnvironment, worldProfile, worldCityOf, worldInstall, worldAtPort, worldPortOpen, worldGlobeDraw, worldCityBuild, worldPopText,
+  SBX, SBXNET, SRF, TERRA, BIOMES, sbxPlanetOf, srfSiteDef, srfSiteState, srfDeposits, srfAnomalies, srfMakeHeight, srfDescendCheck, srfTW, srfOpenOrbital, srfRenderOrbital, ORB, srfSurveyCycle, srfPState, HINTS, sbxHelp, TAB_HELP, srfCrates, srfGeysers, srfNestDef, srfRace, sbxPopulate, sbxSpawnNPC, PARTS, PART_PRESETS, PART_SCALES, partDerive, partFlight, partThrustBias, partRef, partGenerate, partAttached, partClone, partRegisterDesign, partDesignOf, partSalvageId, partEnsureItem, partMaterials, partTitanDesign, SBX_HULLS, RECIPES, HULL_SKILL_REQ, PartState, partRaycast, partDamage, partDestroy, partHitShip, partSpawnDebris, PART_DEBRIS, partSalvage, partRepairQuote, partRadiatorToggle, partFlightFor, PART_HP_MUL, partAttachNpc, YARD, yardNew, yardLoad, yardPlace, yardRemove, yardSaveBlueprint, yardAssemble, yardRefit, thermalHUD, TITAN, Titan, titanPopulate, titanStep, titanLand, titanBoard, titanLaunch, titanShotTest, titanCollide, titanPadUnder, titanParkNew, titanKill, sbxEnterDock, titanBayApproach, titanInBay, PART_KIT, kitGeo, REL, relGamma, galaxyNow, relKineticJ, relMegatons, relSourcesFor, relUpdateSources, relGravity, relDominant, relFlight, relCircularize, relPredict, relDilation, relRatioText, relTimeSkip, relAdvance, relEmerge, relTidalStep, relStep, relSetQuality, BH, bhSourceOf, bhCircV, bhToggleHold, bhSwallow, bhStep, bhRenderGate, bhInstallPass, WH, whRecord, whForecast, whShipMass, whFleetMasses, MOON, moonDefs, moonState, RKV, rkvTargets, rkvLaunch, rkvAim, rkvStep, rkvImpact, rkvCraterOf, rkvConsole, RING, ringsIn, ringProgress, ringBelts, SN, snRec, snDetonate, snApply, snStatusLine, snLeft, NS, sbxDrawMap, sbxShowMap, bhDebugRender, composer, sbxSysState, NEWS, newsPush, newsPlayer, newsList, newsOpen, newsRender, GS, GS_CLS, GS_W, gsState, gsEnsure, gsInit, gsTick, gsAdvanceTo, gsEvent, gsHash, gsStr, gsOwned, gsAtWar, gsWarsOf, gsPath, gsHub, gsDeclare, gsApplyUniverse, gsLocalSync, gsLocalClear, gsNow, gsBase, SWARM, swarmSeedSys, swarmDead, swarmFeed, swarmStripped, gsWormholeLinks, swarmResearch, swarmResearchState, SWARM_TIERS, MEGA, megaAt, megaDoneAt, megaElevatorOn, megaDim, megaDeliverHere, dysonSync, oneillInside, oneillLocal, whCollapsePair, snDetonate, snRec, moonDefs, ecoCatalog, oneillScope, scanUI, sbxScanPulse, sbxScanToggle, sbxEnsureSignatures, sbxWormholeTransit, scanRanges, scanOpenHoles, PART_ORDER, gsPortTabs, GSP, gsMercStr, gspHire, gspFound, gspCoalition, gspSponsor, CITY, CITY_PROPS, cityState, cityHere, cityAll, cityOffers, cityAccept, cityDeliver, cityTaxiStart, cityRaceStart, cityRaceGates, cityProp, cityBuyProp, cityRentDue, cityRumours, cityRoofs, WORLD, WORLD_TYPES, worldCapitalIdx, applyEnvironment, worldProfile, worldCityOf, worldInstall, worldAtPort, worldPortOpen, worldGlobeDraw, worldCityBuild, worldPopText,
   sbxEnter, sbxExit, sbxFitStats, sbxCanFit, sbxApplyFit, sbxBuy, sbxSell, sbxRefineAll, ecoPrice, ecoSellPrice, ecoStation, ecoTick, sbxRoute, sbxWarpTo, sbxJumpGate, sbxTryDock, sbxUndock, sbxLoadSystem, sbxDamagePlayer, sbxToggleModule, sbxCapUpdate, assist, generateUniverse, sbxGatherState, sbxApplyState, sbxSave, sbxLoad, sbxDefaultProfile, sbxInitProfile, sbxNewShip, sbxStarterShip, SBX_HULLS, SBX_MODULES, ITEMS, FACTIONS, sbxDeath, sbxInsure, sbxAgentOffers, sbxAcceptMission, sbxMissionStep, sbxSpawnNPC, sbxPoliceWing, sbxOnEnemyKilled, sbxUnlockFromCampaign, sbxUnlocked, sbxSelect, sbxOvAction, sbxShowMap, sbxShowStation, sbxRespawn, sbxStep, ECO, smap, stationUI, sbxBoardVisual, miningTargetRock, sbxMineCycle, sbxWarpUpdate, sbxToast,
   sbxAdvance, SKILLS, sbxQueueSkill, skillLvl, skillTrainMs, skillBonus, RECIPES, sbxStartJob, sbxStartResearch, sbxJobMats, sbxJobTime, sbxJobSlots, sbxPlaceOrder, sbxCancelOrder, sbxTradeRoutes, sbxBrokerFee, STRUCTURE_DEFS, sbxDeployStructure, sbxRebuildStructures, sbxBeginStructureAttack, sbxStructureAdvance, sbxStructureDestroyed, StructureEntity, FLEET_CONTRACTS, sbxHirePilot, sbxFleetCommand, sbxFleetCap, sbxFleetStep, sbxOnFleetMemberKilled, sbxSpawnFleet, sbxDismiss, sbxFleetDeliverOnDock, sbxEnsureSignatures, sbxScanPulse, scanUI, sbxScanToggle, sbxSiteArrive, sbxWormholeTransit, sbxIncursionAt, sbxSpawnIncursion, sbxIncursionInterval, sbxIncursionKill, sbxSpawnGateCamps, sbxNetWorth, sbxMigrateProfile, sbxV2Defaults, HULL_SKILL_REQ, hullSkillOk, fmtDur, sbxOfflineDigest, sbxStructureDeposit, sbxStructureWithdraw, sbxStructureRepair, sbxStructureNear, sbxHideoutStep, sbxFleetFlush, ecoSellPrice };
 boot().catch((e) => { console.error(e); $('loading-text').textContent = `Failed to start: ${e.message}`; });
