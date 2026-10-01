@@ -215,6 +215,11 @@
       §SITES.FORGE            at a sanctum or a pyre the blade is forged at the forge itself
       §SITES.RUINS            the Knowledge trial uses the trial ruin's own sliding blocks and sealed door
       §SITES.DRONES           the training drones wear their model, and fall as wrecks
+    §CHARMODELS             authored bodies: static T-pose character meshes, auto-rigged at load
+      §CHARMODELS.LOAD        the packed bundle
+      §CHARMODELS.RIG         skeleton fitting, weight painting, and the T → A repose
+      §CHARMODELS.HOOKS       the procedural builder hands over to an authored body whenever one fits
+      §CHARMODELS.UI          a frame choice for human bodies in character creation
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -316,6 +321,11 @@
     §FITTING sbxDamagePlayer — deflector banks are not a hazard shield
     §SURFACE groundY — authored sites level the ground beneath them
     §PATH pathForgeSiteOK — with the models present, the forge point is the place
+    §CHARACTER.RIG charKey — body and model in the key
+    §CHARACTER.RIG charBuildGeo — authored model for the full tier
+    §ONFOOT ofSpawnRig — NPCs take their model's species
+    §CHARACTER charLoadModels — the authored bundle loads alongside rigged GLBs
+    §CHARACTER ccRender — the Frame row (human only)
     §SBXCONTROL sbxStep — split in two — the vehicle half runs only in ship/rover modes, the shared half (progression, autosave) in every mode
     §BOOT exports — Stage 9 sections register their test hooks in S9X
 
@@ -16164,7 +16174,7 @@ function pathNpcFollow(u, dt) { const me = OF.me; const d = u.pos.distanceTo(me.
 function pathSpawnMaster(order) {
   if (PATH.npcs.some(u => u.alive && u.masterOf === order)) return; const M = ORDERS[order].master; const me = OF.me;
   const at = _fv[1].copy(me.pos).add(_fv[2].set(rand(-1, 1), 0, rand(-1, 1)).normalize().multiplyScalar(14));
-  const u = pathNpc({ species: M.species, look: M.look, faction: ORDERS[order].faction, role: 'officer', cloak: true }, at, { name: M.name }); u.masterOf = order; bladeNpc(u, order === 'wardens' ? -80 : 80, 0.9); return u;
+  const u = pathNpc({ species: M.species, look: M.look, faction: ORDERS[order].faction, role: 'officer', cloak: true, master: true }, at, { name: M.name }); u.masterOf = order; bladeNpc(u, order === 'wardens' ? -80 : 80, 0.9); return u;
 }
 function pathDespawnNpcs(filter = () => true) { for (const u of [...PATH.npcs]) if (filter(u)) { const i = OF.units.indexOf(u); if (i >= 0) OF.units.splice(i, 1); if (u.rig) { charRigRelease(u.rig); u.rig = null; } PATH.npcs.splice(PATH.npcs.indexOf(u), 1); } }
 function pathBondCheckIn(when) {
@@ -16590,7 +16600,7 @@ OV_COLOR.heartstone = '#fff2c0';
 // the Path button shows once something has woken; dialogue keys work in any mode
 const _pathHUD = sbxHUD; sbxHUD = function (dt) { _pathHUD(dt); const P = pathOf(); document.body.classList.toggle('path', !!P && P.stage >= 1); };
 
-Object.assign(S9X, { PATH, pathBlocksInput, PATH_STAGE, ORDERS, PATH_TRIALS, PATH_WRONGED, PATH_MISSIONS, MED, FORGE, pathDefault, pathInit, pathOf, pathAwaken, pathVision, pathVisionSkip, pathDialog, pathDialogChoose, pathCall, pathChooseMaster, pathSwitchMaster,
+Object.assign(S9X, { PATH, pathBlocksInput, pathNpc, PATH_STAGE, ORDERS, PATH_TRIALS, PATH_WRONGED, PATH_MISSIONS, MED, FORGE, pathDefault, pathInit, pathOf, pathAwaken, pathVision, pathVisionSkip, pathDialog, pathDialogChoose, pathCall, pathChooseMaster, pathSwitchMaster,
   pathTrialStart, pathTrialEnd, pathControlStep, pathPuzzleForce, pathKnowledgeEnd, pathHeartstoneSites, pathTakeHeartstone, pathForgeOpen, pathForge, pathForgeSiteOK, pathFinalStart, pathSeveranceRefuse, pathBecomeResonant, pathMissionStart, pathMissionEnd,
   pathTakeApprentice, pathCastOut, pathUnbound, pathRenounce, pathRedeemStart, pathOnAlign, pathJournal, pathNearestRuins, pathSpawnMaster });
 
@@ -16772,6 +16782,178 @@ aiRenderThing = function (u, dt) {
 };
 
 Object.assign(S9X, { SITES, S9_ASSETS, sitesLoad, sitesSync, sitesPlace, sitesPoint, sitesAt, sitesKindFor });
+
+// =====================================================================================
+// §CHARMODELS — authored bodies: static T-pose character meshes, auto-rigged at load
+//  The species bodies, the faction soldiers and the two orders arrive as one packed bundle
+//  (./s9/chars.bin, VCH1) of unrigged T-pose meshes. Each is weight-painted onto the same
+//  17-bone skeleton the procedural humanoid uses, with its arms lowered from the T into a
+//  relaxed A, so it walks, aims, swings, ragdolls and IKs its feet exactly like the
+//  procedural body. The lite LOD tier and the impostors stay procedural. If the bundle is
+//  missing, every body falls back to the procedural humanoid.
+// =====================================================================================
+const CHAR_PACK = { url: './s9/chars.bin', inline: null };
+/** Which body each model is: decides the wearer's species (hitbox, speed) before the bundle lands. */
+const CHMOD_BODY = {
+  species_human_male: 'human_male', species_human_female: 'human_female', species_vashi: 'vashi', species_korrath: 'korrath', species_nyl: 'nyl',
+  soldier_concordance_trooper: 'human_male', soldier_concordance_heavy: 'human_male', soldier_concordance_sniper: 'human_male', soldier_concordance_officer: 'human_male',
+  soldier_freereach_sniper: 'human_female', soldier_freereach_officer: 'human_male',
+  soldier_syndicate_trooper: 'human_male', soldier_syndicate_heavy: 'korrath', soldier_syndicate_sniper: 'nyl', soldier_syndicate_officer: 'human_male',
+  warden_initiate: 'human_female', warden_master: 'human_male', cinder_kindling: 'human_female', cinder_lord: 'human_male',
+};
+const CHMOD_SPECIES = { human_male: ['human', 0], human_female: ['human', 1], vashi: ['vashi', 0], korrath: ['korrath', 0], nyl: ['nyl', 0] };
+const CHMOD_FACTION = { authority: 'concordance', combine: 'freereach', syndicate: 'syndicate' };
+const CHMOD = { status: 'idle', models: {}, rigged: new Map(), log: [], armDrop: 78 * Math.PI / 180 };
+
+/** The model a body wears, or null for the procedural humanoid. */
+function charModelFor(spec) {
+  if (!spec) return null; if (spec.model !== undefined) return spec.model;
+  const human = () => spec.look?.body ? 'species_human_female' : 'species_human_male';
+  if (spec.role === 'player' || spec.vision) return spec.species === 'human' ? human() : CHMOD_BODY['species_' + spec.species] ? 'species_' + spec.species : null;
+  if (spec.faction === 'guild') return spec.master ? 'warden_master' : 'warden_initiate';
+  if (spec.faction === 'cinder') return spec.master ? 'cinder_lord' : 'cinder_kindling';
+  const fx = CHMOD_FACTION[spec.faction]; if (fx) { const id = `soldier_${fx}_${spec.role || 'trooper'}`; return CHMOD_BODY[id] ? id : null; }   // no authored Free Reach trooper/heavy: procedural
+  if (spec.species === 'human') return human();
+  return CHMOD_BODY['species_' + spec.species] ? 'species_' + spec.species : null;
+}
+function charModelReady(spec) { const id = charModelFor(spec); return id && CHMOD.status === 'ready' && CHMOD.models[id] ? id : null; }
+/** NPCs take the species of the body they wear, so hitboxes and silhouettes agree. The player's choice is never overridden. */
+function charModelAssign(spec) {
+  if (!spec || spec.role === 'player' || spec.vision) return; const id = charModelFor(spec); if (!id) return;
+  const [sp, body] = CHMOD_SPECIES[CHMOD_BODY[id]]; spec.species = sp; spec.look = { ...(spec.look || {}), body };
+}
+
+// §CHARMODELS.LOAD — the packed bundle
+function chmodParse(buf) {
+  const u8 = new Uint8Array(buf); if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== 'VCH1') throw new Error('not a VCH1 character pack');
+  const jl = new DataView(buf).getUint32(4, true); const head = JSON.parse(new TextDecoder().decode(u8.subarray(8, 8 + jl))); const base = 8 + jl;
+  for (const m of head.models) {
+    const n = m.verts; const idxN = m.groups.reduce((a, g) => a + g.count, 0);
+    CHMOD.models[m.id] = { id: m.id, extras: m.extras || {}, n, min: m.min, scale: m.scale, groups: m.groups,
+      q: new Int16Array(buf, base + m.pos, n * 4), col: new Uint8Array(buf, base + m.col, n * 4), idx: new Uint16Array(buf, base + m.idx, idxN) };
+  }
+  return head.models.length;
+}
+function chmodLoad() {
+  if (CHMOD.status !== 'idle') return; CHMOD.status = 'loading';
+  const done = (buf) => { try { const n = chmodParse(buf); CHMOD.status = 'ready'; const line = `${n} authored bodies loaded (${Object.keys(CHMOD.models).join(', ')})`; CHMOD.log.push(line); console.info(`[characters] ${line}`); chmodSwapLive(); } catch (e) { fail(e); } };
+  const fail = (e) => { CHMOD.status = 'missing'; const line = `${CHAR_PACK.url} unavailable (${e?.message || e}) — procedural humanoids`; CHMOD.log.push(line); console.info(`[characters] ${line}`); };
+  if (CHAR_PACK.inline) { try { done(Uint8Array.from(atob(CHAR_PACK.inline), c => c.charCodeAt(0)).buffer); } catch (e) { fail(e); } }
+  else fetch(CHAR_PACK.url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); }).then(done).catch(fail);
+}
+/** The bundle landed after bodies were built: rebuild pooled and standing bodies in their authored models. */
+function chmodSwapLive() {
+  for (const [, list] of CHAR_POOL) for (const r of list) r.dispose(); CHAR_POOL.clear();
+  if (typeof OF !== 'undefined' && OF.units) for (const u of OF.units) {
+    if (!u.rig || !u.alive || u.rig.ragdoll || u.rig.key === charKey(u.spec)) continue;
+    const r = u.rig; u.rig = null; r.inUse = false; r.dispose(); ofSpawnRig(u);
+  }
+  if (typeof CC !== 'undefined' && CC.open) ccPreviewRig();
+}
+
+// §CHARMODELS.RIG — skeleton fitting, weight painting, and the T → A repose
+const _chm = Array.from({ length: 6 }, () => new THREE.Vector3());
+function chmodMedian(a) { if (!a.length) return 0; const s = Float64Array.from(a).sort(); return s[s.length >> 1]; }
+function chmodPct(a, p) { if (!a.length) return 0; const s = Float64Array.from(a).sort(); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; }
+function chmodSegDist(p, a, b) { const ab = _chm[0].subVectors(b, a); const t = clamp(_chm[1].subVectors(p, a).dot(ab) / Math.max(1e-9, ab.lengthSq()), 0, 1); return _chm[2].copy(a).addScaledVector(ab, t).distanceTo(p); }
+/** Rig one model once, in its own units: reposed positions, colours, weights, joints. */
+function chmodRig(id) {
+  if (CHMOD.rigged.has(id)) return CHMOD.rigged.get(id);
+  const M = CHMOD.models[id]; const n = M.n; const P = new Float32Array(n * 3); let H = 0, W = 0;
+  for (let i = 0; i < n; i++) { for (let k = 0; k < 3; k++) P[i * 3 + k] = (M.q[i * 4 + k] + 32767) * M.scale[k] + M.min[k]; H = Math.max(H, P[i * 3 + 1]); W = Math.max(W, Math.abs(P[i * 3])); }
+  const s = H / 1.8; const X = (i) => P[i * 3], Y = (i) => P[i * 3 + 1], Z = (i) => P[i * 3 + 2];
+  // fit the skeleton to the T-pose: arm axis, torso width, crotch, legs, chin
+  const armY = [], armZ = [], torsoX = [], legX = [], legZ = [];
+  for (let i = 0; i < n; i++) { const ax = Math.abs(X(i)), y = Y(i);
+    if (ax > W * 0.62) { armY.push(y); armZ.push(Z(i)); }
+    if (y > H * 0.55 && y < H * 0.68) torsoX.push(ax);
+    if (y < H * 0.2) { legX.push(ax); legZ.push(Z(i)); } }
+  const aY = chmodMedian(armY), aZ = chmodMedian(armZ); const tw = chmodPct(torsoX, 0.95); const shX = clamp(tw * 0.92, 0.1 * s, W * 0.45);
+  let crotch = null; for (let y = H * 0.3; y < H * 0.62 && crotch == null; y += H * 0.005) { for (let i = 0; i < n; i++) if (Math.abs(X(i)) < 0.025 * s && Y(i) >= y && Y(i) < y + H * 0.01) { crotch = y; break; } }
+  const hipsY = clamp(crotch != null ? crotch + 0.05 * s : H * 0.533, H * 0.4, H * 0.6); const lx = Math.max(0.06 * s, chmodMedian(legX)), lz = chmodMedian(legZ);
+  const chin = M.extras.chinY && M.extras.chinY < H && M.extras.chinY > aY ? M.extras.chinY : Math.max(aY + 0.1 * s, H * 0.87);
+  const chestY = Math.max(hipsY + 0.2 * s, aY - 0.15 * s), spineY = (hipsY + chestY) / 2, neckY = Math.max(aY + 0.02 * s, chin - 0.1 * s);
+  const footY = H * 0.045, thighY = hipsY - 0.05 * s, kneeY = thighY * 0.52 + footY * 0.48;
+  const wristX = Math.max(shX + 0.3 * s, W - 0.19 * s), elbowX = shX + (wristX - shX) * 0.5;
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const abs = []; const J = (name, v) => { abs[CHB[name]] = v; };
+  J('hips', V(0, hipsY, lz)); J('spine', V(0, spineY, lz)); J('chest', V(0, chestY, aZ)); J('neck', V(0, neckY, aZ)); J('head', V(0, chin, aZ));
+  for (const [sd, sg] of [['l', 1], ['r', -1]]) { J(sd + 'UpperArm', V(sg * shX, aY, aZ)); J(sd + 'Forearm', V(sg * elbowX, aY, aZ)); J(sd + 'Hand', V(sg * wristX, aY, aZ));
+    J(sd + 'Thigh', V(sg * lx, thighY, lz)); J(sd + 'Shin', V(sg * lx, kneeY, lz)); J(sd + 'Foot', V(sg * lx, footY, lz)); }
+  // each bone's segment, joint to the next joint (or a tip)
+  const tip = { head: V(0, H, aZ), lHand: V(W, aY, aZ), rHand: V(-W, aY, aZ), lFoot: V(lx, 0, lz + 0.16 * s), rFoot: V(-lx, 0, lz + 0.16 * s) };
+  const next = { hips: 'spine', spine: 'chest', chest: 'neck', neck: 'head', lUpperArm: 'lForearm', lForearm: 'lHand', rUpperArm: 'rForearm', rForearm: 'rHand', lThigh: 'lShin', lShin: 'lFoot', rThigh: 'rShin', rShin: 'rFoot' };
+  const seg = CH_BONES.map(([nm]) => [abs[CHB[nm]], next[nm] ? abs[CHB[next[nm]]] : tip[nm]]);
+  const B = (nm) => CHB[nm]; const ARM = { l: [B('lUpperArm'), B('lForearm'), B('lHand')], r: [B('rUpperArm'), B('rForearm'), B('rHand')] };
+  const LEG = { l: [B('lThigh'), B('lShin'), B('lFoot')], r: [B('rThigh'), B('rShin'), B('rFoot')] }; const TORSO = [B('hips'), B('spine'), B('chest'), B('neck'), B('head')];
+  const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4); const p = new THREE.Vector3(); const cand = [];
+  for (let i = 0; i < n; i++) {
+    p.set(X(i), Y(i), Z(i)); const ax = Math.abs(p.x); const side = p.x > 0.02 * s ? 'l' : p.x < -0.02 * s ? 'r' : null; cand.length = 0;
+    if (side && ax > shX + 0.04 * s && p.y > hipsY) { cand.push(...ARM[side]); if (ax < shX + 0.14 * s) cand.push(B('chest')); }
+    else if (p.y < hipsY - 0.07 * s) { if (side) cand.push(...LEG[side]); else cand.push(...LEG.l, ...LEG.r); if (p.y > hipsY - 0.2 * s) cand.push(B('hips')); }
+    else { cand.push(...TORSO); if (side && ax > shX - 0.06 * s && Math.abs(p.y - aY) < 0.13 * s) cand.push(ARM[side][0]); if (side && p.y < hipsY + 0.04 * s) cand.push(LEG[side][0]); }
+    const ws = cand.map(b => [b, 1 / Math.pow(chmodSegDist(p, seg[b][0], seg[b][1]) + 0.02 * s, 4)]).sort((a, b) => b[1] - a[1]).slice(0, 4); const tot = ws.reduce((a, w) => a + w[1], 0);
+    ws.forEach(([b, w], k) => { si[i * 4 + k] = b; sw[i * 4 + k] = w / tot; });
+  }
+  // T → A: lower each arm about its shoulder, blending by weight so the armpit folds instead of tearing
+  const drop = CHMOD.armDrop; const rot = { l: new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), -drop), r: new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), drop) };
+  const piv = { l: abs[B('lUpperArm')].clone(), r: abs[B('rUpperArm')].clone() }; const armOf = new Map(); for (const sd of ['l', 'r']) for (const b of ARM[sd]) armOf.set(b, sd);
+  const out = new Float32Array(n * 3); const q = new THREE.Vector3();
+  for (let i = 0; i < n; i++) { p.set(X(i), Y(i), Z(i)); let ox = 0, oy = 0, oz = 0;
+    for (let k = 0; k < 4; k++) { const w = sw[i * 4 + k]; if (!w) continue; const sd = armOf.get(si[i * 4 + k]); if (sd) q.copy(p).sub(piv[sd]).applyQuaternion(rot[sd]).add(piv[sd]); else q.copy(p); ox += q.x * w; oy += q.y * w; oz += q.z * w; }
+    out[i * 3] = ox; out[i * 3 + 1] = oy; out[i * 3 + 2] = oz; }
+  for (const sd of ['l', 'r']) for (const b of ARM[sd]) abs[b] = abs[b].clone().sub(piv[sd]).applyQuaternion(rot[sd]).add(piv[sd]);
+  // colours: glow materials run hot; remember which runs are skin and armour so a player's choices can repaint them
+  const col = new Float32Array(n * 3); const mat = new Uint8Array(n); const MAT = { char_matte: 0, char_hard: 1 };
+  for (const g of M.groups) for (let k = g.start; k < g.start + g.count; k++) mat[M.idx[k]] = MAT[g.mat] ?? 2;
+  for (let i = 0; i < n; i++) { const hot = mat[i] === 2 ? 2.2 : 1; for (let k = 0; k < 3; k++) col[i * 3 + k] = M.col[i * 4 + k] / 255 * hot; }
+  const dominant = (pick) => { const h = new Map(); for (let i = 0; i < n; i++) { if (!pick(i)) continue; const key = ((M.col[i * 4] >> 3) << 10) | ((M.col[i * 4 + 1] >> 3) << 5) | (M.col[i * 4 + 2] >> 3); h.set(key, (h.get(key) || 0) + 1); }
+    let best = -1, bc = 0; for (const [key, c] of h) if (c > bc) { bc = c; best = key; } return best < 0 ? null : [((best >> 10) & 31) * 8 / 255, ((best >> 5) & 31) * 8 / 255, (best & 31) * 8 / 255]; };
+  const skin = dominant(i => mat[i] === 0 && Y(i) > chin), armour = dominant(i => mat[i] === 1);
+  const R = { id, n, H, abs, pos: out, col, mat, si, sw, idx: M.idx, skin, armour, extras: M.extras };
+  CHMOD.rigged.set(id, R); return R;
+}
+/** A wearable geometry for a spec: the rigged model scaled to the species' height, dressed for who wears it. */
+function chmodGeo(spec, id) {
+  const R = chmodRig(id); const S = SPECIES[spec.species] || SPECIES.human; const k = S.h * (1 + (spec.look?.height || 0) * 0.05) / R.H;
+  const pos = new Float32Array(R.pos.length); for (let i = 0; i < pos.length; i++) pos[i] = R.pos[i] * k;
+  const col = Float32Array.from(R.col); const near = (i, c) => c && Math.abs(R.col[i * 3] - c[0] - 0.015) + Math.abs(R.col[i * 3 + 1] - c[1] - 0.015) + Math.abs(R.col[i * 3 + 2] - c[2] - 0.015) < 0.16;
+  const paint = (i, c, ref) => { const lum = (ref[0] + ref[1] + ref[2]) / 3 || 1; const f = (R.col[i * 3] + R.col[i * 3 + 1] + R.col[i * 3 + 2]) / 3 / lum; col[i * 3] = c.r * f; col[i * 3 + 1] = c.g * f; col[i * 3 + 2] = c.b * f; };
+  if (spec.role === 'player' || spec.vision) { const look = spec.look || {}; const sk = new THREE.Color(S.skins[(look.skin ?? 1) % 6]); const ar = new THREE.Color(CHAR_ARMOUR[(look.armour ?? 0) % 6]);
+    for (let i = 0; i < R.n; i++) { if (R.mat[i] === 0 && near(i, R.skin)) paint(i, sk, R.skin); else if (R.mat[i] === 1 && near(i, R.armour)) paint(i, ar, R.armour); } }
+  if (spec.vision) { const v = new THREE.Color(0x3a2a5a); for (let i = 0; i < R.n; i++) { col[i * 3] += (v.r - col[i * 3]) * 0.55; col[i * 3 + 1] += (v.g - col[i * 3 + 1]) * 0.55; col[i * 3 + 2] += (v.b - col[i * 3 + 2]) * 0.55; } }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('skinIndex', new THREE.BufferAttribute(R.si, 4)); geo.setAttribute('skinWeight', new THREE.BufferAttribute(R.sw, 4)); geo.setIndex(new THREE.BufferAttribute(R.idx, 1));
+  geo.computeVertexNormals(); geo.computeBoundingSphere(); geo.boundingSphere.radius = 1.4 * S.h;
+  return { geo, abs: R.abs.map(v => v.clone().multiplyScalar(k)), glow: null, height: R.H * k, model: id };
+}
+
+// §CHARMODELS.HOOKS — the procedural builder hands over to an authored body whenever one fits
+const _chmodKey = charKey;
+charKey = function (spec) { return _chmodKey(spec) + '|' + (spec.look?.body ? 1 : 0) + '|' + (charModelReady(spec) || 'proc'); };   // S9-EDIT(§CHARACTER.RIG charKey): body and model in the key
+const _chmodGeo = charBuildGeo;
+charBuildGeo = function (spec, lite = false) {   // S9-EDIT(§CHARACTER.RIG charBuildGeo): authored model for the full tier
+  const id = lite ? null : charModelReady(spec); if (!id) return _chmodGeo(spec, lite);
+  const key = charKey(spec); if (CHAR_GEO.has(key)) return CHAR_GEO.get(key); const out = chmodGeo(spec, id); CHAR_GEO.set(key, out); return out;
+};
+const _chmodSpawn = ofSpawnRig;
+ofSpawnRig = function (u) { if (u.spec) charModelAssign(u.spec); return _chmodSpawn(u); };   // S9-EDIT(§ONFOOT ofSpawnRig): NPCs take their model's species
+const _chmodLoadModels = charLoadModels;
+charLoadModels = function () { chmodLoad(); return _chmodLoadModels(); };   // S9-EDIT(§CHARACTER charLoadModels): the authored bundle loads alongside rigged GLBs
+
+// §CHARMODELS.UI — a frame choice for human bodies in character creation
+(function chmodInjectUI() {
+  const style = document.getElementById('cc-style'); if (!style) return; const h = document.createElement('h3'); h.textContent = 'Frame'; h.id = 'cc-body-h';
+  const row = document.createElement('div'); row.className = 'ccrow'; row.id = 'cc-body'; style.after(h, row);
+})();
+const _chmodCcRender = ccRender;
+ccRender = function () {   // S9-EDIT(§CHARACTER ccRender): the Frame row (human only)
+  _chmodCcRender(); const s = CC.sel; const human = s.species === 'human'; $('cc-body-h').style.display = $('cc-body').style.display = human ? '' : 'none';
+  $('cc-body').innerHTML = ['Broad', 'Slight'].map((v, i) => `<button class="ccsw ${(s.look.body || 0) === i ? 'on' : ''}" data-cc="body:${i}" style="width:auto;padding:0 10px">${v}</button>`).join('');
+};
+chmodLoad();
+
+Object.assign(S9X, { charMakeBones, CHMOD, CHAR_PACK, CHMOD_BODY, charModelFor, charModelReady, charModelAssign, chmodLoad, chmodParse, chmodRig, chmodGeo, chmodSwapLive });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
