@@ -330,6 +330,7 @@
     §PARRY                  a parry you can read: the threat ring, the window, the answer
     §PROFILES               many players, many people: each profile is its own save and its own character
       §PROFILES.BRIGHTNESS    one slider for the whole picture, remembered on this device; the default is darker than before
+      §PARRY.ASSIST           below Hard the blade guards on its own: no timing, no luck
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -668,6 +669,10 @@
     §SBXUI sbxHandleEscape — Escape closes the profiles panel
     §LIGHTING ltTarget — the brightness setting scales light, exposure and glow
     §PARTRT partRenderHook — the threat ring every frame
+    §COMBATFEEL cfApply — automatic guard below Hard
+    §BLADE bladeInput — the blade raises itself against what is coming
+    §BLADE bladeStrike — the automatic guard meets blades
+    §BLADE bladeOnBolt — the automatic guard meets bolts
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -22983,7 +22988,7 @@ function prStep(dt) {
   const win = BLADE.parryWindow; const open = T.t <= win; const r = PR_CFG.ring[0] + (PR_CFG.ring[1] - PR_CFG.ring[0]) * clamp(T.t / PR_CFG.look, 0, 1);
   const yaw = OF.cam?.yaw ?? me.yaw; let a = Math.atan2(T.x - me.pos.x, T.z - me.pos.z) - yaw; a = Math.atan2(Math.sin(a), Math.cos(a));
   PR.el.style.display = 'block'; PR.el.style.width = PR.el.style.height = (r * 2) + 'px'; PR.el.classList.toggle('open', open); PR.el.classList.toggle('blade', T.kind === 'blade');
-  PR.arrow.style.transform = `rotate(${-a}rad) translateY(-${r + 10}px)`; PR.label.textContent = open ? (T.kind === 'blade' ? 'BLOCK NOW — turn the blade' : 'BLOCK NOW — send it back') : (T.kind === 'blade' ? 'blade incoming' : 'bolt incoming');
+  PR.arrow.style.transform = `rotate(${-a}rad) translateY(-${r + 10}px)`; PR.label.textContent = cfLevel() !== 'hard' ? (me.blade?.swing ? 'mid-swing — hold block' : T.kind === 'blade' ? 'blade incoming — guarding' : 'bolt incoming — guarding') : open ? (T.kind === 'blade' ? 'BLOCK NOW — turn the blade' : 'BLOCK NOW — send it back') : (T.kind === 'blade' ? 'blade incoming' : 'bolt incoming');
 }
 // the answer: a press inside the window turns a blade (the attacker staggers), a bolt already goes back (the Stage 9 rule)
 const _prStrike = bladeStrike;
@@ -23069,6 +23074,24 @@ const _prRender = partRenderHook;
 partRenderHook = function (alpha, dt) { const r = _prRender(alpha, dt); prStep(Math.min(0.1, dt || 1 / 60)); return r; };   // S11-EDIT(§PARTRT partRenderHook): the threat ring every frame
 
 Object.assign(S9X, { PR, PR_CFG, prThreat, prStep, pfList, pfActive, pfCreate, pfSwitch, pfDelete, pfOpen, ltBright, bladeStrikeNow: (...a) => bladeStrike(...a) });
+
+// §PARRY.ASSIST — below Hard the blade guards on its own: no timing, no luck
+//  With the sabre lit and not mid-swing, every bolt and blade from any side is turned: bolts go back
+//  at the shooter, blades stagger their owner. Holding block does the same even mid-combo. Blocks
+//  cost a sliver of stamina. Hard keeps the original timing game.
+const _paCf = cfApply;
+cfApply = function (force) { const r = _paCf(force); if (cfLevel() !== 'hard') { const B = CF.base; BLADE.parryWindow = 999; BLADE.chainWindow = 999; BLADE.frontCone = Math.PI + 0.01; const s = cfLevel() === 'story' ? 0.08 : 0.15; BLADE.stamLightBlock = B.stamLightBlock * s; BLADE.stamHeavyBlock = B.stamHeavyBlock * s; BLADE.stamDeflect = B.stamDeflect * s; BLADE.stamClumsy = B.stamClumsy * s; } return r; };   // S11-EDIT(§COMBATFEEL cfApply): automatic guard below Hard
+cfApply(true);
+const _paInput = bladeInput;
+bladeInput = function (me, dt) {   // S11-EDIT(§BLADE bladeInput): the blade raises itself against what is coming
+  _paInput(me, dt); const b = me?.blade; if (!b?.lit || cfLevel() === 'hard' || b.swing || b.lock || b.broken > 0) return;
+  const T = prThreat(); if (T && T.t < 0.45) { if (!b.blocking) b.blockT = 0; b.blocking = true; b.auto = true; } else if (b.auto) { b.auto = false; if (!mmDown('aim')) b.blocking = false; }
+};
+const paAuto = (me) => { const b = me?.blade; return !!b?.lit && cfLevel() !== 'hard' && !b.swing && !b.lock && !(b.broken > 0) && !(me.stun > 0); };
+const _paStrike = bladeStrike;
+bladeStrike = function (u, kind, extra) { const me = OF.me; const b = me?.blade; if (u !== me && paAuto(me) && !b.blocking) { b.blocking = true; b.blockT = 0; try { return _paStrike(u, kind, extra); } finally { b.blocking = false; } } return _paStrike(u, kind, extra); };   // S11-EDIT(§BLADE bladeStrike): the automatic guard meets blades
+const _paBolt = bladeOnBolt;
+bladeOnBolt = function (u, bolt, at) { const b = u?.blade; if (u === OF.me && paAuto(u) && !b.blocking) { b.blocking = true; b.blockT = 0; try { return _paBolt(u, bolt, at); } finally { b.blocking = false; } } return _paBolt(u, bolt, at); };   // S11-EDIT(§BLADE bladeOnBolt): the automatic guard meets bolts
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
