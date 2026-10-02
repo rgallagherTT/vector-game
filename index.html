@@ -20981,7 +20981,7 @@ function warTableOpen(show, how = 'full') {
   wtInjectUI(); if (!SBX.profile || !gsEnsure()) return false; wtHist(); wtBuild(); smap.open = show;
   if (show) { WT.mode = 'full'; WT.fromTable = how === 'table'; if (WT.root.parent === HS.built?.group) wtTableAttach(false); WT.route = SBX.route?.length > 1 ? SBX.route : null; if (WT.sel == null && smap.sel != null) WT.sel = smap.sel; WT.tab = how === 'news' ? 'news' : WT.tab === 'news' && how !== 'news' ? 'system' : WT.tab;
     $('wt-full')?.classList.add('on'); document.body.classList.add('wt-full'); if (typeof mmReleasePointer === 'function') mmReleasePointer(); WT.markT = 0; WT.pinKey = null; wtPanel(); wtBar(); }
-  else { WT.mode = null; WT.play = false; WT.drag = null; $('wt-full')?.classList.remove('on'); document.body.classList.remove('wt-full'); if (WT.root && WT.root.parent === WT.scene) WT.scene.remove(WT.root); }
+  else { WT.mode = null; WT.play = false; WT.drag = null; $('wt-full')?.classList.remove('on'); document.body.classList.remove('wt-full'); if (WT.root && WT.scene && WT.root.parent === WT.scene) WT.scene.remove(WT.root); }
   return true;
 }
 // the old star map and news screens open the war table instead (their data and buttons are unchanged underneath)
