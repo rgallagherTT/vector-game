@@ -326,6 +326,7 @@
     §LIGHTING               image-based light, exposure by place, night-lit kit windows; the overview everywhere
       §LIGHTING.OVERVIEW      the overview survives every mode; on a planet it lists the ground
       §LIGHTING.HOOKS         every frame: the light, and the overview kept on screen and current
+      §LIGHTING.BLADE         the sabre made forgiving: every wielder can parry, the windows are wide, the guard covers the front, swings find their target
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -655,6 +656,9 @@
     §SBXUI sbxOverviewRender — ground rows read as ground rows; selections give a bearing
     §SBXUI sbxSelect — ground contacts are bearings, not warp targets
     §PARTRT partRenderHook — lighting by place; the overview never goes missing
+    §COMBATFEEL cfApply — the guard can cover nearly the whole front
+    §BLADE bladeCanParry — anyone holding a sabre can parry below Hard
+    §BLADE bladeSwing — the player's swing turns to the nearest foe in front
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -22845,9 +22849,9 @@ function ltInit() { if (LT.env) return; const pm = new THREE.PMREMGenerator(rend
 function ltTarget() {
   const day = SRF.active ? clamp((SRF.sunEl ?? 1) * 1.4 + 0.1, 0, 1) : 0; const aboard = MM.mode === 'ON_FOOT_ABOARD' || (typeof SETL !== 'undefined' && SETL.cell);
   const under = typeof MT !== 'undefined' && MT.level === 0 && MT.cur; const atmo = SRF.active ? (SRF.B?.atmo ?? 0.5) : 0;
-  if (under) return { env: 0.55, exp: LT.exp0 * 1.25, bloom: 1 }; if (aboard) return { env: 0.6, exp: LT.exp0, bloom: 1 };
-  if (SRF.active) return { env: 0.18 + 0.55 * day * (0.5 + 0.5 * atmo), exp: LT.exp0 * (1.18 - 0.18 * day), bloom: WORLD.city?.sg ? (day > 0.4 ? 0.7 : 0.6) : 1 };
-  return { env: 0.32, exp: LT.exp0, bloom: 1 };
+  if (under) return { env: 0.22, exp: LT.exp0 * 1.0, bloom: 1 }; if (aboard) return { env: 0.3, exp: LT.exp0 * 0.95, bloom: 1 };
+  if (SRF.active) return { env: 0.05 + 0.27 * day * (0.5 + 0.5 * atmo), exp: LT.exp0 * 0.9, bloom: WORLD.city?.sg ? (day > 0.4 ? 0.7 : 0.6) : 1 };
+  return { env: 0.16, exp: LT.exp0 * 0.95, bloom: 1 };
 }
 function ltStep(dt) { if (LT.off) return;
   ltInit(); const T = ltTarget(); const a = 1 - Math.exp(-dt * 2.5);
@@ -22919,6 +22923,22 @@ partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): 
   return r;
 };
 
+
+// §LIGHTING.BLADE — the sabre made forgiving: every wielder can parry, the windows are wide, the guard covers the front, swings find their target
+Object.assign(CF_LEVELS.story, { parry: 8, cone: 2.4, stam: 0.25, spread: 2.2, pause: 1.8, skill: 0.4, dmg: 0.5 });
+Object.assign(CF_LEVELS.standard, { parry: 4, cone: 2.2, stam: 0.35, spread: 2.0, pause: 1.6, skill: 0.5, dmg: 0.6 });
+const _ltCfApply = cfApply;
+cfApply = function (force) { const r = _ltCfApply(force); const L = CF_LEVELS[cfLevel()]; BLADE.frontCone = Math.min(Math.PI * 0.95, CF.base.frontCone * L.cone); return r; };   // S11-EDIT(§COMBATFEEL cfApply): the guard can cover nearly the whole front
+cfApply(true);
+const _ltCanParry = bladeCanParry;
+bladeCanParry = function (u) { return u === OF.me ? !!u?.blade && (cfLevel() !== 'hard' || _ltCanParry(u)) : _ltCanParry(u); };   // S11-EDIT(§BLADE bladeCanParry): anyone holding a sabre can parry below Hard
+const _ltSwing = bladeSwing;
+bladeSwing = function (u, kind) {   // S11-EDIT(§BLADE bladeSwing): the player's swing turns to the nearest foe in front
+  if (u === OF.me && cfLevel() !== 'hard') { let best = null, bd = 5; const fx = Math.sin(u.yaw), fz = Math.cos(u.yaw);
+    for (const v of OF.units) { if (v === u || !v.alive || !ofHostile(u, v)) continue; const dx = v.pos.x - u.pos.x, dz = v.pos.z - u.pos.z; const d = Math.hypot(dx, dz); if (d > bd || Math.abs(v.pos.y - u.pos.y) > 2) continue; if ((dx * fx + dz * fz) / (d || 1) < -0.2) continue; bd = d; best = v; }
+    if (best) u.yaw = Math.atan2(best.pos.x - u.pos.x, best.pos.z - u.pos.z); }
+  return _ltSwing(u, kind);
+};
 Object.assign(S9X, { LT, ltInit, ltStep, ltTarget, ltOverviewHome, sbxOverviewEntriesNow: () => sbxOverviewEntries(), sbxOverviewRenderNow: () => sbxOverviewRender() });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
