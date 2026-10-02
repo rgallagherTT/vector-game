@@ -301,6 +301,9 @@
     §BOARDING               taking a ship by its corridors, and keeping yours
       §BOARDING.REPEL         disabled near a hostile warship: pods hit your hull
       §BOARDING.NAV           the soldiers' flow fields inside a hull: one-metre cells, walls solid, doorways open, and the grid rides with the ship
+    §FLEETBATTLE            when two powers' fleets meet over a contested world
+      §FLEETBATTLE.LIVE       fought where you are
+    §FLEETCMD               your own ships under captains, and the tactical view
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -578,6 +581,17 @@
     §MODEMGR SPACE update — board a disabled warship
     §SANDBOX sbxVehicleStep — boarding and repelling boarders
     §HOMESHIP.FRAME hsFollow — the boarding flow field moves with the hull
+    §FACTIONSIM gsTick — fleet battles open, fight and resolve on the galaxy clock
+    §CAPITAL wsVolley — focus fire on a subsystem
+    §WORLD hitShip — no friendly fire on your fleet
+    §SYSTEM sbxNPCHostile — the fleet takes your side
+    §MAIN simulate — the tactical view runs the battle at a quarter speed
+    §MAIN updateCamera — the tactical view looks down on the fight
+    §SBXCONTROL sbxUndock — the fleet sails with you
+    §SBXCONTROL sbxEnterDock — the fleet berths with you
+    §SYSTEM sbxLoadSystem — the fleet jumps with you
+    §SANDBOX sbxVehicleStep — fleet battles and your fleet
+    §SAVE sbxMigrateProfile — fleet captains and fleet battles
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -21784,6 +21798,198 @@ const _bdFollow = hsFollow;
 hsFollow = function () { const ax = HS.last.x, az = HS.last.z; _bdFollow(); if (BD.ffCell) { FF.ox += HS.last.x - ax; FF.oz += HS.last.z - az; } };   // S11-EDIT(§HOMESHIP.FRAME hsFollow): the boarding flow field moves with the hull
 const _bdNavEnd = bdEnd;
 bdEnd = function (how) { bdNav(false); return _bdNavEnd(how); };
+
+// =====================================================================================
+// §FLEETBATTLE — when two powers' fleets meet over a contested world
+//  The faction simulation now produces space battles the way Stage 10 produced ground battles:
+//  the first tick a war turns active over a target system, a fleet battle opens there with
+//  reinforcement tickets drawn from each side's strength and one objective — destroy the
+//  flagship, protect (or catch) the transports, hold the station, or break the blockade.
+//  Ignored, it resolves in the simulation. Present, it is fought live: two to six corvettes and
+//  frigates, now and then a cruiser, and twenty-odd fighters and bombers a side; when a side
+//  thins out, reinforcements drop out of hyperspace at the edge in formation while it has tickets.
+//  The outcome moves the war: the loser's fleet is mauled, an undefended target changes hands,
+//  and a ground battle on the planet below swings with orbital control (Stage 10).
+// =====================================================================================
+const FB_CFG = { ticketsPer: 2.2, ticketsMin: 24, ticketsMax: 90, simTicks: 14, waveAt: 9, edge: 6500, holdR: 2500, holdT: 90, perSide: { fighters: [10, 16], bombers: [2, 3], escorts: [1, 2], capitals: [1, 2] }, cruiserChance: 0.18, orbitSwing: 0.65, loserLoss: 0.25 };
+const FB_OBJ = { flagship: 'Destroy the flagship', transports: 'Protect the transports', station: 'Hold the station', blockade: 'Break the blockade' };
+const FB = { live: null, el: null, stats: { opened: 0, live: 0, resolved: 0, waves: 0, won: 0 } };
+function fbList(S = gsState()) { if (!S) return []; if (!S.fleetB) S.fleetB = []; return S.fleetB; }
+const fbActive = (S = gsState()) => fbList(S).filter(b => b.phase === 'active');
+const fbAt = (sys, S = gsState()) => fbActive(S).find(b => b.sys === sys) || null;
+/** A war has turned hot over its target: open the battle above it. */
+function fbOpen(S, w, k) {
+  const rng = gsRng(S, k, 7717 + w.id); const objs = Object.keys(FB_OBJ); const obj = objs[Math.floor(rng() * objs.length)];
+  const t = (x) => Math.round(clamp(FB_CFG.ticketsMin + x * FB_CFG.ticketsPer, FB_CFG.ticketsMin, FB_CFG.ticketsMax));
+  const b = { id: 'fb' + (S.seq++), sys: w.target, a: w.a, d: w.d, war: w.id, start: k, phase: 'active', obj, ta: t(w.A || 10), td: t(w.D || 10), winner: null, end: null, seed: Math.floor(rng() * 1e9) >>> 0, lastLive: -99 };
+  fbList(S).push(b); FB.stats.opened++; newsPush('war', `Fleets meet over ${SBX.systems[b.sys].name}: ${gsShort(b.a)} against ${gsShort(b.d)} — ${FB_OBJ[obj].toLowerCase()}.`, k * GS.tickMs, GS.live); return b;
+}
+/** Off-screen: tickets drain by the other side's weight; the fight lasts a few hours of galaxy time at most. */
+function fbTick(S, k) {
+  for (const w of S.wars) if (w.phase === 'active' && !fbList(S).some(b => b.war === w.id)) fbOpen(S, w, k);
+  const rng = gsRng(S, k, 9091);
+  for (const b of fbActive(S)) { if (k - b.lastLive <= 1) continue; const w = S.wars.find(x => x.id === b.war); if (!w || w.phase === 'over') { fbResolve(S, b, b.ta >= b.td ? b.a : b.d, k, 'peace'); continue; }
+    const A = Math.max(1, w.A), D = Math.max(1, w.D); b.ta -= 2 + D * 0.08 * (0.6 + rng() * 0.8); b.td -= 2 + A * 0.08 * (0.6 + rng() * 0.8);
+    if (b.ta <= 0 || b.td <= 0 || k - b.start >= FB_CFG.simTicks) fbResolve(S, b, b.ta > b.td ? b.a : b.d, k, b.ta <= 0 || b.td <= 0 ? 'tickets' : 'attrition'); }
+}
+/** The battle is over: fleets pay, orbit swings, an undefended target falls. */
+function fbResolve(S, b, winner, k, how) {
+  if (b.phase !== 'active') return; b.phase = 'over'; b.winner = winner; b.end = k; b.how = how; FB.stats.resolved++; const loser = winner === b.a ? b.d : b.a;
+  if (S.fac[loser]) gsLose(S.fac[loser], gsStr(S.fac[loser]) * FB_CFG.loserLoss);
+  const gb = typeof batEnsure === 'function' ? batEnsure(S).battles.find(x => x.phase === 'active' && x.sys === b.sys) : null;
+  if (gb) { const side = winner === gb.a ? 'a' : winner === gb.d ? 'd' : null; if (side) { gb.orbit = +clamp(gb.orbit + (side === 'a' ? 1 : -1) * FB_CFG.orbitSwing, -1, 1).toFixed(3); if (BAT.live?.b.id === gb.id) BAT.live.orbit = gb.orbit; } }
+  else if (winner === b.a && S.owners[b.sys] === b.d) { S.owners[b.sys] = b.a; S.stats.captures++; }
+  newsPush('war', `${gsShort(winner)} won the battle over ${SBX.systems[b.sys].name}${how === 'live' ? '' : ''} — ${gb ? `orbit over ${sbxPlanetOf(b.sys)?.name || 'the planet'} is theirs` : winner === b.a ? 'the system falls' : 'the attack is broken'}.`, k * GS.tickMs, GS.live);
+}
+const _fbTick = gsTick;
+gsTick = function (S, k) { const r = _fbTick(S, k); fbTick(S, k); return r; };   // S11-EDIT(§FACTIONSIM gsTick): fleet battles open, fight and resolve on the galaxy clock
+
+// §FLEETBATTLE.LIVE — fought where you are
+function fbCenter() { const P = SBX.points || []; const pl = P.find(x => x.kind === 'planet') || P.find(x => x.kind === 'station'); const c = (pl ? pl.pos.clone() : world.player.pos.clone()); return c.add(_fbv[0].set(0, 2500, 0)); }
+const _fbv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+function fbSpawnSide(L, side, scale = 1) {
+  const fac = side === 'a' ? L.b.a : L.b.d; const rng = makeRng((L.b.seed ^ (side === 'a' ? 17 : 31) ^ (L.wave * 7919)) >>> 0); const C = FB_CFG.perSide; const n = (r) => Math.max(0, Math.round((r[0] + rng() * (r[1] - r[0])) * scale));
+  const dir = side === 'a' ? 1 : -1; const base = L.c.clone().add(_fbv[1].set(dir * 2600, rng() * 400 - 200, rng() * 800 - 400)); const out = [];
+  const put = (e, w) => { if (!e) return; e.npc.fbSide = side; e.npc.fb = L.b.id; e.npc.fbW = w; e.npc.aggro = false; L.units.push(e); out.push(e); };
+  for (let i = 0; i < n(C.fighters); i++) put(gsSpawnShip('war', fac, rng() < 0.3 ? 'ace' : 'frig', base.clone().add(_fbv[2].set(rng() * 600 - 300, rng() * 300 - 150, rng() * 600 - 300))), 1);
+  for (let i = 0; i < n(C.bombers); i++) put(wsSpawn('bomber', fac, base.clone().add(_fbv[2].set(rng() * 400 - 200, -150, rng() * 400 - 200))), 1.5);
+  for (let i = 0; i < n(C.escorts); i++) put(wsSpawn('corvette', fac, base.clone().add(_fbv[2].set(dir * 500, 0, i * 400 - 200))), 4);
+  if (L.wave === 0) { for (let i = 0; i < n(C.capitals); i++) put(wsSpawn('frigate', fac, base.clone().add(_fbv[2].set(dir * 1100, 100, i * 700 - 350))), 10); if (rng() < FB_CFG.cruiserChance) put(wsSpawn('cruiser', fac, base.clone().add(_fbv[2].set(dir * 1800, 200, 0))), 24); }
+  return out;
+}
+function fbStartLive(b) {
+  const S = gsState(); const L = FB.live = { b, c: fbCenter(), units: [], wave: 0, tickets: { a: b.ta, d: b.td }, t: 0, waveT: 0, holdT: 0, transports: [], flag: {}, ended: false };
+  fbSpawnSide(L, 'a'); fbSpawnSide(L, 'd'); FB.stats.live++;
+  for (const side of ['a', 'd']) { const mine = L.units.filter(e => e.npc.fbSide === side); const big = mine.sort((x, y) => (y.npc.fbW || 1) - (x.npc.fbW || 1))[0]; if (big) { big.npc.flagship = true; big.name = `${big.name} (flagship)`; L.flag[side] = big; } }
+  if (b.obj === 'transports' || b.obj === 'blockade') { const fac = b.obj === 'transports' ? b.d : b.d; for (let i = 0; i < 4; i++) { const h = gsSpawnShip('convoy', fac, 'hauler', L.c.clone().add(_fbv[2].set(-1200 + i * 120, -200, 300)), { hauler: true }); if (h) { h.npc.fbSide = 'd'; h.npc.fb = b.id; h.npc.fbW = 2; h.npc.transport = true; L.units.push(h); L.transports.push(h); h.goal = h.target = { pos: L.c.clone().add(_fbv[2].set(FB_CFG.edge, 0, 0)), vel: new THREE.Vector3(), alive: true, active: true, radius: 200 }; } } }
+  b.lastLive = S.tick; sbxToast(`Battle over ${SBX.systems[b.sys].name}: ${gsShort(b.a)} v ${gsShort(b.d)} — ${FB_OBJ[b.obj]}.${allegFac() ? ` You fight for the ${gsShort(allegFac())}.` : ''}`);
+}
+function fbEndLive(winner, how) {
+  const L = FB.live; if (!L || L.ended) return; L.ended = true; const S = gsState(); L.b.ta = L.tickets.a; L.b.td = L.tickets.d; fbResolve(S, L.b, winner, S.tick, how);
+  const mine = allegFac(); if (mine && winner === mine) { FB.stats.won++; SBX.profile.isk += 120000; sbxToast(`Victory over ${SBX.systems[L.b.sys].name}. 120,000 cr from ${gsShort(mine)} command.`); if (typeof allegMerit === 'function') allegMerit(25, 'fleet battle'); }
+  else sbxToast(`${gsShort(winner)} holds the space over ${SBX.systems[L.b.sys].name}.`);
+  for (const e of L.units) if (e.active && e.alive && !e.npc?.fleetOwned) { e.npc.fb = null; e.npc.kind = 'war'; } FB.live = null; fbHud();
+}
+/** One live tick: targets, tickets, reinforcement waves at the edge, the objective. */
+function fbStep(dt) {
+  const p = SBX.profile; const S = gsState(); if (!S || SRF.active || game.mode !== 'sandbox') return;
+  if (!FB.live) { const b = fbAt(p.systemId, S); if (b && (MM.mode === 'SPACE' || MM.mode === 'ON_FOOT_ABOARD') && !p.docked) fbStartLive(b); return; }
+  const L = FB.live; const b = L.b; if (p.systemId !== b.sys || b.phase !== 'active') { FB.live = null; fbHud(); return; } L.t += dt; b.lastLive = S.tick;
+  // losses spend tickets
+  for (const e of L.units) if (!e.fbCounted && (!e.alive || !e.active)) { e.fbCounted = true; L.tickets[e.npc?.fbSide || 'a'] -= e.npc?.fbW || 1; }
+  L.units = L.units.filter(e => e.active && e.alive);
+  // each side targets the nearest enemy, bombers prefer capitals, everyone shoots the player if they are hostile to the player's colours
+  L.thinkT = (L.thinkT || 0) - dt; if (L.thinkT <= 0) { L.thinkT = 0.6; const pl = world.player; const mine = allegFac();
+    for (const e of L.units) { const foeSide = e.npc.fbSide === 'a' ? 'd' : 'a'; const prefCap = e.war?.cls === 'bomber'; let best = null, bd = Infinity;
+      for (const o of L.units) { if (o.npc.fbSide !== foeSide) continue; const d = o.pos.distanceToSquared(e.pos) * (prefCap && !o.war?.bankMax ? 9 : 1); if (d < bd) { bd = d; best = o; } }
+      const facE = e.npc.fbSide === 'a' ? b.a : b.d; const hostileToMe = mine ? facE !== mine && (b.a === mine || b.d === mine) : e.npc.aggro;
+      if (hostileToMe && pl.alive && pl.pos.distanceTo(e.pos) < 2500 && Math.random() < 0.4) best = pl; if (best) { e.target = best; e.goal = null; } } }
+  // reinforcement waves while tickets last
+  L.waveT -= dt; for (const side of ['a', 'd']) { const alive = L.units.filter(e => e.npc.fbSide === side).length; if (L.waveT <= 0 && alive < FB_CFG.waveAt && L.tickets[side] > 6) { L.waveT = 20; L.wave++; FB.stats.waves++; const ws = fbSpawnSide(L, side, 0.6); for (const e of ws) { e.pos.addScaledVector(_fbv[0].set(side === 'a' ? 1 : -1, 0, 0), FB_CFG.edge - 2600); world.explode(e.pos, 0.6, 0x9fd8ff); } sbxToast(`${gsShort(side === 'a' ? b.a : b.d)} reinforcements drop out of hyperspace.`); } }
+  // the objective
+  let win = null; const flagDead = (s) => L.flag[s] && (!L.flag[s].alive || !L.flag[s].active);
+  if (b.obj === 'flagship') { if (flagDead('d')) win = b.a; else if (flagDead('a')) win = b.d; }
+  if (b.obj === 'transports' || b.obj === 'blockade') { const live = L.transports.filter(h => h.active && h.alive); const out = live.filter(h => h.pos.distanceTo(L.c) > FB_CFG.edge - 300); if (!live.length) win = b.a; else if (out.length >= 2) win = b.d; }
+  if (b.obj === 'station') { const near = L.units.filter(e => e.npc.fbSide === 'a' && e.pos.distanceTo(L.c) < FB_CFG.holdR).length > L.units.filter(e => e.npc.fbSide === 'd' && e.pos.distanceTo(L.c) < FB_CFG.holdR).length; L.holdT = near ? L.holdT + dt : Math.max(0, L.holdT - dt * 0.5); if (L.holdT >= FB_CFG.holdT) win = b.a; }
+  if (!win) { if (L.tickets.a <= 0) win = b.d; else if (L.tickets.d <= 0) win = b.a; }
+  if (win) fbEndLive(win, 'live'); fbHud();
+}
+function fbHud() {
+  if (!FB.el) { FB.el = document.createElement('div'); FB.el.id = 'fb-hud'; document.body.appendChild(FB.el); const css = document.createElement('style'); css.textContent = `#fb-hud { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 9; padding: 6px 14px; font-family: var(--font-body); font-size: 12px; color: var(--hud-text); background: var(--bg-panel-alpha); border: 1px solid var(--rule); border-top: 2px solid var(--accent); border-radius: var(--radius); pointer-events: none; display: none; text-align: center; }
+    #fb-hud b { font-family: var(--font-display); letter-spacing: 0.08em; } #fb-hud .k { color: var(--hud-muted); } .wt-full #fb-hud, body.cine #fb-hud { display: none !important; }`; document.head.appendChild(css); }
+  const L = FB.live; if (!L) { FB.el.style.display = 'none'; return; } FB.el.style.display = ''; const b = L.b;
+  FB.el.innerHTML = `<b>${gsShort(b.a)} ${Math.max(0, Math.round(L.tickets.a))} · ${Math.max(0, Math.round(L.tickets.d))} ${gsShort(b.d)}</b><br><span class="k">${FB_OBJ[b.obj]}${b.obj === 'station' ? ` — ${Math.round(L.holdT)}/${FB_CFG.holdT} s` : ''}${b.obj === 'transports' || b.obj === 'blockade' ? ` — ${L.transports.filter(h => h.alive).length} transports` : ''}</span>`;
+}
+
+// §FLEETCMD — your own ships under captains, and the tactical view
+//  With a faction rank of 2 or better (or as an independent who owns them), the warships you own
+//  that wait at your station sail with you as a fleet of up to two-plus-rank, each under a hired
+//  captain (ranked; lost with the ship). G opens the tactical view: the battle from above, time
+//  slowed to a quarter, your ships on a list; pick one, then an order — attack (click a hostile),
+//  focus a subsystem, escort you, hold, form up, launch fighters, retreat. A ship lost is gone for good.
+const FC_ORDERS = { attack: 'Attack target', focus: 'Focus subsystem', escort: 'Escort me', hold: 'Hold position', form: 'Form up', launch: 'Launch fighters', retreat: 'Retreat' };
+const FC = { units: [], tac: false, sel: null, simSkip: 0, el: null, pickTgt: null, stats: { orders: 0, lost: 0, launched: 0 } };
+function fcOf() { const p = SBX.profile; if (!p.fleetCmd) p.fleetCmd = { captains: {}, use: true }; return p.fleetCmd; }
+function fcCap() { const A = typeof allegOf === 'function' ? allegOf() : null; return A?.fac ? (A.rank >= 2 ? 2 + A.rank : 0) : 2; }
+/** Owned warships berthed where you are (not the one you fly) that can sail with you. */
+function fcRoster() { const p = SBX.profile; const here = 'station:' + (p.stationId || ''); return p.ships.filter(s => s.uid !== p.activeShip && SBX_HULLS[s.hull]?.wsClass && s.location === here).slice(0, fcCap()); }
+function fcCaptain(s) { const F = fcOf(); if (!F.captains[s.uid]) { const rng = makeRng(s.uid * 977); F.captains[s.uid] = { name: CREW_NAMES[Math.floor(rng() * CREW_NAMES.length)], rank: 1, skill: +(0.45 + rng() * 0.3).toFixed(2), xp: 0 }; } return F.captains[s.uid]; }
+/** Undock with your fleet: each owned warship sails as an NPC under its captain, at your side. */
+function fcLaunch() {
+  fcRecall(true); const pl = world.player; const fac = allegFac() || 'authority'; let k = 0;
+  for (const s of fcRoster()) { const cls = SBX_HULLS[s.hull].wsClass; const at = pl.pos.clone().add(_fbv[0].set((k % 2 ? 1 : -1) * (200 + k * 120), 40, 300 + k * 80)); const e = wsSpawn(cls, SBX_HULLS[s.hull].wsFac || fac, at); if (!e) continue;
+    if (s.partHp) e.ps.hp.forEach((h, i) => { const f = s.partHp[i]; if (f != null && f < 1) { e.ps.hp[i] = e.ps.max[i] * f; if (f <= 0) e.ps.gone[i] = 1; } }); e.ps.dirty = true;
+    const cap = fcCaptain(s); e.npc.kind = 'fleet'; e.npc.fleetOwned = s.uid; e.npc.faction = fac; e.name = `${s.name} (Capt. ${cap.name})`; e.fc = { order: 'escort', tgt: null, sub: null }; e.goal = e.target = { pos: pl.pos.clone(), vel: pl.vel, alive: true, active: true, radius: 150 }; FC.units.push(e); k++; }
+  if (k) sbxToast(`${k} ship${k > 1 ? 's' : ''} of your fleet form up on you. G — tactical view.`);
+}
+/** Dock or jump: the fleet comes home, damage and all. A ship destroyed is struck from the register. */
+function fcRecall(silent) {
+  const p = SBX.profile; for (const e of FC.units) { const s = p.ships.find(x => x.uid === e.npc?.fleetOwned); if (!s) continue; if (e.active && e.alive) { s.partHp = Array.from(e.ps.hp, (h, i) => +(h / e.ps.max[i]).toFixed(3)); e.alive = false; world.enemies.release(e); } }
+  FC.units = []; if (!silent) SBX.dirty = true;
+}
+function fcStep(dt) {
+  const p = SBX.profile; const pl = world.player;
+  for (const e of FC.units) if (!e.fcDone && (!e.active || !e.alive)) { e.fcDone = true; const s = p.ships.find(x => x.uid === e.npc?.fleetOwned); if (s) { p.ships.splice(p.ships.indexOf(s), 1); const cap = fcOf().captains[s.uid]; FC.stats.lost++; newsPlayer(`Lost the ${s.name}${cap ? ` and Captain ${cap.name}` : ''}.`); sbxToast(`The ${s.name} is gone${cap ? `, and Captain ${cap.name} with her` : ''}.`); delete fcOf().captains[s.uid]; SBX.dirty = true; } }
+  FC.units = FC.units.filter(e => e.active && e.alive);
+  for (const e of FC.units) { const O = e.fc; const hostile = (o) => o !== e && o.alive && o.npc && !o.npc.fleetOwned && (o.npc.aggro || o.target === pl || (o.npc.kind === 'war' && gsPlayerHostileTo(o.npc.faction)) || o.npc.kind === 'pirate' || FC.units.some(f => o.target === f));
+    if (O.order === 'attack' || O.order === 'focus') { if (O.tgt?.alive) { e.target = O.tgt; e.goal = null; if (O.order === 'focus' && O.sub) e.focusSub = O.sub; } else { O.order = 'escort'; O.tgt = null; e.focusSub = null; } }
+    if (O.order === 'escort' || O.order === 'form') { let best = null, bd = (O.order === 'form' ? 400 : 2200) ** 2; world.enemies.forEachActive(o => { if (hostile(o)) { const d = o.pos.distanceToSquared(pl.pos); if (d < bd) { bd = d; best = o; } } });
+      if (best) { e.target = best; e.goal = null; } else { const slot = pl.pos.clone().add(_fbv[1].set((FC.units.indexOf(e) % 2 ? 1 : -1) * 260, 30, 260)); e.goal = e.target = { pos: slot, vel: pl.vel, alive: true, active: true, radius: 120 }; } }
+    if (O.order === 'hold') { e.goal = e.target = { pos: O.at || (O.at = e.pos.clone()), vel: _fbv[2].set(0, 0, 0), alive: true, active: true, radius: 100 }; e.speedMul = Math.min(e.speedMul ?? 1, 0.3); }
+    if (O.order === 'retreat') { e.goal = e.target = { pos: e.pos.clone().addScaledVector(_fbv[1].subVectors(e.pos, pl.pos).normalize(), 2000), vel: _fbv[2].set(0, 0, 0), alive: true, active: true, radius: 100 }; if (e.pos.distanceTo(pl.pos) > 4000) { const s = p.ships.find(x => x.uid === e.npc.fleetOwned); if (s) s.partHp = Array.from(e.ps.hp, (h, i) => +(h / e.ps.max[i]).toFixed(3)); e.alive = false; e.fcDone = true; world.enemies.release(e); sbxToast(`${e.name} has withdrawn to the station.`); } } }
+}
+// heavy batteries obey a focus order: the volley goes at that subsystem
+const _fcVolley = wsVolley;
+wsVolley = function (e, tgt) { if (e.focusSub && tgt.war?.subs[e.focusSub]?.length) { const i = tgt.war.subs[e.focusSub].find(j => !tgt.ps.gone[j]); if (i != null) { const at = tgt.ps.worldOf(i, _fbv[2]).clone(); return _fcVolley(e, { pos: at, vel: tgt.vel, alive: true }); } } return _fcVolley(e, tgt); };   // S11-EDIT(§CAPITAL wsVolley): focus fire on a subsystem
+// your own fleet does not take your bolts
+const _fcHit = World.prototype.hitShip;
+World.prototype.hitShip = function (ship, damage, hitPoint, source, attacker = null) { if (ship?.npc?.fleetOwned && (attacker === this.player || source === 'player')) return { absorbed: true }; return _fcHit.call(this, ship, damage, hitPoint, source, attacker); };   // S11-EDIT(§WORLD hitShip): no friendly fire on your fleet
+const _fcNpcHostile = sbxNPCHostile;
+sbxNPCHostile = function (a, b) { if (a?.npc?.fleetOwned && b?.npc?.fleetOwned) return false; if (a?.npc?.fleetOwned) return !!(b?.npc && (b.npc.aggro || b.npc.kind === 'pirate' || (b.npc.kind === 'war' && gsPlayerHostileTo(b.npc.faction)))); if (b?.npc?.fleetOwned) return _fcNpcHostile(b, a); return _fcNpcHostile(a, b); };   // S11-EDIT(§SYSTEM sbxNPCHostile): the fleet takes your side
+// the tactical view: from above, time at a quarter
+function fcTac(on = !FC.tac) {
+  FC.tac = on && MM.mode === 'SPACE'; fcPanel(); if (FC.tac) { mmReleasePointer?.(); sbxToast('Tactical view — time slowed. Pick a ship, then an order. G to return.'); }
+}
+const _fcSim = simulate;
+simulate = function (dt) { if (FC.tac && game.mode === 'sandbox') { FC.simSkip = (FC.simSkip + 1) % 4; if (FC.simSkip) return; } return _fcSim(dt); };   // S11-EDIT(§MAIN simulate): the tactical view runs the battle at a quarter speed
+const _fcCam = updateCamera;
+updateCamera = function (dt, alpha) { _fcCam(dt, alpha); if (!FC.tac || MM.mode !== 'SPACE') return; const pl = world.player; const c = FC.units.length ? FC.units.reduce((a, e) => a.add(e.pos), pl.pos.clone()).multiplyScalar(1 / (FC.units.length + 1)) : pl.pos; camera.position.set(c.x, c.y + 5200, c.z + 1800); camera.lookAt(c); camera.updateMatrixWorld(); };   // S11-EDIT(§MAIN updateCamera): the tactical view looks down on the fight
+function fcPanel() {
+  if (!FC.el) { const css = document.createElement('style'); css.textContent = `#fc-tac { position: fixed; left: 14px; top: 70px; z-index: 32; width: min(320px, calc(100vw - 28px)); max-height: 70vh; overflow: auto; display: none; }
+    #fc-tac.on { display: block; } #fc-tac .fc-ship { padding: 5px 6px; margin: 2px 0; border: 1px solid var(--rule); border-radius: var(--radius); cursor: pointer; font-size: 12px; } #fc-tac .fc-ship.on { border-color: var(--accent); }
+    #fc-tac .fc-orders { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; } #fc-tac .fc-orders button { margin: 0; padding: 4px 8px; font-size: 11px; } #fc-tac .k { color: var(--text-muted); font-size: 11px; }
+    #fc-pick { position: fixed; inset: 0; z-index: 31; display: none; cursor: crosshair; } #fc-pick.on { display: block; }`; document.head.appendChild(css);
+    FC.el = document.createElement('div'); FC.el.id = 'fc-tac'; FC.el.className = 'sb-card'; document.body.appendChild(FC.el); const pick = document.createElement('div'); pick.id = 'fc-pick'; document.body.appendChild(pick);
+    pick.addEventListener('click', (ev) => { if (!FC.pickFor) return; const t = fcPickAt(ev.clientX, ev.clientY); if (t) fcOrder(FC.pickFor, t); FC.pickFor = null; pick.classList.remove('on'); fcPanel(); });
+    FC.el.addEventListener('click', (ev) => { const s = ev.target.closest('[data-fcs]'); if (s) { FC.sel = +s.dataset.fcs; fcPanel(); return; } const o = ev.target.closest('[data-fco]'); if (!o) return; const e = FC.units[FC.sel]; if (!e) return sbxToast('Pick one of your ships first.');
+      const k = o.dataset.fco; if (k === 'attack' || k === 'focus') { FC.pickFor = k === 'focus' ? 'focus:' + (o.dataset.sub || 'shield_fore') : 'attack'; FC.pickShip = e; $('fc-pick').classList.add('on'); sbxToast('Click a hostile ship.'); return; } fcOrder(k); }); }
+  FC.el.classList.toggle('on', FC.tac); if (!FC.tac) { $('fc-pick')?.classList.remove('on'); return; }
+  FC.el.innerHTML = `<h1>Fleet</h1><p class="k">Time ×0.25 · ${FC.units.length} ship${FC.units.length === 1 ? '' : 's'} under your command</p>` + (FC.units.map((e, i) => `<div class="fc-ship ${FC.sel === i ? 'on' : ''}" data-fcs="${i}"><b>${e.name}</b><br><span class="k">${FC_ORDERS[e.fc.order] || e.fc.order}${e.fc.tgt ? ' — ' + e.fc.tgt.name : ''}${e.fc.sub ? ' (' + e.fc.sub.replace('_', ' ') + ')' : ''} · hull ${Math.round(e.ps.structFrac() * 100)}%</span></div>`).join('') || '<p class="k">No ships of yours are out. Own warships berthed at your station sail with you when you undock.</p>') +
+    `<div class="fc-orders">${Object.entries(FC_ORDERS).map(([k, n]) => k === 'focus' ? ['shield_fore', 'shield_aft', 'engines', 'bridge', 'hangar', 'reactor'].map(sb => `<button data-fco="focus" data-sub="${sb}">Focus ${sb.replace('_', ' ')}</button>`).join('') : `<button data-fco="${k}">${n}</button>`).join('')}</div>`;
+}
+function fcPickAt(x, y) { let best = null, bd = 40; world.enemies.forEachActive(e => { if (!e.alive || e.npc?.fleetOwned) return; const v = _fbv[0].copy(e.pos).project(camera); if (v.z > 1) return; const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; const d = Math.hypot(sx - x, sy - y); if (d < bd) { bd = d; best = e; } }); return best; }
+/** Give the selected ship an order (or attack/focus a picked target). */
+function fcOrder(k, tgt = null) {
+  const e = tgt ? FC.pickShip : FC.units[FC.sel]; if (!e) return; FC.stats.orders++; const O = e.fc; O.at = null;
+  if (k === 'attack') { O.order = 'attack'; O.tgt = tgt; O.sub = null; } else if (k.startsWith('focus:')) { O.order = 'focus'; O.tgt = tgt; O.sub = k.slice(6); }
+  else if (k === 'launch') { if (e.war?.subs.hangar?.length && wsSubAlive(e, 'hangar')) { e.war.hangT = 0; e.war.launched = Math.max(0, e.war.launched - 2); FC.stats.launched++; sbxToast(`${e.name}: launching fighters.`); } else sbxToast(`${e.name} has no working hangar.`); return; }
+  else { O.order = k; O.tgt = null; O.sub = null; }
+  sbxToast(`${e.name}: ${FC_ORDERS[O.order]}${O.tgt ? ' — ' + O.tgt.name : ''}${O.sub ? ' (' + O.sub.replace('_', ' ') + ')' : ''}.`); fcPanel();
+}
+// G toggles the tactical view in space; undocking launches the fleet, docking or jumping recalls it
+window.addEventListener('keydown', (ev) => { if (ev.code !== 'KeyG' || game.mode !== 'sandbox' || MM.mode !== 'SPACE' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return; fcTac(); });
+const _fcUndock = sbxUndock;
+sbxUndock = function (...a) { const r = _fcUndock.apply(this, a); if (game.mode === 'sandbox' && SBX.profile && fcOf().use) setTimeout(() => { if (MM.mode === 'SPACE' && !SBX.profile.docked) fcLaunch(); }, 0); return r; };   // S11-EDIT(§SBXCONTROL sbxUndock): the fleet sails with you
+const _fcDock = sbxEnterDock;
+sbxEnterDock = function (...a) { fcRecall(); FC.tac = false; fcPanel(); return _fcDock.apply(this, a); };   // S11-EDIT(§SBXCONTROL sbxEnterDock): the fleet berths with you
+const _fcLoad = sbxLoadSystem;
+sbxLoadSystem = function (...a) { if (FC.units.length && SBX.profile) { const keep = FC.units.map(e => e.npc.fleetOwned); fcRecall(true); const r = _fcLoad.apply(this, a); for (const s of SBX.profile.ships) if (keep.includes(s.uid)) s.location = 'station:' + (SBX.profile.stationId || ''); if (FB.live) FB.live = null; setTimeout(() => { if (MM.mode === 'SPACE') fcLaunchKept(keep); }, 0); return r; } if (FB.live) FB.live = null; return _fcLoad.apply(this, a); };   // S11-EDIT(§SYSTEM sbxLoadSystem): the fleet jumps with you
+function fcLaunchKept(uids) { const p = SBX.profile; const st = 'station:' + (p.stationId || ''); for (const s of p.ships) if (uids.includes(s.uid)) s.location = st; fcLaunch(); }
+const _fbVeh = sbxVehicleStep;
+sbxVehicleStep = function (dt) { _fbVeh(dt); if (!SRF.active && game.mode === 'sandbox') { fbStep(dt); fcStep(dt); } };   // S11-EDIT(§SANDBOX sbxVehicleStep): fleet battles and your fleet
+const _fcMig = sbxMigrateProfile;
+sbxMigrateProfile = function (p) { p = _fcMig(p); if (p.fleetCmd === undefined) p.fleetCmd = null; if (p.gsim && !p.gsim.fleetB) p.gsim.fleetB = []; return p; };   // S11-EDIT(§SAVE sbxMigrateProfile): fleet captains and fleet battles
+Object.assign(S9X, { FB, FB_CFG, FB_OBJ, fbList, fbActive, fbAt, fbOpen, fbTick, fbResolve, fbStartLive, fbEndLive, fbStep, FC, FC_ORDERS, fcOf, fcCap, fcRoster, fcLaunch, fcRecall, fcStep, fcTac, fcOrder, fcPickAt, simulateNow: (dt) => simulate(dt), sbxUndockNow: () => sbxUndock() });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
