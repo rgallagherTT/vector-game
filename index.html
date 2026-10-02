@@ -290,6 +290,10 @@
       §COMMS.HOLO             the caller's own body, rendered live into a small, coarse, flickering viewport
       §COMMS.CINEMA           face-to-face: letterbox, a two-shot, cuts between speakers, shallow focus
       §COMMS.HOOKS            the clock, the render pass, the save
+    §SHIPCLASS              the warship ladder: fighter, heavy fighter, bomber, light freighter, corvette,
+    §CAPITAL                warships as NPCs: enemy definitions, faction designs, subsystems that matter
+      §CAPITAL.TORPEDO        slow, heavy, homing; devastating on a bare capital hull, wasted on a standing shield, can be shot down
+    §COMBATFEEL             on-foot difficulty: how forgiving the blade is and how sharp the enemy is (pause menu; saved in the profile)
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -530,6 +534,16 @@
     §SANDBOX sbxShared — calls ring on the shared clock
     §MAIN render — the holo viewport draws over the frame
     §SAVE sbxMigrateProfile — calls and what ignoring them cost ride in the v9 profile
+
+  STAGE 11 CHANGES TO EARLIER SECTIONS (each marked in place with "S11-EDIT")
+    §WORLD hitShip — warship shield banks
+    §PARTRT partDetonate — warship reactors go up late and big
+    §MODEMGR SPACE update — torpedo release from a bomber
+    §SBXCONTROL sbxEnterDock — torpedo racks refilled at a station
+    §SANDBOX sbxVehicleStep — warship subsystems and torpedoes run with the space sim
+    §MAIN render — the bomb-sight
+    §BLADE bladeNpc — blade-bearers parry and block by difficulty
+    §ONFOOT ofDamage — what reaches you, by difficulty
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -21116,6 +21130,254 @@ sbxMigrateProfile = function (p) { p = _commsMig(p); if (p.comms === undefined) 
 commsUI();
 
 Object.assign(S9X, { COMMS, COMMS_CFG, COMMS_CALLERS, CINE, commsOf, commsTick, commsRing, commsAnswer, commsIgnore, commsHang, commsSignal, commsHoloDraw, cineStart, cineEnd, cineCut, dlgStartNow: (id, ctx, n) => dlgStart(id, ctx, n), pathDialogNow: (a, b, c, d) => pathDialog(a, b, c, d), pathDialogChooseNow: (i) => pathDialogChoose(i) });
+
+// =====================================================================================
+// §SHIPCLASS — the warship ladder: fighter, heavy fighter, bomber, light freighter, corvette,
+//  frigate, cruiser, dreadnought. Every class is built on the S6 part system and every power
+//  builds its own version in its own design language — the same generator, different habits:
+//  the Concordance builds long ribbed spines under heavy plate; the Free Reach builds broad,
+//  radiator-hung workhorses with tanks outside; the Syndicates build lean gun-platforms with thin
+//  skins; the Wardens build deep keels and few guns. No wedges, no daggers, no saucers.
+//  Handling scales with mass: a corvette is a fighter's heavier sibling, a frigate is a ship you
+//  give orders to. Larger hulls need crew to fly at all (§STATIONS) and are lost when destroyed.
+// =====================================================================================
+const WS_SCALE = (cs) => { const k = cs / 2; return { cs, mass: k ** 2.4, hp: k ** 1.5, power: k ** 1.8, heat: k ** 1.8, heatCap: k ** 1.65, thrust: k, rcs: k ** 2.3, cost: k ** 1.93, vol: k ** 2.17, cpu: k ** 0.84, label: '' }; };
+PART_SCALES.corvette = { ...WS_SCALE(5), label: 'Corvette ' }; PART_SCALES.frigate = { ...WS_SCALE(10), label: 'Frigate ' };
+const SHIP_CLASSES = {
+  fighter:  { name: 'Fighter', m: 18, crew: 1, ctl: 'direct', rank: 0 },
+  heavy:    { name: 'Heavy fighter', m: 24, crew: 2, ctl: 'direct', rank: 0, scale: 'fighter', spec: { len: 12, beam: 2, armor: 6, tanks: 2, radiators: 4, rcs: 10, thrusters: 4, reactors: 2, high: 4, mid: 2, low: 2, rig: 1, crew: 2 }, price: 420000, hp: [260, 300, 360] },
+  bomber:   { name: 'Bomber', m: 28, crew: 2, ctl: 'direct', rank: 1, scale: 'fighter', spec: { len: 14, beam: 2, keel: 1, armor: 10, tanks: 3, radiators: 4, rcs: 8, thrusters: 4, reactors: 2, high: 1, mid: 3, low: 3, rig: 1, crew: 2 }, price: 560000, hp: [320, 480, 520], torps: 4 },
+  freighter:{ name: 'Light freighter', m: 40, crew: 2, ctl: 'direct', rank: 0 },
+  corvette: { name: 'Corvette', m: 100, crew: 6, ctl: 'direct', rank: 2, scale: 'corvette', spec: { len: 20, beam: 2, keel: 1, armor: 14, tanks: 4, radiators: 8, rcs: 12, thrusters: 4, heavyThrust: true, reactors: 3, high: 4, mid: 4, low: 4, rig: 2, crew: 3, cargo: 2 }, price: 6800000, hp: [1800, 2600, 3400] },
+  frigate:  { name: 'Frigate', m: 300, crew: 24, ctl: 'bridge', rank: 3, scale: 'frigate', spec: { len: 30, beam: 3, keel: 2, armor: 22, tanks: 6, radiators: 12, rcs: 16, thrusters: 6, heavyThrust: true, reactors: 4, heavyReactor: true, high: 8, mid: 6, low: 6, rig: 3, crew: 4, cargoL: 2 }, price: 42000000, hp: [9000, 14000, 18000], metro: true },
+  cruiser:  { name: 'Cruiser', m: 800, crew: 120, ctl: 'bridge', rank: 4, scale: 'capital', cs: 24, spec: { len: 34, beam: 3, keel: 2, armor: 30, tanks: 8, radiators: 16, rcs: 18, thrusters: 8, heavyThrust: true, reactors: 6, heavyReactor: true, high: 12, mid: 8, low: 8, rig: 4, crew: 5, cargoL: 4 }, price: 160000000, hp: [26000, 40000, 52000], metro: true },
+  dreadnought: { name: 'Dreadnought', m: 2000, crew: 1000, ctl: 'bridge', rank: 5 },
+};
+const _wv = Array.from({ length: 16 }, () => new THREE.Vector3());
+const WS_CLASSES = ['heavy', 'bomber', 'corvette', 'frigate', 'cruiser'];
+const WS_FACS = ['authority', 'combine', 'syndicate', 'guild'];
+/** Design language: how each power bends the same generator. */
+const WS_STYLE = {
+  authority: { name: 'Concordance', tint: 0xc9ced6, f: (s) => ({ ...s, len: Math.round(s.len * 1.12), beamEvery: 2, armor: Math.round((s.armor || 0) * 1.35), radiators: Math.max(2, Math.round((s.radiators || 2) * 0.8)) }) },
+  combine:   { name: 'Free Reach', tint: 0x9a7b4f, f: (s) => ({ ...s, beam: (s.beam || 1) + 1, beamEvery: 3, tanks: Math.round((s.tanks || 1) * 1.6), radiators: Math.round((s.radiators || 2) * 1.4), cargo: (s.cargo || 0) + 2 }) },
+  syndicate: { name: 'Syndicates', tint: 0x7a2630, f: (s) => ({ ...s, len: Math.max(6, Math.round(s.len * 0.92)), armor: Math.round((s.armor || 0) * 0.6), high: Math.round((s.high || 0) * 1.5), rcs: (s.rcs || 6) + 4 }) },
+  guild:     { name: 'Wardens', tint: 0xd8d2c0, f: (s) => ({ ...s, keel: (s.keel || 0) + 1, high: Math.max(1, Math.round((s.high || 0) * 0.6)), armor: Math.round((s.armor || 0) * 1.1), beamEvery: 4 }) },
+};
+/** One class in one power's style, roles tagged on its parts for §CAPITAL. Cached per class × power. */
+function wsDesign(cls, fac) {
+  const id = `w_${cls}_${fac}`; if (PART_PRESETS[id]) return PART_PRESETS[id]; const C = SHIP_CLASSES[cls]; const St = WS_STYLE[fac] || WS_STYLE.authority;
+  const D = partGenerate({ ...St.f(C.spec), scale: C.scale, name: `${St.name} ${C.name.toLowerCase()}`, tint: St.tint }); D.scale = C.scale; if (C.cs) D.cs = C.cs; D.name = `${St.name} ${C.name.toLowerCase()}`; D.tint = St.tint;
+  wsTagRoles(D, cls); PART_PRESETS[id] = D; return D;
+}
+/** Subsystems are parts with a role: the bow crew cell is the bridge, reactors the reactor, thrusters the engines,
+ *  utility mounts alternate fore and aft shield generators, the heaviest turrets are batteries and the rest point defence,
+ *  large cargo is the hangar. */
+function wsTagRoles(D, cls) {
+  const P = D.parts; const minZ = Math.min(...P.map(p => p.z));
+  const crew = P.filter(p => p.t === 'crew').sort((a, b) => a.z - b.z); if (crew[0]) crew[0].role = 'bridge';
+  for (const p of P) { if (p.t === 'reactor' || p.t === 'reactor_h') p.role = 'reactor'; if (p.t === 'thruster' || p.t === 'thruster_h') p.role = 'engines'; if (p.t === 'cargo_l') p.role = 'hangar'; }
+  const util = P.filter(p => p.t === 'hp_util').sort((a, b) => a.z - b.z); util.forEach((p, i) => { p.role = i < util.length / 2 ? 'shield_fore' : 'shield_aft'; });
+  const tur = P.filter(p => p.t === 'hp_turret').sort((a, b) => Math.abs(a.x) - Math.abs(b.x) || a.z - b.z); const nb = cls === 'corvette' || cls === 'heavy' || cls === 'bomber' ? Math.ceil(tur.length / 2) : Math.ceil(tur.length * 0.4);
+  tur.forEach((p, i) => { p.role = i < nb ? 'battery' : 'pd'; });
+}
+// the hulls players can own: every class in every power's style
+for (const cls of WS_CLASSES) for (const fac of WS_FACS) {
+  const C = SHIP_CLASSES[cls]; const St = WS_STYLE[fac]; const id = `h_${cls}_${fac}`; const sp = C.spec;
+  const big = cls === 'frigate' || cls === 'cruiser'; const mass = { heavy: 1.6, bomber: 2.2, corvette: 9, frigate: 40, cruiser: 120 }[cls];
+  SBX_HULLS[id] = { name: `${St.name} ${C.name.toLowerCase()}`, cls: C.name, price: C.price, model: 'dropship', tint: St.tint, scale: 1.0, wsClass: cls, wsFac: fac, crewNeed: C.crew, metro: !!C.metro, rank: C.rank,
+    desc: { heavy: 'Two seats, four guns, and a companion in the back watching your tail.', bomber: 'Slow, tough, and carrying four torpedoes that a capital ship will feel. Bring its shields down first.', corvette: 'A hundred metres of warship that still answers the stick — heavier, slower, with crewed turrets and a deck you can walk.', frigate: 'Three hundred metres. You do not fly it so much as command it: helm orders from the bridge, gunnery from the crew.', cruiser: 'Eight hundred metres and a hundred crew. A fleet\'s backbone; built only in metropolis orbital yards.' }[cls],
+    slots: { high: sp.high || 0, mid: sp.mid || 0, low: sp.low || 0, rig: sp.rig || 0 }, pg: 60 + mass * 12, cpu: 160 + mass * 20, cargo: { heavy: 60, bomber: 90, corvette: 900, frigate: 6000, cruiser: 24000 }[cls], mass,
+    hp: { shield: C.hp[0], armor: C.hp[1], hull: C.hp[2] }, cap: { pool: 1.5 + mass * 0.05, tau: 1.6 },
+    resists: { shield: [0.0, 0.2, 0.4, 0.5], armor: [0.5, 0.4, 0.3, 0.15], hull: [0, 0, 0, 0] },
+    flight: [{ stat: 'flight.maxSpeed', add: -Math.min(170, 15 * Math.log2(1 + mass) * 4) }, { stat: 'flight.pitchRate', mul: 1 / Math.sqrt(1 + mass * 0.6) }, { stat: 'flight.yawRate', mul: 1 / Math.sqrt(1 + mass * 0.6) }, { stat: 'flight.responsiveness', mul: 1 / Math.sqrt(1 + mass * 0.3) }] };
+  Object.defineProperty(SBX_HULLS[id], 'preset', { get() { const D = wsDesign(cls, fac); PART_PRESETS[`w_${cls}_${fac}`] = D; return `w_${cls}_${fac}`; }, set() {}, enumerable: false, configurable: true });
+  ITEMS['kit_' + id] = { name: `${SBX_HULLS[id].name} hull kit`, cat: 'hull', vol: Math.min(400, 20 + mass * 4), base: C.price, hull: id }; HULL_SKILL_REQ[id] = Math.min(5, 1 + C.rank);
+}
+const wsHullClass = (ship = SBX.ship()) => SBX_HULLS[ship?.hull]?.wsClass || (ship?.hull === 'h_freighter' ? 'freighter' : 'fighter');
+
+// §CAPITAL — warships as NPCs: enemy definitions, faction designs, subsystems that matter
+const WS_NPC = {
+  heavy:    { name: 'Heavy fighter', hull: 260, shield: 160, speed: 150, turnRate: 1.5, radius: 12, holdDistance: 300, weapon: { interval: 0.16, burst: 8, pause: 0.6, damage: 7, speed: 900, spread: 0.02, cone: 0.5, range: 900, aimError: 0.15 } },
+  bomber:   { name: 'Bomber', hull: 360, shield: 200, speed: 110, turnRate: 0.9, radius: 14, holdDistance: 1400, weapon: { interval: 0.4, burst: 3, pause: 1.5, damage: 6, speed: 800, spread: 0.03, cone: 0.6, range: 700, aimError: 0.2 } },
+  corvette: { name: 'Corvette', hull: 2400, shield: 1200, speed: 85, turnRate: 0.42, radius: 55, holdDistance: 900, weapon: { interval: 0.25, burst: 10, pause: 1.0, damage: 8, speed: 900, spread: 0.02, cone: 3.1, range: 1300, aimError: 0.15, turret: true } },
+  frigate:  { name: 'Frigate', hull: 12000, shield: 5000, speed: 55, turnRate: 0.18, radius: 160, holdDistance: 1800, weapon: { interval: 0.3, burst: 12, pause: 1.2, damage: 9, speed: 900, spread: 0.02, cone: 3.1, range: 1600, aimError: 0.15, turret: true } },
+  cruiser:  { name: 'Cruiser', hull: 36000, shield: 14000, speed: 38, turnRate: 0.09, radius: 420, holdDistance: 2600, weapon: { interval: 0.3, burst: 16, pause: 1.0, damage: 10, speed: 900, spread: 0.02, cone: 3.1, range: 2000, aimError: 0.15, turret: true } },
+};
+for (const [k, d] of Object.entries(WS_NPC)) ARCHETYPES['ws_' + k] = ARCHETYPES[k === 'heavy' ? 'ace' : k === 'bomber' ? 'bomber' : 'gunship'];   // warships fly like the gunship (fighters like aces)
+for (const [k, d] of Object.entries(WS_NPC)) CONFIG.enemies['ws_' + k] = { ...CONFIG.enemies.gunship, ...d, breakSpeed: d.speed, shieldRegen: d.shield * 0.01, shieldDelay: 4, color: 0x8a9098, glow: 0xffa060, separation: d.radius * 2, credits: Math.round(d.hull / 4) };
+const WS_CFG = { bankHp: { corvette: 1400, frigate: 5000, cruiser: 12000 }, bankRegen: 0.03, batteryDmg: { corvette: 120, frigate: 260, cruiser: 420 }, batteryEvery: { corvette: 3.2, frigate: 4, cruiser: 4.5 }, batteryRange: 4200, batterySpeed: 700,
+  pdRange: 1100, pdEvery: 0.22, pdDmg: 6, hangarEvery: 35, hangarCap: { frigate: 4, cruiser: 8 }, reactorFuse: 8, reactorR: 1600, reactorDmg: 2600 };
+const WS = { list: new Set(), torps: [], tMesh: null, sight: null, stats: { torpsBlocked: 0, torpsHit: 0, torpsShot: 0, launched: 0, reactorBlasts: 0 } };
+/** Spawn a warship of a class for a power at a position; returns the NPC entity with its subsystems armed. */
+function wsSpawn(cls, fac, pos, extra = {}) {
+  const e = world.spawnEnemy('ws_' + cls, pos, _wv[7].set(rand(-1, 1), 0, rand(-1, 1)).normalize()); if (!e) return null;
+  e.npc = { kind: 'war', faction: fac, cls: 'ws_' + cls, ...extra }; e.name = `${gsShort(fac)} ${SHIP_CLASSES[cls].name.toLowerCase()}`; e.tintOverride = GS_FAC_TINT[fac];
+  const D = wsDesign(cls, fac); const ps = new PartState(partClone(D), e, { hpMul: PART_HP_MUL.npc }); ps.resists = { armor: [0.4, 0.3, 0.2, 0.1], hull: [0, 0, 0, 0] };
+  e.ps = ps; e.radius = Math.max(e.def.radius, ps.pristine.radius * 0.85); e.maxShield = e.shield = 0; e.maxHull = 100; e.hull = 100; ps.mat.color.setHex(0xffffff); ps.D.tint = GS_FAC_TINT[fac] || D.tint; ps.mesh.material = ps.mat; scene.add(ps.root);
+  const prev = e.onRelease; e.onRelease = () => { partDetachNpc(e); WS.list.delete(e); e.war = null; e.onRelease = prev; if (prev) prev.call(e); };
+  wsArm(e, cls, fac); return e;
+}
+function wsArm(e, cls, fac) {
+  wsTagRoles(e.ps.D, cls);   // roles are not copied by partClone: tag the live copy
+  const subs = {}; e.ps.D.parts.forEach((p, i) => { if (p.role) (subs[p.role] || (subs[p.role] = [])).push(i); });
+  const bank = WS_CFG.bankHp[cls] || 0; e.war = { cls, fac, subs, banks: { fore: bank, aft: bank }, bankMax: bank, batT: rand(0, 2), pdT: 0, hangT: WS_CFG.hangarEvery * 0.5, launched: 0, disarray: false, disabled: false, fuse: null, torps: SHIP_CLASSES[cls].torps || 0, torpT: rand(6, 12), crew: SHIP_CLASSES[cls].crew };
+  WS.list.add(e);
+}
+const wsSubAlive = (e, role) => { const L = e.war?.subs[role]; if (!L || !L.length) return false; const ps = e.ps; return L.some(i => !ps.gone?.[i] && !(ps.hp && ps.hp[i] <= 0)); };
+const wsIsCapital = (t) => !!t && (t.isCapital || (t.war && ['corvette', 'frigate', 'cruiser'].includes(t.war.cls)) || (t.isPlayer && ['corvette', 'frigate', 'cruiser'].includes(wsHullClass())));
+/** The bank a hit lands on: fore if it strikes the forward half of the hull, else aft. */
+function wsBankOf(e, hitPoint) { const f = _wv[9].set(0, 0, -1).applyQuaternion(e.quat); return _wv[10].subVectors(hitPoint, e.pos).dot(f) >= 0 ? 'fore' : 'aft'; }
+function wsStep(dt) {
+  for (const e of WS.list) {
+    if (!e.active || !e.alive) { WS.list.delete(e); continue; } const W = e.war; if (!W) continue;
+    // shield generators feed their own bank; a dead generator collapses it for good
+    for (const b of ['fore', 'aft']) { if (!wsSubAlive(e, 'shield_' + b)) W.banks[b] = 0; else W.banks[b] = Math.min(W.bankMax, W.banks[b] + W.bankMax * WS_CFG.bankRegen * dt); }
+    // bridge and engines
+    const bridge = wsSubAlive(e, 'bridge'), engines = wsSubAlive(e, 'engines');
+    if (!bridge && !W.disarray) { W.disarray = true; newsPush('war', `${e.name}'s bridge is gone — the ship is in disarray.`, galaxyNow(), true); }
+    if (!engines) { e.speedMul = 0; e.turnMul = 0.05; } else if (W.disarray) { e.speedMul = Math.min(e.speedMul ?? 1, 0.15); e.turnMul = 0.1; }
+    const crewLoss = W.crewLost || 0; W.disabled = (!bridge && !engines) || crewLoss >= W.crew * 0.8; e.boardable = W.disabled && ['corvette', 'frigate', 'cruiser'].includes(W.cls);
+    // reactor: a dead reactor is a fuse
+    if (W.fuse == null && W.subs.reactor && !wsSubAlive(e, 'reactor')) { W.fuse = WS_CFG.reactorFuse; sbxToast(`${e.name}: reactor breach — get clear!`); }
+    if (W.fuse != null) { W.fuse -= dt; if (W.fuse <= 0) { wsReactorBlast(e); continue; } }
+    const tgt = e.target?.alive ? e.target : null;
+    // heavy batteries: slow, devastating, only worth firing at big hulls
+    if (wsSubAlive(e, 'battery') && tgt && wsIsCapital(tgt) && (!W.disarray || Math.random() < 0.3)) { W.batT -= dt; if (W.batT <= 0) { W.batT = WS_CFG.batteryEvery[W.cls] || 4; const d = e.pos.distanceTo(tgt.pos); if (d < WS_CFG.batteryRange) wsVolley(e, tgt); } }
+    // point defence: torpedoes first, then fighters close in
+    if (wsSubAlive(e, 'pd')) { W.pdT -= dt; if (W.pdT <= 0) { W.pdT = WS_CFG.pdEvery * (W.disarray ? 2.5 : 1); wsPointDefence(e); } }
+    // hangar: fighter wings until the bay is gone
+    if (W.subs.hangar && wsSubAlive(e, 'hangar') && !W.disarray) { W.hangT -= dt; if (W.hangT <= 0 && W.launched < (WS_CFG.hangarCap[W.cls] || 0)) { W.hangT = WS_CFG.hangarEvery; wsLaunchWing(e); } }
+    // NPC bombers run on enemy capitals; the wing waits until the bank facing them is down, or fires on a timer
+    if (W.cls === 'bomber' && W.torps > 0 && tgt && wsIsCapital(tgt)) { W.torpT -= dt; const d = e.pos.distanceTo(tgt.pos); const bankDown = !tgt.war || tgt.war.banks[wsBankOf(tgt, e.pos)] <= 0; if (d < 2600 && (bankDown || W.torpT <= 0)) { W.torpT = 14; W.torps--; wsTorpedo(e, tgt); } }
+  }
+  wsTorpStep(dt);
+}
+function wsVolley(e, tgt) {
+  const L = e.war.subs.battery; const D = WS_CFG.batteryDmg[e.war.cls] || 150; let n = 0;
+  for (const i of L) { if (e.ps.gone?.[i] || (e.ps.hp && e.ps.hp[i] <= 0)) continue; const mz = e.ps.worldOf(i, _wv[11]); const sol = solveLead(mz, e.vel, tgt.pos, tgt.vel || _wv[12].set(0, 0, 0), WS_CFG.batterySpeed, 1, _wv[12]); const aim = _wv[13].subVectors(sol > 0 ? _wv[12] : tgt.pos, mz).normalize();
+    world.spawnProjectile(mz, _wv[14].copy(aim).multiplyScalar(WS_CFG.batterySpeed).add(e.vel), 'enemy', D, WS_CFG.batteryRange / WS_CFG.batterySpeed + 0.5, 4.5, e); if (++n >= 4) break; }
+  if (n) world.flash?.(e.pos, 2, 0xffc080);
+}
+function wsPointDefence(e) {
+  const hostile = (t) => t && t !== e && t.alive !== false && (t.isPlayer ? (e.target === t || e.npc?.aggro) : t.npc && typeof sbxNPCHostile === 'function' && sbxNPCHostile(e, t));
+  let best = null, bd = WS_CFG.pdRange;
+  for (const T of WS.torps) if (T.alive && T.fac !== e.war.fac) { const d = T.pos.distanceTo(e.pos); if (d < bd) { bd = d; best = T; } }
+  if (best) { if (Math.random() < 0.45) { best.alive = false; WS.stats.torpsShot++; world.explode(best.pos, 0.6, 0xffd080); } return; }
+  const pl = world.player; let tgt = null; bd = WS_CFG.pdRange * 0.85;
+  if (pl.alive && hostile(pl) && !wsIsCapital(pl)) { const d = pl.pos.distanceTo(e.pos); if (d < bd) { bd = d; tgt = pl; } }
+  world.enemies.forEachActive(o => { if (o.alive && !o.war?.bankMax && hostile(o)) { const d = o.pos.distanceTo(e.pos); if (d < bd) { bd = d; tgt = o; } } });
+  if (!tgt) return; const L = e.war.subs.pd; const i = L[Math.floor(Math.random() * L.length)]; if (e.ps.gone?.[i]) return; const mz = e.ps.worldOf(i, _wv[11]);
+  const aim = _wv[13].subVectors(tgt.pos, mz).normalize(); randomUnit(_wv[12]); aim.addScaledVector(_wv[12], 0.03).normalize(); world.spawnProjectile(mz, _wv[14].copy(aim).multiplyScalar(1400).add(e.vel), 'enemy', WS_CFG.pdDmg, WS_CFG.pdRange / 1400 + 0.2, 1.2, e);
+}
+function wsLaunchWing(e) {
+  const i = e.war.subs.hangar[0]; const at = e.ps.worldOf(i, _wv[11]).clone(); e.war.launched += 2; WS.stats.launched += 2;
+  for (let k = 0; k < 2; k++) { const f = gsSpawnShip('war', e.war.fac, 'frig', at.clone().add(_wv[12].set(k * 30 - 15, -40, 0))); if (f) { f.npc.carrier = e; f.npc.fleet = e.npc.fleet; f.target = e.target; } }
+}
+function wsReactorBlast(e) {
+  const at = e.pos.clone(); WS.stats.reactorBlasts++; world.explode(at, 8, 0xffe0a0); shake.add(Math.max(0, 1.2 - at.distanceTo(world.player.pos) / 3000)); newsPush('war', `${e.name} went up when its reactor failed.`, galaxyNow(), true);
+  const R = WS_CFG.reactorR; const hit = (s) => { const d = s.pos.distanceTo(at); if (d < R && s !== e) world.hitShip(s, WS_CFG.reactorDmg * (1 - d / R), s.pos.clone(), 'explosion', null); };
+  world.enemies.forEachActive(s => { if (s.alive) hit(s); }); if (world.player.alive) hit(world.player);
+  e.war.fuse = null; e.war.blown = true; e.alive = false; world.enemies.release(e);
+}
+// shields on warships take hits bank by bank; a torpedo against a standing bank is spent on it
+const _wsHit = World.prototype.hitShip;
+World.prototype.hitShip = function (ship, damage, hitPoint, source, attacker = null) {   // S11-EDIT(§WORLD hitShip): warship shield banks
+  const W = ship?.war; if (W && ship.ps?.lost && !W.blown) { if (W.fuse == null && W.subs.reactor && !wsSubAlive(ship, 'reactor')) W.fuse = WS_CFG.reactorFuse; if (W.fuse != null) return { absorbed: true, fuse: W.fuse }; }   // a breached reactor holds the wreck together until it goes
+  if (W && W.bankMax && hitPoint) { const b = wsBankOf(ship, hitPoint); if (W.banks[b] > 0) { const take = source === 'torpedo' ? damage * 0.12 : damage; W.banks[b] = Math.max(0, W.banks[b] - take); this.sparks(hitPoint, 3, 0x7fd8ff); if (source === 'torpedo') WS.stats.torpsBlocked++; return { absorbed: true, bank: b }; } }
+  if (W && source !== 'explosion') W.crewLost = (W.crewLost || 0) + damage / 400;
+  return _wsHit.call(this, ship, damage, hitPoint, source, attacker);
+};
+
+// §CAPITAL.TORPEDO — slow, heavy, homing; devastating on a bare capital hull, wasted on a standing shield, can be shot down
+const TORP_CFG = { speed: 240, turn: 0.75, life: 32, hp: 14, dmg: 2600, dmgSmall: 300, hitR: 1.0, partDmg: 700 };
+function wsTorpedo(from, tgt) {
+  const T = { pos: from.pos.clone().addScaledVector(_wv[9].set(0, 0, -1).applyQuaternion(from.quat), (from.radius || 10) + 6), vel: _wv[9].clone().multiplyScalar(TORP_CFG.speed).add(from.vel || _wv[10].set(0, 0, 0)), tgt, fac: from.isPlayer ? 'player' : from.war?.fac || from.npc?.faction, owner: from, life: TORP_CFG.life, hp: TORP_CFG.hp, alive: true };
+  WS.torps.push(T); if (WS.torps.length > 64) WS.torps.shift(); audio.missile?.(); return T;
+}
+function wsTorpStep(dt) {
+  if (!WS.tMesh) { WS.tMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(2.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb070, toneMapped: false }), 64); WS.tMesh.frustumCulled = false; scene.add(WS.tMesh); }
+  let n = 0; const P = world.projectiles;
+  for (const T of WS.torps) {
+    if (!T.alive) continue; T.life -= dt; const tg = T.tgt; if (T.life <= 0 || !tg || tg.alive === false) { T.alive = false; world.explode(T.pos, 0.8); continue; }
+    const want = _wv[9].subVectors(tg.pos, T.pos); const dist = want.length(); want.normalize().multiplyScalar(TORP_CFG.speed); T.vel.lerp(want, Math.min(1, TORP_CFG.turn * dt)); T.vel.setLength(TORP_CFG.speed); T.pos.addScaledVector(T.vel, dt);
+    // bolts and point defence can kill it
+    P.forEachActive?.((pr) => { if (!T.alive || pr.owner === T.owner) return; if (pr.pos.distanceToSquared(T.pos) < 49) { T.hp -= pr.damage; pr.life = 0; if (T.hp <= 0) { T.alive = false; WS.stats.torpsShot++; world.explode(T.pos, 0.7, 0xffd080); } } });
+    if (!T.alive) continue;
+    if (dist < (tg.radius || 10) * TORP_CFG.hitR + 6) { T.alive = false; const big = wsIsCapital(tg); const r = world.hitShip(tg, big ? TORP_CFG.dmg : TORP_CFG.dmgSmall, T.pos.clone(), 'torpedo', T.owner); if (!r?.absorbed) { WS.stats.torpsHit++; if (big && tg.ps) { const ps = tg.ps; let c = -1, cd = Infinity; for (let i = 0; i < ps.D.parts.length; i++) { if (ps.gone[i]) continue; const d = ps.worldOf(i, _wv[11]).distanceToSquared(T.pos); if (d < cd) { cd = d; c = i; } } if (c >= 0) { const at = ps.worldOf(c, _wv[12]).clone(); const R = ps.cs * 2.6; for (let i = 0; i < ps.D.parts.length; i++) { if (ps.gone[i]) continue; const d = ps.worldOf(i, _wv[11]).distanceTo(at); if (d < R) partDamage(ps, i, TORP_CFG.partDmg * (ps.S.hp || 1) * (1 - d / R * 0.6)); } } } }
+      world.explode(T.pos, r?.absorbed ? 1.2 : 3.5, r?.absorbed ? 0x7fd8ff : 0xffa040); continue; }
+    _wsM.makeTranslation(T.pos.x, T.pos.y, T.pos.z); WS.tMesh.setMatrixAt(n++, _wsM);
+  }
+  WS.torps = WS.torps.filter(T => T.alive); WS.tMesh.count = n; WS.tMesh.instanceMatrix.needsUpdate = true;
+}
+const _wsM = new THREE.Matrix4();
+// a warship's reactor does not just pop: it starts the fuse on the whole ship
+const _wsDetonate = partDetonate;
+partDetonate = function (ps, i) {   // S11-EDIT(§PARTRT partDetonate): warship reactors go up late and big
+  const W = ps.ent?.war; if (W && ps.ent.alive) { if (W.fuse == null) { W.fuse = WS_CFG.reactorFuse; if (ps.ent.pos.distanceTo(world.player.pos) < 6000) sbxToast(`${ps.ent.name}: reactor breach — get clear!`); } return; }
+  return _wsDetonate(ps, i);
+};
+/** A direct hit near a part: that part takes it (the reactor goes when a torpedo lands beside it). */
+function partHitNpcPart(e, i, dmg) { if (e.ps?.hp) partDamage(e.ps, i, dmg); }
+// the player's bomber: secondary fire launches a torpedo at the locked target instead of a missile
+const _wsSpaceUpdate = MM_DEFS.SPACE.update;
+MM_DEFS.SPACE.update = function (dt) {   // S11-EDIT(§MODEMGR SPACE update): torpedo release from a bomber
+  const pl = world.player; const cls = game.mode === 'sandbox' ? wsHullClass() : 'fighter';
+  if (cls === 'bomber' && (input.pressed.has('Mouse2') || input.pressed.has('KeyF'))) { input.pressed.delete('Mouse2'); input.pressed.delete('KeyF'); input.fireSecondary = false; wsPlayerTorpedo(); }
+  return _wsSpaceUpdate.call(this, dt);
+};
+function wsTorpsLeft() { const s = SBX.ship(); if (s.torps == null) s.torps = SHIP_CLASSES.bomber.torps; return s.torps; }
+function wsPlayerTorpedo() {
+  const pl = world.player; const t = pl.target; if (!t?.alive) return sbxToast('Torpedoes need a locked target (Tab).'); if (wsTorpsLeft() <= 0) return sbxToast('Torpedo racks empty — rearm when docked.');
+  SBX.ship().torps--; wsTorpedo(pl, t); sbxToast(`Torpedo away — ${SBX.ship().torps} left.${t.war && t.war.banks[wsBankOf(t, pl.pos)] > 0 ? ' Their shield bank is still up.' : ''}`); SBX.dirty = true;
+}
+// docking rearms the racks
+const _wsDock = sbxEnterDock;
+sbxEnterDock = function (...a) { const r = _wsDock.apply(this, a); const s = SBX.ship(); if (s && wsHullClass(s) === 'bomber') s.torps = SHIP_CLASSES.bomber.torps; return r; };   // S11-EDIT(§SBXCONTROL sbxEnterDock): torpedo racks refilled at a station
+/** Bomb-sight: the lead point, the bank you are facing, and a release cue in the window. */
+function wsSight() {
+  if (!WS.sight) { WS.sight = document.createElement('div'); WS.sight.id = 'ws-sight'; WS.sight.innerHTML = '<div class="ws-ring"></div><div class="ws-txt"></div>'; document.body.appendChild(WS.sight);
+    const css = document.createElement('style'); css.textContent = `#ws-sight { position: fixed; z-index: 11; pointer-events: none; display: none; transform: translate(-50%, -50%); }
+      #ws-sight .ws-ring { width: 54px; height: 54px; border: 2px solid var(--accent); border-radius: 50%; margin: 0 auto; }
+      #ws-sight.go .ws-ring { border-color: var(--alert); box-shadow: 0 0 12px var(--alert); }
+      #ws-sight .ws-txt { margin-top: 6px; font-family: var(--font-num); font-size: 12px; color: var(--hud-text); text-align: center; white-space: nowrap; text-shadow: 0 0 4px var(--void); }`; document.head.appendChild(css); }
+  const el = WS.sight; const pl = world.player; const t = pl?.target; if (MM.mode !== 'SPACE' || wsHullClass() !== 'bomber' || !t?.alive || !wsIsCapital(t)) { el.style.display = 'none'; return; }
+  const sol = solveLead(pl.pos, pl.vel, t.pos, t.vel || _wv[12].set(0, 0, 0), TORP_CFG.speed, 1, _wv[12]); const p = (sol > 0 ? _wv[12] : t.pos).clone().project(camera); if (p.z > 1) { el.style.display = 'none'; return; }
+  const d = pl.pos.distanceTo(t.pos); const ang = _wv[13].subVectors(t.pos, pl.pos).normalize().angleTo(_wv[14].set(0, 0, -1).applyQuaternion(pl.quat)); const bank = t.war ? t.war.banks[wsBankOf(t, pl.pos)] : 0;
+  const go = d > 500 && d < 2600 && ang < 0.22; el.classList.toggle('go', go); el.style.display = ''; el.style.left = ((p.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - p.y) / 2 * innerHeight) + 'px';
+  el.querySelector('.ws-txt').textContent = `${Math.round(d)} m · ${bank > 0 ? `bank ${Math.round(bank / t.war.bankMax * 100)}%` : 'bank DOWN'} · ${wsTorpsLeft()} torp${go ? ' · RELEASE' : ''}`;
+}
+const _wsVeh = sbxVehicleStep;
+sbxVehicleStep = function (dt) { _wsVeh(dt); if (!SRF.active) wsStep(dt); };   // S11-EDIT(§SANDBOX sbxVehicleStep): warship subsystems and torpedoes run with the space sim
+const _wsRender = render;
+render = function (a, dt) { _wsRender(a, dt); if (game.mode === 'sandbox') wsSight(); };   // S11-EDIT(§MAIN render): the bomb-sight
+Object.assign(S9X, { SHIP_CLASSES, WS_CLASSES, WS_STYLE, WS, WS_CFG, TORP_CFG, wsDesign, wsSpawn, wsStep, wsSubAlive, wsIsCapital, wsBankOf, wsTorpedo, wsPlayerTorpedo, wsHullClass, wsReactorBlast, hitShipNow: (...a) => world.hitShip(...a), partDamageNow: (ps, i, d) => partDamage(ps, i, d), PART_SCALES });
+
+// §COMBATFEEL — on-foot difficulty: how forgiving the blade is and how sharp the enemy is (pause menu; saved in the profile)
+//  Hard is the Stage 9/10 tuning exactly. Standard (the default) and Story widen the parry and chain windows and the blade's
+//  guard cone, cut the stamina a deflection costs, make enemy rifles miss more and fire less often, make enemy blade-bearers
+//  parry and block less, and soften what reaches you.
+const CF_LEVELS = { story: { parry: 2.2, cone: 1.4, stam: 0.45, spread: 2.0, pause: 1.5, skill: 0.55, dmg: 0.55 }, standard: { parry: 1.8, cone: 1.25, stam: 0.65, spread: 1.6, pause: 1.3, skill: 0.75, dmg: 0.75 }, hard: { parry: 1, cone: 1, stam: 1, spread: 1, pause: 1, skill: 1, dmg: 1 } };
+const CF = { base: { parryWindow: BLADE.parryWindow, chainWindow: BLADE.chainWindow, frontCone: BLADE.frontCone, stamLightBlock: BLADE.stamLightBlock, stamHeavyBlock: BLADE.stamHeavyBlock, stamDeflect: BLADE.stamDeflect, stamClumsy: BLADE.stamClumsy, clumsyPass: BLADE.clumsyPass },
+  roles: JSON.parse(JSON.stringify(AI_ROLE)), cur: null };
+const cfLevel = () => { const u = SBX.profile?.ui; return u?.combat && CF_LEVELS[u.combat] ? u.combat : 'standard'; };
+function cfApply(force) {
+  const k = cfLevel(); if (k === CF.cur && !force) return; CF.cur = k; const L = CF_LEVELS[k]; const B = CF.base;
+  BLADE.parryWindow = B.parryWindow * L.parry; BLADE.chainWindow = B.chainWindow * L.parry; BLADE.frontCone = Math.min(Math.PI * 0.75, B.frontCone * L.cone);
+  BLADE.stamLightBlock = B.stamLightBlock * L.stam; BLADE.stamHeavyBlock = B.stamHeavyBlock * L.stam; BLADE.stamDeflect = B.stamDeflect * L.stam; BLADE.stamClumsy = B.stamClumsy * L.stam; BLADE.clumsyPass = B.clumsyPass * L.stam;
+  for (const [r, R] of Object.entries(CF.roles)) { const A = AI_ROLE[r]; if (!A) continue; if (R.spread != null) A.spread = R.spread * L.spread; if (R.pause) A.pause = R.pause.map(x => x * L.pause); }
+}
+const _cfBladeNpc = bladeNpc;
+bladeNpc = function (u, align, skill = 0.6) { const r = _cfBladeNpc(u, align, skill); if (u.blade) u.blade.npcSkill = (u.blade.npcSkill ?? skill) * CF_LEVELS[cfLevel()].skill; return r; };   // S11-EDIT(§BLADE bladeNpc): blade-bearers parry and block by difficulty
+const _cfDamage = ofDamage;
+ofDamage = function (u, dmg, from, o = {}) { if (u && u === OF.me && dmg > 0) dmg *= CF_LEVELS[cfLevel()].dmg; return _cfDamage(u, dmg, from, o); };   // S11-EDIT(§ONFOOT ofDamage): what reaches you, by difficulty
+(function cfUI() {
+  const host = document.querySelector('#s-paused .card'); if (!host) return; const w = document.createElement('label'); w.className = 'theme-row';
+  w.innerHTML = `<span>Ground combat</span><select id="cf-pick"><option value="story">Story — generous parries, poor shots</option><option value="standard">Standard</option><option value="hard">Hard — the original tuning</option></select>`; host.appendChild(w);
+  const s = w.querySelector('select'); s.value = 'standard'; s.addEventListener('change', () => { const p = SBX.profile; if (!p) return; p.ui = p.ui || {}; p.ui.combat = s.value; SBX.dirty = true; cfApply(true); sbxToast?.(`Ground combat: ${s.value}.`); });
+  setInterval(() => { if (document.activeElement !== s) s.value = cfLevel(); cfApply(false); }, 1000);
+})();
+cfApply(true);
+Object.assign(S9X, { CF, CF_LEVELS, cfApply, cfLevel, BLADE_NOW: () => BLADE });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
