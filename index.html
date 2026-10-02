@@ -323,6 +323,9 @@
       §METRO.YARD             frigates and cruisers: only at the orbital yard above a metropolis, only for those of rank
     §WARKIT                 the warship kit: authored hulls over the part frames
       §WARKIT.SAVE            schema v10: Stage 11's records, and Stage 10 towns mapped into the settlement hierarchy
+    §LIGHTING               image-based light, exposure by place, night-lit kit windows; the overview everywhere
+      §LIGHTING.OVERVIEW      the overview survives every mode; on a planet it lists the ground
+      §LIGHTING.HOOKS         every frame: the light, and the overview kept on screen and current
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -565,6 +568,7 @@
     §SAVE sbxMigrateProfile — calls and what ignoring them cost ride in the v9 profile
 
   STAGE 11 CHANGES TO EARLIER SECTIONS (each marked in place with "S11-EDIT")
+    §CONFIG imports — image-based light for the kit hulls and buildings
     §HOMESHIP layouts — the interior is a layout; the freighter's above, a corvette's below (walkable in battle, §STATIONS)
     §HOMESHIP hsIsFreighter — corvettes are walkable too
     §HOMESHIP.FRAME hsPlace — the ship you are standing in may be someone else's (§BOARDING)
@@ -647,6 +651,10 @@
     §WORLD syncRender — warships wear the kit's hulls
     §CAPITAL wsTorpStep — kit torpedoes
     §SAVE sbxMigrateProfile — v9 → v10
+    §SBXUI sbxOverviewEntries — the overview lists the ground on a planet
+    §SBXUI sbxOverviewRender — ground rows read as ground rows; selections give a bearing
+    §SBXUI sbxSelect — ground contacts are bearings, not warp targets
+    §PARTRT partRenderHook — lighting by place; the overview never goes missing
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -1507,6 +1515,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';   // UI-EDIT(§CONFIG imports): shallow focus in cinematic conversations
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';   // S11-EDIT(§CONFIG imports): image-based light for the kit hulls and buildings
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';   // S9-EDIT(§CONFIG imports): skinned character instancing
 
 const MODEL_URL = "./ship.glb"; // I will replace this
@@ -22818,6 +22827,99 @@ sbxMigrateProfile = function (p) {   // S11-EDIT(§SAVE sbxMigrateProfile): v9 �
       if (t === 'village') p.sgMig.towns++; else { p.sgMig.cities++; st.became = t; if (p.gsim && st.owner) { const site = srfSiteDef(pl, +m[2]); const k = sgKey(pl, site); p.gsim.sgd = p.gsim.sgd || {}; p.gsim.sgd[k] = p.gsim.sgd[k] || { ruins: {}, own: st.owner }; } } } }
   p.v = CONFIG.sbx.saveVersion; return p;
 };
+
+// =====================================================================================
+// §LIGHTING — image-based light, exposure by place, night-lit kit windows; the overview everywhere
+//  Every lit surface gets a soft image-based fill (a studio environment, prefiltered once), so
+//  authored hulls and buildings read with form and sheen instead of flat black; its strength
+//  follows where you are: low in deep space, the sky's brightness on a planet, bright inside
+//  a ship. Exposure eases with it (darker nights are lifted a touch, the undercity runs hot),
+//  bloom is held back over sunlit cities, and the kits' window, sign and neon materials glow
+//  harder after dark. The overview is lifted out of the flight HUD so no mode can hide it: in
+//  space it lists the system; on a planet it lists the ground — your ship, the settlements of
+//  this world, the districts and doors of the one you stand in, people and contacts nearby.
+// =====================================================================================
+const LT = { env: null, k: 0, exp: CONFIG.render.exposure ?? renderer.toneMappingExposure, exp0: renderer.toneMappingExposure, bloom0: CONFIG.render.bloomStrength, night: -1, ovT: 0, moved: false, fogBase: 0, fogSet: -1, fogCol: null };
+function ltInit() { if (LT.env) return; const pm = new THREE.PMREMGenerator(renderer); LT.env = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); scene.environment = LT.env; scene.environmentIntensity = 0.3; }
+/** Where we are decides the fill: space, a planet by day or night, a cabin, the undercity. */
+function ltTarget() {
+  const day = SRF.active ? clamp((SRF.sunEl ?? 1) * 1.4 + 0.1, 0, 1) : 0; const aboard = MM.mode === 'ON_FOOT_ABOARD' || (typeof SETL !== 'undefined' && SETL.cell);
+  const under = typeof MT !== 'undefined' && MT.level === 0 && MT.cur; const atmo = SRF.active ? (SRF.B?.atmo ?? 0.5) : 0;
+  if (under) return { env: 0.55, exp: LT.exp0 * 1.25, bloom: 1 }; if (aboard) return { env: 0.6, exp: LT.exp0, bloom: 1 };
+  if (SRF.active) return { env: 0.18 + 0.55 * day * (0.5 + 0.5 * atmo), exp: LT.exp0 * (1.18 - 0.18 * day), bloom: WORLD.city?.sg ? (day > 0.4 ? 0.7 : 0.6) : 1 };
+  return { env: 0.32, exp: LT.exp0, bloom: 1 };
+}
+function ltStep(dt) { if (LT.off) return;
+  ltInit(); const T = ltTarget(); const a = 1 - Math.exp(-dt * 2.5);
+  scene.environmentIntensity = lerp(scene.environmentIntensity, T.env, a); renderer.toneMappingExposure = lerp(renderer.toneMappingExposure, T.exp, a);
+  if (!(typeof HS !== 'undefined' && HS.bloomSet != null)) { const want = LT.bloom0 * T.bloom; if (Math.abs(bloomPass.strength - want) > 0.005) bloomPass.strength = lerp(bloomPass.strength, want, a); }
+  // city air is cleaner than the open plain: haze thins inside a city, more in a metropolis, and the undercity has its own dark air
+  const f = SRF.fog; if (SRF.active && f && scene.fog === f) { const C = WORLD.city; const me = MM.mode === 'ON_FOOT' && OF.me ? OF.me.pos : camera.position;
+    const inside = C?.sg && Math.hypot(me.x - C.c.x, me.z - C.c.z) < C.c.R + 300; const under = typeof MT !== 'undefined' && MT.level === 0 && MT.cur;
+    if (f.density !== LT.fogSet) LT.fogBase = f.density; if (!under && LT.fogCol != null) { f.color.setHex(LT.fogCol); LT.fogCol = null; }
+    if (under && LT.fogCol == null) { LT.fogCol = f.color.getHex(); f.color.setHex(0x0d0b14); }
+    f.density = LT.fogBase * (under ? 0.6 : inside ? (C.c.tier === 'metro' ? 0.28 : 0.5) : 1); LT.fogSet = f.density; if (TERRA.mat?.uniforms.fogDensity) TERRA.mat.uniforms.fogDensity.value = f.density; }
+  // after dark the kits' windows, signs and neon light up (only when the night level changes); authored glow is strong, so by day windows read as glass
+  const night = !SRF.active ? 0.5 : Math.round(clamp(0.3 - (SRF.sunEl ?? 1) * 2, 0, 1) * 10) / 10;
+  if (night !== LT.night) { LT.night = night; for (const [key, m] of VKIT.matCache) { const kit = /^(citybiomes|settlement|metro|warships):/.exec(key)?.[1]; if (!kit || !m.emissive || m.emissiveIntensity == null) continue; if (m.userData.e0 == null) m.userData.e0 = m.emissiveIntensity;
+      m.emissiveIntensity = Math.min(m.userData.e0, kit === 'metro' ? 0.12 + 0.5 * night : kit === 'warships' ? 1.2 : 0.35 + 0.9 * night); } }
+}
+
+// §LIGHTING.OVERVIEW — the overview survives every mode; on a planet it lists the ground
+function ltOverviewHome() {
+  const el = $('p-overview'); if (!el || LT.moved) return; LT.moved = true; document.body.appendChild(el);
+  const css = document.createElement('style'); css.textContent = `body.sandbox #p-overview { position: fixed; z-index: 10; font-size: 12px; letter-spacing: 0.08em; text-transform: var(--case); max-height: calc(100vh - 230px); min-height: 150px; bottom: auto !important; }
+    body.sandbox[data-mode="ON_FOOT"] #p-overview, body.sandbox[data-mode="ON_FOOT_ABOARD"] #p-overview, body.sandbox[data-mode="SURFACE_ROVER"] #p-overview { top: 120px; max-height: calc(100vh - 300px); opacity: 0.94; }
+    body.sandbox.touch-mode #p-overview { top: 118px; max-height: 46vh; }
+    #bd-obj { right: 306px !important; }`; document.head.appendChild(css);
+}
+const LT_COL = { ship: '#9fe8ff', village: '#d9c9a0', city: '#ffd166', metro: '#ffb347', district: '#c9d4ff', door: '#9dffb0', lift: '#c98cff', hostile: 'var(--alert)', resident: '#b9c8b0', squad: '#7dffb0', point: '#ff9a5a', deposit: '#d9c9a0' };
+const _ltEntries = sbxOverviewEntries;
+sbxOverviewEntries = function () {   // S11-EDIT(§SBXUI sbxOverviewEntries): the overview lists the ground on a planet
+  if (!SRF.active || !SRF.planet) return _ltEntries();
+  const me = MM.mode === 'ON_FOOT' && OF.me ? OF.me.pos : world.player.pos; const out = []; const add = (kind, name, pos, ref) => out.push({ kind, name, pos, ref: ref || pos, dist: Math.hypot(pos.x - me.x, pos.z - me.z) });
+  if (MM.mode === 'ON_FOOT') add('ship', `${SBX.ship()?.name || 'Your ship'} (landed)`, world.player.pos, world.player);
+  const pl = SRF.planet; const plan = sgPlan(pl); const C = WORLD.city;
+  if (C?.c) { add(C.c.tier, `${C.c.name} — ${C.c.tier === 'metro' ? 'metropolis' : 'city'}`, new THREE.Vector3(C.c.x, C.H0 ?? 0, C.c.z), C);
+    for (const p of C.plazas || []) add('district', `${SG_DIST[p.d].name} plaza`, new THREE.Vector3(p.x, C.H0, p.z), p);
+    for (const d of C.doors || []) { if (d.kind === 'lift' && d.level !== (typeof MT !== 'undefined' ? MT.level : 1)) continue; add(d.kind === 'lift' ? 'lift' : 'door', d.kind === 'lift' ? 'Lift' : (SG_CELLS[d.kind]?.name || (d.kind === 'terminal' ? 'Orbital yard terminal' : d.kind === 'shipwright' ? 'Black-market shipwright' : d.kind)), new THREE.Vector3(d.x, d.y ?? C.H0, d.z), d); } }
+  const T = SETL.town; if (T) add('village', `${T.name} — ${T.kind || 'village'}`, new THREE.Vector3(T.x, SRF.groundY(T.x, T.z), T.z), T);
+  // the other settlements of this world: far off, on other sites (reached by shuttle or a hop)
+  plan?.tiers.forEach((t, i) => { if (i === SRF.site.i) return; const s = srfSiteDef(pl, i); out.push({ kind: t, name: `${sgName(pl, s)} — ${t === 'metro' ? 'metropolis' : t}, another landing site`, pos: me, ref: { site: i }, dist: Infinity, far: true }); });
+  if (BAT.live) BAT.live.points.forEach((p, i) => add('point', `Objective ${BAT_LETTERS[i]}${p.owner ? ' — ' + gsShort(batFacOf(BAT.live.b, p.owner)) : ''}`, p.pos, p));
+  const hostiles = OF.units.filter(u => u.alive && u.team === 'hostile' && u !== OF.me).map(u => ({ u, d: Math.hypot(u.pos.x - me.x, u.pos.z - me.z) })).sort((a, b) => a.d - b.d).slice(0, 8);
+  for (const { u } of hostiles) add('hostile', u.name || `${u.faction ? gsShort(u.faction) + ' ' : ''}${u.role || u.kind}`, u.pos, u);
+  for (const u of (SQ?.units || []).filter(v => v.alive)) add('squad', u.name || 'Squadmate', u.pos, u);
+  const res = OF.units.filter(u => u.alive && u.civilian && !u.inCell).map(u => ({ u, d: Math.hypot(u.pos.x - me.x, u.pos.z - me.z) })).sort((a, b) => a.d - b.d).slice(0, 5); for (const { u } of res) add('resident', u.name || 'Resident', u.pos, u);
+  if (SBX.ovSort === 'dist') out.sort((a, b) => a.dist - b.dist); else if (SBX.ovSort === 'name') out.sort((a, b) => a.name.localeCompare(b.name)); else out.sort((a, b) => a.kind.localeCompare(b.kind) || a.dist - b.dist);
+  return out.slice(0, 40);
+};
+for (const [k, v] of Object.entries(LT_COL)) if (!OV_COLOR[k]) OV_COLOR[k] = v;
+const _ltOvRender = sbxOverviewRender;
+sbxOverviewRender = function () {   // S11-EDIT(§SBXUI sbxOverviewRender): ground rows read as ground rows; selections give a bearing
+  if (!SRF.active) return _ltOvRender(); const list = $('ov-list'); if (!list) return; const entries = sbxOverviewEntries(); SBX.ovEntries = entries; const sel = SBX.selected;
+  list.innerHTML = entries.map((e, i) => `<div class="ovrow ${sel && sel.ref === e.ref ? 'sel' : ''}" data-ov="${i}" style="color:${OV_COLOR[e.kind] || 'var(--fg)'}"><span class="k">${e.kind}</span><span class="n">${e.name}</span><span class="d">${e.far ? 'site' : e.dist > 10000 ? (e.dist / 1000).toFixed(1) + ' km' : fmt(e.dist) + ' m'}</span></div>`).join('');
+  const a = $('ov-actions'); if (!sel) { a.innerHTML = `<span class="small">${SRF.planet.name} — select a contact for its bearing.</span>`; return; }
+  const live = entries.find(e => e.ref === sel.ref); if (!live) { a.innerHTML = '<span class="small">Contact lost.</span>'; return; }
+  if (live.far) { a.innerHTML = `<div class="small">${live.name}</div><span class="small">Shuttle from a city's customs hall, or take off and land there.</span>`; return; }
+  const me = MM.mode === 'ON_FOOT' && OF.me ? OF.me : world.player; const yaw = MM.mode === 'ON_FOOT' && OF.cam ? OF.cam.yaw : Math.atan2(-_v[0].set(0, 0, -1).applyQuaternion(world.player.quat).x, -_v[0].z);
+  let b = Math.atan2(live.pos.x - me.pos.x, live.pos.z - me.pos.z) - yaw; b = Math.atan2(Math.sin(b), Math.cos(b)); const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][((Math.round(-b / (Math.PI / 4)) % 8) + 8) % 8];
+  a.innerHTML = `<div class="small">${live.name} — ${live.dist > 10000 ? (live.dist / 1000).toFixed(1) + ' km' : fmt(live.dist) + ' m'} ${arrow} · ${Math.round(live.pos.y - me.pos.y)} m up</div>`;
+};
+const _ltSelect = sbxSelect;
+sbxSelect = function (e) { if (SRF.active && e) { SBX.selected = { ref: e.ref, name: e.name, pos: e.pos, kind: e.kind }; sbxOverviewRender(); return; } return _ltSelect(e); };   // S11-EDIT(§SBXUI sbxSelect): ground contacts are bearings, not warp targets
+
+// §LIGHTING.HOOKS — every frame: the light, and the overview kept on screen and current
+const _ltRender = partRenderHook;
+partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): lighting by place; the overview never goes missing
+  const r = _ltRender(alpha, dt); ltStep(Math.min(0.1, dt || 1 / 60)); ltOverviewHome();
+  const el = $('p-overview'); const on = game.mode === 'sandbox' && SBX.active && document.body.classList.contains('sandbox');
+  if (el) { if (on) el.style.setProperty('display', 'flex', 'important'); else el.style.removeProperty('display'); }
+  if (on && (SRF.active || MM.mode === 'ON_FOOT_ABOARD' || MM.mode === 'DESCENT')) { LT.ovT -= dt || 1 / 60; if (LT.ovT <= 0) { LT.ovT = 0.25; sbxOverviewRender(); } }
+  return r;
+};
+
+Object.assign(S9X, { LT, ltInit, ltStep, ltTarget, ltOverviewHome, sbxOverviewEntriesNow: () => sbxOverviewEntries(), sbxOverviewRenderNow: () => sbxOverviewRender() });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
