@@ -22854,6 +22854,8 @@ function ltTarget() {
   return { env: 0.16, exp: LT.exp0 * 0.95, bloom: 1 };
 }
 function ltStep(dt) { if (LT.off) return;
+  if (SRF.lights?.visible && (MM.mode === 'ON_FOOT' || MM.mode === 'ON_FOOT_ABOARD')) SRF.lights.visible = false;   // a parked ship's headlights would blind anyone walking past its nose
+
   ltInit(); const T = ltTarget(); const a = 1 - Math.exp(-dt * 2.5);
   scene.environmentIntensity = lerp(scene.environmentIntensity, T.env, a); renderer.toneMappingExposure = lerp(renderer.toneMappingExposure, T.exp, a);
   if (!(typeof HS !== 'undefined' && HS.bloomSet != null)) { const want = LT.bloom0 * T.bloom; if (Math.abs(bloomPass.strength - want) > 0.005) bloomPass.strength = lerp(bloomPass.strength, want, a); }
