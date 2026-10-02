@@ -304,6 +304,25 @@
     §FLEETBATTLE            when two powers' fleets meet over a contested world
       §FLEETBATTLE.LIVE       fought where you are
     §FLEETCMD               your own ships under captains, and the tactical view
+    §SETTLEGEN              every world settled: villages, a city, sometimes a metropolis
+      §SETTLEGEN.PLAN         the hierarchy of a world, from its seed
+      §SETTLEGEN.VILLAGE      the Stage 10 town in every biome, styled by it
+      §SETTLEGEN.ORBITAL      the orbital map marks each site by what stands there
+    §CITY                   the city: one to two kilometres of districts built from the city kit
+      §CITY.BUILD             the kit near the camera, lit boxes beyond it, plazas, ruins behind fences
+      §CITY.CONTROL           holding the city holds the planet; assaults on it are urban, district by district
+    §SIEGE                  blockades starve settlements; assaults leave ruins that stand until rebuilt
+      §CITY.HUD               the district map and the assault's progress
+    §CROWDS                 streets that are full: instanced walkers and up to thirty people near you
+      §CITY.INTERIORS         the owner's headquarters, the customs hall, the shipyard office (and in a metropolis the club and the penthouse)
+      §SETTLEGEN.TICK         the city's sectors, crowds, walkers and the district map, every frame on the ground
+    §METRO                  the metropolis: towers to the clouds on three walkable levels
+      §METRO.LAYOUT           towers on a dense grid, a ring of sky plazas around the government square, lifts at its four sides
+      §METRO.BUILD            bridges, the undercity, the skyline past the edge, traffic in the air and on the streets
+      §METRO.LEVELS           the floor under you depends on which level you are on; lifts move you between them
+      §METRO.YARD             frigates and cruisers: only at the orbital yard above a metropolis, only for those of rank
+    §WARKIT                 the warship kit: authored hulls over the part frames
+      §WARKIT.SAVE            schema v10: Stage 11's records, and Stage 10 towns mapped into the settlement hierarchy
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -592,6 +611,42 @@
     §SYSTEM sbxLoadSystem — the fleet jumps with you
     §SANDBOX sbxVehicleStep — fleet battles and your fleet
     §SAVE sbxMigrateProfile — fleet captains and fleet battles
+    §RKV rkvInhabited — every world is settled
+    §PLANETS sbxPlanetOf — room for three villages, a city and a metropolis
+    §WORLDS.PROFILE worldCapitalIdx — the capital stays where Stage 8 put it
+    §SETTLEMENT setlOf — a village on every site that is not a city
+    §SETTLEMENT setlLayout — domes, glacier halls and stilts where the ground needs them
+    §VKIT vkParts — borrowed pieces resolve in their own pack
+    §VKIT vkEmpties — an entry is a door
+    §VKIT vkBuild — borrowed pieces build from their own pack
+    §SURFACE spawnSiteObjects — styled villages wait for their kit
+    §ORBITAL srfRenderOrbital — village, city and metropolis icons
+    §WORLDS.PROFILE worldCityOf — the city and the metropolis come from the hierarchy
+    §WORLDS.CITY worldCityLayout — districts from the kit for cities and metropolises
+    §WORLDS.CITY worldCityBuild — the kit city over the Stage 8 boxes, which stay as the far impostors
+    §WORLDS.CITY worldCityClear — kit batches, crowds and walkers go with the city
+    §ONFOOT.PROPS ofPushProps — city buildings are solid
+    §BATTLE batOpen — fronts on a settled world often fall on its city
+    §BATTLE batResolve — the city decides the planet; streets keep the scars
+    §BATTLE batLayout — an urban assault's points are the district plazas
+    §SETTLEMENT setlPriceMul — siege prices
+    §SETTLEMENT setlServiceOpen — the blockade shuts the counters
+    §WORLDS.PORT worldPortRender — the blockade at the port
+    §SBXUI sbxHandleEscape — Escape closes the city counter
+    §ONFOOT ofInteract — city doors, lifts, terminals and people
+    §ONFOOT ofDropsStep — city prompts
+    §ONFOOT OF.exit — the walkers go with you
+    §WORLDS worldTick — city level of detail, crowds, residents, the district map
+    §ONFOOT.STEP OF.step — residents and the metropolis levels keep sim time
+    §ONFOOT OF.enter — residents left out from a rover trip are sent home before the town wakes again
+    §CHARACTER charRigRelease — a busy street can't grow the pool without bound
+    §SURFACE groundY — the undercity floor and the sky decks are ground on their levels
+    §ONFOOT OF.exit — back aboard, the street level again
+    §ECONOMY ecoCatalog — capital hulls leave the ordinary yards for the orbital yards
+    §ECONOMY sbxBuy — the yard checks your rank before it sells you a warship
+    §WORLD syncRender — warships wear the kit's hulls
+    §CAPITAL wsTorpStep — kit torpedoes
+    §SAVE sbxMigrateProfile — v9 → v10
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -20925,8 +20980,8 @@ function wtFullRender(dt) {
 function warTableOpen(show, how = 'full') {
   wtInjectUI(); if (!SBX.profile || !gsEnsure()) return false; wtHist(); wtBuild(); smap.open = show;
   if (show) { WT.mode = 'full'; WT.fromTable = how === 'table'; if (WT.root.parent === HS.built?.group) wtTableAttach(false); WT.route = SBX.route?.length > 1 ? SBX.route : null; if (WT.sel == null && smap.sel != null) WT.sel = smap.sel; WT.tab = how === 'news' ? 'news' : WT.tab === 'news' && how !== 'news' ? 'system' : WT.tab;
-    $('wt-full').classList.add('on'); document.body.classList.add('wt-full'); if (typeof mmReleasePointer === 'function') mmReleasePointer(); WT.markT = 0; WT.pinKey = null; wtPanel(); wtBar(); }
-  else { WT.mode = null; WT.play = false; WT.drag = null; $('wt-full').classList.remove('on'); document.body.classList.remove('wt-full'); if (WT.root && WT.root.parent === WT.scene) WT.scene.remove(WT.root); }
+    $('wt-full')?.classList.add('on'); document.body.classList.add('wt-full'); if (typeof mmReleasePointer === 'function') mmReleasePointer(); WT.markT = 0; WT.pinKey = null; wtPanel(); wtBar(); }
+  else { WT.mode = null; WT.play = false; WT.drag = null; $('wt-full')?.classList.remove('on'); document.body.classList.remove('wt-full'); if (WT.root && WT.root.parent === WT.scene) WT.scene.remove(WT.root); }
   return true;
 }
 // the old star map and news screens open the war table instead (their data and buttons are unchanged underneath)
@@ -21990,6 +22045,779 @@ sbxVehicleStep = function (dt) { _fbVeh(dt); if (!SRF.active && game.mode === 's
 const _fcMig = sbxMigrateProfile;
 sbxMigrateProfile = function (p) { p = _fcMig(p); if (p.fleetCmd === undefined) p.fleetCmd = null; if (p.gsim && !p.gsim.fleetB) p.gsim.fleetB = []; return p; };   // S11-EDIT(§SAVE sbxMigrateProfile): fleet captains and fleet battles
 Object.assign(S9X, { FB, FB_CFG, FB_OBJ, fbList, fbActive, fbAt, fbOpen, fbTick, fbResolve, fbStartLive, fbEndLive, fbStep, FC, FC_ORDERS, fcOf, fcCap, fcRoster, fcLaunch, fcRecall, fcStep, fcTac, fcOrder, fcPickAt, simulateNow: (dt) => simulate(dt), sbxUndockNow: () => sbxUndock() });
+
+// =====================================================================================
+// §SETTLEGEN — every world settled: villages, a city, sometimes a metropolis
+//  Every planet is inhabited. Its landing sites are given a settlement hierarchy from the
+//  planet seed: at least three villages and one city, and on about one world in four (high
+//  security and trade hubs more often) a metropolis that becomes the capital — its city
+//  drops to second. Every settlement is its own landing site with its own icon on the
+//  orbital map. Villages are the Stage 10 towns, now in every biome and in that biome's
+//  style: open streets on temperate ground, sealed modules on toxic ground, pressurised
+//  domes and buried habitats on barren rock, heated halls on ice, stilts and heat shields
+//  on volcanic ground (the city-biomes kit). Generation is deterministic (planet seed +
+//  site index); only deltas are kept (owner, war damage and its rebuilding).
+// =====================================================================================
+const SG_CFG = { minSites: 5, metroLo: 0.12, metroHi: 0.34, hubBonus: 0.08, cityR: [520, 700], metroR: 760, block: 66, street: 14, nearR: 1500, lodStep: 150,
+  rebuildH: [30, 90], blockadeK: 1.35, cutK: 0.12, ruinK: 0.04, doorR: 3.2, crowd: { city: 170, metro: 260, near: 340 }, npcs: { city: 22, metro: 30, r: 70 }, cellY: 320 };
+const SG_DIST = [{ key: 'spaceport', name: 'Spaceport' }, { key: 'market', name: 'Market' }, { key: 'residential', name: 'Residential' }, { key: 'industrial', name: 'Industrial' }, { key: 'government', name: 'Government' }, { key: 'old', name: 'Old quarter' }];
+const SG_KIT_FAC = { authority: 'concordance', combine: 'freereach', syndicate: 'syndicate', guild: 'warden' };
+const sgKitFac = (f) => SG_KIT_FAC[f] || 'cinder';
+const SG_FAC_COL = { authority: '#7fc8ff', combine: '#ffa040', guild: '#ffd166', syndicate: '#ff5a5a', player: '#9dffb0' };
+// footprints from the supplied kits (piece space: x0, z0, x1, z1, height, entry x, entry z) — the layout never waits on a download
+const SG_FOOT = { set_dwelling_small_barren:[-5.1,-5.2,5.1,7.5,4.5,0,8], set_dwelling_large_barren:[-7.6,-7.8,7.6,9.2,6,0,9.7], set_shop_barren:[-5.1,-7.8,5.1,9.6,5,0,9.7], set_clinic_barren:[-7.6,-7.8,7.6,9.2,8,0,9.7], set_hall_barren:[-10.1,-10.4,10.1,10.9,10,0,11.4], set_storehouse_barren:[-8,-10.4,8,10.9,6,0,11.4], set_power_barren:[-7,-4.1,12.1,4.1,4.8], set_life_support_barren:[-3,-3.1,4.2,7,9], set_comms_barren:[-1.5,-1.5,1.5,3.1,21.3], set_walkway_barren:[-1.8,-4,1.8,4,3.2], set_landing_pad_barren:[-9.5,-9.5,9.5,9.5,0.7,0,0], set_dwelling_small_ice:[-5,-5,5,7.6,7.7,0,8], set_dwelling_large_ice:[-7,-7,7.2,9.6,9,0,10], set_shop_ice:[-5,-7,5,9.9,8.2,0,10], set_clinic_ice:[-7,-7,7,9.6,9,0,10], set_hall_ice:[-16,-18,16,7.1,16,0,-4], set_storehouse_ice:[-14,-18,14,4.8,14,0,-4], set_power_ice:[-4.5,-4.5,4.8,4.5,16], set_life_support_ice:[-4.7,-2.7,4.5,2.7,5.7], set_comms_ice:[-2,-2,2,3.1,21.3], set_walkway_ice:[-1.8,-4,1.8,4,3.7], set_landing_pad_ice:[-8,-8,8,8,0.7,0,0], set_dwelling_small_volcanic:[-4.8,-5,4.8,8,9.7,0,8.7], set_dwelling_large_volcanic:[-6.8,-7,7.2,10,11.7,0,10.7], set_shop_volcanic:[-4.8,-7,4.8,10.6,10.2,0,10.7], set_clinic_volcanic:[-6.8,-7,6.8,10,12.9,0,10.7], set_hall_volcanic:[-8.8,-9,9.6,12,14.1,0,12.7], set_storehouse_volcanic:[-8,-9,8,12,11.7,0,12.7], set_power_volcanic:[-6,-5.1,8.4,5,10.5], set_life_support_volcanic:[-3,-3,3,3.1,15.2], set_comms_volcanic:[-1.5,-1.5,1.5,3.1,22.8], set_walkway_volcanic:[-1.5,-4,1.5,4,4.4], set_landing_pad_volcanic:[-8,-8,8,8,3.3,0,0], set_city_customs_hall_temperate:[-16.5,-13.8,16.5,13.8,14,-6,15.6], set_city_customs_hall_sealed:[-16.5,-14.7,16.5,14.7,14,-6,15.6], set_city_cargo_warehouse_temperate:[-16,-25.8,16,24.5,13.5,-10,28], set_city_cargo_warehouse_sealed:[-16.2,-26.7,16.2,26.4,14.4,-10,28], set_city_control_tower_temperate:[-8,-8,8,8,49.7,0,7.1], set_city_control_tower_sealed:[-8,-8,8,8,49.7,0,7.1], set_city_landing_pad_large_temperate:[-64,-60,64,60,22.5,0,0], set_city_landing_pad_large_sealed:[-64,-60,64,94,22.5,0,95], set_city_repair_gantry_temperate:[-35.5,-4.5,35.5,4.5,43], set_city_repair_gantry_sealed:[-35.5,-4.5,35.5,8.2,43], set_city_market_hall_temperate:[-12,-21,12,21,14.6,0,22], set_city_market_hall_sealed:[-12.2,-22.7,12.2,22.7,14.6,0,-23.6], set_city_shopfronts_temperate:[-8.3,-6.5,8.8,8,15.8,-1.2,9.6], set_city_shopfronts_sealed:[-8.2,-6.2,8.7,8.7,14.4,-1.2,9.6], set_city_arcade_temperate:[-16.5,-5.5,16.5,5.5,15.2,0,7], set_city_arcade_sealed:[-16.5,-5.2,16.5,7.9,14.4,0,8.8], set_city_housing_block_4_temperate:[-12,-8,12,9.8,16.9,0,11.6], set_city_housing_block_4_sealed:[-12.2,-8.2,12.2,10.7,18.4,0,11.6], set_city_housing_block_8_temperate:[-12,-8,12,9.8,32.9,0,11.6], set_city_housing_block_8_sealed:[-12.2,-8.2,12.2,10.7,34.4,0,11.6], set_city_courtyard_block_temperate:[-16,-16,16,16.3,16.9,0,18], set_city_courtyard_block_sealed:[-16.2,-16.2,16.2,18.7,18.4,0,19.6], set_city_terrace_temperate:[-12.3,-5.5,12.3,6.8,11.4,-10,8.6], set_city_terrace_sealed:[-12.2,-5.2,12.2,7.7,10.4,-10,8.6], set_city_factory_hall_temperate:[-16,-24,16,25.8,26,0,28], set_city_factory_hall_sealed:[-16.2,-24.2,16.2,26.7,26,0,28], set_city_refinery_tower_temperate:[-12,-9.9,12,9.9,53,0,7], set_city_refinery_tower_sealed:[-12,-9.9,12,9.9,53,0,7], set_city_warehouse_temperate:[-12,-16,13.8,19,10.9,-7,21], set_city_warehouse_sealed:[-12.2,-16.2,14.7,19,12.4,-7,21], set_city_cooling_stacks_temperate:[-26,-12,26,19.8,47,0,21.6], set_city_cooling_stacks_sealed:[-26,-12,26,20.7,47,0,21.6], set_city_hq_concordance_temperate:[-30,-30,30,30.5,74.3,0,25.6], set_city_hq_concordance_sealed:[-30,-30,30,30.5,74.3,0,25.6], set_city_hq_freereach_temperate:[-20,-16,27,22.6,42,0,19.6], set_city_hq_freereach_sealed:[-20.2,-16.2,27,22.6,42,0,19.6], set_city_hq_syndicate_temperate:[-34.6,-34.6,34.6,34.6,43,0,18.6], set_city_hq_syndicate_sealed:[-34.6,-34.6,34.6,34.6,43,0,18.6], set_city_hq_warden_temperate:[-15.6,-23,15.6,23,51,0,23.6], set_city_hq_warden_sealed:[-15.6,-23.2,15.6,23.2,51,0,23.6], set_city_hq_cinder_temperate:[-23,-23,23,24.8,61.1,0,26.6], set_city_hq_cinder_sealed:[-23.2,-23.2,23.2,25.7,61.1,0,26.6], set_city_garrison_barracks_temperate:[-18.4,-30.4,18.5,30.6,15,0,23.6], set_city_garrison_barracks_sealed:[-18.4,-30.4,18.5,30.6,15,0,23.6], set_city_admin_block_temperate:[-14.1,-12,14.1,21.5,20.9,0,15.6], set_city_admin_block_sealed:[-14.1,-12.2,14.1,21.5,22.4,0,15.6], set_city_crooked_house_01_temperate:[-5.3,-3.7,3.8,6.4,13.4,0,7.1], set_city_crooked_house_01_sealed:[-5.3,-3.7,3.8,6.4,13.4,0,7.1], set_city_crooked_house_02_temperate:[-4.2,-3.6,4.4,6.7,13.4,0,7.1], set_city_crooked_house_02_sealed:[-4.2,-3.7,4.4,6.7,13.4,0,7.1], set_city_street_arch_temperate:[-7.2,-1.5,7.2,1.6,12.7], set_city_street_arch_sealed:[-7.2,-5.2,7.2,5.2,12.7], set_city_ruined_temple_temperate:[-11,-15.5,11,15,16.7,0,15], set_city_ruined_temple_sealed:[-20.5,-20.5,20.5,22.7,16.7,0,23.6], set_city_stairway_ruins_temperate:[-5.5,-9,5.5,9,1,-2,9], set_city_stairway_ruins_sealed:[-5.5,-9,5.5,11.1,3.8,-2,9], tower_base_concordance:[-18,-18,18,18,12], tower_base_freereach:[-14,-14,14,14,12], tower_base_syndicate:[-14,-14,14,14,12], tower_base_warden:[-10,-10,10,10,12], tower_base_cinder:[-18,-18,18,18,12], tower_mid_concordance:[-16.4,-16.4,16.4,16.4,20], tower_mid_freereach:[-12,-12,13,12,20], tower_mid_syndicate:[-12.2,-12.2,12.2,12.2,20], tower_mid_warden:[-8.2,-8.1,8.2,8.1,20], tower_mid_cinder:[-16.2,-16.2,16.2,16.2,20], tower_transfer_concordance:[-16,-16,16,16,8], tower_transfer_freereach:[-12,-12,12,12,8], tower_transfer_syndicate:[-12,-12,12,12,8], tower_transfer_warden:[-8,-8,8,8,8], tower_transfer_cinder:[-16,-16,16,16,8], tower_crown_concordance:[-16,-16,16,16,28], tower_crown_freereach:[-12,-12,12,12,24.2], tower_crown_syndicate:[-22,-22,22,22,32.8], tower_crown_warden:[-8.1,-8.3,8.1,8.3,29.8], tower_crown_cinder:[-18.1,-18.1,18.3,18.2,25.4], skybridge_enclosed_16:[-8.2,-3.2,8.2,3.2,4.6], skybridge_enclosed_24:[-12.2,-3.2,12.2,3.2,4.6], skybridge_enclosed_32:[-16.2,-3.2,16.2,3.2,4.6], skybridge_open_16:[-8,-3,8,3,3.1], skybridge_open_24:[-12,-3,12,3,3.1], skybridge_open_32:[-16,-3,16,3,3.1], skyplaza_garden_01:[-16.1,-16.1,16.1,16.1,5.7], skyplaza_landing_01:[-16.1,-16.1,16.1,16.1,3,0,0], undercity_pillar_01:[-3.2,-3.2,3.2,3.3,14], undercity_foundation_01:[-17.1,-17.1,17.1,17.1,14.3], undercity_pipes_01:[-8,-1.7,8,1.7,3.8], undercity_cables_01:[-8,-1.5,8,1.2,0.4], undercity_stall_01:[-1.8,-1.3,2.4,1.6,3,0,-0.3], undercity_neon_frame_01:[-3.2,-1.1,3.2,0.2,1.1], undercity_stairs_01:[-2.3,-13.5,2.3,0.2,8,0,1], undercity_shopfront_01:[-4,-0.3,4,0.5,5.7,0,1], lift_shaft_01:[-3,-3,3,6.5,61,0,5.5], lift_stairwell_01:[-5.2,-3.2,5.2,3.2,55,-5,0], transit_track_01:[-3.5,-24,3.5,0,20.8], transit_station_01:[-10.8,-24,10.8,24,26.7,-5.25,0], transit_car_01:[-1.5,-10.1,1.5,10.1,3.6], skyline_tower_01:[-19.5,0,19.5,0.1,220.3], skyline_tower_02:[-19.5,0,19.5,0.1,130.6], skyline_tower_03:[-15.1,0,15.1,0.1,175.6], skyline_tower_04:[-15.1,0,15.1,0.1,106.3], skyline_tower_05:[-15.1,0,15.1,0.1,245.6], skyline_tower_06:[-15.1,0,15.1,0.1,155.9], skyline_tower_07:[-10.8,0,10.8,0.1,201.8], skyline_tower_08:[-10.8,0,10.8,0.1,112], skyline_tower_09:[-19.6,0,19.6,0.1,258.5], skyline_tower_10:[-19.6,0,19.6,0.1,148.4], skyline_tower_11:[-19.5,0,19.5,0.1,301.9], skyline_tower_12:[-15.1,0,15.1,0.1,86.5] };
+const SG = { plans: new Map(), lays: new Map(), parts: new Map(), cell: null, panel: null, crowd: null, npcs: [], npcT: 0, hudT: 0, stats: { built: 0, lod: 0, ruined: 0, rebuilt: 0, captures: 0 } };
+const _gv = Array.from({ length: 8 }, () => new THREE.Vector3()); const _gm = new THREE.Matrix4(), _gm2 = new THREE.Matrix4();
+VKIT_PACKS.citybiomes = { url: './s11/citybiomes.bin', inline: null, b64: null };
+VKIT_PACKS.metro = { url: './s11/metro.bin', inline: null, b64: null };
+vkLoad('citybiomes'); vkLoad('metro');
+
+// §SETTLEGEN.PLAN — the hierarchy of a world, from its seed
+const _sgInhabited = rkvInhabited;
+rkvInhabited = function (planet) { const sys = SBX.systems[planet?.sys]; return !!sys && !sys.snDestroyed; };   // S11-EDIT(§RKV rkvInhabited): every world is settled
+const _sgPlanetOf = sbxPlanetOf;
+sbxPlanetOf = function (sysIdx) { const p = _sgPlanetOf(sysIdx); if (p && p.nSites0 == null) { p.nSites0 = p.nSites; p.nSites = Math.max(p.nSites, SG_CFG.minSites); } return p; };   // S11-EDIT(§PLANETS sbxPlanetOf): room for three villages, a city and a metropolis
+worldCapitalIdx = function (planet) { const n = planet.nSites0 ?? planet.nSites; for (let i = 0; i < n; i++) if (srfSiteDef(planet, i).biome === 'temperate') return i; return 0; };   // S11-EDIT(§WORLDS.PROFILE worldCapitalIdx): the capital stays where Stage 8 put it
+function sgPlan(planet) {
+  if (!planet) return null; const key = CONFIG.sbx.seed + ':' + planet.key; let P = SG.plans.get(key); if (P) return P;
+  const sys = SBX.systems[planet.sys]; const rng = makeRng((CONFIG.sbx.seed ^ (planet.sys * 4099 + 0x5e7)) >>> 0); const n = planet.nSites;
+  const hub = (sys.stations?.length || 0) >= 2; const metro = rng() < (sys.sec >= 0.5 ? SG_CFG.metroHi : SG_CFG.metroLo) + (hub ? SG_CFG.hubBonus : 0);
+  const cap = worldCapitalIdx(planet); const tiers = new Array(n).fill('village'); let city = cap, met = null;
+  if (metro) { met = cap; city = -1; for (let i = 0; i < n && city < 0; i++) if (i !== cap && ['temperate', 'toxic'].includes(srfSiteDef(planet, i).biome)) city = i; if (city < 0) city = (cap + 1) % n; tiers[met] = 'metro'; }
+  tiers[city] = 'city'; P = { key: planet.key, metro: met, city, tiers, villages: tiers.flatMap((t, i) => t === 'village' ? [i] : []) }; SG.plans.set(key, P); return P;
+}
+const sgTier = (planet, i) => sgPlan(planet)?.tiers[i] || null;
+const sgKey = (planet, site) => planet.key + ':' + (site.seed >>> 0);
+function sgOwner(planet, i) { const S = gsState(); return (S && batSiteOwner(S, planet.sys, i)) || planet.faction || null; }
+const SG_VKIND = { temperate: 'farming', toxic: 'salvage', barren: 'mining', volcanic: 'mining', ice: 'outpost' };
+function sgVillageKind(planet, site) { const sys = SBX.systems[planet.sys]; return site.biome === 'barren' && sys.sec < 0 ? 'salvage' : site.biome === 'temperate' && sys.sec < 0.3 ? 'outpost' : SG_VKIND[site.biome] || 'outpost'; }
+function sgName(planet, site) {
+  const t = sgTier(planet, site.i); if (t === 'village') { const T = setlOf(planet, site); return T?.name || 'Village'; }
+  const c = worldCityOf(planet, site); return c?.name || 'City';
+}
+
+// §SETTLEGEN.VILLAGE — the Stage 10 town in every biome, styled by it
+const _sgSetlOf = setlOf;
+setlOf = function (planet, site) {   // S11-EDIT(§SETTLEMENT setlOf): a village on every site that is not a city
+  if (!planet || !site) return null; const t = sgTier(planet, site.i); if (t !== 'village') return null;
+  const styled = !(site.biome === 'temperate' || site.biome === 'toxic'); const T = _sgSetlOf(planet, styled ? { ...site, biome: 'temperate' } : site); if (!T) return null;
+  T.site = site; T.style = styled ? site.biome : null; T.kind = sgVillageKind(planet, site); return T;
+};
+const SG_VMAP = { home: ['dwelling_small', 'dwelling_large'], bar: 'hall', weapons: 'shop', recruiter: 'hall', medic: 'clinic', broker: 'shop', armour: 'shop', supplies: 'storehouse', garrison: 'hall', repair: 'storehouse' };
+const _sgSetlLayout = setlLayout;
+setlLayout = function (T, owner, scars) {   // S11-EDIT(§SETTLEMENT setlLayout): domes, glacier halls and stilts where the ground needs them
+  const L = _sgSetlLayout(T, owner, scars); if (!T.style) return L; const rng = makeRng((T.seed ^ 0xb10e) >>> 0); const b = T.style;
+  for (const lot of L.lots) { const m = SG_VMAP[lot.svc]; const role = Array.isArray(m) ? m[lot.w * lot.d > 100 ? 1 : 0] : m; const id = `set_${role}_${b}`; const f = SG_FOOT[id]; if (!f) continue;
+    // the piece's front stays on the lot's frontage; deeper pieces sit further back; the door is the piece's entry
+    const fw = f[2] - f[0], fd = f[3] - f[1]; const fc = setlRot(0, 1, lot.yaw); const back = Math.max(0, (fd - lot.d) / 2); const cx = lot.x - fc.x * back, cz = lot.z - fc.z * back; const bc = setlRot((f[0] + f[2]) / 2, (f[1] + f[3]) / 2, lot.yaw);
+    lot.x = cx - bc.x; lot.z = cz - bc.z; lot.w = fw; lot.d = fd; lot.h = f[4]; lot.id = id; lot.cb = true; const e = setlRot(f[5], f[6], lot.yaw); lot.door = { x: lot.x + e.x, z: lot.z + e.z, fx: fc.x, fz: fc.z }; }
+  const P = SETL_CFG.plaza, SW = SETL_CFG.street, WK = SETL_CFG.walk;
+  for (const sp of L.spots) { const lot = sp.lot != null ? L.lots[sp.lot] : null; if (!lot?.cb || sp.kind === 'bay') continue; sp.x = lot.door.x + lot.door.fx * 0.9; sp.z = lot.door.z + lot.door.fz * 0.9;
+    const onX = Math.abs(sp.z) <= SW + WK + 0.5 && Math.abs(sp.x) > P - 1, onZ = Math.abs(sp.x) <= SW + WK + 0.5 && Math.abs(sp.z) > P - 1; sp.street = Math.abs(sp.x) <= P && Math.abs(sp.z) <= P ? 'p' : onX || (!onZ && Math.abs(sp.z) < Math.abs(sp.x)) ? 'x' : 'z'; sp.along = sp.street === 'x' ? sp.x : sp.street === 'z' ? sp.z : 0; }
+  const sup = [`set_power_${b}`, `set_life_support_${b}`, `set_comms_${b}`]; const Lm = T.L;
+  for (let k = 0; k < 6; k++) { const id = sup[k % 3]; const a = (k / 6) * Math.PI * 2 + rng() * 0.3; const R = Lm + 8 + rng() * 6; L.items.push({ id, x: Math.cos(a) * R, z: Math.sin(a) * R, yaw: a, r: 2.5, h: SG_FOOT[id][4], solid: true, tag: 'utility' }); }
+  for (const it of L.items) if (it.id === 'set_landing_pad' && SG_FOOT[`set_landing_pad_${b}`]) it.id = `set_landing_pad_${b}`;
+  return L;
+};
+/** The settlement pack borrows the city-biomes pieces: one batch, one door rule, one collision rule for every village. */
+function sgAlias() {
+  const S = vkReady('settlement'), C = vkReady('citybiomes'); if (!S || !C || S._sgAlias) return; S._sgAlias = true;
+  for (const [id, pc] of C.byId) if (!S.byId.has(id)) S.byId.set(id, { alias: 'citybiomes', id, nodes: [], meshes: [] });
+}
+Promise.all([vkLoad('settlement'), vkLoad('citybiomes')]).then(sgAlias);
+const _sgVkParts = vkParts;
+vkParts = function (name, id) { const pc = vkReady(name)?.byId.get(id); return pc?.alias ? _sgVkParts(pc.alias, id) : _sgVkParts(name, id); };   // S11-EDIT(§VKIT vkParts): borrowed pieces resolve in their own pack
+const _sgVkEmpties = vkEmpties;
+vkEmpties = function (name, id) { const pc = vkReady(name)?.byId.get(id); if (!pc?.alias) return _sgVkEmpties(name, id); const e = _sgVkEmpties(pc.alias, id); if (e.entry && !e.door_01) e.door_01 = e.entry; return e; };   // S11-EDIT(§VKIT vkEmpties): an entry is a door
+const _sgVkBuild = vkBuild;
+vkBuild = function (name, id, o) { const pc = vkReady(name)?.byId.get(id); return pc?.alias ? _sgVkBuild(pc.alias, id, o) : _sgVkBuild(name, id, o); };   // S11-EDIT(§VKIT vkBuild): borrowed pieces build from their own pack
+const _sgSetlSpawn = SRF.spawnSiteObjects;
+SRF.spawnSiteObjects = function () { const T = setlOf(this.planet, this.site); if (T?.style && !vkReady('citybiomes') && VKIT.status.citybiomes !== 'missing') vkLoad('citybiomes').then(() => { sgAlias(); if (SETL.town?.key === T.key && SRF.active) setlBuild(); }); return _sgSetlSpawn.call(this); };   // S11-EDIT(§SURFACE spawnSiteObjects): styled villages wait for their kit
+
+// §SETTLEGEN.ORBITAL — the orbital map marks each site by what stands there
+const _sgOrbital = srfRenderOrbital;
+srfRenderOrbital = function () {   // S11-EDIT(§ORBITAL srfRenderOrbital): village, city and metropolis icons
+  const r = _sgOrbital(); const p = ORB.planet; if (!p) return r; const g = $('planetcanvas')?.getContext('2d'); if (!g) return r;
+  for (const m of ORB.markers || []) { const t = sgTier(p, m.i); if (!t) continue; const x = m.x, y = m.y - 16; g.fillStyle = tk(t === 'metro' ? '--accent' : '--fg', t === 'village' ? 0.7 : 0.95); g.beginPath();
+    if (t === 'metro') { for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, R = k % 2 ? 3 : 7; g.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); } }
+    else if (t === 'city') { g.rect(x - 4.5, y - 4.5, 9, 9); } else { g.moveTo(x, y - 4); g.lineTo(x + 3.5, y); g.lineTo(x, y + 4); g.lineTo(x - 3.5, y); }
+    g.closePath(); g.fill(); }
+  const el = $('orb-info'); const sel = ORB.sel != null ? srfSiteDef(p, ORB.sel) : null;
+  if (el && sel) { const t = sgTier(p, sel.i); const own = sgOwner(p, sel.i); const name = sgName(p, sel); const what = t === 'metro' ? 'Metropolis — capital, orbital yard' : t === 'city' ? (sgPlan(p).metro != null ? 'City — second to the metropolis' : 'City — capital') : `Village — ${sgVillageKind(p, sel)}`;
+    const h = el.querySelector('h3'); h?.insertAdjacentHTML('afterend', `<div class="ovrow"><span class="k">${t === 'village' ? 'Village' : t === 'city' ? 'City' : 'Metropolis'}</span><span class="n">${name} · ${what}${own ? ` · ${gsShort(own)}` : ''}${sgBlockaded(p.sys) ? ' · BLOCKADED' : ''}</span></div>`); }
+  return r;
+};
+
+// =====================================================================================
+// §CITY — the city: one to two kilometres of districts built from the city kit
+//  Six districts around a government core: the spaceport (pads, customs, cargo yards, the
+//  repair gantry, the shipyard office), the market (halls, shopfronts, arcades), residential
+//  blocks and courtyards, industry (factory halls, refineries, cooling stacks), the
+//  government quarter (the owner's headquarters, garrison, administration) and the old
+//  quarter (crooked houses, arches, ruins with stairways down). A street grid with plazas at
+//  the district centres. Several hundred buildings, instanced from the kit near the camera
+//  and drawn as lit boxes beyond 1.5 km. Holding the city holds the planet: whoever takes it
+//  in a ground battle takes the system. Interiors: faction HQ, customs hall, shipyard office.
+// =====================================================================================
+const _sgCityOf = worldCityOf;
+worldCityOf = function (planet, site) {   // S11-EDIT(§WORLDS.PROFILE worldCityOf): the city and the metropolis come from the hierarchy
+  if (!planet || !site || !rkvInhabited(planet)) return null; const t = sgTier(planet, site.i); if (t !== 'city' && t !== 'metro') return null;
+  const rng = makeRng((site.seed ^ 0xc17e) >>> 0); const sys = SBX.systems[planet.sys]; const big = sys.sec >= 0.5 ? 1 : sys.sec > 0 ? 0.7 : 0.45; const metro = t === 'metro';
+  const R = metro ? SG_CFG.metroR : Math.round(lerp(SG_CFG.cityR[0], SG_CFG.cityR[1], big * (0.5 + rng() * 0.5))); const a = rng() * Math.PI * 2; const D = metro ? R + 190 : R + 430;
+  const base = planet.name.replace(/ I$/, ''); const N1 = ['Port', 'Haven', 'Reach', 'Landing', 'Hold', 'Crossing', 'Spire', 'Gate'], N2 = ['Prime', 'Meridian', 'Crown', 'Concourse', 'Apex', 'Zenith'];
+  const plan = sgPlan(planet); return { capital: metro || plan.metro == null, tier: t, R, x: Math.cos(a) * D, z: Math.sin(a) * D, seed: (site.seed ^ 0x5eed) >>> 0, big, faction: sgOwner(planet, site.i) || planet.faction, site: site.i, biome: site.biome, planet,
+    name: metro ? `${base} ${N2[Math.floor(rng() * N2.length)]}` : `${base} ${N1[Math.floor(rng() * N1.length)]}` };
+};
+function sgDistOf(c, x, z) {
+  const dx = x - c.x, dz = z - c.z; const r = Math.hypot(dx, dz) / c.R; const a0 = Math.atan2(-c.z, -c.x); let a = Math.atan2(dz, dx) - a0; a = Math.atan2(Math.sin(a), Math.cos(a));
+  if (r < 0.2) return 4; if (Math.abs(a) < 0.62) return 0; if (r < 0.5) return 1; if (a > 0.62 && a < 2.0) return 3; if (Math.abs(a) > 2.45) return 5; return 2;
+}
+const SG_ANCHOR = [[0.66, 0], [0.36, 1.85], [0.72, -1.3], [0.72, 1.3], [0, 0], [0.72, Math.PI]];
+const SG_POOL = {
+  0: ['cargo_warehouse', 'warehouse', 'customs_hall', 'control_tower', 'repair_gantry'], 1: ['market_hall', 'shopfronts', 'arcade', 'terrace', 'shopfronts'], 2: ['housing_block_4', 'housing_block_8', 'courtyard_block', 'terrace', 'housing_block_8'],
+  3: ['factory_hall', 'refinery_tower', 'warehouse', 'cooling_stacks'], 4: ['admin_block', 'garrison_barracks', 'admin_block'], 5: ['crooked_house_01', 'crooked_house_02', 'terrace', 'crooked_house_01', 'ruined_temple', 'stairway_ruins'],
+};
+const SG_LANDMARK = { 0: 'customs_hall', 1: 'market_hall', 2: 'courtyard_block', 3: 'cooling_stacks', 5: 'ruined_temple' };
+/** Footprint of a piece turned k quarter turns: world-axis extents and the offset of its box centre from its origin. */
+function sgRot(id, k) {
+  const f = SG_FOOT[id]; const [x0, z0, x1, z1] = f; let X0, X1, Z0, Z1; k = ((k % 4) + 4) % 4;
+  if (k === 0) { X0 = x0; X1 = x1; Z0 = z0; Z1 = z1; } else if (k === 1) { X0 = z0; X1 = z1; Z0 = -x1; Z1 = -x0; } else if (k === 2) { X0 = -x1; X1 = -x0; Z0 = -z1; Z1 = -z0; } else { X0 = -z1; X1 = -z0; Z0 = x0; Z1 = x1; }
+  return { w: X1 - X0, d: Z1 - Z0, cx: (X0 + X1) / 2, cz: (Z0 + Z1) / 2, h: f[4] };
+}
+/** Which quarter turn points a piece's front (+z) along a direction. */
+const sgFaceK = (fx, fz) => Math.abs(fx) > Math.abs(fz) ? (fx > 0 ? 1 : 3) : (fz > 0 ? 0 : 2);
+/** The city's plan: blocks, district plazas, landmarks, then every block packed from its district's pieces. */
+function sgCityLayout(c) {
+  const rng = makeRng((c.seed ^ 0xc17a) >>> 0); const B = SG_CFG.block, ST = SG_CFG.street, I = B - ST; const n = Math.ceil(c.R / B) + 1; const sfx = c.biome === 'temperate' ? '_temperate' : '_sealed';
+  const blds = [], roads = [], plazas = [], doors = []; const blocks = new Map();
+  for (let i = -n; i < n; i++) for (let j = -n; j < n; j++) { const x = c.x + (i + 0.5) * B, z = c.z + (j + 0.5) * B; if (Math.hypot(x - c.x, z - c.z) > c.R * 0.97) continue; blocks.set(i + ',' + j, { i, j, x, z, d: sgDistOf(c, x, z), used: false }); }
+  // a plaza at each district's centre, its landmark across the street
+  for (let d = 0; d < 6; d++) { const [r, a] = SG_ANCHOR[d]; const a0 = Math.atan2(-c.z, -c.x); const ax = c.x + Math.cos(a0 + a) * r * c.R, az = c.z + Math.sin(a0 + a) * r * c.R;
+    let best = null, bd = Infinity; for (const b of blocks.values()) { if (b.used || b.d !== d) continue; const q = Math.hypot(b.x - ax, b.z - az); if (q < bd) { bd = q; best = b; } }
+    if (!best) for (const b of blocks.values()) { if (b.used) continue; const q = Math.hypot(b.x - ax, b.z - az); if (q < bd) { bd = q; best = b; } }
+    if (!best) continue; best.used = true; best.plaza = d; plazas.push({ d, x: best.x, z: best.z, w: I, i: best.i, j: best.j });
+    const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([di, dj]) => blocks.get((best.i + di) + ',' + (best.j + dj))).filter(b => b && !b.used);
+    if (d === 4) { const hq = `set_city_hq_${sgKitFac(c.faction)}${sfx}`; const cells = [[0, 1], [1, 1], [0, 2], [1, 2]].map(([di, dj]) => blocks.get((best.i + di) + ',' + (best.j + dj))); if (cells.every(b => b && !b.used)) { cells.forEach(b => b.used = true); const cx = (cells[0].x + cells[1].x) / 2, cz = (cells[0].z + cells[2].z) / 2; sgPlace(blds, doors, hq, cx, cz, best.x - cx, best.z - cz, 4, 'hq', 'landmark'); } }
+    else if (SG_LANDMARK[d] && nb.length) { const b = nb[0]; b.used = true; sgPlace(blds, doors, `set_city_${SG_LANDMARK[d]}${sfx}`, b.x, b.z, best.x - b.x, best.z - b.z, d, d === 0 ? 'customs' : null, 'landmark'); }
+    if (d === 0) { const b = nb[1]; if (b && !b.used) { b.used = true; sgPlace(blds, doors, `set_city_control_tower${sfx}`, b.x + (best.x - b.x) * 0.22, b.z + (best.z - b.z) * 0.22, best.x - b.x, best.z - b.z, d, 'yard', 'landmark'); }
+      const far = [...blocks.values()].filter(b => !b.used && b.d === 0).sort((p, q) => Math.hypot(q.x - c.x, q.z - c.z) - Math.hypot(p.x - c.x, p.z - c.z))[0];
+      if (far) { far.used = true; const pad = `set_city_landing_pad_large${sfx}`; const id = blds.length; sgPlace(blds, doors, pad, far.x, far.z, c.x - far.x, c.z - far.z, d, null, 'pad', true); if (blds[id]) { blds[id].h = 1.2; blds[id].walk = true; } } } }
+  // every other block: one, two or four lots facing the streets, filled from the district's pool
+  for (const b of [...blocks.values()].sort((p, q) => p.i - q.i || p.j - q.j)) {
+    if (b.used) continue; const pool = SG_POOL[b.d]; const k = rng(); const mode = b.d === 5 ? (k < 0.7 ? 4 : 2) : b.d === 3 || b.d === 0 ? (k < 0.55 ? 1 : 2) : b.d === 4 ? (k < 0.5 ? 1 : 2) : (k < 0.15 ? 1 : k < 0.75 ? 2 : 4);
+    const ax = rng() < 0.5; const slots = mode === 1 ? [{ x: b.x, z: b.z, w: I, d: I, fx: ax ? 1 : 0, fz: ax ? 0 : 1 }]
+      : mode === 2 ? (ax ? [{ x: b.x - I / 4, z: b.z, w: I / 2 - 1, d: I, fx: -1, fz: 0 }, { x: b.x + I / 4, z: b.z, w: I / 2 - 1, d: I, fx: 1, fz: 0 }] : [{ x: b.x, z: b.z - I / 4, w: I, d: I / 2 - 1, fx: 0, fz: -1 }, { x: b.x, z: b.z + I / 4, w: I, d: I / 2 - 1, fx: 0, fz: 1 }])
+      : [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => ({ x: b.x + sx * I / 4, z: b.z + sz * I / 4, w: I / 2 - 1, d: I / 2 - 1, fx: ax ? sx : 0, fz: ax ? 0 : sz }));
+    for (const s of slots) {
+      const k = sgFaceK(s.fx, s.fz); const along = s.fx ? s.d : s.w, deep = s.fx ? s.w : s.d;   // along the frontage, back from it
+      let used = 0; for (let tries = 0; tries < 4 && used < along - 4; tries++) {
+        const fits = pool.map(p => `set_city_${p}${sfx}`).filter(id => { const f = SG_FOOT[id]; return f && f[2] - f[0] <= along - used && f[3] - f[1] <= deep; }); if (!fits.length) break;
+        const id = fits[Math.floor(rng() * fits.length)]; const f = SG_FOOT[id]; const fw = f[2] - f[0], fd = f[3] - f[1]; const off = -along / 2 + used + fw / 2, back = deep / 2 - fd / 2 - 0.5;
+        const px = s.fx ? s.x + s.fx * back : s.x + off, pz = s.fx ? s.z + off : s.z + s.fz * back; sgPlace(blds, doors, id, px, pz, s.fx, s.fz, b.d); used += fw + 2.5;
+      }
+    }
+  }
+  // streets: the grid between the blocks, the two boulevards through the core
+  for (let k = -n; k <= n; k++) { const L = Math.sqrt(Math.max(0, 1 - Math.pow(k * B / c.R, 2))) * c.R; if (L < 20) continue; roads.push({ x: c.x + k * B, z: c.z, len: L * 2, ax: 'z', blvd: k === 0 }, { x: c.x, z: c.z + k * B, len: L * 2, ax: 'x', blvd: k === 0 }); }
+  blds.forEach((b, i) => b.i = i); return { blds, roads, plazas, doors, tier: 'city' };
+}
+/** Place one piece with its front toward (fx, fz), its box centred on (x, z). */
+function sgPlace(blds, doors, id, x, z, fx, fz, d, door = null, tag = null, keepFront = false) {
+  if (!SG_FOOT[id]) return null; const k = sgFaceK(fx, fz); const R = sgRot(id, k); const yaw = k * Math.PI / 2; const ox = x - R.cx, oz = z - R.cz;
+  const b = { id, kit: 'citybiomes', x, z, w: R.w, d: R.d, h: R.h, ox, oz, yaw, dist: d, tag }; blds.push(b);
+  const f = SG_FOOT[id]; if (door && f.length > 5) { const e = setlRot(f[5], f[6], yaw); doors.push({ kind: door, x: ox + e.x, z: oz + e.z, yaw, b: blds.length - 1 }); }
+  return b;
+}
+function sgLayoutOf(c) {
+  const key = c.tier + ':' + c.seed + ':' + c.faction; let L = SG.lays.get(key); if (!L) { L = c.tier === 'metro' && typeof mtLayout === 'function' ? mtLayout(c) : sgCityLayout(c); SG.lays.set(key, L); if (SG.lays.size > 12) SG.lays.delete(SG.lays.keys().next().value); }
+  return L;
+}
+const _sgLayoutBase = worldCityLayout;
+worldCityLayout = function (c, H0) {   // S11-EDIT(§WORLDS.CITY worldCityLayout): districts from the kit for cities and metropolises
+  if (!c.tier) return _sgLayoutBase(c, H0); const L = sgLayoutOf(c); const S = gsState(); const sd = sgDeltaOf(c.planet, srfSiteDef(c.planet, c.site));
+  const blds = L.blds.map(b => { const o = { ...b, y: H0 }; o.ruin = sgRuined(sd, b.i, S); if (o.ruin) o.h = Math.max(2, b.h * 0.18); return o; });
+  return { blds, roads: L.roads, plazas: L.plazas, doors: L.doors, tier: L.tier, extra: L.extra };
+};
+
+// §CITY.BUILD — the kit near the camera, lit boxes beyond it, plazas, ruins behind fences
+/** A piece's primitives merged per material with their node transforms baked in: a handful of draws per piece. */
+function sgParts(kit, id) {
+  const key = kit + ':' + id; let out = SG.parts.get(key); if (out) return out; const P = vkReady(kit); if (!P?.byId.has(id)) return [];
+  const by = new Map(); for (const pt of _sgVkParts(kit, id)) { const k = pt.mat.uuid; if (!by.has(k)) by.set(k, []); by.get(k).push(pt); }
+  out = []; for (const L of by.values()) { const mat = L[0].mat; const uv = !!mat.map;
+    const gs = L.map(pt => { const g = pt.geo.clone(); g.applyMatrix4(pt.local); if (uv && !g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); if (!uv) g.deleteAttribute('uv'); if (!mat.vertexColors) g.deleteAttribute('color'); g.deleteAttribute('normal'); return g; });
+    const g = gs.length === 1 ? gs[0] : mergeGeometries(gs, false); if (!g) continue; g.computeBoundingSphere(); out.push({ key: key + ':' + mat.uuid, geo: g, mat, blend: L[0].blend }); }
+  SG.parts.set(key, out); return out;
+}
+class SgBatch {
+  constructor() { this.items = new Map(); this.group = new THREE.Group(); this.meshes = []; this.n = 0; }
+  add(kit, id, m) { const ps = sgParts(kit, id); for (const pt of ps) { let L = this.items.get(pt.key); if (!L) this.items.set(pt.key, L = { pt, mats: [] }); L.mats.push(m.clone()); } if (ps.length) this.n++; return ps.length > 0; }
+  build(parent) { for (const { pt, mats } of this.items.values()) { const im = new THREE.InstancedMesh(pt.geo, pt.mat, mats.length); mats.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); if (pt.blend) im.renderOrder = 2; im.receiveShadow = true; this.group.add(im); this.meshes.push(im); } (parent || scene).add(this.group); return this.group; }
+  dispose() { this.group.parent?.remove(this.group); for (const m of this.meshes) m.dispose(); this.meshes.length = 0; this.items.clear(); }
+}
+const _sgCityBuild = worldCityBuild;
+worldCityBuild = function () {   // S11-EDIT(§WORLDS.CITY worldCityBuild): the kit city over the Stage 8 boxes, which stay as the far impostors
+  const r = _sgCityBuild(); const C = WORLD.city; if (!C?.c.tier) return r; const L = worldCityLayout(C.c, C.H0);
+  C.sg = { L, box: C.blds.map((b, i) => { const m = new THREE.Matrix4(); C.bm.getMatrixAt(i, m); return m; }), batch: null, cx: Infinity, cz: Infinity, near: new Set(), kit: null, plaza: null, fence: null };
+  C.blds.forEach((b, i) => { Object.assign(b, { id: L.blds[i].id, kit: L.blds[i].kit, ox: L.blds[i].ox, oz: L.blds[i].oz, yaw: L.blds[i].yaw, dist: L.blds[i].dist, tag: L.blds[i].tag, walk: L.blds[i].walk, ruin: L.blds[i].ruin }); if (b.ruin) C.bm.setColorAt(i, _c.setHex(0x2a2522)); });
+  if (C.bm.instanceColor) C.bm.instanceColor.needsUpdate = true; C.doors = L.doors.slice(); C.plazas = L.plazas; C.roads = L.roads;
+  sgRuinFences(C); SG.stats.built++;
+  const go = () => { if (WORLD.city !== C) return; sgAlias(); sgPlazas(C); sgLod(C, true); if (C.c.tier === 'metro' && typeof mtBuild === 'function') mtBuild(C); };
+  if (vkReady('citybiomes') && (C.c.tier !== 'metro' || vkReady('metro'))) go(); else Promise.all([vkLoad('citybiomes'), C.c.tier === 'metro' ? vkLoad('metro') : null]).then(go);
+  if (!SRF.siteSt.sgMet) { SRF.siteSt.sgMet = true; const own = sgOwner(SRF.planet, SRF.site.i); sbxToast(`${C.c.name} — ${C.c.tier === 'metro' ? 'the metropolis and capital' : 'a city'} of ${SRF.planet.name}${own ? `, held by ${gsShort(own)}` : ''}. Six districts; whoever holds it holds the world.`); }
+  return r;
+};
+/** Plazas paved from the settlement kit (one draw), a bench ring and a lamp at each. */
+function sgPlazas(C) {
+  if (!vkReady('settlement')) return; const b = new VkBatch('settlement'); const tile = vkHas('settlement', 'set_street_plaza') ? 'set_street_plaza' : null; if (!tile) return;
+  for (const p of C.plazas) { const h = C.H0 + 0.05; for (let x = -p.w / 2 + 2; x < p.w / 2; x += 4) for (let z = -p.w / 2 + 2; z < p.w / 2; z += 4) b.add(tile, _gm.makeTranslation(p.x + x, h, p.z + z));
+    for (const [lx, lz] of [[-p.w / 2 + 3, -p.w / 2 + 3], [p.w / 2 - 3, p.w / 2 - 3], [-p.w / 2 + 3, p.w / 2 - 3], [p.w / 2 - 3, -p.w / 2 + 3]]) if (vkHas('settlement', 'set_lamp_post')) b.add('set_lamp_post', _gm.makeTranslation(p.x + lx, h, p.z + lz)); }
+  b.build(C.grp); C.sg.plaza = b;
+}
+/** War damage: ruins are low dark hulks behind a ring of fence posts until the owner rebuilds. */
+function sgRuinFences(C) {
+  const ru = C.blds.filter(b => b.ruin); if (!ru.length) return; const posts = []; for (const b of ru) { const w = b.w / 2 + 2, d = b.d / 2 + 2; for (let t = -w; t <= w; t += 4) posts.push([b.x + t, b.z - d], [b.x + t, b.z + d]); for (let t = -d + 4; t < d; t += 4) posts.push([b.x - w, b.z + t], [b.x + w, b.z + t]); }
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(0.25, 2.2, 0.25).translate(0, 1.1, 0), new THREE.MeshStandardMaterial({ color: 0xc8a040, roughness: 0.6, emissive: 0x2a1a00 }), posts.length);
+  posts.forEach(([x, z], i) => im.setMatrixAt(i, _gm.makeTranslation(x, C.H0, z))); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); C.grp.add(im); C.sg.fence = im; SG.stats.ruined = ru.length;
+}
+/** Near the camera, the kit; beyond, the boxes (one instance matrix each, swapped as the camera crosses sectors). */
+function sgLod(C, force) {
+  const G = C.sg; if (!G || !vkReady('citybiomes')) return; const cam = camera.position; const step = C.c.tier === 'metro' ? 120 : SG_CFG.lodStep;
+  if (!force && Math.hypot(cam.x - G.cx, cam.z - G.cz) < step) return; G.cx = cam.x; G.cz = cam.z;
+  const nearR = C.c.tier === 'metro' && typeof MT_CFG !== 'undefined' ? MT_CFG.nearR : SG_CFG.nearR; const batch = new SgBatch(); const near = new Set();
+  C.blds.forEach((b, i) => { if (b.ruin || Math.hypot(b.x - cam.x, b.z - cam.z) > nearR + Math.max(b.w, b.d)) return;
+    const ok = b.stack ? b.stack.reduce((a, s) => batch.add(s.kit, s.id, _gm.makeRotationY(b.yaw).setPosition(b.ox, b.y + s.y, b.oz)) && a, true) : batch.add(b.kit, b.id, _gm.makeRotationY(b.yaw).setPosition(b.ox, b.y, b.oz)); if (ok) near.add(i); });
+  batch.build(C.grp); if (G.batch) G.batch.dispose(); G.batch = batch;
+  const Z = _gm2.makeScale(0, 0, 0); C.blds.forEach((b, i) => { const was = G.near.has(i), is = near.has(i); if (was !== is || force) C.bm.setMatrixAt(i, is ? Z : G.box[i]); }); C.bm.instanceMatrix.needsUpdate = true; G.near = near; SG.stats.lod++;
+}
+const _sgCityClear = worldCityClear;
+worldCityClear = function () { const C = WORLD.city; if (C?.sg) { C.sg.batch?.dispose(); C.sg.plaza?.dispose(); if (typeof mtClear === 'function') mtClear(C); } crowdClear(); sgNpcClear(); return _sgCityClear(); };   // S11-EDIT(§WORLDS.CITY worldCityClear): kit batches, crowds and walkers go with the city
+/** Buildings are walls to anyone on foot (the boxes are their roofs to anything that lands). */
+const _sgPush = ofPushProps;
+ofPushProps = function (pos, rad) {   // S11-EDIT(§ONFOOT.PROPS ofPushProps): city buildings are solid
+  _sgPush(pos, rad); const C = WORLD.city; if (!C?.sg || SETL.cell || SG.cell || (typeof MT !== 'undefined' && MT.cur && MT.level !== 1)) return; const L = C.hash.get(Math.floor(pos.x / 24) + ',' + Math.floor(pos.z / 24)); if (!L) return;
+  for (const b of L) { if (b.walk || pos.y > b.top - 0.4) continue; const hx = b.w / 2 + rad, hz = b.d / 2 + rad; const dx = pos.x - b.x, dz = pos.z - b.z; if (Math.abs(dx) >= hx || Math.abs(dz) >= hz) continue;
+    const px = hx - Math.abs(dx), pz = hz - Math.abs(dz); if (px < pz) pos.x = b.x + Math.sign(dx || 1) * hx; else pos.z = b.z + Math.sign(dz || 1) * hz; }
+};
+
+// §CITY.CONTROL — holding the city holds the planet; assaults on it are urban, district by district
+const _sgBatOpen = batOpen;
+batOpen = function (S, w, k, A, D) {   // S11-EDIT(§BATTLE batOpen): fronts on a settled world often fall on its city
+  const n0 = batEnsure(S).battles.length; const r = _sgBatOpen(S, w, k, A, D); if (S.battles.length === n0) return r; const b = S.battles[S.battles.length - 1]; const pl = sbxPlanetOf(b.sys); const P = sgPlan(pl); if (!P) return r;
+  const prior = S.battles.some(x => x !== b && x.sys === b.sys && x.winner === b.a && x.end != null && k - x.end < 200); const rng = gsRng(S, k, 4021 + w.id);
+  if (prior || rng() < 0.4) { const site = P.metro ?? P.city; b.site = site; b.key = pl.key + ':' + site; b.urban = true; b.cp = 6; b.held = ['d', 'd', 'd', 'd', 'd', null]; b.ta = Math.round(b.ta * 1.25); b.td = Math.round(b.td * 1.35); b.t0a = b.ta; b.t0d = b.td;
+    newsPush('war', `Urban assault: ${gsShort(b.a)} pushes into ${worldCityOf(pl, srfSiteDef(pl, site))?.name || 'the city'} on ${pl.name} — six districts to take, and whoever holds the city holds the world.`, k * GS.tickMs); }
+  return r;
+};
+const _sgBatResolve = batResolve;
+batResolve = function (S, b, winner, k, how) {   // S11-EDIT(§BATTLE batResolve): the city decides the planet; streets keep the scars
+  const was = b.phase; const r = _sgBatResolve(S, b, winner, k, how); if (was !== 'active') return r; const pl = sbxPlanetOf(b.sys); const t = pl ? sgTier(pl, b.site) : null;
+  if (pl && (t === 'city' || t === 'metro')) {
+    if (S.owners[b.sys] !== winner && winner) { S.owners[b.sys] = winner; S.stats.captures = (S.stats.captures || 0) + 1; SG.stats.captures++; newsPush('war', `${gsShort(winner)} holds ${worldCityOf(pl, srfSiteDef(pl, b.site))?.name || 'the city'} — and with it ${pl.name}. ${SBX.systems[b.sys].name} changes hands.`, k * GS.tickMs); }
+    sgRuinAfter(S, pl, b, k);
+  }
+  return r;
+};
+const _sgBatLayout = batLayout;
+batLayout = function (b) {   // S11-EDIT(§BATTLE batLayout): an urban assault's points are the district plazas
+  const L = _sgBatLayout(b); const C = WORLD.city; if (!b.urban || !C?.plazas?.length || C.c.site !== b.site) return L;
+  const pts = SG_DIST.map((_, d) => { const p = C.plazas.find(q => q.d === d) || C.plazas[0]; return new THREE.Vector3(p.x, ofG(p.x, p.z), p.z); });
+  const g = C.plazas.find(q => q.d === 4) || C.plazas[0]; const s = C.plazas.find(q => q.d === 0) || C.plazas[0]; const c = new THREE.Vector3(g.x, ofG(g.x, g.z), g.z);
+  const lzA = new THREE.Vector3(s.x, 0, s.z).lerp(new THREE.Vector3(0, 0, 0), 0.35); lzA.y = ofG(lzA.x, lzA.z); const lzD = c.clone(); const dirA = lzA.clone().sub(c).setY(0).normalize();
+  return { c, pts, lzA, lzD, dirA };
+};
+
+// =====================================================================================
+// §SIEGE — blockades starve settlements; assaults leave ruins that stand until rebuilt
+//  A fleet battle over the system, or a ground battle with the attacker holding orbit, is a
+//  blockade: prices rise, the yards and recruiters shut, the streets thin out. A village cut
+//  off from its city (held by the city owner's enemy) raises the city's prices. An urban
+//  assault ruins buildings in the districts that changed hands; they stand fenced off until
+//  the owner rebuilds them over real hours. Orbital bombardment of a settled world is an
+//  atrocity and the fire-control console says so before it fires (Stage 7).
+// =====================================================================================
+function sgBlockaded(sys) { const S = gsState(); if (!S) return false; if (typeof fbAt === 'function' && fbAt(sys, S)) return true; return (S.battles || []).some(b => b.phase === 'active' && b.sys === sys && b.orbit > BAT_CFG.orbitNeed); }
+function sgDeltaOf(planet, site, make) { const S = gsState(); if (!S) return null; if (!S.sgd) S.sgd = {}; const k = sgKey(planet, site); if (!S.sgd[k] && make) S.sgd[k] = { ruins: {}, own: null }; return S.sgd[k] || null; }
+/** A ruin stands until the owner rebuilds it: 30–90 hours, longer while blockaded. */
+function sgRuined(sd, i, S = gsState()) { const t = sd?.ruins?.[i]; if (t == null || !S) return false; const hrs = SG_CFG.rebuildH[0] + ((i * 2654435761 >>> 0) % 1000) / 1000 * (SG_CFG.rebuildH[1] - SG_CFG.rebuildH[0]); return galaxyNow() - t * GS.tickMs < hrs * 3600000; }
+function sgRuinAfter(S, pl, b, k) {
+  const site = srfSiteDef(pl, b.site); const c = worldCityOf(pl, site); if (!c) return; const L = sgLayoutOf(c); const sd = sgDeltaOf(pl, site, true); const rng = gsRng(S, k, 4031 + b.id);
+  for (const i of Object.keys(sd.ruins)) if (!sgRuined(sd, +i, S)) { delete sd.ruins[i]; SG.stats.rebuilt++; }
+  const hit = new Set(b.held.map((h, d) => h === 'a' ? d : -1).filter(d => d >= 0)); if (b.winner === b.a) hit.add(4);
+  for (const d of hit) { const cand = L.blds.filter(x => x.dist === d && x.tag !== 'pad'); for (let n = 0; n < 3 + Math.floor(rng() * 4) && cand.length; n++) { const x = cand.splice(Math.floor(rng() * cand.length), 1)[0]; sd.ruins[x.i] = k; } }
+  sd.own = b.winner;
+}
+/** What a settlement charges against the norm: blockade, villages cut off from their city, ruins. */
+function sgPriceK(planet, i) {
+  if (!planet) return 1; let k = sgBlockaded(planet.sys) ? SG_CFG.blockadeK : 1; const t = sgTier(planet, i); const S = gsState();
+  if (S && (t === 'city' || t === 'metro')) { const own = sgOwner(planet, i); const cut = sgPlan(planet).villages.filter(v => { const o = sgOwner(planet, v); return o && own && o !== own && gsAtWar(S, o, own); }).length; k *= 1 + SG_CFG.cutK * cut;
+    const sd = sgDeltaOf(planet, srfSiteDef(planet, i)); if (sd) k *= 1 + SG_CFG.ruinK * Math.min(10, Object.keys(sd.ruins).filter(r => sgRuined(sd, +r, S)).length); }
+  return k;
+}
+const SG_SHUT = ['repair', 'recruiter', 'weapons', 'armour', 'yard'];
+const _sgPriceMul = setlPriceMul;
+setlPriceMul = function (fac) { const T = SETL.town; return _sgPriceMul(fac) * (T ? sgPriceK(T.planet, T.i) : 1); };   // S11-EDIT(§SETTLEMENT setlPriceMul): siege prices
+const _sgServiceOpen = setlServiceOpen;
+setlServiceOpen = function (svc, o) { const T = SETL.town; if (T && SG_SHUT.includes(svc) && sgBlockaded(T.sys)) { sbxToast(`Shut. "Nothing's come down from orbit in days — not with that blockade up there."`); return; } return _sgServiceOpen(svc, o); };   // S11-EDIT(§SETTLEMENT setlServiceOpen): the blockade shuts the counters
+const _sgPortRender = worldPortRender;
+worldPortRender = function () { const r = _sgPortRender(); const C = WORLD.city; if (C?.c.tier && sgBlockaded(SRF.planet.sys)) { const el = $('sb-port')?.querySelector('.sb-card'); el?.insertAdjacentHTML('afterbegin', `<p class="small" style="color:var(--alert)">BLOCKADE — prices ×${sgPriceK(SRF.planet, SRF.site.i).toFixed(2)}, the yards are shut, cargo is rationed.</p>`); } return r; };   // S11-EDIT(§WORLDS.PORT worldPortRender): the blockade at the port
+
+// §CITY.HUD — the district map and the assault's progress
+function sgHud(dt) {
+  SG.hudT -= dt; if (SG.hudT > 0) return; SG.hudT = 0.5; const el = $('sg-hud'); if (!el) return; const C = WORLD.city;
+  if (!SRF.active || !C?.c.tier || SRF.cine || (MM.mode !== 'ON_FOOT' && MM.mode !== 'SURFACE_SHIP')) { el.classList.remove('on'); return; }
+  const pl = SRF.planet, i = SRF.site.i; const own = sgOwner(pl, i); const b = batAt(pl.key + ':' + i); const live = BAT.live?.b === b ? BAT.live : null;
+  const chip = (d) => { const h = live ? live.points[d]?.owner : b ? b.held[d] : null; const f = h ? batFacOf(b, h) : own; return `<span style="border-color:${SG_FAC_COL[f] || 'var(--fg)'}"><i style="background:${SG_FAC_COL[f] || 'transparent'}"></i>${SG_DIST[d].name}</span>`; };
+  el.innerHTML = `<b>${C.c.name}</b> <em>${own ? gsShort(own) : 'unclaimed'}${sgBlockaded(pl.sys) ? ' · blockaded' : ''}${C.blds.some(x => x.ruin) ? ` · ${C.blds.filter(x => x.ruin).length} ruins` : ''}${typeof MT !== 'undefined' && MT.level != null && C.c.tier === 'metro' ? ` · ${['undercity', 'street', 'sky'][MT.level]}` : ''}</em>
+    <div class="sg-d">${SG_DIST.map((_, d) => chip(d)).join('')}</div>${b ? `<div class="sg-a">Urban assault · ${gsShort(b.a)} ${live ? Math.round(live.tickets.a) : b.ta} — ${gsShort(b.d)} ${live ? Math.round(live.tickets.d) : b.td}</div>` : ''}`;
+  el.classList.add('on');
+}
+
+// =====================================================================================
+// §CROWDS — streets that are full: instanced walkers and up to thirty people near you
+//  Beyond arm's reach, crowds are instanced figures from the metropolis kit with a walk cycle
+//  in the vertex shader, walking the pavements, thinner at night, under blockade and amid
+//  ruins. Close by, up to thirty full characters walk, stop and answer when spoken to.
+// =====================================================================================
+function crowdMaterial(src) {
+  const m = src.clone(); const uT = { value: 0 }; m.userData.uT = uT;
+  m.onBeforeCompile = (sh) => { sh.uniforms.uT = uT; sh.vertexShader = 'uniform float uT; attribute float aPh;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+    float sw = sin(uT * 7.0 + aPh); float leg = 1.0 - smoothstep(0.0, 0.95, position.y); transformed.z += sw * 0.32 * leg * sign(position.x + 0.0001);
+    transformed.y += abs(sw) * 0.035; transformed.x += sin(uT * 3.5 + aPh) * 0.02 * smoothstep(0.9, 1.6, position.y);`); };
+  m.customProgramCacheKey = () => 'crowd-walk'; return m;
+}
+function crowdBuild(C) {
+  crowdClear(); const kinds = []; const P = vkReady('metro');
+  for (let k = 1; k <= 8; k++) { const ps = P ? sgParts('metro', 'crowd_0' + k) : []; if (ps[0]) kinds.push({ geo: ps[0].geo, mat: crowdMaterial(ps[0].mat) }); }
+  if (!kinds.length) kinds.push({ geo: new THREE.CapsuleGeometry(0.28, 1.1, 3, 6).translate(0, 0.83, 0), mat: crowdMaterial(new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.8 })) });
+  const night = clamp(0.3 - (SRF.sunEl ?? 1) * 2, 0, 1); const k = (sgBlockaded(SRF.planet.sys) ? 0.45 : 1) * (1 - night * 0.55) * (C.blds.some(b => b.ruin) ? 0.8 : 1);
+  const N = Math.round((C.c.tier === 'metro' ? SG_CFG.crowd.metro : SG_CFG.crowd.city) * k); const per = Math.ceil(N / kinds.length);
+  const W = []; const meshes = kinds.map((K, ki) => { const geo = K.geo.clone(); geo.setAttribute('aPh', new THREE.InstancedBufferAttribute(new Float32Array(per).map(() => Math.random() * 6.28), 1)); const im = new THREE.InstancedMesh(geo, K.mat, per); im.frustumCulled = false; im.castShadow = false; C.grp.add(im); for (let j = 0; j < per; j++) W.push({ ki, j, road: null, t: 0, side: 1, sp: 1.2, y: C.H0 }); return im; });
+  SG.crowd = { C, meshes, kinds, W, N }; for (const w of W) crowdPlace(w, true);
+}
+function crowdPlace(w, any) {
+  const G = SG.crowd; const C = G.C; const cam = camera.position; const near = (C.roads || []).filter(r => (r.ax === 'x' ? Math.abs(r.z - cam.z) : Math.abs(r.x - cam.x)) < SG_CFG.crowd.near);
+  const pool = near.length ? near : C.roads; if (!pool?.length) return; const r = pool[Math.floor(Math.random() * pool.length)]; w.road = r; w.side = Math.random() < 0.5 ? 1 : -1; w.sp = (0.9 + Math.random() * 0.7) * (Math.random() < 0.5 ? 1 : -1) / r.len;
+  const along = r.ax === 'x' ? cam.x - r.x : cam.z - r.z; w.t = clamp(0.5 + (along + (Math.random() - 0.5) * SG_CFG.crowd.near * 1.6) / r.len, 0.02, 0.98); w.off = (r.blvd ? 13 : 7.6) + Math.random() * 1.4; w.y = C.H0;
+}
+function crowdStep(dt) {
+  const G = SG.crowd; if (!G) return; const C = G.C; const cam = camera.position; const T = performance.now() / 1000; for (const K of G.kinds) K.mat.userData.uT.value = T;
+  const lvl = typeof MT !== 'undefined' && C.c.tier === 'metro' ? MT.level : 1; const show = lvl === 1 && !SG.cell && !SETL.cell; for (const m of G.meshes) m.visible = show; if (!show) return;
+  for (const w of G.W) { const r = w.road; if (!r) continue; w.t += w.sp * dt; if (w.t < 0.01 || w.t > 0.99) w.sp = -w.sp;
+    const s = (w.t - 0.5) * r.len; const x = r.ax === 'x' ? r.x + s : r.x + w.side * w.off, z = r.ax === 'x' ? r.z + w.side * w.off : r.z + s;
+    if (Math.hypot(x - cam.x, z - cam.z) > SG_CFG.crowd.near * 1.25) { crowdPlace(w); continue; }
+    const yaw = r.ax === 'x' ? (w.sp > 0 ? Math.PI / 2 : -Math.PI / 2) : (w.sp > 0 ? 0 : Math.PI); G.meshes[w.ki].setMatrixAt(w.j, _gm.makeRotationY(yaw).setPosition(x, w.y, z)); }
+  for (const m of G.meshes) m.instanceMatrix.needsUpdate = true;
+}
+function crowdClear() { const G = SG.crowd; if (!G) return; for (const m of G.meshes) { m.parent?.remove(m); m.geometry.dispose(); m.dispose(); } SG.crowd = null; }
+// full characters near you: walk a pavement, stop, answer
+const SG_SAY = { none: ['Keep walking.', 'Not today.', 'Busy.'], blockade: ['Nothing on the shelves for a week.', 'They say the fleet up there is turning back the grain ships.', 'Prices doubled since the blockade.'],
+  war: ['Stay off the boulevards after dark.', 'They took the market district yesterday.', 'Whoever holds the city holds the world. Everyone knows it.'], calm: ['Good day for it.', 'Have you tried the noodle stalls by the market?', 'The shuttles run from the spaceport.', 'Mind the traffic.'] };
+function sgNpcSpawn(C, at) {
+  const sp = ['human', 'vashi', 'nyl', 'korrath'][Math.floor(Math.random() * 4)]; const u = ofUnit({ kind: 'npc', team: 'neutral', civilian: true, spec: { species: sp, look: { skin: Math.floor(Math.random() * 6), style: Math.floor(Math.random() * 4), armour: 0, body: Math.random() < 0.5 ? 1 : 0 }, faction: null, role: 'civ' }, hp: 60, hpMax: 60, weapon: null, name: 'Resident' });
+  u.sgCity = true; u.pos.copy(at); u.pos.y = ofG(at.x, at.z); u.ai = { state: 'npc' }; u.goal = null; u.wait = 0;
+  u.step = (v, dt) => { if (v.wait > 0) { v.wait -= dt; aiMove(v, _gv[7].set(0, 0, 0), 0, dt); return; } if (!v.goal || Math.hypot(v.goal.x - v.pos.x, v.goal.z - v.pos.z) < 1.2) { v.goal = sgPavement(C, v.pos, 25); v.wait = Math.random() < 0.3 ? 2 + Math.random() * 4 : 0; return; }
+    const d = _gv[7].set(v.goal.x - v.pos.x, 0, v.goal.z - v.pos.z).normalize(); aiMove(v, d, 1.35, dt); aiFace(v, v.goal.x, v.goal.z, dt, 5); };
+  ofSpawnRig(u); OF.units.push(u); SG.npcs.push(u); return u;
+}
+/** A point on a pavement within r of p (the nearest street's kerb, along it). */
+function sgPavement(C, p, r) {
+  let best = null, bd = Infinity; for (const rd of C.roads || []) { const d = rd.ax === 'x' ? Math.abs(rd.z - p.z) : Math.abs(rd.x - p.x); if (d < bd && (rd.ax === 'x' ? Math.abs(p.x - rd.x) : Math.abs(p.z - rd.z)) < rd.len / 2) { bd = d; best = rd; } }
+  if (!best) return { x: p.x + (Math.random() - 0.5) * r, z: p.z + (Math.random() - 0.5) * r }; const side = (best.ax === 'x' ? p.z - best.z : p.x - best.x) >= 0 ? 1 : -1; const off = (best.blvd ? 13 : 7.6) * side; const t = (Math.random() - 0.5) * 2 * r;
+  return best.ax === 'x' ? { x: clamp(p.x + t, best.x - best.len / 2 + 5, best.x + best.len / 2 - 5), z: best.z + off } : { x: best.x + off, z: clamp(p.z + t, best.z - best.len / 2 + 5, best.z + best.len / 2 - 5) };
+}
+function sgNpcStep(dt) {
+  const C = WORLD.city; const me = OF.me; SG.npcT -= dt; if (SG.npcT > 0) return; SG.npcT = 0.5;
+  for (let i = SG.npcs.length - 1; i >= 0; i--) { const u = SG.npcs[i]; if (!u.alive || !me || Math.hypot(u.pos.x - me.pos.x, u.pos.z - me.pos.z) > SG_CFG.npcs.r * 1.5 || (typeof MT !== 'undefined' && MT.level !== 1 && C?.c.tier === 'metro')) sgNpcDrop(u); }
+  if (!C?.sg || !me?.alive || MM.mode !== 'ON_FOOT' || SG.cell || SETL.cell || BAT.live || (typeof MT !== 'undefined' && C.c.tier === 'metro' && MT.level !== 1)) return;
+  if (Math.hypot(me.pos.x - C.c.x, me.pos.z - C.c.z) > C.c.R + 40) return; const cap = Math.round((C.c.tier === 'metro' ? SG_CFG.npcs.metro : SG_CFG.npcs.city) * (sgBlockaded(SRF.planet.sys) ? 0.5 : 1));
+  for (let k = 0; k < 3 && SG.npcs.length < cap; k++) { const a = Math.random() * 6.28, r = 18 + Math.random() * (SG_CFG.npcs.r - 18); const q = sgPavement(C, { x: me.pos.x + Math.cos(a) * r, z: me.pos.z + Math.sin(a) * r }, 6); sgNpcSpawn(C, _gv[6].set(q.x, 0, q.z)); }
+}
+function sgNpcDrop(u) { const i = OF.units.indexOf(u); if (i >= 0) OF.units.splice(i, 1); if (u.rig) { charRigRelease(u.rig); u.rig = null; } const j = SG.npcs.indexOf(u); if (j >= 0) SG.npcs.splice(j, 1); }
+function sgNpcClear() { for (const u of [...SG.npcs]) sgNpcDrop(u); }
+function sgMood() { const S = gsState(); const pl = SRF.planet; if (!pl) return 'calm'; if (sgBlockaded(pl.sys)) return 'blockade'; return (S?.battles || []).some(b => b.phase === 'active' && b.sys === pl.sys) ? 'war' : 'calm'; }
+
+// §CITY.INTERIORS — the owner's headquarters, the customs hall, the shipyard office (and in a metropolis the club and the penthouse)
+const SG_CELLS = { hq: { cell: 'int_office', name: 'Faction headquarters', light: 0x9fd0ff }, customs: { cell: 'int_office', name: 'Customs hall', light: 0xf0f4ff }, yard: { cell: 'int_shop', name: 'Shipyard sales office', light: 0xffe0b0 },
+  club: { cell: 'int_bar', name: 'The club', light: 0xff40c0 }, penthouse: { cell: 'int_bar', name: 'Penthouse', light: 0xffd8a8 } };
+function sgCellEnter(door) {
+  const K = SG_CELLS[door.kind]; const me = OF.me; if (!K || !me) return false; const C = WORLD.city; const id = K.cell; const root = setlCellRoot(id);
+  const base = new THREE.Vector3(door.x, (C?.H0 ?? SRF.groundY(door.x, door.z)) + SG_CFG.cellY + (door.kind === 'penthouse' ? 30 : 0), door.z); root.position.copy(base); root.rotation.set(0, 0, 0); root.updateMatrixWorld(true); scene.add(root);
+  const em = vkHas('settlement', id) ? vkEmpties('settlement', id) : root.userData.fallback; const entry = em.entry || root.userData.fallback?.entry || { p: new THREE.Vector3(), f: new THREE.Vector3(0, 0, -1) }; const bb = root.userData.box;
+  const cell = SETL.cell = { id, lot: null, root, base, em, svc: 'sg-' + door.kind, min: bb.min.clone().add(base), max: bb.max.clone().add(base), npcs: [], sg: door, back: { x: door.x + Math.sin(door.yaw) * 2.2, z: door.z + Math.cos(door.yaw) * 2.2, yaw: door.yaw, y: door.y } };
+  cell.entry = base.clone().add(entry.p); cell.camDist = OFC.camDist; OFC.camDist = 1.9; me.pos.set(cell.entry.x, base.y, cell.entry.z); me.vel.set(0, 0, 0); me.yaw = Math.atan2(entry.f.x, entry.f.z); OF.cam.yaw = me.yaw; OF.cam.init = false; SG.cell = cell;
+  const own = sgOwner(SRF.planet, SRF.site.i); const ks = em.bartender || em.vendor_01 || em.npc_desk || root.userData.fallback?.keeper;
+  if (ks) setlCellNpc(cell, door.kind === 'hq' && own && CHMOD_FACTION[own] ? { species: 'human', look: { skin: 2, style: 1, armour: 1 }, faction: own, role: 'officer' } : { species: ['human', 'vashi', 'nyl', 'korrath'][door.b % 4], look: { skin: door.b % 6, style: door.b % 4, armour: 0, body: door.b % 2 }, faction: null, role: 'civ' }, ks, { keeper: true, svc: 'sg-' + door.kind, name: K.name });
+  if (door.kind === 'club') for (let k = 1; k <= 6; k++) { const s = em['npc_seat_0' + k]; if (s && k % 3) setlCellNpc(cell, { species: ['korrath', 'nyl', 'human', 'vashi'][k % 4], look: { skin: k % 6, style: k % 4, armour: 0, body: k % 2 }, faction: null, role: 'civ' }, s, { patron: true, name: 'Regular' }); }
+  if (!SETL.light) { SETL.light = new THREE.PointLight(0xffd8a8, 0, 14, 1.6); scene.add(SETL.light); } SETL.light.color.setHex(K.light); SETL.light.position.copy(base).add(_gv[0].set(0, 2.8, 0)); SETL.light.intensity = door.kind === 'club' ? 14 : 9;
+  for (const u of SQ?.units || []) if (u.alive && !u.downed && Math.hypot(u.pos.x - door.x, u.pos.z - door.z) < 30) { u.pos.set(cell.entry.x + rand(-0.8, 0.8), base.y, cell.entry.z + rand(-0.4, 0.4)); u.vel.set(0, 0, 0); u.inCell = true; }
+  AI.hold = Math.max(AI.hold || 0, 1); sbxToast(`${K.name} — ${C?.c.name || ''}. ${mmKey('interact')} at the door to leave.`); audio.click(true); return true;
+}
+function sgCellExit() {
+  const c = SG.cell; if (!c) return; SG.cell = null; if (SETL.cell === c) setlCellExit(false); const me = OF.me; if (!me) return; const y = c.back.y ?? ofG(c.back.x, c.back.z);
+  me.pos.set(c.back.x, y, c.back.z); me.vel.set(0, 0, 0); me.yaw = c.back.yaw; OF.cam.yaw = c.back.yaw; OF.cam.init = false;
+  for (const u of SQ?.units || []) if (u.inCell) { u.inCell = false; u.pos.set(c.back.x + rand(-1.5, 1.5), y, c.back.z + rand(-1.5, 1.5)); u.vel.set(0, 0, 0); }
+}
+/** Owned hulls a city yard (or a metropolis orbital yard) will sell you, and whether your rank allows it. */
+function sgRankOk(hull) { const H = SBX_HULLS[hull]; if (!H?.wsClass || !H.rank) return null; const A = allegOf(); if (A?.fac === H.wsFac && A.rank >= H.rank) return null; return `Requires rank ${H.rank} with ${gsShort(H.wsFac)} (${A?.fac === H.wsFac ? `you are rank ${A.rank}` : A?.fac ? `you serve ${gsShort(A.fac)}` : 'you are independent'}).`; }
+const sgYardStation = (sys) => SBX.systems[sys]?.stations?.[0]?.id || null;
+function sgYardHulls(fac, metro) { return Object.keys(SBX_HULLS).filter(h => { const H = SBX_HULLS[h]; return H.wsClass && H.wsFac === fac && (metro ? H.metro : !H.metro); }); }
+function sgPanelOpen(kind) { SG.panel = { kind }; $('sg-panel').classList.add('on'); sgPanelRender(); mmReleasePointer(); }
+function sgPanelClose() { $('sg-panel')?.classList.remove('on'); SG.panel = null; }
+function sgPanelRender() {
+  const Pn = SG.panel; if (!Pn) return; const pl = SRF.planet, i = SRF.site.i; const C = WORLD.city; const own = sgOwner(pl, i); const p = SBX.profile; const K = sgPriceK(pl, i); const blk = sgBlockaded(pl.sys);
+  const btn = (act, label, ok = true, cls = '') => `<button data-sg="${act}" class="${cls}" ${ok ? '' : 'disabled'}>${label}</button>`; const pr = (n) => Math.round(n * K);
+  let h = `<p class="small">${C?.c.name || pl.name} · ${own ? `held by ${gsShort(own)}` : 'unclaimed'} · wallet ${fmtIsk(p.isk)} cr${blk ? ' · <b style="color:var(--alert)">BLOCKADED</b>' : ''}${K > 1.001 ? ` · prices ×${K.toFixed(2)}` : ''}</p>`;
+  const title = { hq: `${own ? gsShort(own) : 'Faction'} headquarters`, customs: 'Customs hall — planetary shuttles', yard: 'Shipyard sales office', club: 'The club', penthouse: 'Penthouse', terminal: 'Orbital yard terminal', shipwright: 'Black-market shipwright' }[Pn.kind];
+  if (Pn.kind === 'hq') { const A = allegOf(); const plan = sgPlan(pl); const S = gsState(); const wars = (S?.wars || []).filter(w => w.phase !== 'over' && (w.a === own || w.d === own));
+    h += `<h3>The world</h3><p class="small">${plan.metro != null ? 'A metropolis, a city' : 'A city'} and ${plan.villages.length} villages. ${plan.villages.map(v => `${sgName(pl, srfSiteDef(pl, v))} (${gsShort(sgOwner(pl, v) || 'none')})`).join(' · ')}</p>`;
+    h += `<p class="small">${wars.length ? `At war: ${wars.map(w => `${gsShort(w.a)} against ${gsShort(w.d)}`).join('; ')}.` : 'No war touches this world.'} Hold the city and the world is yours; lose it and the world goes with it.</p>`;
+    h += `<div class="actions">${own && own !== 'player' && !A?.fac && !gsPlayerHostileTo(own) ? btn('pledge', `Swear to ${gsShort(own)}`, true, 'amber') : ''}${btn('alleg', 'Allegiance and rank')}</div>`; }
+  else if (Pn.kind === 'customs') { const plan = sgPlan(pl); const fee = pr(250);
+    h += `<p class="small">${blk ? 'Shuttles grounded — the blockade holds the sky.' : 'Shuttles to the other settlements of this world. Your ship is flown over with you.'}</p>`;
+    plan.tiers.forEach((t, k) => { if (k === i) return; const s = srfSiteDef(pl, k); h += `<div class="fitslot"><b>${sgName(pl, s)}</b><i class="small">${t} · ${BIOMES[s.biome].name}</i>${btn('hop:' + k, `Shuttle · ${fee} cr`, !blk && p.isk >= fee && !srfDescendCheck(pl, s))}</div>`; }); }
+  else if (Pn.kind === 'yard' || Pn.kind === 'shipwright' || Pn.kind === 'terminal') {
+    if (Pn.kind === 'terminal') h += `<p class="small">The orbital yard above ${C?.c.name || 'the metropolis'} builds frigates and cruisers — the only yards that do. The shuttle lifts you and your ship to it.</p><div class="actions">${btn('orbit', 'Shuttle to the orbital yard', !blk, 'amber')}</div>`;
+    const black = Pn.kind === 'shipwright'; const fac = black ? null : own; const list = black ? Object.keys(SBX_HULLS).filter(h2 => SBX_HULLS[h2].wsClass === 'corvette' || SBX_HULLS[h2].wsClass === 'heavy') : Pn.kind === 'yard' ? sgYardHulls(fac, false) : [];
+    if (Pn.kind !== 'terminal') { h += `<p class="small">${black ? 'No papers, no questions, no rank. Sixty percent over list.' : blk ? 'Shut — no deliveries through the blockade.' : `Delivered to ${SBX.station(sgYardStation(pl.sys))?.name || 'orbit'}.`}</p>`;
+      for (const hid of list) { const H = SBX_HULLS[hid]; const why = black ? null : sgRankOk(hid); const cost = Math.round(pr(H.price) * (black ? 1.6 : 1)); h += `<div class="fitslot"><b>${H.name}</b><i class="small">${H.cls}${why ? ' · ' + why : ''}</i>${btn('ship:' + hid + ':' + (black ? 1 : 0), `${fmtIsk(cost)} cr`, !why && (black || !blk) && p.isk >= cost)}</div>`; } } }
+  else if (Pn.kind === 'club') { const mood = sgMood(); h += `<p class="small">Bass through the floor, light through the smoke. Everyone here knows something.</p><div class="actions">${btn('drink', `A drink and the talk · ${pr(40)} cr`, p.isk >= pr(40))}${btn('wright', 'The shipwright in the back')}</div>${SG.panel.rumour ? `<p class="small">"${SG.panel.rumour}"</p>` : ''}`; }
+  else if (Pn.kind === 'penthouse') { const own2 = !!p.sgPent?.[pl.key]; h += `<p class="small">Glass on three sides and the whole city below. ${own2 ? 'Yours.' : 'For sale.'}</p><div class="actions">${own2 ? btn('rest', 'Rest') : btn('buy-pent', `Buy · ${fmtIsk(pr(2400000))} cr`, p.isk >= pr(2400000), 'amber')}</div>`; }
+  $('sg-title').textContent = title; $('sg-body').innerHTML = h;
+}
+function sgPanelAct(a) {
+  const [act, x, y] = a.split(':'); const pl = SRF.planet; const p = SBX.profile; const K = sgPriceK(pl, SRF.site.i); const pay = (n) => { if (p.isk < n) { sbxToast('Not enough credits.'); return false; } p.isk -= n; SBX.dirty = true; return true; };
+  if (act === 'pledge') { const r = allegPledge(sgOwner(pl, SRF.site.i)); if (r) sbxToast(r); }
+  else if (act === 'alleg') { sgPanelClose(); allegOpen(true); return; }
+  else if (act === 'hop') { if (!pay(Math.round(250 * K))) return; sgPanelClose(); sgCellExit(); sgHop(+x); return; }
+  else if (act === 'orbit') { sgPanelClose(); sgCellExit(); sgToYard(); return; }
+  else if (act === 'ship') { const H = SBX_HULLS[x]; const black = y === '1'; const why = black ? null : sgRankOk(x); if (why) return sbxToast(why); if (!pay(Math.round(H.price * K * (black ? 1.6 : 1)))) return; const st = sgYardStation(pl.sys); const s = sbxNewShip(x, 'station:' + st); s.name = black ? `Unregistered ${H.cls.toLowerCase()}` : s.name; sbxToast(`${H.name} bought — waiting at ${SBX.station(st)?.name || 'the orbital station'}.`); sbxSave('trade'); }
+  else if (act === 'drink') { if (!pay(Math.round(40 * K))) return; const m = sgMood(); const L = SG_SAY[m]; SG.panel.rumour = L[Math.floor(Math.random() * L.length)]; }
+  else if (act === 'wright') { SG.panel.kind = 'shipwright'; }
+  else if (act === 'buy-pent') { if (!pay(Math.round(2400000 * K))) return; p.sgPent = p.sgPent || {}; p.sgPent[pl.key] = true; sbxToast('The penthouse is yours. Rest here whenever you are in the city.'); }
+  else if (act === 'rest') { const me = OF.me; if (me) { me.hp = me.hpMax; me.defl = me.deflMax; me.stam = me.stamMax; } for (const u of SQ?.units || []) if (u.alive && !u.downed) u.hp = u.hpMax; sbxToast('Rested. The city hums below.'); }
+  audio.click(); sgPanelRender();
+}
+/** The planetary shuttle: a short hop in your own ship to another settlement of this world. */
+function sgHop(k) { const pl = SRF.planet; const site = srfSiteDef(pl, k); mmSet('SPACE', { via: () => { SRF_LEGACY.abort.call(SRF); sbxLoadSystem(pl.sys, null); }, why: 'planetary shuttle' }); SRF.descend(pl, site); }
+/** The sky terminal's shuttle to the orbital yard: you and your ship, docked above the metropolis. */
+function sgToYard() { const pl = SRF.planet; const st = sgYardStation(pl.sys); if (!st) return sbxToast('No yard answers.'); mmSet('SPACE', { via: () => { SRF_LEGACY.abort.call(SRF); const p = SBX.profile; p.systemId = pl.sys; p.stationId = st; sbxLoadSystem(pl.sys, null); sbxEnterDock(false); }, why: 'orbital shuttle' }); sbxToast(`The shuttle climbs out of ${WORLD.city?.c.name || 'the city'} — docked at the orbital yard.`); }
+(function sgInjectUI() {
+  const d = document.createElement('div'); d.className = 'sb-overlay'; d.id = 'sg-panel';
+  d.innerHTML = `<div class="sb-card" style="width:min(680px,95vw)"><h1 id="sg-title">City</h1><div id="sg-body"></div><div class="actions"><button id="sg-close">Close</button></div></div>`; document.body.appendChild(d);
+  d.addEventListener('click', (e) => { if (e.target.id === 'sg-close') return sgPanelClose(); const b = e.target.closest('[data-sg]'); if (!b || b.disabled) return; sgPanelAct(b.dataset.sg); });
+  const h = document.createElement('div'); h.id = 'sg-hud'; document.body.appendChild(h);
+  const css = document.createElement('style'); css.textContent = `#sg-panel .fitslot b { flex: 1; } #sg-panel i.small { opacity: .7; padding: 0 8px; }
+    #sg-hud { position: fixed; left: 12px; top: 64px; z-index: 6; display: none; max-width: min(460px, 70vw); padding: 8px 10px; background: var(--bg-panel); border: 1px solid var(--line, rgba(255,255,255,.15)); border-radius: var(--radius, 8px); color: var(--fg); font: 12px var(--font-ui, system-ui); pointer-events: none; }
+    #sg-hud.on { display: block; } #sg-hud em { opacity: .75; font-style: normal; } #sg-hud .sg-d { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } #sg-hud .sg-d span { border: 1px solid; border-radius: 10px; padding: 1px 7px 1px 4px; font-size: 11px; }
+    #sg-hud .sg-d i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; } #sg-hud .sg-a { margin-top: 5px; color: var(--accent); }
+    .wt-full #sg-hud, .cine-on #sg-hud { display: none !important; }`; document.head.appendChild(css);
+})();
+const _sgEsc = sbxHandleEscape;
+sbxHandleEscape = function () { if ($('sg-panel')?.classList.contains('on')) { sgPanelClose(); return true; } return _sgEsc(); };   // S11-EDIT(§SBXUI sbxHandleEscape): Escape closes the city counter
+/** The thing in reach: a door, a person, the cell's way out. */
+function sgTarget() {
+  const me = OF.me; if (!me?.alive) return null; const c = SG.cell;
+  if (c) { if (Math.hypot(me.pos.x - c.entry.x, me.pos.z - c.entry.z) < 1.6) return { kind: 'exit', label: 'leave' }; for (const u of c.npcs) if (u.keeper && u.pos.distanceTo(me.pos) < 2.8) return { kind: 'panel', p: c.sg.kind, label: `talk — ${u.name}` }; return null; }
+  const C = WORLD.city; if (!C?.sg || SETL.cell) return null;
+  for (const d of C.doors || []) { if (d.level != null && typeof MT !== 'undefined' && d.level !== MT.level) continue; if (Math.hypot(me.pos.x - d.x, me.pos.z - d.z) < SG_CFG.doorR && (d.y == null || Math.abs(me.pos.y - d.y) < 4)) return d.kind === 'lift' ? { kind: 'lift', d, label: 'lift — choose a level' } : d.kind === 'terminal' || d.kind === 'shipwright' ? { kind: 'panel', p: d.kind, label: d.kind === 'terminal' ? 'orbital yard terminal' : 'black-market shipwright' } : { kind: 'door', d, label: `enter — ${SG_CELLS[d.kind]?.name || d.kind}` }; }
+  let best = null, bd = 2.4; for (const u of SG.npcs) { if (!u.alive) continue; const q = u.pos.distanceTo(me.pos); if (q < bd) { bd = q; best = u; } }
+  return best ? { kind: 'npc', u: best, label: 'talk' } : null;
+}
+function sgInteract() {
+  const t = sgTarget(); if (!t) return false;
+  if (t.kind === 'exit') { sgCellExit(); return true; } if (t.kind === 'door') return sgCellEnter(t.d); if (t.kind === 'panel') { sgPanelOpen(t.p); return true; }
+  if (t.kind === 'lift') { if (typeof mtLift === 'function') mtLift(t.d); return true; }
+  if (t.kind === 'npc') { const L = SG_SAY[sgMood()]; setlSay(t.u, L[(t.u.id + Math.floor(OF.t / 15)) % L.length]); aiFace(t.u, OF.me.pos.x, OF.me.pos.z, 1, 99); t.u.wait = 4; return true; }
+  return false;
+}
+const _sgInteract = ofInteract;
+ofInteract = function () { const me = OF.me; if (!me?.mounted && sgInteract()) return; return _sgInteract(); };   // S11-EDIT(§ONFOOT ofInteract): city doors, lifts, terminals and people
+const _sgDrops = ofDropsStep;
+ofDropsStep = function (dt) { _sgDrops(dt); if (OF.prompt || !OF.me?.alive || OF.me.mounted) return; const t = sgTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): city prompts
+const _sgOFExit = OF.exit;
+OF.exit = function (next, o) { if (next !== 'GROUND_VEHICLE') { if (SG.cell) { SG.cell = null; } sgNpcClear(); sgPanelClose(); } return _sgOFExit(next, o); };   // S11-EDIT(§ONFOOT OF.exit): the walkers go with you
+
+// §SETTLEGEN.TICK — the city's sectors, crowds, walkers and the district map, every frame on the ground
+const _sgTick = worldTick;
+worldTick = function (dt) {   // S11-EDIT(§WORLDS worldTick): city level of detail, crowds, residents, the district map
+  _sgTick(dt); const C = WORLD.city; if (!SRF.active || !C?.sg) { sgHud(dt); return; }
+  C.uNight.value *= C.c.tier === 'metro' ? 0.4 : 0.75;                                  // a thousand lit boxes on the horizon: windows, not floodlights
+  if (!SRF.cine) { sgLod(C); if (!SG.crowd && (vkReady('metro') || VKIT.status.metro === 'missing')) crowdBuild(C); crowdStep(dt); if (typeof mtStep === 'function' && C.c.tier === 'metro') mtStep(dt, C); }
+  sgHud(dt);
+};
+const _sgOFStep = OF.step;
+OF.step = function (dt) { _sgOFStep(dt); if (!SRF.active || !WORLD.city?.sg) return; sgNpcStep(dt); if (typeof mtLevelStep === 'function' && WORLD.city.c.tier === 'metro') mtLevelStep(dt); };   // S11-EDIT(§ONFOOT.STEP OF.step): residents and the metropolis levels keep sim time
+
+Object.assign(S9X, { SG, SG_CFG, SG_DIST, SG_FOOT, sgPlan, sgTier, sgOwner, sgName, sgVillageKind, sgCityLayout, sgLayoutOf, sgDistOf, sgParts, SgBatch, sgLod, sgBlockaded, sgPriceK, sgDeltaOf, sgRuined, sgRuinAfter, sgRankOk, sgYardStation, sgYardHulls,
+  sgPanelOpen, sgPanelAct, sgPanelClose, sgTarget, sgInteract, sgCellEnter, sgCellExit, sgHop, sgToYard, crowdBuild, crowdStep, sgNpcStep, sgPavement, sgMood, sgHud, sgAlias, worldCityOfNow: (a, b) => worldCityOf(a, b), setlOfNow: (a, b) => setlOf(a, b), batResolveNow: (...a) => batResolve(...a), batOpenNow: (...a) => batOpen(...a), setlPriceMulNow: (f) => setlPriceMul(f), setlServiceOpenNow: (s, o) => setlServiceOpen(s, o), rkvInhabitedNow: (p) => rkvInhabited(p) });
+const _sgOFEnter = OF.enter;
+OF.enter = function (prev, o) { if (SETL.pop) setlDepopulate(); sgNpcClear(); return _sgOFEnter(prev, o); };   // S11-EDIT(§ONFOOT OF.enter): residents left out from a rover trip are sent home before the town wakes again
+const _sgRigRelease = charRigRelease;
+charRigRelease = function (r) { _sgRigRelease(r); let n = 0; for (const L of CHAR_POOL.values()) n += L.length; for (const [k, L] of CHAR_POOL) { while (n > 24 && L.length) { const x = L.shift(); x.root.parent?.remove(x.root); x.dispose?.(); n--; } if (!L.length) CHAR_POOL.delete(k); if (n <= 24) break; } };   // S11-EDIT(§CHARACTER charRigRelease): a busy street can't grow the pool without bound
+
+// =====================================================================================
+// §METRO — the metropolis: towers to the clouds on three walkable levels
+//  A metropolis fills the view from the landing zone: towers stacked from the owner's design
+//  language (base, transfer, mid sections and crown), tallest at the core, with the skyline
+//  running on past the edge of the landing zone as impostor towers and painted panoramas that
+//  turn from day to night. Three levels joined by lifts: the undercity (artificial light around
+//  the clock, the night market, Syndicate turf, the club, the black-market shipwright, the
+//  most danger), the street (boulevards, the six districts, crowds, ground traffic) and the sky
+//  (plazas on podium towers linked by skybridges, the faction headquarters, the penthouse and
+//  the orbital yard terminal). Civilian air traffic flies the canyons on splines, day and
+//  night; capital ships hold station overhead. The orbital yard above every metropolis is the
+//  only place that sells frigates and cruisers — and only to those of rank.
+// =====================================================================================
+const MT_CFG = { block: 52, street: 16, sky: 53, under: -14, underHalf: 170, nearR: 820, skyline: [4300, 7200], skylineN: 72, panoR: 9500, air: 56, ground: 60, muggerT: [80, 150] };
+const MT = { flat: new Map(), level: 1, cur: null, lastOk: new Map(), muggerT: 120, stats: { lifts: 0, air: 0, levels: [0, 0, 0] } };
+const _mv = Array.from({ length: 8 }, () => new THREE.Vector3()); const _mq = new THREE.Quaternion(), _mm = new THREE.Matrix4();
+
+// §METRO.LAYOUT — towers on a dense grid, a ring of sky plazas around the government square, lifts at its four sides
+function mtStack(f, n2, rng) {
+  const S = []; let y = 0; const add = (id) => { S.push({ kit: 'metro', id, y }); y += SG_FOOT[id][4]; };
+  add(`tower_base_${f}`); add(`tower_mid_${f}`); add(`tower_mid_${f}`); add(`tower_transfer_${f}`); for (let k = 0; k < n2; k++) add(`tower_mid_${f}`); add(`tower_crown_${f}`); return { S, h: y };
+}
+function mtLayout(c) {
+  const rng = makeRng((c.seed ^ 0x3e7a) >>> 0); const B = MT_CFG.block, I = B - MT_CFG.street; const f = sgKitFac(c.faction); const sfx = c.biome === 'temperate' ? '_temperate' : '_sealed';
+  const n = Math.ceil(c.R / B) + 1; const blds = [], roads = [], plazas = [], doors = []; const cells = new Map(); const SY = MT_CFG.sky;
+  for (let i = -n; i < n; i++) for (let j = -n; j < n; j++) { const x = c.x + (i + 0.5) * B, z = c.z + (j + 0.5) * B; if (Math.hypot(x - c.x, z - c.z) > c.R * 0.97) continue; cells.set(i + ',' + j, { i, j, x, z, d: sgDistOf(c, x, z), used: false }); }
+  const cell = (i, j) => cells.get(i + ',' + j);
+  const tower = (C0, n2, tag = 'tower', d = C0.d) => { const T = mtStack(f, n2, rng); const R = sgRot(T.S[0].id, 0); const b = { id: T.S[0].id, kit: 'metro', stack: T.S, x: C0.x, z: C0.z, w: R.w, d: R.d, h: T.h, ox: C0.x, oz: C0.z, yaw: Math.floor(rng() * 4) * Math.PI / 2, dist: d, tag }; blds.push(b); return b; };
+  // the government square at the core, the sky ring of podium plazas around it
+  const g = cell(0, 0) || cell(-1, -1); g.used = true; plazas.push({ d: 4, x: g.x, z: g.z, w: I, i: g.i, j: g.j });
+  const sky = [], bridges = [], rects = [];
+  for (let di = -2; di <= 2; di++) for (let dj = -2; dj <= 2; dj++) { const C0 = cell(g.i + di, g.j + dj); if (!C0 || C0 === g) continue; C0.used = true; C0.sky = true;
+    if ((di === 0 && dj === 1) || (di === 0 && dj === -1)) { const b = tower(C0, 6 + Math.floor(rng() * 3), 'skytower', 4); C0.tower = b; continue; }
+    const id = Math.abs(di) === 2 && Math.abs(dj) === 2 ? 'skyplaza_landing_01' : 'skyplaza_garden_01'; const T = mtStack(f, 0, rng); const st = T.S.slice(0, 3); st.push({ kit: 'metro', id, y: SY });
+    blds.push({ id: st[0].id, kit: 'metro', stack: st, x: C0.x, z: C0.z, w: 32.2, d: 32.2, h: SY + 3, ox: C0.x, oz: C0.z, yaw: 0, dist: 4, tag: id === 'skyplaza_landing_01' ? 'skypad' : 'podium', walk: id === 'skyplaza_landing_01' }); sky.push(C0);
+    rects.push([C0.x - 16, C0.z - 16, C0.x + 16, C0.z + 16]); if (id === 'skyplaza_landing_01' && di > 0 && dj > 0) doors.push({ kind: 'terminal', x: C0.x, z: C0.z, level: 2, yOff: SY, b: blds.length - 1 }); }
+  // skybridges between neighbouring sky cells (into the faces of the two sky towers: the headquarters and the penthouse)
+  for (const A of [...sky, cell(g.i, g.j + 1), cell(g.i, g.j - 1)].filter(Boolean)) for (const [di, dj] of [[1, 0], [0, 1]]) { const Bc = cell(A.i + di, A.j + dj); if (!Bc?.sky || (A.tower && Bc.tower)) continue;
+    const mx = (A.x + Bc.x) / 2, mz = (A.z + Bc.z) / 2; bridges.push({ id: rng() < 0.5 ? 'skybridge_open_24' : 'skybridge_enclosed_24', x: mx, z: mz, yaw: di ? 0 : Math.PI / 2 });
+    rects.push(di ? [mx - 14, mz - 2.6, mx + 14, mz + 2.6] : [mx - 2.6, mz - 14, mx + 2.6, mz + 14]);
+    for (const [T, O] of [[A, Bc], [Bc, A]]) if (T.tower) { const ux = Math.sign(O.x - T.x), uz = Math.sign(O.z - T.z); const hw = T.tower.w / 2 + 0.6; rects.push([T.x + ux * hw - 2.6, T.z + uz * hw - 2.6, T.x + ux * hw + 2.6, T.z + uz * hw + 2.6]);
+      if (!doors.some(d => d.tw === T)) doors.push({ kind: T.j > g.j ? 'hq' : 'penthouse', x: T.x + ux * hw, z: T.z + uz * hw, yaw: Math.atan2(ux, uz), level: 2, yOff: SY, b: blds.indexOf(T.tower), tw: T }); } }
+  // lifts: street corner shafts at the ring's four sides, a door on every level
+  const lifts = []; for (const [di, dj] of [[3, 0], [-3, 0], [0, 3], [0, -3]]) { const P = cell(g.i + Math.sign(di) * 2, g.j + Math.sign(dj) * 2); if (!P) continue; const ux = Math.sign(di), uz = Math.sign(dj);
+    const lx = P.x + ux * 23, lz = P.z + uz * 23; const yaw = Math.atan2(-ux, -uz); const ex = lx - ux * 5.5, ez = lz - uz * 5.5; const L = { id: lifts.length, x: lx, z: lz, yaw, ex, ez }; lifts.push(L);
+    rects.push([Math.min(ex, P.x + ux * 16) - 2.4, Math.min(ez, P.z + uz * 16) - 2.4, Math.max(ex, P.x + ux * 16) + 2.4, Math.max(ez, P.z + uz * 16) + 2.4]);
+    for (let lv = 0; lv < 3; lv++) doors.push({ kind: 'lift', lift: L.id, x: ex, z: ez, level: lv, yOff: [MT_CFG.under, 0, SY][lv] }); }
+  // district plazas, the spaceport's customs hall and yard office, then towers everywhere else
+  for (let d = 0; d < 6; d++) { if (d === 4) continue; const [r, a] = SG_ANCHOR[d]; const a0 = Math.atan2(-c.z, -c.x); const ax = c.x + Math.cos(a0 + a) * r * c.R, az = c.z + Math.sin(a0 + a) * r * c.R;
+    let best = null, bd = Infinity; for (const C0 of cells.values()) { if (C0.used) continue; const q = Math.hypot(C0.x - ax, C0.z - az) + (C0.d === d ? 0 : 400); if (q < bd) { bd = q; best = C0; } } if (!best) continue; best.used = true; plazas.push({ d, x: best.x, z: best.z, w: I, i: best.i, j: best.j });
+    if (d === 0) { const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a1, b1]) => cell(best.i + a1, best.j + b1)).filter(C0 => C0 && !C0.used); if (nb[0]) { nb[0].used = true; sgPlace(blds, doors, `set_city_customs_hall${sfx}`, nb[0].x, nb[0].z, best.x - nb[0].x, best.z - nb[0].z, 0, 'customs', 'landmark'); }
+      if (nb[1]) { nb[1].used = true; sgPlace(blds, doors, `set_city_control_tower${sfx}`, nb[1].x, nb[1].z, best.x - nb[1].x, best.z - nb[1].z, 0, 'yard', 'landmark'); } } }
+  for (const C0 of [...cells.values()].sort((p, q) => p.i - q.i || p.j - q.j)) { if (C0.used) continue; const r = Math.hypot(C0.x - c.x, C0.z - c.z) / c.R;
+    if (C0.d === 5 && rng() < 0.75) { const id = rng() < 0.15 ? `set_city_ruined_temple${sfx}` : `set_city_crooked_house_0${1 + Math.floor(rng() * 2)}${sfx}`; sgPlace(blds, doors, id, C0.x, C0.z, rng() - 0.5, rng() - 0.5, 5); continue; }
+    if (C0.d === 3 && rng() < 0.6) { sgPlace(blds, doors, rng() < 0.5 ? `set_city_refinery_tower${sfx}` : `set_city_factory_hall${sfx}`, C0.x, C0.z, rng() - 0.5, rng() - 0.5, 3); continue; }
+    tower(C0, Math.max(0, Math.round((C0.d === 3 ? 1 : 2) + 7 * Math.pow(1 - r, 1.6) + rng() * 2.5 - (C0.d === 0 ? 2 : 0))));
+  }
+  for (let k = -n; k <= n; k++) { const L = Math.sqrt(Math.max(0, 1 - Math.pow(k * B / c.R, 2))) * c.R; if (L < 20) continue; roads.push({ x: c.x + k * B, z: c.z, len: L * 2, ax: 'z', blvd: k === 0 }, { x: c.x, z: c.z + k * B, len: L * 2, ax: 'x', blvd: k === 0 }); }
+  // the undercity: a walled square under the core, a night market in lanes, the club and the shipwright
+  const U = { x: c.x, z: c.z, h: MT_CFG.underHalf }; const stalls = []; for (let lane = -3; lane <= 3; lane++) for (let s = -6; s <= 6; s++) { if (rng() < 0.35) continue; stalls.push({ x: U.x + s * 22 + (rng() - 0.5) * 4, z: U.z + lane * 44 + (lane % 2 ? 6 : -6), yaw: lane % 2 ? Math.PI : 0 }); }
+  const club = { x: U.x + U.h - 3, z: U.z + 40, yaw: -Math.PI / 2 }, wright = { x: U.x - 60, z: U.z - U.h + 12, yaw: 0 };
+  doors.push({ kind: 'club', x: club.x - 1.6, z: club.z, yaw: -Math.PI / 2, level: 0, yOff: MT_CFG.under, b: 0 }, { kind: 'shipwright', x: wright.x, z: wright.z + 2, level: 0, yOff: MT_CFG.under, b: 1 });
+  blds.forEach((b, i) => b.i = i); return { blds, roads, plazas, doors, tier: 'metro', extra: { bridges, rects, lifts, U, stalls, club, wright, f } };
+}
+
+// §METRO.BUILD — bridges, the undercity, the skyline past the edge, traffic in the air and on the streets
+function mtBuild(C) {
+  mtClear(C); const L = C.sg.L; const X = L.extra; if (!X) return; const H0 = C.H0; const SY = H0 + MT_CFG.sky, UY = H0 + MT_CFG.under; const rng = makeRng((C.c.seed ^ 0x7a1) >>> 0);
+  const M = C.mt = { sy: SY, uy: UY, ux: X.U.x, uz: X.U.z, uh: X.U.h, rects: X.rects, lifts: X.lifts, groups: [], air: null, ground: null, sky: null, under: null, ships: [] };
+  for (const d of C.doors) { if (d.level == null) d.level = 1; if (d.yOff != null) d.y = H0 + d.yOff; }
+  if (C.cars) C.cars.count = 0;                                                         // the Stage 8 box cars give way to the kit's traffic
+  // skybridges (always drawn: they are the city's silhouette at sky level)
+  const bb = new SgBatch(); for (const br of X.bridges) bb.add('metro', br.id, _mm.makeRotationY(br.yaw).setPosition(br.x, SY, br.z));
+  for (const l of X.lifts) bb.add('metro', 'lift_shaft_01', _mm.makeRotationY(l.yaw).setPosition(l.x, H0, l.z)); bb.build(C.grp); M.groups.push(bb);
+  // the undercity (its own group, drawn only down there)
+  const ug = new THREE.Group(); ug.visible = false; scene.add(ug); M.under = { g: ug, batch: new SgBatch(), lights: [] }; const ub = M.under.batch; const U = X.U;
+  for (let x = -U.h + 17; x < U.h; x += 34.2) for (const s of [-1, 1]) { ub.add('metro', 'undercity_foundation_01', _mm.makeRotationY(s > 0 ? 0 : Math.PI).setPosition(U.x + x, UY, U.z + s * (U.h + 17))); ub.add('metro', 'undercity_foundation_01', _mm.makeRotationY(s > 0 ? Math.PI / 2 : -Math.PI / 2).setPosition(U.x + s * (U.h + 17), UY, U.z + x)); }
+  for (let x = -U.h + 34; x < U.h; x += 34) for (let z = -U.h + 34; z < U.h; z += 34) { ub.add('metro', 'undercity_pillar_01', _mm.makeTranslation(U.x + x, UY, U.z + z)); if (rng() < 0.6) ub.add('metro', rng() < 0.5 ? 'undercity_pipes_01' : 'undercity_cables_01', _mm.makeRotationY(rng() < 0.5 ? 0 : Math.PI / 2).setPosition(U.x + x + 8, H0 - 3.2, U.z + z)); }
+  for (const s of X.stalls) { ub.add('metro', 'undercity_stall_01', _mm.makeRotationY(s.yaw).setPosition(s.x, UY, s.z)); if (rng() < 0.4) ub.add('metro', 'undercity_neon_frame_01', _mm.makeRotationY(s.yaw).setPosition(s.x, UY + 4.2, s.z - 1)); }
+  for (let k = 0; k < 18; k++) { const side = k % 4, t = -U.h + 18 + Math.floor(k / 4) * 60 + (k % 2) * 30; const at = side === 0 ? [U.x + t, U.z - U.h + 0.5, 0] : side === 1 ? [U.x + t, U.z + U.h - 0.5, Math.PI] : side === 2 ? [U.x - U.h + 0.5, U.z + t, Math.PI / 2] : [U.x + U.h - 0.5, U.z + t, -Math.PI / 2];
+    ub.add('metro', 'undercity_shopfront_01', _mm.makeRotationY(at[2]).setPosition(at[0], UY, at[1])); ub.add('metro', 'undercity_neon_frame_01', _mm.makeRotationY(at[2]).setPosition(at[0], UY + 6.6, at[1])); }
+  ub.add('metro', 'undercity_shopfront_01', _mm.makeRotationY(X.club.yaw).setPosition(X.club.x, UY, X.club.z)); for (const dy of [6.4, 8.6]) ub.add('metro', 'undercity_neon_frame_01', _mm.makeRotationY(X.club.yaw).setPosition(X.club.x, UY + dy, X.club.z));
+  ub.add('metro', 'undercity_stall_01', _mm.makeRotationY(X.wright.yaw).setPosition(X.wright.x, UY, X.wright.z)); for (const l of X.lifts) ub.add('metro', 'undercity_stairs_01', _mm.makeRotationY(l.yaw + Math.PI / 2).setPosition(l.ex + 9, UY, l.ez + 9));
+  ub.build(ug);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(U.h * 2 + 70, U.h * 2 + 70).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x23252a, roughness: 0.95, metalness: 0.1 })); floor.position.set(U.x, UY + 0.02, U.z); ug.add(floor);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(U.h * 2 + 70, U.h * 2 + 70).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 1 })); ceil.position.set(U.x, H0 - 0.6, U.z); ug.add(ceil);
+  for (const [lx, lz, col] of [[0, 0, 0xff3aa0], [-90, 60, 0x40d0ff], [90, -70, 0xffa040], [U.h - 12, 40, 0xff40c0]]) { const l = new THREE.PointLight(col, 0, 90, 1.4); l.position.set(U.x + lx, UY + 8, U.z + lz); ug.add(l); M.under.lights.push(l); }
+  const hemi = new THREE.HemisphereLight(0x6a5a8a, 0x101014, 0); ug.add(hemi); M.under.hemi = hemi;
+  // the skyline past the edge: impostor towers in a ring, painted panoramas beyond them (day and night)
+  if (vkReady('metro')) { const sb = new SgBatch(); const a0 = Math.atan2(C.c.z, C.c.x);
+    for (let k = 0; k < MT_CFG.skylineN; k++) { const a = a0 + (k / MT_CFG.skylineN - 0.5) * Math.PI * 1.7 + (rng() - 0.5) * 0.05; const R = MT_CFG.skyline[0] + rng() * (MT_CFG.skyline[1] - MT_CFG.skyline[0]); const x = Math.cos(a) * R, z = Math.sin(a) * R; const id = 'skyline_tower_' + String(1 + Math.floor(rng() * 12)).padStart(2, '0');
+      sb.add('metro', id, _mm.makeRotationY(Math.atan2(x - C.c.x, z - C.c.z)).setPosition(x, H0 - 4, z)); }
+    sb.build(C.grp); M.groups.push(sb); M.sky = { day: new SgBatch(), night: new SgBatch() };
+    for (let k = 0; k < 18; k++) { const a = a0 + (k / 18 - 0.5) * Math.PI * 1.5; const x = Math.cos(a) * MT_CFG.panoR, z = Math.sin(a) * MT_CFG.panoR; const n = 1 + (k % 6); const m = _mm.makeRotationY(Math.atan2(x, z)).setPosition(x, H0 - 30, z);
+      M.sky.day.add('metro', `skyline_0${n}_day`, m); M.sky.night.add('metro', `skyline_0${n}_night`, m); }
+    M.sky.day.build(C.grp); M.sky.night.build(C.grp); for (const b of [M.sky.day, M.sky.night, sb]) for (const im of b.meshes) { const src = im.material; im.material = MT.flat.get(src) || MT.flat.set(src, new THREE.MeshBasicMaterial({ map: src.map, color: src.map ? 0xffffff : src.color, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, fog: false, depthWrite: false })).get(src); im.frustumCulled = false; im.renderOrder = -1; } }   // painted backdrops: unlit, two-sided, cut out
+  // air traffic: closed splines through the canyons at five heights; ground traffic on the streets
+  const lanes = []; for (let k = 0; k < 7; k++) { const ax = Math.round((rng() - 0.5) * 8) * MT_CFG.block, az = Math.round((rng() - 0.5) * 8) * MT_CFG.block; const wx = (2 + Math.floor(rng() * 5)) * MT_CFG.block, wz = (2 + Math.floor(rng() * 5)) * MT_CFG.block; const y = H0 + 70 + k * 22 + rng() * 8;
+    const cx = C.c.x + ax, cz = C.c.z + az; const pts = [[-1, -1], [0, -1.08], [1, -1], [1.08, 0], [1, 1], [0, 1.08], [-1, 1], [-1.08, 0]].map(([u, v]) => new THREE.Vector3(cx + u * wx / 2, y + (u * v) * 6, cz + v * wz / 2)); lanes.push(new THREE.CatmullRomCurve3(pts, true, 'centripetal')); }
+  M.air = mtTraffic(C, ['traffic_air_01', 'traffic_air_02', 'traffic_air_03', 'traffic_air_04'], MT_CFG.air, (i) => ({ lane: lanes[i % lanes.length], t: rng(), sp: (28 + rng() * 22) / lanes[i % lanes.length].getLength() * (i % 2 ? 1 : -1) }), rng);
+  M.ground = mtTraffic(C, ['traffic_ground_01', 'traffic_ground_02', 'traffic_ground_03'], MT_CFG.ground, (i) => { const r = L.roads[Math.floor(rng() * L.roads.length)]; return { road: r, t: rng(), sp: (9 + rng() * 6) / r.len * (rng() < 0.5 ? 1 : -1) }; }, rng);
+  // navigation lights on every flyer
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MT_CFG.air * 3), 3)); M.air.lights = new THREE.Points(lg, new THREE.PointsMaterial({ map: TEX.glow, color: 0xff6a5a, size: 5, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); M.air.lights.frustumCulled = false; C.grp.add(M.air.lights);
+  // capital ships holding station overhead, seen from the streets
+  for (let k = 0; k < 2; k++) { const g = new THREE.Group(); const hull = new THREE.Mesh(new THREE.BoxGeometry(70, 26, 420), new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.6, metalness: 0.5, fog: false })); g.add(hull);
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(30, 40, 60), hull.material); tower.position.set(0, 30, 120); g.add(tower); const nav = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(36, 0, -200), new THREE.Vector3(-36, 0, -200), new THREE.Vector3(0, 52, 120), new THREE.Vector3(0, -14, 200)]), new THREE.PointsMaterial({ map: TEX.glow, color: 0xffe0b0, size: 60, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); g.add(nav);
+    g.position.set(C.c.x + (k ? -1 : 1) * 900, H0 + 2600 + k * 500, C.c.z + (k ? 600 : -400)); g.rotation.y = rng() * 6.28; C.grp.add(g); M.ships.push(g); }
+  MT.cur = M; MT.level = 1; MT.lastOk.clear(); return M;
+}
+function mtTraffic(C, ids, n, init, rng) {
+  const kinds = ids.map(id => sgParts('metro', id)).filter(p => p.length); if (!kinds.length) return { veh: [], meshes: [] }; const per = Math.ceil(n / kinds.length); const meshes = [];
+  kinds.forEach((parts, ki) => { const ms = parts.map(pt => { const im = new THREE.InstancedMesh(pt.geo, pt.mat, per); im.frustumCulled = false; C.grp.add(im); return im; }); meshes.push(ms); });
+  const veh = []; for (let i = 0; i < per * kinds.length; i++) veh.push({ ki: i % kinds.length, j: Math.floor(i / kinds.length), ...init(i) }); return { veh, meshes };
+}
+function mtClear(C) {
+  const M = C?.mt; if (!M) return; for (const b of M.groups) b.dispose(); if (M.under) { M.under.batch.dispose(); M.under.g.parent?.remove(M.under.g); } if (M.sky) { M.sky.day.dispose(); M.sky.night.dispose(); }
+  for (const T of [M.air, M.ground]) for (const ms of T?.meshes || []) for (const m of ms) { m.parent?.remove(m); m.dispose(); } M.air?.lights?.parent?.remove(M.air.lights); for (const s of M.ships) s.parent?.remove(s);
+  if (MT.level !== 1) mtShowLevel(1); C.mt = null; if (MT.cur === M) MT.cur = null; MT.level = 1;
+}
+
+// §METRO.LEVELS — the floor under you depends on which level you are on; lifts move you between them
+const mtOnSky = (M, x, z) => M.rects.some(r => x > r[0] && x < r[2] && z > r[1] && z < r[3]);
+const mtInUnder = (M, x, z) => Math.abs(x - M.ux) < M.uh && Math.abs(z - M.uz) < M.uh;
+const _mtGround = SRF.groundY;
+SRF.groundY = function (x, z) {   // S11-EDIT(§SURFACE groundY): the undercity floor and the sky decks are ground on their levels
+  const M = MT.cur; if (M && !SETL.cell && OF.me && MM.mode === 'ON_FOOT') { if (MT.level === 0 && mtInUnder(M, x, z)) return M.uy; if (MT.level === 2 && mtOnSky(M, x, z)) return M.sy; }
+  return _mtGround.call(this, x, z);
+};
+function mtShowLevel(L) {
+  const C = WORLD.city; const M = MT.cur; const under = L === 0;
+  if (TERRA.group) TERRA.group.visible = !under; if (C?.grp) C.grp.visible = !under; if (TERRA.liquid) TERRA.liquid.visible = !under; if (WORLD.deck) WORLD.deck.visible = !under;
+  if (M?.under) { M.under.g.visible = under; for (const l of M.under.lights) l.intensity = under ? 260 : 0; M.under.hemi.intensity = under ? 1.1 : 0; }
+}
+function mtSetLevel(L, lift) {
+  const M = MT.cur; const me = OF.me; if (!M || !me || L === MT.level) return; MT.level = L; MT.stats.levels[L]++; mtShowLevel(L); sgNpcClear();
+  const y = [M.uy, WORLD.city.H0, M.sy][L]; const x = lift ? lift.ex : me.pos.x, z = lift ? lift.ez : me.pos.z;
+  me.pos.set(x, y + 0.05, z); me.vel.set(0, 0, 0); OF.cam.init = false; MT.lastOk.clear();
+  for (const u of SQ?.units || []) if (u.alive && !u.downed) { u.pos.set(x + rand(-1.5, 1.5), y + 0.05, z + rand(-1.5, 1.5)); u.vel.set(0, 0, 0); }
+  if (typeof ffReset === 'function') ffReset(x, z); MT.muggerT = rand(MT_CFG.muggerT[0], MT_CFG.muggerT[1]);
+  sbxToast(['Undercity — the lights never go off down here, and nobody asks your business. Watch your pockets.', `Street level — ${WORLD.city.c.name}.`, 'Sky level — plazas, bridges, the headquarters and the orbital yard terminal.'][L]);
+  if (L === 0) mtUnderPopulate();
+}
+function mtLift(d) {
+  const M = MT.cur; if (!M) return; const lift = M.lifts[d.lift]; MT.stats.lifts++; const names = ['Undercity', 'Street', 'Sky'];
+  const opts = [0, 1, 2].filter(L => L !== MT.level).map(L => ({ t: `${names[L]} level`, fn: () => mtSetLevel(L, lift), cls: 'amber' })); opts.push({ t: 'Stay here', fn: () => {} });
+  if (typeof pathDialog === 'function') pathDialog('Lift', [`You are on the ${names[MT.level].toLowerCase()} level.`], opts, { escape: opts.length - 1 }); else mtSetLevel(MT.level === 1 ? 2 : 1, lift);
+}
+/** The undercity's people: Syndicate enforcers who own the market, and the ones who wait in the dark. */
+function mtUnderPopulate() {
+  const M = MT.cur; const me = OF.me; if (!M || !me) return; const hostile = gsPlayerHostileTo('syndicate');
+  const S = aiSpawnSquad('syndicate', 3, _mv[0].set(M.ux + 30, M.uy, M.uz - 20), { team: hostile ? 'hostile' : 'neutral', label: 'enforcers', roles: ['officer', 'trooper', 'heavy'] }); S.fixedPatrol = true; S.patrolR = 26; S.mtUnder = true;
+}
+function mtLevelStep(dt) {
+  const M = MT.cur; const me = OF.me; if (!M || !me?.alive || MM.mode !== 'ON_FOOT' || SETL.cell) return;
+  // walking off a ledge: the sky has railings, the undercity has walls
+  for (const u of [me, ...(SQ?.units || [])]) { if (!u?.alive) continue; const ok = MT.level === 2 ? mtOnSky(M, u.pos.x, u.pos.z) : MT.level === 0 ? mtInUnder(M, u.pos.x, u.pos.z) : true; const last = MT.lastOk.get(u);
+    if (ok) MT.lastOk.set(u, { x: u.pos.x, z: u.pos.z }); else if (last) { u.pos.x = last.x; u.pos.z = last.z; u.vel.x = 0; u.vel.z = 0; } }
+  // arriving on a deck by other means (a ship on a sky pad): the level follows you
+  if (MT.level === 1 && me.pos.y > M.sy - 6 && mtOnSky(M, me.pos.x, me.pos.z)) { MT.level = 2; mtShowLevel(2); }
+  if (MT.level === 0) { MT.muggerT -= dt; if (MT.muggerT <= 0) { MT.muggerT = rand(MT_CFG.muggerT[0], MT_CFG.muggerT[1]); const a = Math.random() * 6.28; const at = _mv[1].set(clamp(me.pos.x + Math.cos(a) * 30, M.ux - M.uh + 4, M.ux + M.uh - 4), M.uy, clamp(me.pos.z + Math.sin(a) * 30, M.uz - M.uh + 4, M.uz + M.uh - 4));
+    const S = aiSpawnSquad('syndicate', 2, at, { team: 'hostile', label: 'muggers', roles: ['trooper', 'trooper'] }); S.engaged = true; S.lastKnown.copy(me.pos); for (const u of S.units) { u.ai.tgt = me; u.name = 'Mugger'; } sbxToast('Footsteps behind you. Two of them, and they are not here to talk.'); } }
+}
+function mtStep(dt, C) {
+  const M = C.mt; if (!M) return; const night = clamp(0.3 - (SRF.sunEl ?? 1) * 2, 0, 1);
+  if (M.sky) { M.sky.day.group.visible = night < 0.5; M.sky.night.group.visible = night >= 0.5; }
+  if (MT.level === 0) return; const T = M.air; const pos = M.air?.lights?.geometry.attributes.position;
+  if (T?.veh.length) { for (let i = 0; i < T.veh.length; i++) { const v = T.veh[i]; v.t = (v.t + v.sp * dt + 1) % 1; const p = v.lane.getPointAt(v.t, _mv[2]); const tg = v.lane.getTangentAt(v.t, _mv[3]); if (v.sp < 0) tg.negate();
+      _mm.lookAt(_mv[4].copy(p).add(tg), p, WORLD_UP); _mm.setPosition(p); for (const m of T.meshes[v.ki]) m.setMatrixAt(v.j, _mm); if (pos) pos.setXYZ(i, p.x, p.y + 1.4, p.z); }
+    for (const ms of T.meshes) for (const m of ms) m.instanceMatrix.needsUpdate = true; if (pos) pos.needsUpdate = true; M.air.lights.material.size = 4 + night * 6; MT.stats.air = T.veh.length; }
+  const G = M.ground; if (G?.veh.length) { for (const v of G.veh) { const r = v.road; v.t += v.sp * dt; if (v.t < 0.01 || v.t > 0.99) v.sp = -v.sp; const s = (v.t - 0.5) * r.len; const lane = (v.sp > 0 ? 1 : -1) * (r.blvd ? 5 : 3);
+      const x = r.ax === 'x' ? r.x + s : r.x + lane, z = r.ax === 'x' ? r.z + lane : r.z + s; const yaw = r.ax === 'x' ? (v.sp > 0 ? Math.PI / 2 : -Math.PI / 2) : (v.sp > 0 ? 0 : Math.PI); _mm.makeRotationY(yaw).setPosition(x, C.H0 + 0.3, z); for (const m of G.meshes[v.ki]) m.setMatrixAt(v.j, _mm); }
+    for (const ms of G.meshes) for (const m of ms) m.instanceMatrix.needsUpdate = true; }
+  for (const s of M.ships) s.position.x += dt * 4;
+}
+const _mtOFExit = OF.exit;
+OF.exit = function (next, o) { if (next !== 'GROUND_VEHICLE' && MT.level !== 1) { MT.level = 1; mtShowLevel(1); } return _mtOFExit(next, o); };   // S11-EDIT(§ONFOOT OF.exit): back aboard, the street level again
+
+// §METRO.YARD — frigates and cruisers: only at the orbital yard above a metropolis, only for those of rank
+function mtYardAt(sys) { const pl = sbxPlanetOf(sys); return pl && sgPlan(pl)?.metro != null ? sgYardStation(sys) : null; }
+const _mtCatalog = ecoCatalog;
+ecoCatalog = function (st) {   // S11-EDIT(§ECONOMY ecoCatalog): capital hulls leave the ordinary yards for the orbital yards
+  const L = _mtCatalog(st).filter(id => !SBX_HULLS[ITEMS[id]?.hull]?.metro); const sys = SBX.systems.indexOf(SBX.systemOfStation(st.id)); if (mtYardAt(sys) !== st.id) return L;
+  const pl = sbxPlanetOf(sys); const facs = new Set([st.faction, sgOwner(pl, sgPlan(pl).metro)].filter(Boolean)); for (const f of facs) for (const h of sgYardHulls(f, true)) if (ITEMS['kit_' + h]) L.push('kit_' + h); return L;
+};
+const _mtBuy = sbxBuy;
+sbxBuy = function (id, qty, toCargo) {   // S11-EDIT(§ECONOMY sbxBuy): the yard checks your rank before it sells you a warship
+  const hull = ITEMS[id]?.hull; const H = hull ? SBX_HULLS[hull] : null;
+  if (H?.metro) { const st = SBX.profile.stationId; const sys = SBX.systems.indexOf(SBX.systemOfStation(st)); if (mtYardAt(sys) !== st) return 'frigates and cruisers are sold only at metropolis orbital yards'; }
+  if (H?.wsClass) { const why = sgRankOk(hull); if (why) return why.toLowerCase(); } return _mtBuy(id, qty, toCargo);
+};
+
+Object.assign(S9X, { MT, MT_CFG, mtLayout, mtBuild, mtClear, mtStep, mtSetLevel, mtLift, mtShowLevel, mtOnSky, mtInUnder, mtYardAt, mtUnderPopulate, ecoCatalogNow: (st) => ecoCatalog(st), sbxBuyNow: (...a) => sbxBuy(...a) });
+
+// =====================================================================================
+// §WARKIT — the warship kit: authored hulls over the part frames
+//  Fighters, heavy fighters, bombers, corvettes, frigates and cruisers for the Concordance,
+//  the Free Reach and the Syndicates come from the supplied warship kit (cruisers in three
+//  levels of detail), and so do torpedoes. The model is a skin: it is scaled to the length of the
+//  ship's Stage 6 part frame and laid over it, and the frame stays underneath, unseen, doing
+//  every job it did before (hits, subsystems, crews, heat, breaches). When a ship breaks up its
+//  skin comes away and the part frame shows the damage. Warden ships, and any class the kit
+//  lacks, keep their procedural frames. Primitives are merged per material: a few draws a ship.
+// =====================================================================================
+const WK_CFG = { lod: [0, 2600, 7000], breakAt: 0.45 };
+const WK_FAC = { authority: 'concordance', combine: 'freereach', syndicate: 'syndicate' };
+const WK_CLS = { fighter: 'fighter', heavy: 'heavyfighter', bomber: 'bomber', corvette: 'corvette', frigate: 'frigate', cruiser: 'cruiser' };
+const WK = { stats: { skinned: 0, broken: 0 }, torp: null };
+VKIT_PACKS.warships = { url: './s11/warships.bin', inline: null, b64: null };
+vkLoad('warships');
+/** The kit piece for a class and faction (null when the kit has none: Warden ships, unknown classes). */
+function wkPiece(cls, fac) { const f = WK_FAC[fac], c = WK_CLS[cls]; if (!f || !c) return null; const id = c === 'cruiser' ? `cruiser_${f}_LOD0` : `${c}_${f}`; return vkHas('warships', id) ? id : null; }
+/** One mesh per merged material part of a piece. */
+function wkGroup(id) { const g = new THREE.Group(); for (const pt of sgParts('warships', id)) { const m = new THREE.Mesh(pt.geo, pt.mat); m.castShadow = false; if (pt.blend) m.renderOrder = 2; g.add(m); } return g; }
+function wkSkin(ps, cls, fac) {
+  if (!ps || ps._wk !== undefined) return; const id = wkPiece(cls, fac); if (!id) { if (VKIT.status.warships === 'ready' || VKIT.status.warships === 'missing') ps._wk = null; return; }
+  const P = vkReady('warships'); const pc = P.byId.get(id); const f = sgFootOf(id); const L = f.z1 - f.z0; const s = ps.size.z / Math.max(1, L);
+  let skin; if (cls === 'cruiser') { skin = new THREE.LOD(); [0, 1, 2].forEach(k => skin.addLevel(wkGroup(id.replace('_LOD0', '_LOD' + k)), WK_CFG.lod[k])); } else skin = wkGroup(id);
+  const b = ps.pristine; const cx = (b.min.x + b.max.x) / 2 * ps.cs - ps.origin.x, cy = (b.min.y + b.max.y) / 2 * ps.cs - ps.origin.y, cz = (b.min.z + b.max.z) / 2 * ps.cs - ps.origin.z;
+  skin.scale.setScalar(s); skin.position.set(cx - s * (f.x0 + f.x1) / 2, cy - s * (f.y0 + f.y1) / 2, cz - s * (f.z0 + f.z1) / 2); skin.name = 'warkit';
+  ps.root.add(skin); ps._wk = skin; ps.mat.visible = false; WK.stats.skinned++;
+}
+/** A piece's box in piece space (from its primitives' quantisation ranges and node transforms). */
+const WK_FOOT = new Map();
+function sgFootOf(id) {
+  let f = WK_FOOT.get(id); if (f) return f; const box = new THREE.Box3(); for (const pt of sgParts('warships', id)) { pt.geo.computeBoundingBox(); box.union(pt.geo.boundingBox); }
+  f = { x0: box.min.x, y0: box.min.y, z0: box.min.z, x1: box.max.x, y1: box.max.y, z1: box.max.z }; WK_FOOT.set(id, f); return f;
+}
+/** Broken up: the skin comes away and the frame (with its wounds) shows. */
+function wkBreak(ps) { if (!ps?._wk || ps._wkBroken) return; ps._wkBroken = true; ps._wk.visible = false; ps.mat.visible = true; WK.stats.broken++; }
+function wkStep(ent, cls, fac) {
+  const ps = ent?.ps; if (!ps) return; if (ps._wk === undefined && vkReady('warships')) wkSkin(ps, cls, fac);
+  if (ps._wk && !ps._wkBroken && (ps.lost || ent.war?.fuse || !ent.alive || ps.structFrac() < WK_CFG.breakAt)) wkBreak(ps);
+}
+const _wkSync = World.prototype.syncRender;
+World.prototype.syncRender = function (alpha, dt) {   // S11-EDIT(§WORLD syncRender): warships wear the kit's hulls
+  if (vkReady('warships')) { for (const e of WS.list) if (e.alive && e.war) wkStep(e, e.war.cls, e.war.fac);
+    const pl = this.player; const H = SBX_HULLS[SBX.ship?.()?.hull]; if (pl?.ps && H?.wsClass) wkStep(pl, H.wsClass, H.wsFac); }
+  return _wkSync.call(this, alpha, dt);
+};
+// torpedoes: the kit's torpedo, nose along its flight, with the old glow kept small behind it
+const _wkTorp = wsTorpStep;
+wsTorpStep = function (dt) {   // S11-EDIT(§CAPITAL wsTorpStep): kit torpedoes
+  const r = _wkTorp(dt); if (!vkReady('warships') || !WS.tMesh) return r;
+  if (!WK.torp) { const ps = sgParts('warships', 'torpedo'); if (!ps.length) return r; WK.torp = ps.map(pt => { const im = new THREE.InstancedMesh(pt.geo, pt.mat, 64); im.frustumCulled = false; im.count = 0; scene.add(im); return im; }); }
+  let n = 0; for (const T of WS.torps) { if (!T.alive) continue; const v = _wv[11].copy(T.vel); if (v.lengthSq() < 1e-4) v.set(0, 0, -1); _wsM.lookAt(_wv[12].copy(T.pos).sub(v), T.pos, WORLD_UP); _wsM.setPosition(T.pos); _wsM.scale(_wv[13].setScalar(2.4)); for (const im of WK.torp) im.setMatrixAt(n, _wsM); n++; }
+  for (const im of WK.torp) { im.count = n; im.instanceMatrix.needsUpdate = true; } return r;
+};
+
+Object.assign(S9X, { WK, WK_CFG, wkPiece, wkSkin, wkBreak, wkStep, sgFootOf, sbxMigrateProfileNow: (p) => sbxMigrateProfile(p) });
+
+// §WARKIT.SAVE — schema v10: Stage 11's records, and Stage 10 towns mapped into the settlement hierarchy
+CONFIG.sbx.saveVersion = 10;
+const _wkMig = sbxMigrateProfile;
+sbxMigrateProfile = function (p) {   // S11-EDIT(§SAVE sbxMigrateProfile): v9 → v10
+  p = _wkMig(p); if (p.crew === undefined) p.crew = null; if (p.fleetCmd === undefined) p.fleetCmd = null; if (p.sgPent === undefined) p.sgPent = {};
+  if (p.gsim) { if (!p.gsim.sgd) p.gsim.sgd = {}; if (!p.gsim.fleetB) p.gsim.fleetB = []; }
+  // a Stage 10 town keeps its record; where a city or metropolis now stands, the town's owner is carried into the city's record
+  if (!p.sgMig && p.setl?.towns && SBX.systems) { p.sgMig = { towns: 0, cities: 0 };
+    for (const [key, st] of Object.entries(p.setl.towns)) { const m = /^p(\d+):(\d+)$/.exec(key); if (!m) continue; const pl = sbxPlanetOf(+m[1]); if (!pl || +m[2] >= pl.nSites) continue; const t = sgTier(pl, +m[2]);
+      if (t === 'village') p.sgMig.towns++; else { p.sgMig.cities++; st.became = t; if (p.gsim && st.owner) { const site = srfSiteDef(pl, +m[2]); const k = sgKey(pl, site); p.gsim.sgd = p.gsim.sgd || {}; p.gsim.sgd[k] = p.gsim.sgd[k] || { ruins: {}, own: st.owner }; } } } }
+  p.v = CONFIG.sbx.saveVersion; return p;
+};
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
