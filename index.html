@@ -294,6 +294,10 @@
     §CAPITAL                warships as NPCs: enemy definitions, faction designs, subsystems that matter
       §CAPITAL.TORPEDO        slow, heavy, homing; devastating on a bare capital hull, wasted on a standing shield, can be shot down
     §COMBATFEEL             on-foot difficulty: how forgiving the blade is and how sharp the enemy is (pause menu; saved in the profile)
+    §CREW                   who is aboard: companions (Stage 10 squad) and hired hands on contract
+    §STATIONS               helm, gunnery, shields & power, engineering, sensors: manned or not, it shows
+    §DAMAGECTRL             what a hit outside does inside: fires, breaches, sparking consoles, dead lights, hurt crew
+      §CREW.HIRE              the station's crew board (a tab beside the others)
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -536,6 +540,10 @@
     §SAVE sbxMigrateProfile — calls and what ignoring them cost ride in the v9 profile
 
   STAGE 11 CHANGES TO EARLIER SECTIONS (each marked in place with "S11-EDIT")
+    §HOMESHIP layouts — the interior is a layout; the freighter's above, a corvette's below (walkable in battle, §STATIONS)
+    §HOMESHIP hsIsFreighter — corvettes are walkable too
+    §HOMESHIP.MODE hsStep — in space there is no surface boundary — the deck is wherever the ship is
+    §HOMESHIP.CREW hsTurretsAuto — a corvette's gunnery deck is §STATIONS
     §WORLD hitShip — warship shield banks
     §PARTRT partDetonate — warship reactors go up late and big
     §MODEMGR SPACE update — torpedo release from a bomber
@@ -544,6 +552,21 @@
     §MAIN render — the bomb-sight
     §BLADE bladeNpc — blade-bearers parry and block by difficulty
     §ONFOOT ofDamage — what reaches you, by difficulty
+    §HOMESHIP.CREW hsCrewRoster — hired crew live aboard too
+    §HOMESHIP.MODE hsCanWalk — someone else at the helm lets you walk in battle
+    §HOMESHIP.ROOMS hsTarget — the corvette's consoles and damage control
+    §WORLD hitShip — hits on your ship are felt aboard
+    §HOMESHIP.DOORS hsDoorsStep — blast doors hold a venting room shut
+    §HOMESHIP.CREW hsCrewUnitStep — downed crew wait for help
+    §HOMESHIP.CREW hsRoomWant — stations before temperament when the ship is fighting
+    §SBXUI sbxRenderStation — a Crew tab for signing hands
+    §DEATH sbxDeathResolve — hired crew are lost with the ship
+    §MODEMGR SPACE update — an undercrewed big ship barely answers
+    §SANDBOX sbxVehicleStep — stations and damage control
+    §HOMESHIP.MODE update — hold-E damage control; walking off a console stands you up
+    §MAIN render — the station roster
+    §WORLD syncRender — hits flicker the cabin lights; a wrecked room stays dim
+    §SAVE sbxMigrateProfile — crew roster
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -20021,6 +20044,23 @@ const HS_SPOTS = { cockpit: [[1.7, -14.2], [-1.7, -14.2], [0, -13]], lounge: [[1
   armoury: [[3.1, 3.4], [2.6, 5.8]], meditation: [[-3, 5], [-2.2, 4]], cargo: [[-2.5, 10], [2.5, 11], [0, 14], [-3, 15]], corridor: [[0, 1], [0, 4]] };
 const HS_TEMPER_ROOM = { idealist: { lounge: 3, quarters: 1, meditation: 1 }, ruthless: { armoury: 3, cockpit: 1, cargo: 1 }, mercenary: { armoury: 2, cargo: 2, lounge: 1 }, loyalist: { cockpit: 3, armoury: 1, lounge: 1 },
   gentle: { meditation: 3, quarters: 2, lounge: 1 }, cynic: { cargo: 2, workshop: 2, lounge: 1 } };
+// S11-EDIT(§HOMESHIP layouts): the interior is a layout; the freighter's above, a corvette's below (walkable in battle, §STATIONS)
+const HS_CORVETTE = {
+  rooms: { bridge: { x0: -6, x1: 6, z0: -30, z1: -20, name: 'Bridge' }, gunnery: { x0: -6, x1: 6, z0: -20, z1: -10, name: 'Gunnery deck' }, corridor: { x0: -1.5, x1: 1.5, z0: -10, z1: 14, name: 'Spine corridor' },
+    quarters: { x0: -6, x1: -1.5, z0: -10, z1: 2, name: 'Crew quarters' }, medbay: { x0: 1.5, x1: 6, z0: -10, z1: 2, name: 'Medbay' }, hold: { x0: -6, x1: -1.5, z0: 2, z1: 14, name: 'Hold' },
+    armoury: { x0: 1.5, x1: 6, z0: 2, z1: 14, name: 'Armoury' }, engineering: { x0: -6, x1: 6, z0: 14, z1: 26, name: 'Engineering' } },
+  doors: [{ id: 'door_01', a: 'bridge', b: 'gunnery', x: 0, z: -20, axis: 'z', w: 2.0 }, { id: 'door_02', a: 'gunnery', b: 'corridor', x: 0, z: -10, axis: 'z', w: 1.6 }, { id: 'door_03', a: 'corridor', b: 'quarters', x: -1.5, z: -4, axis: 'x', w: 1.3 },
+    { id: 'door_04', a: 'corridor', b: 'medbay', x: 1.5, z: -4, axis: 'x', w: 1.3 }, { id: 'door_05', a: 'corridor', b: 'hold', x: -1.5, z: 8, axis: 'x', w: 1.6 }, { id: 'door_06', a: 'corridor', b: 'armoury', x: 1.5, z: 8, axis: 'x', w: 1.3 },
+    { id: 'door_07', a: 'corridor', b: 'engineering', x: 0, z: 14, axis: 'z', w: 1.6 }],
+  emp: { station_helm: [0, -28.5, Math.PI], seat_copilot: [2.2, -27.6, Math.PI], station_sensors: [-4.2, -24.5, Math.PI], station_shields: [4.2, -24.5, Math.PI], station_gunnery: [4.6, -14.5, -Math.PI / 2], holotable_centre: [-3.4, -15, 0],
+    station_turret_01: [0, -17.5, 0], station_turret_02: [0, -12.4, 0], station_engineering: [0, 23.2, 0], cargo_origin: [-3.75, 8, 0], lockers: [5.5, 8, -Math.PI / 2], bench: [5.4, -6, -Math.PI / 2], bunks: [-5.5, -4, Math.PI / 2],
+    airlock_01: [-5.9, 11.5, -Math.PI / 2], ramp_main: [0, 25.8, 0], medbed: [3.8, -1.2, 0] },
+  spots: { bridge: [[-2, -24], [2, -24], [0, -22]], gunnery: [[-1.5, -15], [2.5, -12]], quarters: [[-4, -7], [-4, -1]], medbay: [[3.5, -7], [3.8, -2]], hold: [[-3.6, 4], [-3.6, 12]], armoury: [[3.6, 5], [3.6, 11]], engineering: [[-3, 20], [3, 20], [0, 18]], corridor: [[0, 0], [0, 10]] },
+  temper: { idealist: { medbay: 3, quarters: 1, bridge: 1 }, ruthless: { armoury: 3, gunnery: 2, bridge: 1 }, mercenary: { armoury: 2, hold: 2, gunnery: 1 }, loyalist: { bridge: 3, gunnery: 1 }, gentle: { medbay: 3, quarters: 2 }, cynic: { engineering: 2, hold: 2 } },
+  bx: 5.7, z0: -29.7, z1: 25.7, ramp: { z: 26.1, out: 26.9, start: 24.6, half: 1.7, foot: 32 }, glass: 'bridge', viewport: null, rampRoom: 'engineering', crateCols: [-1.3, 0, 1.3], name: 'corvette' };
+const HS_LAYOUTS = { freighter: { rooms: HS_ROOMS, doors: HS_DOORS, emp: HS_EMPTIES, spots: HS_SPOTS, temper: HS_TEMPER_ROOM, bx: 4.2, z0: -16.7, z1: 16.7, ramp: { z: 16.9, out: 17.6, start: 15.4, half: 1.7, foot: 23.5 }, glass: 'cockpit', viewport: 'lounge', rampRoom: 'cargo', crateCols: [-2.95, -1.75, 1.75, 2.95], name: 'freighter' }, corvette: HS_CORVETTE };
+const hsLayKind = (ship = SBX.ship()) => SBX_HULLS[ship?.hull]?.wsClass === 'corvette' ? 'corvette' : 'freighter';
+const hsK = () => HS.built?.L.K || HS_LAYOUTS[hsLayKind()];
 const HS = { aboard: false, ctx: null, yaw: 0, anchor: new THREE.Vector3(), last: new THREE.Vector3(), group: null, built: null, glb: null, glbStatus: 'idle', doors: [], props: [], crew: [], turret: null, med: null, plaques: null, crates: null,
   crateN: -1, chkT: 0, gunT: [0, 0], stats: { gunnerShots: 0, gunnerHits: 0 }, sayT: 0, vis: new Map() };
 const HS_DECK_BIOME = { name: 'Deck', water: null, lava: null, fog: [0x1a1c20, 0.0], props: [], g: 1, civ: true };
@@ -20046,7 +20086,7 @@ HULL_SKILL_REQ.h_freighter = 2;
   if (tur[0]) place(tur[0], 1, -1); if (tur[1]) place(tur[1], -1, 3);
   D.name = h.name; D.tint = h.tint; PART_PRESETS.p_freighter = D; h.preset = 'p_freighter';
 })();
-const hsIsFreighter = (ship = SBX.ship()) => ship?.hull === 'h_freighter';
+const hsIsFreighter = (ship = SBX.ship()) => ship?.hull === 'h_freighter' || SBX_HULLS[ship?.hull]?.wsClass === 'corvette';   // S11-EDIT(§HOMESHIP hsIsFreighter): corvettes are walkable too
 
 // §HOMESHIP.ASSET — the interior: the GLB's int_ subtree, or a procedural build with the same names
 function hsLoadGLB() {
@@ -20056,11 +20096,12 @@ function hsLoadGLB() {
 }
 /** Read rooms and empties from the GLB when it has them (room_<name> boxes, empties by name), falling back per item. */
 function hsLayoutFromGLB() {
-  const rooms = JSON.parse(JSON.stringify(HS_ROOMS)); const emp = { ...HS_EMPTIES }; const int = HS.glb?.getObjectByName('int') || HS.glb?.children.find(o => /^int_?/.test(o.name)); if (!int) return { rooms, emp };
+  const K = HS_LAYOUTS[hsLayKind()]; const rooms = JSON.parse(JSON.stringify(K.rooms)); const emp = { ...K.emp }; if (K.name !== 'freighter') return { rooms, emp, doors: K.doors, K };
+  const int = HS.glb?.getObjectByName('int') || HS.glb?.children.find(o => /^int_?/.test(o.name)); if (!int) return { rooms, emp, doors: K.doors, K };
   int.updateMatrixWorld(true); const bb = new THREE.Box3();
   int.traverse(o => { const m = o.name.match(/^room_(\w+)/); if (m && rooms[m[1]]) { bb.setFromObject(o); rooms[m[1]] = { ...rooms[m[1]], x0: bb.min.x, x1: bb.max.x, z0: bb.min.z, z1: bb.max.z }; }
     if (emp[o.name] && !o.isMesh) { const p = o.getWorldPosition(_hv[0]); const f = _hv[1].set(0, 0, 1).transformDirection(o.matrixWorld); emp[o.name] = [p.x, p.z, Math.atan2(f.x, f.z), emp[o.name][3]]; } });
-  return { rooms, emp };
+  return { rooms, emp, doors: K.doors, K };
 }
 const HS_MAT = {};
 function hsMat(k) {
@@ -20084,7 +20125,7 @@ function hsBuildProcedural(L) {
     if (s.glass) { box(0.06, H * 0.62, len, cx, Y + H * 0.55, cz, 'glass', ry); box(0.16, H * 0.24, len, cx, Y + H * 0.12, cz, 'trim', ry); box(0.16, 0.18, len, cx, Y + H - 0.09, cz, 'trim', ry); }
     else box(0.16, H, len, cx, Y + H / 2, cz, 'wall', ry); }
   // furniture, all at its empty
-  const E = (n) => L.emp[n]; const at = (n, f) => { const e = E(n); const o = new THREE.Group(); o.position.set(e[0], 0, e[1]); o.rotation.y = e[2]; f(o); g.add(o); return o; };
+  const E = (n) => L.emp[n]; const at = (n, f) => { const e = E(n); if (!e) return null; const o = new THREE.Group(); o.position.set(e[0], 0, e[1]); o.rotation.y = e[2]; f(o); g.add(o); return o; };
   const sub = (o, w, h, d, x, y, z, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), hsMat(mat)); m.position.set(x, y, z); o.add(m); return m; };
   at('station_helm', (o) => { sub(o, 0.7, 0.5, 0.7, 0, 0.25, 0, 'cloth'); sub(o, 0.7, 0.8, 0.12, 0, 0.8, 0.32, 'cloth'); sub(o, 3.2, 0.9, 0.7, 0, 0.45, -1.1, 'trim'); sub(o, 2.6, 0.04, 0.5, 0, 0.92, -1.1, 'cool'); });
   at('seat_copilot', (o) => { sub(o, 0.6, 0.5, 0.6, 0, 0.25, 0, 'cloth'); sub(o, 0.6, 0.7, 0.1, 0, 0.75, 0.28, 'cloth'); });
@@ -20097,20 +20138,22 @@ function hsBuildProcedural(L) {
   for (const n of ['station_turret_01', 'station_turret_02']) at(n, (o) => { for (const s of [-0.25, 0.25]) sub(o, 0.05, H, 0.05, s, H / 2, 0, 'metal'); for (let y = 0.3; y < H; y += 0.35) sub(o, 0.5, 0.04, 0.04, 0, y, 0, 'metal'); sub(o, 0.9, 0.02, 0.9, 0, H - 0.02, 0, n.endsWith('01') ? 'warm' : 'cool'); });
   at('airlock_01', (o) => { sub(o, 1.5, 2.4, 0.12, 0, 1.2, 0.05, 'trim'); sub(o, 1.1, 2.0, 0.06, 0, 1.0, 0.0, 'metal'); sub(o, 0.2, 0.2, 0.04, 0.6, 1.3, -0.04, 'red'); });
   // the memorial wall's frame
-  sub(g, 0.06, 1.6, 6.6, 4.44, 1.65, -7.6, 'trim');
+  if (L.K.name === 'freighter') sub(g, 0.06, 1.6, 6.6, 4.44, 1.65, -7.6, 'trim');
+  for (const n of ['station_sensors', 'station_shields', 'station_gunnery', 'station_engineering']) at(n, (o) => { sub(o, 1.6, 0.9, 0.6, 0, 0.45, -0.5, 'trim'); sub(o, 1.3, 0.5, 0.05, 0, 1.25, -0.72, n === 'station_engineering' ? 'warm' : 'cool'); sub(o, 0.55, 0.5, 0.55, 0, 0.25, 0.3, 'cloth'); });
+  at('medbed', (o) => { sub(o, 0.9, 0.55, 2.0, 0, 0.3, 0, 'cloth'); sub(o, 0.9, 0.04, 2.0, 0, 0.6, 0, 'cool'); });
   return g;
 }
 /** Wall segments of the interior (ship-local), with the door gaps cut and the glass marked. */
 function hsWallSegments(L) {
   const segs = []; const seen = new Set(); const R = L.rooms;
-  const gaps = (s) => { let parts = [s]; for (const d of HS_DOORS) { parts = parts.flatMap(p => hsCut(p, d)); } return parts; };
+  const gaps = (s) => { let parts = [s]; for (const d of L.doors) { parts = parts.flatMap(p => hsCut(p, d)); } return parts; };
   for (const [k, r] of Object.entries(R)) {
     const edges = [{ x0: r.x0, z0: r.z0, x1: r.x1, z1: r.z0 }, { x0: r.x0, z0: r.z1, x1: r.x1, z1: r.z1 }, { x0: r.x0, z0: r.z0, x1: r.x0, z1: r.z1 }, { x0: r.x1, z0: r.z0, x1: r.x1, z1: r.z1 }];
     for (const e of edges) {
       // an edge shared with a neighbour room only once; an edge entirely inside another room is open floor
       const key = [e.x0, e.z0, e.x1, e.z1].map(v => v.toFixed(2)).join(','); if (seen.has(key)) continue; seen.add(key);
-      if (k === 'cargo' && e.z0 === r.z1 && e.z1 === r.z1) { segs.push({ x0: r.x0, z0: r.z1, x1: -1.6, z1: r.z1 }, { x0: 1.6, z0: r.z1, x1: r.x1, z1: r.z1, ramp: true }); continue; }   // the ramp opening, 3.2 m
-      for (const p of gaps(e)) { const g = { ...p }; if (k === 'cockpit' && e.z0 === r.z0 && e.z1 === r.z0) g.glass = true; if (k === 'lounge' && e.x0 === r.x1 && e.x1 === r.x1) { segs.push(...hsCutRange(g, -10.6, -9.0).map(x => x)); segs.push({ x0: r.x1, z0: -10.6, x1: r.x1, z1: -9.0, glass: true }); continue; } segs.push(g); }
+      if (k === L.K.rampRoom && e.z0 === r.z1 && e.z1 === r.z1) { segs.push({ x0: r.x0, z0: r.z1, x1: -1.6, z1: r.z1 }, { x0: 1.6, z0: r.z1, x1: r.x1, z1: r.z1, ramp: true }); continue; }   // the ramp opening, 3.2 m
+      for (const p of gaps(e)) { const g = { ...p }; if (k === L.K.glass && e.z0 === r.z0 && e.z1 === r.z0) g.glass = true; if (k === L.K.viewport && e.x0 === r.x1 && e.x1 === r.x1) { segs.push(...hsCutRange(g, -10.6, -9.0).map(x => x)); segs.push({ x0: r.x1, z0: -10.6, x1: r.x1, z1: -9.0, glass: true }); continue; } segs.push(g); }
     }
   }
   // overlap: a wall between two rooms that also coincides with part of a larger room's edge (cockpit/lounge, corridor/lounge…) is drawn once
@@ -20126,17 +20169,17 @@ function hsCutRange(s, z0, z1) { const a0 = Math.min(s.z0, s.z1), a1 = Math.max(
 function hsDisposeVisual() { const B = HS.built; if (!B) return; B.group.parent?.remove(B.group); HS.built = null; }
 /** Build (once) the interior's visual and its layout. */
 function hsEnsureBuilt() {
-  if (HS.built) return HS.built; hsLoadGLB(); const L = hsLayoutFromGLB();
+  if (HS.built && HS.built.kind === hsLayKind()) return HS.built; if (HS.built) hsDisposeVisual(); hsLoadGLB(); const L = hsLayoutFromGLB();
   const group = new THREE.Group(); group.name = 'freighter_interior';
   const vis = HS.glbStatus === 'glb' && HS.glb ? (HS.glb.getObjectByName('int') || HS.glb.children.find(o => /^int_?/.test(o.name)) || hsBuildProcedural(L)) : hsBuildProcedural(L);
   group.add(vis); vis.traverse(o => { if (o.isMesh) { o.receiveShadow = true; o.frustumCulled = true; } });
   // doors as sliding leaves
-  const doors = HS_DOORS.map(d => { const leaf = new THREE.Mesh(new THREE.BoxGeometry(d.axis === 'z' ? d.w : 0.1, HS_CFG.ceil - 0.2, d.axis === 'z' ? 0.1 : d.w), hsMat('metal')); leaf.position.set(d.x, (HS_CFG.ceil - 0.2) / 2, d.z); group.add(leaf); return { ...d, leaf, open: 0, want: 0, props: [] }; });
+  const doors = L.doors.map(d => { const leaf = new THREE.Mesh(new THREE.BoxGeometry(d.axis === 'z' ? d.w : 0.1, HS_CFG.ceil - 0.2, d.axis === 'z' ? 0.1 : d.w), hsMat('metal')); leaf.position.set(d.x, (HS_CFG.ceil - 0.2) / 2, d.z); group.add(leaf); return { ...d, leaf, open: 0, want: 0, props: [] }; });
   // plaques and crates
-  const plaques = []; for (let i = 0; i < 12; i++) { const e = L.emp['plaque_' + String(i + 1).padStart(2, '0')]; const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+  const plaques = []; for (let i = 0; i < 12; i++) { const e = L.emp['plaque_' + String(i + 1).padStart(2, '0')]; if (!e) continue; const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.34), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.5, metalness: 0.6 })); m.position.set(e[0] - 0.02, e[3] || 1.6, e[1]); m.rotation.y = e[2]; m.visible = false; group.add(m); plaques.push({ m, cv, tx, name: null }); }
   const crates = new THREE.InstancedMesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), hsMat('crate'), 48); crates.count = 0; group.add(crates);
-  return (HS.built = { group, L, doors, plaques, crates, segs: hsWallSegments(L) });
+  return (HS.built = { group, L, doors, plaques, crates, segs: hsWallSegments(L), kind: L.K.name });
 }
 
 // §HOMESHIP.FRAME — where the interior sits: in place when landed, around the ship in space; local ↔ world
@@ -20155,7 +20198,7 @@ function hsBuildProps() {
   for (const s of B.segs) addSeg(s, HS.props);
   for (const d of B.doors) { d.props.length = 0; if (d.open < 0.5) { const h = d.w / 2; addSeg(d.axis === 'z' ? { x0: d.x - h, z0: d.z, x1: d.x + h, z1: d.z } : { x0: d.x, z0: d.z - h, x1: d.x, z1: d.z + h }, d.props); } }
   // the helm console and the holo-table are solid too
-  for (const [n, r] of [['holotable_centre', 1.35], ['bench', 0.9], ['lockers', 0.6]]) { const e = B.L.emp[n]; const w = hsW(e[0], e[1]); const p = { x: w.x, z: w.z, y: HS.anchor.y - 0.1, r, h: 1.0, kind: 'furniture', aboard: true }; OF.props.push(p); ofHashAdd(p); }
+  for (const [n, r] of [['holotable_centre', 1.35], ['bench', 0.9], ['lockers', 0.6]]) { const e = B.L.emp[n]; if (!e) continue; const w = hsW(e[0], e[1]); const p = { x: w.x, z: w.z, y: HS.anchor.y - 0.1, r, h: 1.0, kind: 'furniture', aboard: true }; OF.props.push(p); ofHashAdd(p); }
   for (const c of HS.crateSpots || []) { const w = hsW(c[0], c[1]); const p = { x: w.x, z: w.z, y: HS.anchor.y - 0.1, r: 0.62, h: 1.1, kind: 'crate', aboard: true }; OF.props.push(p); ofHashAdd(p); }
 }
 /** In space the ship keeps moving under the interior: everything aboard moves with it. */
@@ -20185,7 +20228,7 @@ function hsEnter(prev, o = {}) {
   const k = ch.kit; if (k?.primary) me.weapons[0] = k.primary; if (k?.sidearm) me.weapons[1] = k.sidearm; me.weapon = me.weapons[0];
   ofSpawnRig(me); OF.me = me; OF.units = [me]; OF.drops = []; OF.grenadeCharges = charClass(ch).grenades + (k?.pouch || 0); if (typeof bladeFromChar === 'function') bladeFromChar(me, ch);
   const H = SBX.profile.homeShip || (SBX.profile.homeShip = { crew: {}, presets: [], aboard: null });
-  const E = HS.built.L.emp; let start = o.from === 'ramp' ? [0, 15.4, Math.PI] : o.from === 'resume' && H.aboard ? [H.aboard.x, H.aboard.z, H.aboard.yaw] : [E.station_helm[0], E.station_helm[1] + 1.1, 0];
+  const E = HS.built.L.emp; let start = o.from === 'ramp' ? [0, HS.built.L.K.ramp.start, Math.PI] : o.from === 'resume' && H.aboard ? [H.aboard.x, H.aboard.z, H.aboard.yaw] : [E.station_helm[0], E.station_helm[1] + 1.1, 0];
   const w = hsW(start[0], start[1]); me.pos.set(w.x, HS.anchor.y, w.z); me.yaw = HS.yaw + start[2]; OF.cam.yaw = me.yaw; OF.cam.pitch = -0.1; OF.cam.init = false;
   hsCrates(true); hsBuildProps(); AI.hold = Math.max(AI.hold || 0, 1); hsCrewSpawn(); hsPlaques();
   world.player.body && (world.player.body.visible = false); HS.bodyHidden = true;
@@ -20225,7 +20268,10 @@ function hsFootCore(dt) {
   OF.suppress = Math.max(0, OF.suppress - dt * 0.35); OF.hitMark = Math.max(0, OF.hitMark - dt); OF.dmgT = Math.max(0, OF.dmgT - dt * 1.4);
   const ch = charOf(); if (ch && me.alive) { ch.hp = Math.round(me.hp); ch.deflect = Math.round(me.defl); }
 }
-function hsStep(dt) {
+function hsStep(dt) {   // S11-EDIT(§HOMESHIP.MODE hsStep): in space there is no surface boundary — the deck is wherever the ship is
+  if (HS.ctx !== 'space') return hsStepInner(dt); const B0 = CONFIG.srf.boundary; CONFIG.srf.boundary = Infinity; try { return hsStepInner(dt); } finally { CONFIG.srf.boundary = B0; }
+}
+function hsStepInner(dt) {
   if (HS.ctx === 'space') { hsSpaceSim(dt); hsFollow(); if (!world.player.alive) { mmSet('SPACE', { why: 'ship lost' }); return; } SRF.B = HS_DECK_BIOME; SRF.H = HS.deckH || (HS.deckH = () => HS.anchor.y); }
   if (HS.turret) { hsTurretStep(dt); hsCrewStep(dt); return; }
   if (HS.ctx === 'ground') OF.step(dt); else hsFootCore(dt);
@@ -20234,10 +20280,10 @@ function hsStep(dt) {
   hsDoorsStep(dt); hsCrewStep(dt); hsMedStep(dt);
   // keep everyone inside the hull, on the deck
   for (const u of OF.units) { const l = hsL(u.pos.x, u.pos.z); const inside = Object.values(HS.built.L.rooms).some(r => l.x > r.x0 - 0.2 && l.x < r.x1 + 0.2 && l.z > r.z0 - 0.2 && l.z < r.z1 + 0.25);
-    if (!inside && !(HS.ctx === 'ground' && u === me && l.z > 16.5 && Math.abs(l.x) < 1.7)) { const w = hsW(clamp(l.x, -4.2, 4.2), clamp(l.z, -16.7, 16.7)); u.pos.x = w.x; u.pos.z = w.z; }
+    const K = HS.built.L.K; if (!inside && !(HS.ctx === 'ground' && u === me && l.z > K.ramp.z - 0.4 && Math.abs(l.x) < K.ramp.half)) { const w = hsW(clamp(l.x, -K.bx, K.bx), clamp(l.z, K.z0, K.z1)); u.pos.x = w.x; u.pos.z = w.z; }
     if (u.kind !== 'drone') u.pos.y = Math.max(u.pos.y, HS.anchor.y); }
   // down the ramp onto the ground: the world takes over where the hold ends
-  const l = hsL(me.pos.x, me.pos.z); if (HS.ctx === 'ground' && l.z > 16.9 && Math.abs(l.x) < 1.7) { const w = hsW(l.x, 17.6); mmSet('ON_FOOT', { from: 'hatch', at: [w.x, 0, w.z], yaw: me.yaw, why: 'down the ramp' }); return; }
+  const l = hsL(me.pos.x, me.pos.z); const KR = HS.built.L.K.ramp; if (HS.ctx === 'ground' && l.z > KR.z && Math.abs(l.x) < KR.half) { const w = hsW(l.x, KR.out); mmSet('ON_FOOT', { from: 'hatch', at: [w.x, 0, w.z], yaw: me.yaw, why: 'down the ramp' }); return; }
   if (SETL.light) { SETL.light.position.copy(me.pos).add(_hv[3].set(0, 2.2, 0)); SETL.light.intensity = 6; }
   const H = SBX.profile.homeShip; if (H) H.aboard = { x: l.x, z: l.z, yaw: me.yaw - HS.yaw, ctx: HS.ctx };
   const holo = HS.built.group.getObjectByName('holo_globe'); if (holo) holo.rotation.y += dt * 0.4;
@@ -20259,23 +20305,23 @@ function hsDoorsStep(dt) {
 // §HOMESHIP.CREW — companions live aboard: rooms by temperament and circumstance, lines when you pass, turrets in a fight
 function hsCrewRoster() { return (typeof squadFree === 'function' ? squadFree() : []).slice(0, HS_CFG.crewN); }
 function hsRoomWant(m) {
-  const H = SBX.profile.homeShip; const w = { ...(HS_TEMPER_ROOM[m.temper] || { lounge: 1 }) };
-  if (typeof HYP !== 'undefined' && HYP.state === 'transit') w.cockpit = (w.cockpit || 0) + 4;   // hyperspace: everyone wants to see it
-  if (H.lastBattle && galaxyNow() - H.lastBattle < 3 * 3600000) w.lounge = (w.lounge || 0) + 4;   // after a battle: around the holo-table
-  if (m.loyalty < -20) w.quarters = (w.quarters || 0) + 3; if (HS.ctx === 'ground') w.cargo = (w.cargo || 0) + 1;
+  const H = SBX.profile.homeShip; const K = hsK(); const home = K.name === 'freighter' ? 'lounge' : 'gunnery'; const w = { ...(K.temper[m.temper] || { [home]: 1 }) };
+  if (typeof HYP !== 'undefined' && HYP.state === 'transit') w[K.glass] = (w[K.glass] || 0) + 4;   // hyperspace: everyone wants to see it
+  if (H.lastBattle && galaxyNow() - H.lastBattle < 3 * 3600000) w[home] = (w[home] || 0) + 4;   // after a battle: around the holo-table
+  if (m.loyalty < -20) w.quarters = (w.quarters || 0) + 3; if (HS.ctx === 'ground') w[K.rampRoom] = (w[K.rampRoom] || 0) + 1;
   const tot = Object.values(w).reduce((a, b) => a + b, 0); let r = Math.random() * tot; for (const [k, v] of Object.entries(w)) { r -= v; if (r <= 0) return k; } return 'lounge';
 }
 function hsRoomOf(lx, lz) { for (const [k, r] of Object.entries(HS.built.L.rooms)) if (k !== 'corridor' && lx >= r.x0 && lx <= r.x1 && lz >= r.z0 && lz <= r.z1) return k; return 'corridor'; }
 /** A path between rooms through their doors (rooms form a small graph around the corridor and the lounge). */
 function hsRoute(from, to) {
   if (from === to) return []; const prev = { [from]: null }; const q = [from];
-  while (q.length) { const r = q.shift(); if (r === to) break; for (const d of HS_DOORS) { const n = d.a === r ? d.b : d.b === r ? d.a : null; if (n && !(n in prev)) { prev[n] = { r, d }; q.push(n); } } }
+  while (q.length) { const r = q.shift(); if (r === to) break; for (const d of HS.built.L.doors) { const n = d.a === r ? d.b : d.b === r ? d.a : null; if (n && !(n in prev)) { prev[n] = { r, d }; q.push(n); } } }
   const doors = []; for (let r = to; prev[r]; r = prev[r].r) doors.unshift(prev[r].d); return doors.map(d => [d.x, d.z]);
 }
 function hsCrewSpawn() {
   hsCrewDespawn(); const H = SBX.profile.homeShip; const roster = hsCrewRoster(); const E = HS.built.L.emp;
   for (const m of roster) {
-    const room = H.crew[m.name] || hsRoomWant(m); const spots = HS_SPOTS[room] || HS_SPOTS.lounge; const s = spots[Math.floor(Math.random() * spots.length)]; const w = hsW(s[0], s[1]);
+    const room = H.crew[m.name] || hsRoomWant(m); const SP = hsK().spots; const spots = SP[room] || Object.values(SP)[0]; const s = spots[Math.floor(Math.random() * spots.length)]; const w = hsW(s[0], s[1]);
     const spec = { species: m.species, look: m.look, role: 'player', faction: null, model: m.species === 'human' ? (m.look.body ? 'species_human_female' : 'species_human_male') : 'species_' + m.species };
     const u = ofUnit({ kind: 'npc', team: 'player', spec, hp: 200, hpMax: 200, weapon: null, name: m.name, member: m, crew: true }); u.pos.set(w.x, HS.anchor.y, w.z); u.yaw = Math.random() * 6.28; u.ai = { state: 'npc' }; u.step = hsCrewUnitStep;
     u.hs = { room, path: [], target: null, until: OF.t + rand(20, 60), sayT: 0 }; ofSpawnRig(u); OF.units.push(u); HS.crew.push(u); H.crew[m.name] = room;
@@ -20286,7 +20332,7 @@ function hsCrewStep(dt) { if (!HS.turret) return; for (const u of HS.crew) { u.s
 function hsCrewDespawn() { for (const u of HS.crew) { const i = OF.units.indexOf(u); if (i >= 0) OF.units.splice(i, 1); if (u.rig) { charRigRelease(u.rig); u.rig = null; } } HS.crew.length = 0; }
 function hsCrewUnitStep(u, dt) {
   const S = u.hs; if (!S) return; const H = SBX.profile.homeShip;
-  if (!S.path.length && OF.t > S.until) { const want = hsRoomWant(u.member); const l = hsL(u.pos.x, u.pos.z); const from = hsRoomOf(l.x, l.z); const spots = HS_SPOTS[want] || HS_SPOTS.lounge; const s = spots[Math.floor(Math.random() * spots.length)];
+  if (!S.path.length && OF.t > S.until) { const want = hsRoomWant(u.member); const l = hsL(u.pos.x, u.pos.z); const from = hsRoomOf(l.x, l.z); const SP = hsK().spots; const spots = SP[want] || Object.values(SP)[0]; const s = spots[Math.floor(Math.random() * spots.length)];
     S.path = [...hsRoute(from, want), s]; S.room = want; H.crew[u.member.name] = want; S.until = OF.t + rand(35, 90); }
   const w = S.path[0];
   if (w) { const W = hsW(w[0], w[1]); const dx = W.x - u.pos.x, dz = W.z - u.pos.z; const d = Math.hypot(dx, dz); if (d < 0.5) S.path.shift(); else { aiMove(u, _hv[4].set(dx / d, 0, dz / d), 1.5, dt); aiFace(u, u.pos.x + u.vel.x, u.pos.z + u.vel.z, dt, 6); } }
@@ -20309,7 +20355,8 @@ function hsTurretIdx(ps) { if (!ps) return [-1, -1]; if (ps._hsT) return ps._hsT
 function hsGunners() { const g = hsCrewRoster().filter(m => m.status === 'ok').sort((a, b) => b.turretSkill - a.turretSkill); return [g[0] || null, g[1] || null]; }
 /** In space combat the crewed turrets fire on their own: rate and spread follow the gunner's skill. */
 function hsTurretsAuto(dt) {
-  const pl = world.player; if (!pl?.alive || !hsIsFreighter() || SRF.active || pl.hangared || SBX.profile.docked || !pl.ps) return;
+  const pl = world.player; if (hsLayKind() === 'corvette') return;   // S11-EDIT(§HOMESHIP.CREW hsTurretsAuto): a corvette's gunnery deck is §STATIONS
+  if (!pl?.alive || !hsIsFreighter() || SRF.active || pl.hangared || SBX.profile.docked || !pl.ps) return;
   const gun = hsGunners(); const idx = hsTurretIdx(pl.ps);
   for (let k = 0; k < 2; k++) {
     const m = gun[k]; const i = idx[k]; if (i < 0 || pl.ps.gone?.[i] || (pl.ps.hp && pl.ps.hp[i] <= 0)) continue; if (HS.turret === (k ? 'ventral' : 'dorsal')) continue; if (!m) continue;
@@ -20350,8 +20397,8 @@ function hsCargoFrac() { const ship = SBX.ship(); if (!ship) return 0; const cap
 /** Cargo as crates: the hold fills two-high along both sides, the centre aisle to the ramp always clear. Floor crates are solid. */
 function hsCrates(force) {
   const B = HS.built; const n = Math.round(hsCargoFrac() * 48); if (!force && n === HS.crateN) return; HS.crateN = n; const M = B.crates; const o = B.L.emp.cargo_origin; const d = SRF_DUMMY; HS.crateSpots = [];
-  const COLS = [-2.95, -1.75, 1.75, 2.95];
-  for (let i = 0; i < n; i++) { const layer = i < 24 ? 0 : 1, j = i % 24; const cx = COLS[j % 4], cz = (Math.floor(j / 4) - 2.5) * 1.25;
+  const COLS = B.L.K.crateCols; const per = 24, nc = COLS.length, rows = per / nc;
+  for (let i = 0; i < n; i++) { const layer = i < 24 ? 0 : 1, j = i % 24; const cx = COLS[j % nc], cz = (Math.floor(j / nc) - (rows - 1) / 2) * 1.25;
     d.position.set(o[0] + cx, 0.55 + layer * 1.12, o[1] + cz); d.rotation.set(0, (i * 0.37) % 0.3 - 0.15, 0); d.scale.set(1, 1, 1); d.updateMatrix(); M.setMatrixAt(i, d.matrix); if (!layer) HS.crateSpots.push([o[0] + cx, o[1] + cz]); }
   M.count = n; M.instanceMatrix.needsUpdate = true; if (HS.aboard && !force) hsBuildProps();
 }
@@ -20363,7 +20410,7 @@ function hsPlaques() {
 }
 /** What is in reach aboard, and what E does with it. */
 function hsTarget() {
-  const me = OF.me; if (!me?.alive || HS.turret) return null; const l = hsL(me.pos.x, me.pos.z); const E = HS.built.L.emp; const near = (n, r = HS_CFG.useR) => Math.hypot(l.x - E[n][0], l.z - E[n][1]) < r;
+  const me = OF.me; if (!me?.alive || HS.turret) return null; const l = hsL(me.pos.x, me.pos.z); const E = HS.built.L.emp; const near = (n, r = HS_CFG.useR) => !!E[n] && Math.hypot(l.x - E[n][0], l.z - E[n][1]) < r;
   if (near('station_helm', 1.9)) return { label: SRF.active ? 'sit at the helm — fly' : 'sit at the helm', fn: hsSit };
   if (near('holotable_centre', 3.0)) return { label: 'holo-table', fn: () => (typeof warTableOpen === 'function' ? warTableOpen(true, 'table') : (sbxDrawMap(), $('sb-map')?.classList.add('on'))) };
   if (near('station_turret_01', 1.1)) return { label: 'climb to the dorsal turret', fn: () => hsTurretEnter('dorsal') };
@@ -20371,7 +20418,7 @@ function hsTarget() {
   if (near('bench', 1.8)) return { label: 'workshop', fn: () => hsPanel('workshop') };
   if (near('lockers', 1.8)) return { label: 'armoury lockers', fn: () => hsPanel('armoury') };
   if (near('cushion', 1.4)) return { label: HS.med ? 'stand up' : 'sit — blade practice', fn: () => HS.med ? hsMedEnd() : hsMedStart() };
-  if (Math.abs(l.x - 4.4) < 1.2 && l.z > -10.8 && l.z < -4.2) return { label: 'memorial wall', fn: () => hsPanel('memorial') };
+  if (HS.built.kind === 'freighter' && Math.abs(l.x - 4.4) < 1.2 && l.z > -10.8 && l.z < -4.2) return { label: 'memorial wall', fn: () => hsPanel('memorial') };
   if (near('airlock_01', 1.4)) return { label: SBX.profile.docked ? 'airlock — the station' : 'airlock (sealed)', fn: () => sbxToast(SBX.profile.docked ? 'The station\'s services are at the helm display. Sit to use them.' : 'Sealed. There is nothing out there you want to breathe.') };
   for (const u of HS.crew) if (u.alive && u.pos.distanceTo(me.pos) < 2.2) return { label: `talk to ${u.name}`, fn: () => { setlSay(u, hsLine(u)); const m = u.member; sbxToast(`${m.name}: loyalty ${Math.round(m.loyalty)}, turret skill ${Math.round(m.turretSkill * 100)}.`); } };
   return null;
@@ -20457,7 +20504,7 @@ const _hsBoard = ofBoard;
 ofBoard = function () { if (hsIsFreighter() && !hsCanWalk()) return mmSet('ON_FOOT_ABOARD', { from: 'ramp', why: 'up the ramp' }); return _hsBoard(); };   // UI-EDIT(§ONFOOT ofBoard): up the ramp into the hold, not into the seat
 const _hsRamp = ofRampPlace;
 ofRampPlace = function () {   // UI-EDIT(§ONFOOT.RAMP ofRampPlace): the freighter's ramp drops from the hold
-  if (!hsIsFreighter()) return _hsRamp(); hsPlace(); const top = hsW(0, 16.9); const foot = hsW(0, 23.5); top.y = HS.anchor.y; foot.y = ofG(foot.x, foot.z) + 0.02; _hsRamp();
+  if (!hsIsFreighter()) return _hsRamp(); hsPlace(); const KR = HS.built.L.K.ramp; const top = hsW(0, KR.z); const foot = hsW(0, KR.foot); top.y = HS.anchor.y; foot.y = ofG(foot.x, foot.z) + 0.02; _hsRamp();
   const R = OF.ramp; R.top.copy(top); R.foot.copy(foot); R.axis.copy(foot).sub(top); R.len = top.distanceTo(foot); const m = OF.rampMesh; m.position.copy(top); m.lookAt(foot); m.scale.set(1.7, 1, R.len);
   HS.built.group.visible = true;   // the hold is there at the top of the ramp
 };
@@ -21378,6 +21425,216 @@ ofDamage = function (u, dmg, from, o = {}) { if (u && u === OF.me && dmg > 0) dm
 })();
 cfApply(true);
 Object.assign(S9X, { CF, CF_LEVELS, cfApply, cfLevel, BLADE_NOW: () => BLADE });
+
+// =====================================================================================
+// §CREW — who is aboard: companions (Stage 10 squad) and hired hands on contract
+//  Hired crew are signed at any station (the "Crew" tab), paid a wage on signing, have a role
+//  and a skill that rises with experience, and are lost with the ship. Everyone aboard walks the
+//  decks (§HOMESHIP) and takes a station when the ship is in a fight.
+// =====================================================================================
+const CREW_ROLES = { gunnery: 'Gunner', shields: 'Shields & power', engineering: 'Engineer', sensors: 'Sensors', helm: 'Helm' };
+const CREW_NAMES = ['Ansel Brack', 'Rue Okonkwo', 'Tamsin Vey', 'Hollis Gant', 'Maro Iyer', 'Petra Lusk', 'Dov Achterberg', 'Kei Morrow', 'Sabine Orr', 'Lio Farren', 'Wren Calloway', 'Ozan Petrak', 'Juno Halberd', 'Ines Varga', 'Tobiah Reyes', 'Ama Lindqvist'];
+function crewOf() { const p = SBX.profile; if (!p.crew) p.crew = { hired: [], assign: {}, seq: 1, lost: [] }; return p.crew; }
+/** Today's candidates at a station: deterministic per station and galaxy day. */
+function crewCandidates(stId) {
+  const day = Math.floor(galaxyNow() / 86400000); const rng = makeRng((stId.length * 977 + day * 7919 + stId.charCodeAt(stId.length - 1)) >>> 0); const out = []; const roles = Object.keys(CREW_ROLES).filter(r => r !== 'helm');
+  for (let i = 0; i < 4; i++) { const role = roles[Math.floor(rng() * roles.length)]; const skill = +(0.35 + rng() * 0.5).toFixed(2); const sp = ['human', 'human', 'vashi', 'korrath', 'nyl'][Math.floor(rng() * 5)];
+    out.push({ key: `${stId}:${day}:${i}`, name: CREW_NAMES[Math.floor(rng() * CREW_NAMES.length)], species: sp, look: { skin: Math.floor(rng() * 6), style: Math.floor(rng() * 4), body: rng() < 0.5 ? 1 : 0, armour: 0, height: rng() * 0.4 - 0.2 }, role, skill, wage: Math.round(12000 + skill * 40000) }); }
+  return out;
+}
+function crewHire(c) {
+  const C = crewOf(); const p = SBX.profile; if (C.hired.some(h => h.key === c.key)) return sbxToast(`${c.name} already signed.`); if (p.isk < c.wage) return sbxToast(`${c.name} wants ${fmtIsk(c.wage)} cr up front.`);
+  p.isk -= c.wage; C.hired.push({ ...c, id: 'c' + C.seq++, xp: 0, status: 'ok', temper: 'loyalist', loyalty: 20, turretSkill: c.role === 'gunnery' ? c.skill : c.skill * 0.6, hired: true }); SBX.dirty = true; sbxToast(`${c.name} signs on as ${CREW_ROLES[c.role].toLowerCase()}.`); newsPlayer(`Hired ${c.name} (${CREW_ROLES[c.role]}).`, true);
+}
+/** Everyone who can stand a station: companions first, then hired hands. */
+const _crewRoster = hsCrewRoster;
+hsCrewRoster = function () { const comp = _crewRoster(); return [...comp, ...crewOf().hired.filter(h => h.status === 'ok')].slice(0, 10); };   // S11-EDIT(§HOMESHIP.CREW hsCrewRoster): hired crew live aboard too
+const crewSkill = (m, role) => m === 'player' ? 1 : !m ? 0 : m.role === role ? m.skill : role === 'gunnery' ? (m.turretSkill ?? 0.5) : m.hired ? m.skill * 0.6 : 0.55;
+
+// §STATIONS — helm, gunnery, shields & power, engineering, sensors: manned or not, it shows
+//  The player usually holds the helm; walk away from it in a fight and a crewmate takes it (or the
+//  ship holds station). Sitting at a console makes you that officer. Unmanned stations cost: no
+//  gunners, no turret fire; no engineer, no repairs; no shields officer, no rebalancing; no sensors,
+//  shorter locks and no torpedo warnings.
+const ST_LIST = (kind = hsLayKind()) => kind === 'corvette' ? ['helm', 'gunnery', 'shields', 'engineering', 'sensors'] : ['helm', 'gunnery'];
+const ST = { man: {}, playerAt: null, repT: 0, balT: 0, warnT: 0, lastHit: null, stats: { repaired: 0, rebalanced: 0, warned: 0, turretShots: 0 }, el: null };
+/** Fill the stations from the roster: an explicit assignment wins, otherwise the best hand for each job. */
+function stAssign() {
+  const kind = hsLayKind(); const roster = hsCrewRoster(); const used = new Set(); const C = crewOf(); ST.man = {};
+  const pl = ST.playerAt || (MM.mode === 'ON_FOOT_ABOARD' ? null : 'helm'); if (pl) { ST.man[pl] = 'player'; }
+  for (const st of ST_LIST(kind)) { if (ST.man[st]) continue; const want = C.assign[st]; let m = want && roster.find(r => r.name === want && !used.has(r.name));
+    if (!m) m = roster.filter(r => !used.has(r.name)).sort((a, b) => crewSkill(b, st) - crewSkill(a, st))[0]; if (m) { ST.man[st] = m; used.add(m.name); } }
+  // gunnery seats: one per turret
+  ST.gunners = roster.filter(r => !used.has(r.name)).sort((a, b) => crewSkill(b, 'gunnery') - crewSkill(a, 'gunnery'));
+  if (ST.man.gunnery && ST.man.gunnery !== 'player') ST.gunners.unshift(ST.man.gunnery);
+  return ST.man;
+}
+const stManned = (st) => !!ST.man[st];
+function stTurrets(ps) { if (!ps) return []; return ps._stT || (ps._stT = ps.D.parts.map((p, i) => [p, i]).filter(([p]) => p.t === 'hp_turret').map(([, i]) => i)); }
+/** One space tick of the stations on the player's ship. */
+function stStep(dt) {
+  const pl = world.player; if (!pl?.alive || !pl.ps || SRF.active || SBX.profile.docked || !hsIsFreighter()) return; stAssign();
+  const kind = hsLayKind();
+  // gunnery: on a corvette every turret with a gunner fires (the freighter keeps its two-ladder logic in §HOMESHIP)
+  if (kind === 'corvette') { const T = stTurrets(pl.ps); ST.gunT = ST.gunT || []; const G = ST.gunners || [];
+    T.forEach((i, k) => { const m = G[k]; if (!m || pl.ps.gone?.[i]) return; ST.gunT[k] = (ST.gunT[k] ?? rand(0, 0.4)) - dt; if (ST.gunT[k] > 0) return; let tgt = null, bd = HS_CFG.turretRange * 1.2;
+      world.enemies.forEachActive(e => { if (!e.alive || !e.npc) return; const hostile = e.target === pl || e.npc.aggro || e.npc.kind === 'pirate' || (e.npc.kind === 'war' && gsPlayerHostileTo(e.npc.faction)); if (!hostile) return; const d = e.pos.distanceTo(pl.pos); if (d < bd) { bd = d; tgt = e; } });
+      if (!tgt) { ST.gunT[k] = 0.4; return; } const sk = clamp(crewSkill(m, 'gunnery'), 0.1, 1); ST.gunT[k] = 0.3 + (1 - sk) * 0.35; if (hsFireTurret(i, tgt, 0.004 + (1 - sk) * 0.03, k % 2)) { ST.stats.turretShots++; if (m.hired) m.xp = (m.xp || 0) + 0.02; } }); }
+  // shields & power: the officer turns the strong side toward the fire
+  if (kind === 'corvette' && stManned('shields') && ST.lastHit && typeof opShiftBalance === 'function') { ST.balT -= dt; if (ST.balT <= 0) { ST.balT = 1.2 - crewSkill(ST.man.shields, 'shields') * 0.6; const f = _st[0].set(0, 0, -1).applyQuaternion(pl.quat); const fore = _st[1].subVectors(ST.lastHit, pl.pos).dot(f) > 0; opShiftBalance(fore ? +1 : -1); ST.stats.rebalanced++; } }
+  if (stManned('shields') && pl.shield != null && pl.maxShield) pl.shield = Math.min(pl.maxShield, pl.shield + pl.maxShield * 0.004 * crewSkill(ST.man.shields, 'shields') * dt);
+  // engineering: damage control on the exterior parts, worst first
+  if (stManned('engineering')) { ST.repT -= dt; if (ST.repT <= 0) { ST.repT = 0.5; const ps = pl.ps; const sk = crewSkill(ST.man.engineering, 'engineering') * (ST.playerAt === 'engineering' ? 1.6 : 1); let worst = -1, wf = 0.98;
+    for (let i = 0; i < ps.D.parts.length; i++) { if (ps.gone[i]) continue; const f = ps.hp[i] / ps.max[i]; if (f < wf) { wf = f; worst = i; } }
+    if (worst >= 0) { ps.hp[worst] = Math.min(ps.max[worst], ps.hp[worst] + ps.max[worst] * 0.06 * sk); ps.dirty = true; ST.stats.repaired++; if (ST.man.engineering.hired) ST.man.engineering.xp = (ST.man.engineering.xp || 0) + 0.05; } } }
+  // sensors: torpedo launch warnings and lock range
+  const sensors = stManned('sensors'); if (kind === 'corvette') pl.lockRangeMul = sensors ? 1.5 : 0.7;
+  if (sensors) { ST.warnT -= dt; const inbound = WS.torps.filter(T => T.alive && T.tgt === pl); if (inbound.length && ST.warnT <= 0) { ST.warnT = 4; ST.stats.warned++; sbxToast(`SENSORS: ${inbound.length} torpedo${inbound.length > 1 ? 'es' : ''} inbound — ${Math.round(inbound[0].pos.distanceTo(pl.pos))} m.`); } }
+  for (const m of Object.values(ST.man)) if (m && m !== 'player' && m.hired && m.xp >= 1) { m.xp = 0; m.skill = Math.min(1, +(m.skill + 0.04).toFixed(2)); sbxToast(`${m.name} is getting better at ${CREW_ROLES[m.role].toLowerCase()} (${Math.round(m.skill * 100)}).`); }
+}
+const _st = [new THREE.Vector3(), new THREE.Vector3()];
+// a crewed corvette can be left mid-fight: a crewmate takes the helm and the ship holds station
+const _stCanWalk = hsCanWalk;
+hsCanWalk = function () {   // S11-EDIT(§HOMESHIP.MODE hsCanWalk): someone else at the helm lets you walk in battle
+  const r = _stCanWalk(); if (!r || !hsIsFreighter() || SRF.active) return r; const roster = hsCrewRoster(); if (/manual flight/.test(r) && roster.length) { ST.helmHold = roster[0].name; return null; } return r;
+};
+/** Where you stand decides which station you hold: sitting at a console makes you that officer. */
+function stSitAt(st) { ST.playerAt = st; stAssign(); sbxToast(`You take ${st === 'gunnery' ? 'the gunnery console' : CREW_ROLES[st].toLowerCase()}. Move to stand up.`); ST.sitPos = OF.me?.pos.clone(); }
+const _stTarget = hsTarget;
+hsTarget = function () {   // S11-EDIT(§HOMESHIP.ROOMS hsTarget): the corvette's consoles and damage control
+  const me = OF.me; if (!me?.alive || HS.turret) return _stTarget(); const l = hsL(me.pos.x, me.pos.z); const E = HS.built.L.emp; const near = (n, r = 1.7) => E[n] && Math.hypot(l.x - E[n][0], l.z - E[n][1]) < r;
+  const dc = dcTarget(me); if (dc) return dc;
+  for (const [n, st] of [['station_sensors', 'sensors'], ['station_shields', 'shields'], ['station_engineering', 'engineering'], ['station_gunnery', 'gunnery']]) if (near(n)) return { label: ST.playerAt === st ? `stand up from ${CREW_ROLES[st].toLowerCase()}` : `take the ${CREW_ROLES[st].toLowerCase()} station`, fn: () => ST.playerAt === st ? (ST.playerAt = null) : stSitAt(st) };
+  return _stTarget();
+};
+function stHud() {
+  if (!ST.el) { ST.el = document.createElement('div'); ST.el.id = 'st-roster'; document.body.appendChild(ST.el); const css = document.createElement('style'); css.textContent = `
+    #st-roster { position: fixed; left: 14px; top: 42%; z-index: 9; min-width: 190px; padding: 8px 10px; font-family: var(--font-body); font-size: 11px; color: var(--hud-text); background: var(--bg-panel-alpha); border: 1px solid var(--rule); border-left: 2px solid var(--accent); border-radius: var(--radius); pointer-events: none; display: none; }
+    #st-roster b { font-family: var(--font-display); letter-spacing: 0.08em; } #st-roster .off { color: var(--alert); } #st-roster .k { color: var(--hud-muted); }
+    #dc-alert { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); z-index: 12; padding: 6px 14px; font-family: var(--font-display); font-size: 14px; letter-spacing: 0.1em; color: var(--alert); background: var(--bg-panel-alpha); border: 1px solid var(--alert); border-radius: var(--radius); pointer-events: none; display: none; }
+    .wt-full #st-roster, .wt-full #dc-alert, body.cine #st-roster { display: none !important; }`; document.head.appendChild(css); }
+  const show = game.mode === 'sandbox' && hsIsFreighter() && (MM.mode === 'SPACE' || MM.mode === 'ON_FOOT_ABOARD') && !SBX.profile?.docked && hsLayKind() === 'corvette';
+  ST.el.style.display = show ? '' : 'none'; if (!show) return; const roster = hsCrewRoster().length + 1; const need = SBX_HULLS[SBX.ship().hull]?.crewNeed || 1;
+  ST.el.innerHTML = `<b>STATIONS</b> <span class="k">crew ${roster}/${need}</span><br>` + ST_LIST().map(st => { const m = ST.man[st]; return `${CREW_ROLES[st]}: ${m === 'player' ? 'you' : m ? m.name : '<span class="off">unmanned</span>'}`; }).join('<br>') + (DC.fires.length || DC.breaches.length ? `<br><span class="off">${DC.fires.length} fire${DC.fires.length === 1 ? '' : 's'} · ${DC.breaches.length} breach${DC.breaches.length === 1 ? '' : 'es'}</span>` : '');
+}
+
+// §DAMAGECTRL — what a hit outside does inside: fires, breaches, sparking consoles, dead lights, hurt crew
+//  Every room sits beside a slice of the hull (bow to stern). When that slice is badly hurt the room
+//  catches fire; when a part there is blown away the room is breached and vents. Fires spread and burn
+//  whoever stands in them until someone with an extinguisher (anyone: hold E) puts them out; engineers do
+//  it themselves, slowly. A breach seals itself behind blast doors after a few seconds, or you patch it.
+//  Crew who go down can be brought round.
+const DC_CFG = { fireAt: 0.38, fireDps: 9, spread: 0.035, grow: 0.06, putOut: 0.55, crewOut: 0.12, sealT: 7, patchT: 2.5, reviveT: 2.0, vent: 3.2 };
+const DC = { fires: [], breaches: [], seen: {}, roomParts: null, t: 0, mesh: null, alertEl: null, hold: null, stats: { fires: 0, out: 0, breaches: 0, sealed: 0, patched: 0, revived: 0 } };
+/** Which exterior parts lie beside each room: the interior's bow-to-stern span maps onto the hull's. */
+function dcMap(ps) {
+  if (DC.roomParts && DC.mapFor === ps) return DC.roomParts; const L = HS.built?.L; if (!L || !ps) return null; const K = L.K; const P = ps.D.parts; const zs = P.map(p => p.z); const a = Math.min(...zs), b = Math.max(...zs);
+  const out = {}; for (const [k, r] of Object.entries(L.rooms)) { const f0 = (r.z0 - K.z0) / (K.z1 - K.z0), f1 = (r.z1 - K.z0) / (K.z1 - K.z0); out[k] = []; P.forEach((p, i) => { const f = (p.z - a) / Math.max(1, b - a); if (f >= f0 - 0.02 && f <= f1 + 0.02) out[k].push(i); }); }
+  DC.roomParts = out; DC.mapFor = ps; return out;
+}
+function dcRoomDamage(ps, list) { let hp = 0, mx = 0, gone = 0; for (const i of list) { mx += ps.max[i]; hp += ps.gone[i] ? 0 : ps.hp[i]; if (ps.gone[i]) gone++; } return { frac: mx ? 1 - hp / mx : 0, gone }; }
+function dcRoomPoint(room) { const r = HS.built.L.rooms[room]; return [rand(r.x0 + 0.8, r.x1 - 0.8), rand(r.z0 + 0.8, r.z1 - 0.8)]; }
+function dcStep(dt) {
+  const pl = world.player; if (!pl?.ps || !hsIsFreighter() || !HS.built || SBX.profile.docked) return; const M = dcMap(pl.ps); if (!M) return; DC.t -= dt;
+  if (DC.t <= 0) { DC.t = 0.5;
+    for (const [room, list] of Object.entries(M)) { const d = dcRoomDamage(pl.ps, list); const S = DC.seen[room] || (DC.seen[room] = { gone: d.gone, fired: 0 });
+      if (d.frac > DC_CFG.fireAt && DC.fires.filter(f => f.room === room).length < 1 + Math.floor(d.frac * 3) && Math.random() < d.frac * 0.6) { const [x, z] = dcRoomPoint(room); DC.fires.push({ room, x, z, k: 0.4 }); DC.stats.fires++; if (HS.aboard) sbxToast(`FIRE in the ${HS.built.L.rooms[room].name.toLowerCase()}.`); }
+      if (d.gone > S.gone) { const [x, z] = dcRoomPoint(room); DC.breaches.push({ room, x, z, t: 0, sealed: false, patch: 0 }); DC.stats.breaches++; if (HS.aboard) sbxToast(`HULL BREACH — ${HS.built.L.rooms[room].name.toLowerCase()} venting.`); }
+      S.gone = d.gone; S.frac = d.frac; } }
+  // fires grow, spread, burn; engineers fight them
+  const eng = ST.man.engineering && ST.man.engineering !== 'player' ? ST.man.engineering : null;
+  for (const f of DC.fires) { f.k = Math.min(1.6, f.k + DC_CFG.grow * dt); if (eng) f.k -= DC_CFG.crewOut * crewSkill(eng, 'engineering') * dt / Math.max(1, DC.fires.length * 0.6);
+    if (f.k > 1.2 && Math.random() < DC_CFG.spread * dt && DC.fires.length < 12) { DC.fires.push({ room: f.room, x: f.x + rand(-1.6, 1.6), z: f.z + rand(-1.6, 1.6), k: 0.3 }); DC.stats.fires++; }
+    if (HS.aboard) { const w = hsW(f.x, f.z); for (const u of OF.units) if (u.alive && Math.hypot(u.pos.x - w.x, u.pos.z - w.z) < 1.2 + f.k * 0.6) { if (u === OF.me) { if (u.hp > 6) ofDamage(u, DC_CFG.fireDps * f.k * dt, null, { burn: true }); } else if (!u.downed) { u.hp -= DC_CFG.fireDps * f.k * dt; if (u.hp <= 0) { u.hp = 0; u.downed = true; sbxToast(`${u.name} is down — get them up (E).`); } } } } }
+  for (const f of DC.fires) if (f.k <= 0) DC.stats.out++; DC.fires = DC.fires.filter(f => f.k > 0);
+  // breaches vent until sealed: blast doors close on their own after a while, or someone patches it
+  for (const b of DC.breaches) { if (b.sealed) continue; b.t += dt; if (b.t > DC_CFG.sealT) { b.sealed = 'doors'; DC.stats.sealed++; if (HS.aboard) sbxToast(`Blast doors sealed the ${HS.built.L.rooms[b.room].name.toLowerCase()}.`); continue; }
+    if (HS.aboard) { const w = hsW(b.x, b.z); for (const u of OF.units) { if (!u.alive || hsRoomOf(...Object.values(hsL(u.pos.x, u.pos.z))) !== b.room) continue; const dx = w.x - u.pos.x, dz = w.z - u.pos.z; const d = Math.hypot(dx, dz) || 1; u.pos.x += dx / d * DC_CFG.vent * dt; u.pos.z += dz / d * DC_CFG.vent * dt; } } }
+  DC.breaches = DC.breaches.filter(b => !b.sealed || b.t < DC_CFG.sealT + 30);
+  // doors of a room with an open breach stay shut (vacuum); sealed rooms reopen once patched
+  if (HS.built) for (const d of HS.built.doors) { const open = DC.breaches.some(b => !b.sealed && b.t > DC_CFG.sealT * 0.5 && (b.room === d.a || b.room === d.b)); d.locked = open; }
+  dcDraw(dt);
+}
+/** E near a fire, a breach or a downed crewmate: hold to put out, patch, revive. */
+function dcTarget(me) {
+  if (!HS.aboard) return null; const l = hsL(me.pos.x, me.pos.z);
+  const f = DC.fires.find(x => Math.hypot(x.x - l.x, x.z - l.z) < 2.4); if (f) return { label: 'hold — extinguisher', hold: true, fn: () => { f.k -= DC_CFG.putOut * 0.25; audio.click?.(); } };
+  const b = DC.breaches.find(x => !x.sealed && Math.hypot(x.x - l.x, x.z - l.z) < 2.2); if (b) return { label: 'hold — patch the breach', hold: true, fn: () => { b.patch += 0.25; if (b.patch >= DC_CFG.patchT) { b.sealed = 'patch'; DC.stats.patched++; sbxToast('Breach patched.'); } } };
+  const u = HS.crew.find(c => c.downed && c.pos.distanceTo(me.pos) < 2); if (u) return { label: `hold — get ${u.name} up`, hold: true, fn: () => { u.reviveT = (u.reviveT || 0) + 0.25; if (u.reviveT >= DC_CFG.reviveT) { u.downed = false; u.hp = 80; u.reviveT = 0; DC.stats.revived++; sbxToast(`${u.name} is back on their feet.`); } } };
+  return null;
+}
+// a held E repeats the damage-control action four times a second
+let dcHoldT = 0;
+function dcHoldStep(dt) { if (!HS.aboard || !OF.me) return; const t = dcTarget(OF.me); if (!t?.hold) return; if (input.keys.has('KeyE')) { dcHoldT -= dt; if (dcHoldT <= 0) { dcHoldT = 0.25; t.fn(); } } }
+function dcDraw(dt) {
+  if (!HS.built) return; if (!DC.mesh) { DC.mesh = new THREE.InstancedMesh(new THREE.ConeGeometry(0.45, 1.2, 7), new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), 24); DC.mesh.frustumCulled = false; scene.add(DC.mesh); }
+  let n = 0; if (HS.aboard) { const t = performance.now() * 0.01; for (const f of DC.fires) for (let k = 0; k < 2 && n < 24; k++) { const w = hsW(f.x + (k ? 0.35 : -0.2), f.z + (k ? -0.25 : 0.15)); const s = (0.6 + f.k * 0.6) * (0.8 + 0.2 * Math.sin(t + k * 2 + f.x)); _dcM.compose(_st[0].set(w.x, HS.anchor.y + 0.55 * s, w.z), _dcQ.setFromAxisAngle(_st[1].set(0, 1, 0), t * 0.3 + k), _st[1].set(s, s * (1.2 + 0.3 * Math.sin(t * 1.7 + k)), s)); DC.mesh.setMatrixAt(n++, _dcM); }
+    for (const b of DC.breaches) if (!b.sealed && Math.random() < 0.3) world.sparks(hsW(b.x, b.z, 1.4), 2, 0xbfe6ff);
+    if (Math.random() < 0.08) for (const [room, S] of Object.entries(DC.seen)) if (S.frac > 0.3) { for (const n2 of ['station_sensors', 'station_shields', 'station_engineering', 'station_gunnery', 'station_helm']) { const e = HS.built.L.emp[n2]; if (e && hsRoomOf(e[0], e[1]) === room) world.sparks(hsW(e[0], e[1], 1.2), 3, 0xffd080); } } }
+  DC.mesh.count = n; DC.mesh.instanceMatrix.needsUpdate = true;
+  if (!DC.alertEl) { DC.alertEl = document.createElement('div'); DC.alertEl.id = 'dc-alert'; document.body.appendChild(DC.alertEl); }
+  const open = DC.breaches.filter(b => !b.sealed).length; const msg = DC.fires.length || open ? `DAMAGE CONTROL · ${DC.fires.length} fire${DC.fires.length === 1 ? '' : 's'}${open ? ` · ${open} breach${open > 1 ? 'es' : ''} venting` : ''}` : '';
+  DC.alertEl.style.display = msg && (MM.mode === 'SPACE' || MM.mode === 'ON_FOOT_ABOARD') ? '' : 'none'; DC.alertEl.textContent = msg;
+}
+const _dcM = new THREE.Matrix4(), _dcQ = new THREE.Quaternion();
+// the room you are in shudders and its lights falter when the ship is hit
+const _dcHit = World.prototype.hitShip;
+World.prototype.hitShip = function (ship, damage, hitPoint, source, attacker = null) {   // S11-EDIT(§WORLD hitShip): hits on your ship are felt aboard
+  if (ship && ship === this.player && hitPoint) { ST.lastHit = (ST.lastHit || new THREE.Vector3()).copy(hitPoint); if (HS.aboard && damage > 0) { shake.add(Math.min(0.5, damage / 300)); HS.flick = 0.4; } }
+  return _dcHit.call(this, ship, damage, hitPoint, source, attacker);
+};
+// locked doors stay shut; downed crew stay down
+const _dcDoors = hsDoorsStep;
+hsDoorsStep = function (dt) {   // S11-EDIT(§HOMESHIP.DOORS hsDoorsStep): blast doors hold a venting room shut
+  const B = HS.built; if (!B) return _dcDoors(dt); const all = B.doors; const lk = all.filter(d => d.locked); if (!lk.length) return _dcDoors(dt);
+  B.doors = all.filter(d => !d.locked); try { _dcDoors(dt); } finally { B.doors = all; }
+  let changed = false; for (const d of lk) { const prev = d.open; d.want = 0; d.open = Math.max(0, d.open - dt * 3); if ((prev < 0.5) !== (d.open < 0.5)) changed = true; const off = d.open * (d.w * 0.95); if (d.axis === 'z') d.leaf.position.set(d.x + off, d.leaf.position.y, d.z); else d.leaf.position.set(d.x, d.leaf.position.y, d.z + off); }
+  if (changed) hsBuildProps();
+};
+const _dcUnitStep = hsCrewUnitStep;
+hsCrewUnitStep = function (u, dt) { if (u.downed) { u.act = 'dead'; return; } return _dcUnitStep(u, dt); };   // S11-EDIT(§HOMESHIP.CREW hsCrewUnitStep): downed crew wait for help
+// in battle, crew head for their stations
+const _stRoomWant = hsRoomWant;
+hsRoomWant = function (m) {   // S11-EDIT(§HOMESHIP.CREW hsRoomWant): stations before temperament when the ship is fighting
+  if (hsLayKind() === 'corvette' && HS.ctx === 'space' && !SBX.profile.docked) { for (const [st, who] of Object.entries(ST.man)) if (who && who !== 'player' && who.name === m.name) return { helm: 'bridge', sensors: 'bridge', shields: 'bridge', gunnery: 'gunnery', engineering: 'engineering' }[st]; if (DC.fires.length && Math.random() < 0.5) return DC.fires[0].room; }
+  return _stRoomWant(m);
+};
+
+// §CREW.HIRE — the station's crew board (a tab beside the others)
+const _crewRenderStation = sbxRenderStation;
+sbxRenderStation = function () {   // S11-EDIT(§SBXUI sbxRenderStation): a Crew tab for signing hands
+  _crewRenderStation(); const tabs = $('sb-tabs'); if (tabs && !tabs.querySelector('[data-stab="crew"]')) { const b = document.createElement('button'); b.dataset.stab = 'crew'; b.textContent = 'Crew'; tabs.appendChild(b); }
+  tabs?.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.stab === stationUI.tab)); if (stationUI.tab !== 'crew') return;
+  const st = SBX.profile.stationId; const C = crewOf(); const cands = crewCandidates(st);
+  $('sb-content').innerHTML = `<h3>Crew for hire</h3><p class="small">Wages are paid up front for the contract. Hands gain skill with use and are lost with the ship. Corvettes need ${SHIP_CLASSES.corvette.crew}, frigates ${SHIP_CLASSES.frigate.crew}, cruisers ${SHIP_CLASSES.cruiser.crew}.</p>` +
+    cands.map((c, i) => `<div class="row"><span><b>${c.name}</b> — ${CREW_ROLES[c.role]} · skill ${Math.round(c.skill * 100)} · ${SPECIES[c.species]?.name || c.species}</span><button data-crewhire="${i}" ${C.hired.some(h => h.key === c.key) ? 'disabled' : ''}>Sign — ${fmtIsk(c.wage)} cr</button></div>`).join('') +
+    `<h3>Your crew (${C.hired.filter(h => h.status === 'ok').length})</h3>` + (C.hired.filter(h => h.status === 'ok').map(h => `<div class="row"><span>${h.name} — ${CREW_ROLES[h.role]} · skill ${Math.round(h.skill * 100)}</span><select data-crewrole="${h.id}">${Object.entries(CREW_ROLES).filter(([k]) => k !== 'helm').map(([k, n]) => `<option value="${k}" ${h.role === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`).join('') || '<p class="small">Nobody yet.</p>') +
+    (C.lost.length ? `<h3>Lost with their ships</h3><p class="small">${C.lost.slice(-8).map(h => h.name).join(', ')}</p>` : '');
+};
+$('sb-content').addEventListener('click', (e) => { const b = e.target.closest('[data-crewhire]'); if (!b) return; crewHire(crewCandidates(SBX.profile.stationId)[+b.dataset.crewhire]); sbxRenderStation(); });
+$('sb-content').addEventListener('change', (e) => { const s = e.target.closest('[data-crewrole]'); if (!s) return; const h = crewOf().hired.find(x => x.id === s.dataset.crewrole); if (h) { h.role = s.value; SBX.dirty = true; } });
+// the crew go down with the ship
+const _crewDeath = sbxDeathResolve;
+sbxDeathResolve = function (...a) { const C = crewOf(); const gone = C.hired.filter(h => h.status === 'ok'); if (gone.length && hsCrewNeedsShip()) { for (const h of gone) { h.status = 'lost'; C.lost.push({ name: h.name, t: galaxyNow() }); } C.hired = C.hired.filter(h => h.status === 'ok'); newsPlayer(`${gone.length} crew lost with the ${SBX.ship()?.name || 'ship'}.`); } return _crewDeath.apply(this, a); };   // S11-EDIT(§DEATH sbxDeathResolve): hired crew are lost with the ship
+const hsCrewNeedsShip = () => hsIsFreighter() || (SBX_HULLS[SBX.ship()?.hull]?.crewNeed || 1) > 2;
+/** A frigate or cruiser without crew is a hulk: it will not answer the helm. */
+function crewShort() { const h = SBX_HULLS[SBX.ship()?.hull]; if (!h?.crewNeed || h.crewNeed <= 2) return 0; const have = 1 + hsCrewRoster().length; return Math.max(0, h.crewNeed - have * (h.crewNeed > 20 ? 6 : 1)); }
+const _crewSpace = MM_DEFS.SPACE.update;
+MM_DEFS.SPACE.update = function (dt) {   // S11-EDIT(§MODEMGR SPACE update): an undercrewed big ship barely answers
+  const short = game.mode === 'sandbox' ? crewShort() : 0; if (short > 0) { const need = SBX_HULLS[SBX.ship().hull].crewNeed; const k = clamp(1 - short / need, 0, 1); if (k < 0.3) { input.keys.delete('KeyW'); input.keys.delete('ShiftLeft'); ST.hulkT = (ST.hulkT || 0) - dt; if (ST.hulkT <= 0) { ST.hulkT = 8; sbxToast(`Not enough crew to fly her — ${short} more hands needed (hire at a station's Crew tab).`); } } }
+  return _crewSpace.call(this, dt);
+};
+const _stVeh = sbxVehicleStep;
+sbxVehicleStep = function (dt) { _stVeh(dt); if (!SRF.active && game.mode === "sandbox") { stStep(dt); dcStep(dt); } };   // S11-EDIT(§SANDBOX sbxVehicleStep): stations and damage control
+const _stAboard = MM_DEFS.ON_FOOT_ABOARD.update;
+MM_DEFS.ON_FOOT_ABOARD.update = function (dt) { dcHoldStep(dt); if (ST.playerAt && ST.sitPos && OF.me && OF.me.pos.distanceTo(ST.sitPos) > 1.2) { ST.playerAt = null; ST.sitPos = null; } return _stAboard.call(this, dt); };   // S11-EDIT(§HOMESHIP.MODE update): hold-E damage control; walking off a console stands you up
+const _stRender = render;
+render = function (a, dt) { _stRender(a, dt); if (game.mode === 'sandbox') stHud(); };   // S11-EDIT(§MAIN render): the station roster
+const _stSync = World.prototype.syncRender;
+World.prototype.syncRender = function (alpha, dt) { _stSync.call(this, alpha, dt); if (HS.aboard && HS.fill) { const l = OF.me ? hsL(OF.me.pos.x, OF.me.pos.z) : null; const room = l ? hsRoomOf(l.x, l.z) : null; const dim = room && DC.seen[room]?.frac > 0.55; if (HS.flick > 0 || dim) { HS.flick = Math.max(0, (HS.flick || 0) - (dt || 0.016)); HS.fill.intensity *= (dim ? 0.25 : 0.35) + 0.65 * Math.abs(Math.sin(performance.now() * (dim ? 0.013 : 0.05))); } } };   // S11-EDIT(§WORLD syncRender): hits flicker the cabin lights; a wrecked room stays dim
+const _crewMig = sbxMigrateProfile;
+sbxMigrateProfile = function (p) { p = _crewMig(p); if (p.crew === undefined) p.crew = null; return p; };   // S11-EDIT(§SAVE sbxMigrateProfile): crew roster
+Object.assign(S9X, { CREW_ROLES, crewOf, crewCandidates, crewHire, crewShort, ST, ST_LIST, stAssign, stStep, stSitAt, DC, DC_CFG, dcStep, dcMap, dcTarget, hsTargetNow: () => hsTarget(), hsCanWalkNow: () => hsCanWalk(), hsCrewSpawnNow: () => hsCrewSpawn() });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
