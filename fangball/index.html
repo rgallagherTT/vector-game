@@ -194,6 +194,14 @@ table.box tr.bench td { opacity: .7; }
 .bm div.u { color: var(--accent); }
 .champ { font-family: var(--display); font-size: 30px; text-align: center; }
 
+/* ---------- online ---------- */
+.netname { font-family: var(--ui); font-size: 18px; font-weight: 700; padding: 3px 8px; border: 3px solid var(--ink); border-radius: 8px; width: 220px; }
+.netstatus { font-weight: 700; margin: 8px 0; color: #8b4a2b; }
+.netrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 5px 4px; border-bottom: 1px solid rgba(21,17,14,.15); font-size: 16px; }
+.netsides { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; font-size: 15px; }
+.netsides > div { border: 2px dashed rgba(21,17,14,.35); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
+.nametag { position: absolute; transform: translate(-50%, -100%); font-size: 13px; font-weight: 800; color: #fff; background: rgba(21,17,14,.75); border: 2px solid var(--ink); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+.nametag.me { background: var(--accent); }
 @media (max-width: 700px) {
   #scorebug .team { min-width: 92px; padding: 3px 7px; }
   #scorebug .team .abbr { font-size: 18px; }
@@ -244,6 +252,7 @@ table.box tr.bench td { opacity: .7; }
       <div class="tagline" id="titleTag">Five on five. Full contact. No weight classes.</div>
       <div class="btnrow">
         <button class="big" data-act="exhibition">Exhibition</button>
+        <button class="big" data-act="online">Online</button>
         <button class="big" data-act="tourney">Tournament</button>
         <button class="big alt" data-act="practice">Practice Court</button>
         <button class="big alt" data-act="controls">Controls</button>
@@ -268,6 +277,19 @@ table.box tr.bench td { opacity: .7; }
         <button class="big alt" data-act="back">Back</button>
       </div>
       <div class="note">Click H or A on a team card to set home and away. Gamepad: D-pad moves, A selects, left/right changes values.</div>
+    </div>
+  </div>
+
+  <div id="scrOnline" class="screen hidden">
+    <div class="card wide">
+      <h2>Online</h2>
+      <div class="opt"><span>Your name</span><input id="netName" maxlength="16" class="netname"></div>
+      <div class="netstatus" id="netStatus">Offline.</div>
+      <div id="netRoom"></div>
+      <h3>Players online</h3>
+      <div id="netList"></div>
+      <div class="btnrow" style="margin-top:14px"><button class="big" data-act="netHost" id="netHostBtn">Host a room</button><button class="big alt" data-act="back">Back</button></div>
+      <div class="note">Up to 10 players, 5 per side; empty spots are AI. The host's browser runs the room: everyone simulates the same match from the host's input stream. Same lobby service as Vector.</div>
     </div>
   </div>
 
@@ -344,6 +366,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 /* =====================================================================
    NAMING — use these everywhere the game or sport is named.
@@ -401,7 +424,7 @@ const CONFIG = {
     subStamina: 0.40, subInStamina: 0.72, openDist: 3.0, hazardAware: true
   },
   camera: { broadcastHeight: 12.0, broadcastDist: 24.0, fov: 40, driveFov: 33, followLerp: 3.2, behindDist: 8.5, behindHeight: 5.2 },
-  render: { pixelRatioMax: 1.5, outline: 0.022, halftoneScale: 4.5, crowdCount: 2600, shadowMapSize: 1024, ink: 0x15110e },
+  render: { pixelRatioMax: 1.5, outline: 0.022, halftoneScale: 4.5, crowdCount: 2600, glbCrowdCount: 1500, shadowMapSize: 2048, bloom: true, ink: 0x15110e },
   fx: { slowmoScale: 0.3, slowmoSeconds: 0.75, impactFrames: 5, speedLineThreshold: 7.0 },
   audio: { master: 0.55 },
   commentary: { minGap: 1.7, followUpChance: 0.55, lineLife: 4.2 },
@@ -536,6 +559,7 @@ const SPECIES_BY_KEY = Object.fromEntries(SPECIES.map(s => [s.key, s]));
    layup, dunk, pass, catch, defend_slide, block, steal, check, knocked_down, get_up, celebrate.
    mat_jersey_primary / mat_jersey_secondary are tinted to team colours. Missing files fall back to procedural animals. */
 const CHARACTER_MODELS = {
+  __referee: { file: 'props/referee_zebra.glb', tail: 'props/zebra_tail.glb' },
   // small — one combined file, one node per species (tails inside the node)
   fennec:   { file: 'chars/small_species_all.glb', node: 'fennec_fox' },
   meerkat:  { file: 'chars/small_species_all.glb', node: 'meerkat' },
@@ -639,7 +663,8 @@ const ARENAS = {
     sky: 0x0e1a26, fog: [40, 90], light: { hemiSky: 0xe0f4ff, hemiGround: 0x2a4a6a, hemi: 1.0, key: 0xeaf6ff, keyI: 1.8, fill: 0x7ac8ff, fillI: 0.8 },
     crowd: [0x9fd0ff, 0xffffff, 0x2a6fdb, 0x1f8a70, 0x5a6a7a, 0xd8434a], stands: 'full', deco: 'glacier',
     hazards: [{ type: 'ice', id: 'ice', traction: 0.3, brake: 0.35 },
-              { type: 'slush', id: 'slush', warn: 150, life: 900, gap: [420, 720], radius: 1.9, slow: 0.55, max: 4 }],
+              { type: 'slush', id: 'slush', warn: 150, life: 900, gap: [420, 720], radius: 1.9, slow: 0.55, max: 4,
+                spots: [[-12.5, -5.5], [-12, 5.5], [-6, -4], [-5, 6.5], [12.5, 5.5], [12, -5.5], [6, 4], [5, -6.5]] }],
     rules: [{ type: 'iceFall', id: 'iceFall', warn: 70, life: 260, chunks: 4 }]
   },
   canopy: {
@@ -668,7 +693,8 @@ const ARENAS = {
     sky: 0x3a2a18, fog: [45, 95], light: { hemiSky: 0xfff0c8, hemiGround: 0x8a5a2a, hemi: 1.0, key: 0xffe8b0, keyI: 2.1, fill: 0xffa040, fillI: 0.5 },
     crowd: [0xc4512b, 0xe2bc7a, 0x8a6a3a, 0xf4f0e6, 0x2a6fdb, 0x5a3a1a], stands: 'full', deco: 'dune',
     hazards: [{ type: 'sandstorm', id: 'storm', warn: 200, life: 720, gap: [900, 1500] },
-              { type: 'sinkSand', id: 'sink', patches: [[-12, -6], [12, 6], [-3, 7.5], [3, -7.5]], radius: 1.4, slow: 0.45, trapTicks: 80, newWarn: 150, gap: [900, 1400], max: 6 }],
+              { type: 'sinkSand', id: 'sink', patches: [[-12, -6], [12, 6]], radius: 2.0, slow: 0.45, trapTicks: 80, newWarn: 150, gap: [540, 900], life: 1500, max: 3,
+                spots: [[-12, -6], [-7, 5.5], [-3.8, -6.6], [12, 6], [7, -5.5], [3.8, 6.6]] }],
     rules: [{ type: 'stormBomb', id: 'stormBomb', storm: 'storm', spots: [[-8, 6.5], [8, -6.5], [-8, -6.5], [8, 6.5], [0, 8], [0, -8]] }]
   },
   storm: {
@@ -676,7 +702,8 @@ const ARENAS = {
     floor: { wood: 0x3a4a6a, woodDark: 0x2e3e5a, apron: 0x141a2a, lines: 0xb8e0ff, logo: 0xffe04a },
     sky: 0x0a0e1a, fog: [35, 85], light: { hemiSky: 0xb8d0ff, hemiGround: 0x1a1a3a, hemi: 0.7, key: 0xd0e0ff, keyI: 1.7, fill: 0x8a6aff, fillI: 1.0 },
     crowd: [0xffe04a, 0x3a4a6a, 0x8a6aff, 0xf4f0e6, 0x2a2a3a, 0x6ac8ff], stands: 'full', deco: 'storm',
-    hazards: [{ type: 'lightning', id: 'bolt', warn: 120, gap: [300, 520], radius: 1.6, stun: 40 }],
+    hazards: [{ type: 'lightning', id: 'bolt', warn: 120, gap: [300, 520], radius: 1.6, stun: 40,
+                spots: [-12.58, -4.72, 4.72, 12.58].flatMap(x => [-6.81, -2.29, 2.29, 6.81].map(z => [x, z])) }],
     rules: [{ type: 'chargedBall', id: 'charged', mult: 2, zapTicks: 170 }]
   },
   tide: {
@@ -698,9 +725,22 @@ const ARENAS = {
   }
 };
 const ARENA_ORDER = ['foundry', 'glacier', 'canopy', 'dune', 'storm', 'tide', 'rooftop', 'civic'];
-/* Optional arena GLBs; nodes named hazard_<type>[_n] are driven by the hazard state. */
+/* Arena GLBs (pure presentation — the sim never reads them). The GLB supplies floor + scenery;
+   our own hoops, markings and hazard telegraphs stay on top. `scale` fits the authored court to
+   ours, `hide` lists nodes the game replaces, `floor` keeps the GLB playing surface, `driver`
+   animates its hazard nodes from the hazard state. Nodes flagged hidden-by-default and colliders
+   are always hidden. */
+const ARENA_STD_HIDE = ['hoop_home', 'hoop_away', 'colliders', 'gameplay_points'];
+/* Instanced crowd figures (seated origin = seat surface, standing origin = feet; atlas cell 0 = shirt, 1 = scarf). */
+const CROWD_SPECIES = ['bear', 'crocodile', 'elephant', 'flamingo', 'giraffe', 'hippo', 'kangaroo', 'lion', 'lynx', 'moose', 'mouse', 'otter', 'owl', 'pig', 'rhino', 'warthog'];
+const PROP_MODELS = { ball: 'props/ball.glb', hoop: 'props/hoop_standard.glb', hoopCrane: 'props/hoop_crane.glb', referee: 'props/referee_zebra.glb', refereeTail: 'props/zebra_tail.glb', crowd: (sp, pose) => `props/crowd_${sp}_${pose}.glb` };
 const ARENA_MODELS = {
-  // foundry: "./arenas/foundry.glb",
+  storm:   { file: 'arenas/arena_storm.glb',   scale: 1.31, stands: ['stands_bowl'], floor: true, driver: 'storm',   hide: [...ARENA_STD_HIDE, 'court_lines', 'court_paint'] },
+  rooftop: { file: 'arenas/arena_rooftop.glb', scale: 1.31, floor: true, driver: 'rooftop', hide: [...ARENA_STD_HIDE, 'court_lines', 'court_paint'] },
+  tide:    { file: 'arenas/arena_tide.glb',    scale: 1.31, stands: ['stands'], floor: true, driver: 'tide',    hide: [...ARENA_STD_HIDE, 'court_lines', 'court_paint', 'hazard_tide'] },
+  glacier: { file: 'arenas/arena_glacier.glb', scale: 1, stands: ['stands'],    floor: true, driver: 'glacier', hide: [...ARENA_STD_HIDE, 'court_markings'] },
+  dune:    { file: 'arenas/arena_dune.glb',    scale: 1, stands: ['stands'],    floor: true, driver: 'dune',    hide: [...ARENA_STD_HIDE, 'court_markings', 'heat_haze', 'longbomb_storm'] },
+  canopy:  { file: 'arenas/arena_canopy.glb',  scale: 1,    floor: false, driver: null,     hide: [...ARENA_STD_HIDE, 'court', 'hazards', 'vines', 'raised_platforms', 'ramp_lower_home', 'ramp_lower_away', 'ramp_far_home', 'ramp_far_away', 'ramp_near_home', 'ramp_near_away', 'ramp_nest_home', 'ramp_nest_away', 'bridge_home', 'bridge_away'] }
 };
 
 /* =====================================================================
@@ -2136,6 +2176,12 @@ function hzState(s, P) { return s.arena.hz[P.id]; }
 function warnFire(s, P, phase, data) { emit(s, phase === 'warn' ? 'hazardWarn' : 'hazardFire', Object.assign({ hz: P.id, htype: P.type }, data || {})); }
 function hazardHit(s, p, type) { p.stats.hz++; s.arena.log.hazardKnocks++; emit(s, 'hazardHit', { pid: p.id, htype: type, x: p.x, z: p.z }); }
 function inCircle(x, z, cx, cz, r) { const dx = x - cx, dz = z - cz; return dx * dx + dz * dz <= r * r; }
+/* A free spot from an arena's fixed list (or anywhere on court when it has none). */
+function pickSpot(s, spots, used, rx) {
+  if (!spots) return onCourtXZ(s, rx);
+  const free = spots.filter(([x, z]) => !used.some(u => u.x === x && u.z === z));
+  return free.length ? free[Math.floor(rngNext(s) * free.length)] : onCourtXZ(s, rx);
+}
 function onCourtXZ(s, rx) { return [(rngNext(s) - 0.5) * 2 * (HALF_L - rx), (rngNext(s) - 0.5) * 2 * (HALF_W - 1.5)]; }
 
 const HAZARD_TYPES = {
@@ -2200,7 +2246,7 @@ const HAZARD_TYPES = {
       st.patches = st.patches.filter(pa => pa.ph === 'warn' || pa.t > 0);
       if (--st.t <= 0) {
         st.t = randRange(s, P.gap);
-        if (st.patches.length < P.max) { const [x, z] = onCourtXZ(s, 3); st.patches.push({ x, z, ph: 'warn', t: P.warn }); warnFire(s, P, 'warn', { x, z }); }
+        if (st.patches.length < P.max) { const [x, z] = pickSpot(s, P.spots, st.patches, 3); st.patches.push({ x, z, ph: 'warn', t: P.warn }); warnFire(s, P, 'warn', { x, z }); }
       }
     },
     env(s, st, P, p) { for (const pa of st.patches) if (pa.ph === 'on' && inCircle(p.x, p.z, pa.x, pa.z, P.radius)) { p.eSpd *= P.slow; p.eAcc = Math.min(1, p.eAcc * 2.2); s.arena.log.slushTime++; return; } },
@@ -2253,12 +2299,14 @@ const HAZARD_TYPES = {
     }
   },
   sinkSand: {
-    init: (s, P) => ({ t: randRange(s, P.gap), patches: P.patches.map(([x, z]) => ({ x, z, ph: 'on', t: 0 })) }),
+    // patches cycle through the arena's fixed sand spots: an active patch settles after `life` ticks
+    init: (s, P) => ({ t: randRange(s, P.gap), patches: P.patches.map(([x, z]) => ({ x, z, ph: 'on', t: P.life || 0 })) }),
     update(s, st, P) {
-      for (const pa of st.patches) if (pa.ph === 'warn' && --pa.t <= 0) { pa.ph = 'on'; warnFire(s, P, 'fire', { x: pa.x, z: pa.z }); }
+      for (const pa of st.patches) if (pa.ph === 'warn' && --pa.t <= 0) { pa.ph = 'on'; pa.t = P.life || 0; warnFire(s, P, 'fire', { x: pa.x, z: pa.z }); }
+      if (P.life) st.patches = st.patches.filter(pa => pa.ph === 'warn' || --pa.t > 0);
       if (--st.t <= 0) {
         st.t = randRange(s, P.gap);
-        if (st.patches.length < P.max) { const [x, z] = onCourtXZ(s, 4); st.patches.push({ x, z, ph: 'warn', t: P.newWarn }); warnFire(s, P, 'warn', { x, z }); }
+        if (st.patches.length < P.max) { const [x, z] = pickSpot(s, P.spots, st.patches, 4); st.patches.push({ x, z, ph: 'warn', t: P.newWarn }); warnFire(s, P, 'warn', { x, z }); }
       }
     },
     env(s, st, P, p) {
@@ -2292,7 +2340,12 @@ const HAZARD_TYPES = {
       if (st.ph === 'idle') {
         // strikes favour the action: near the ball half the time
         const b = s.ball;
-        if (rngNext(s) < 0.7) { st.x = clamp(b.x + (rngNext(s) - 0.5) * 4, -HALF_L + 1, HALF_L - 1); st.z = clamp(b.z + (rngNext(s) - 0.5) * 4, -HALF_W + 1, HALF_W - 1); }
+        if (P.spots) { // fixed strike circles: usually the one nearest the ball
+          let i = 0;
+          if (rngNext(s) < 0.6) { let bd = 1e9; P.spots.forEach(([x, z], k) => { const d = (x - b.x) * (x - b.x) + (z - b.z) * (z - b.z); if (d < bd) { bd = d; i = k; } }); }
+          else i = Math.floor(rngNext(s) * P.spots.length);
+          [st.x, st.z] = P.spots[i]; st.spot = i;
+        } else if (rngNext(s) < 0.7) { st.x = clamp(b.x + (rngNext(s) - 0.5) * 4, -HALF_L + 1, HALF_L - 1); st.z = clamp(b.z + (rngNext(s) - 0.5) * 4, -HALF_W + 1, HALF_W - 1); }
         else [st.x, st.z] = onCourtXZ(s, 2);
         st.ph = 'warn'; st.t = P.warn; warnFire(s, P, 'warn', { x: st.x, z: st.z });
       } else if (st.ph === 'warn') {
@@ -3254,7 +3307,7 @@ function defenseIntent(s, p, sk, r, press, bits0) {
 const Render = {};
 (function () {
   const INK = new THREE.Color(CONFIG.render.ink);
-  let renderer, scene, camera, composer, gradientMap, comicPass;
+  let renderer, scene, camera, composer, gradientMap, comicPass, bloomPass = null;
   const matCache = new Map();
   const halftoneUniforms = { uHalftone: { value: CONFIG.render.halftoneScale } };
 
@@ -3315,7 +3368,7 @@ const Render = {};
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CONFIG.render.pixelRatioMax));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.className = 'gl';
     renderer.info.autoReset = false;
     container.prepend(renderer.domElement);
@@ -3327,6 +3380,10 @@ const Render = {};
     camera.position.set(0, CONFIG.camera.broadcastHeight, CONFIG.camera.broadcastDist);
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
+    if (CONFIG.render.bloom) { // half-res glow for neon, lightning, emissive hazards
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.42, 0.35, 0.9);
+      composer.addPass(bloomPass);
+    }
     comicPass = new ShaderPass({
       uniforms: { tDiffuse: { value: null }, uImpact: { value: 0 }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -3379,7 +3436,8 @@ const Render = {};
      ===================================================================== */
   let hemi, keyLight, rimLight, frenzyLight, arenaGroup = null, decoGroup = null, curArena = null;
   let nets = [], hoopGroups = [], markGroups = [], lbMesh, lbGhost, hazardViews = [], arenaGLB = null;
-  let crowdMat = null, crowdMesh = null, crowdExcite = 0;
+  const crowdU = { uTime: { value: 0 }, uExcite: { value: 0 } };
+  let crowdMat = null, crowdMesh = null, crowdExcite = 0, crowdGroup = null, courtMesh = null, arenaDrv = null;
   let scoreboardCtx, scoreboardTex, lastBoard = '';
   const STANDS = [];
   const baseFog = { near: 45, far: 95, color: new THREE.Color(0x24180f) };
@@ -3541,8 +3599,7 @@ const Render = {};
     const count = CONFIG.render.crowdCount;
     crowdMat = new THREE.MeshToonMaterial({ gradientMap });
     crowdMat.onBeforeCompile = sh => {
-      sh.uniforms.uTime = { value: 0 }; sh.uniforms.uExcite = { value: 0 };
-      crowdMat.userData.shader = sh;
+      sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uExcite = crowdU.uExcite;
       sh.vertexShader = 'uniform float uTime; uniform float uExcite; attribute float aPhase;\n' + sh.vertexShader.replace('#include <begin_vertex>', `
         #include <begin_vertex>
         float ph = aPhase * 6.2831;
@@ -3682,9 +3739,9 @@ const Render = {};
     cranes: {
       build(g, P) { // overhead gantries carrying each hoop
         const steel = toon(0x4a4038);
-        return [-1, 1].map(side => { const beam = addOutlined(new THREE.BoxGeometry(12, 0.5, 0.5), steel, 0.03, g); beam.position.set(side * (HALF_L - 4), 9, 0); const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1, 6), toon(0x15110e)); g.add(cable); return { side, cable }; });
+        return [-1, 1].map(side => { const beam = addOutlined(new THREE.BoxGeometry(12, 0.5, 0.5), steel, 0.03, g); beam.position.set(side * (HALF_L - 4), 9, 0); const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1, 6), toon(0x15110e)); g.add(cable); return { side, cable, beam }; });
       },
-      update(v) { for (const c of v) { const hg = hoopGroups[c.side > 0 ? 1 : 0]; const top = 9, bot = RULES.hoopHeight + 1.25; c.cable.position.set(hg.position.x + c.side * RULES.backboardOffset, (top + bot) / 2, 0); c.cable.scale.y = top - bot; } }
+      update(v) { for (const c of v) { const hg = hoopGroups[c.side > 0 ? 1 : 0]; c.cable.visible = c.beam.visible = !hoopModelOn; const top = 9, bot = RULES.hoopHeight + 1.25; c.cable.position.set(hg.position.x + c.side * RULES.backboardOffset, (top + bot) / 2, 0); c.cable.scale.y = top - bot; } }
     },
     ice: { build() { return {}; }, update() { } },
     slush: {
@@ -3868,10 +3925,286 @@ const Render = {};
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m;
   }
 
+
+
+  /* ---------- GLB crowd: instanced animal fans, shirts + scarves tinted per instance ---------- */
+  const SCARF_REF = new THREE.Color(0xd4d6da);
+  function crowdFigureMat(src, bounce) {
+    const m = new THREE.MeshToonMaterial({ gradientMap, map: src.map || null, vertexColors: !!src.vertexColors });
+    m.onBeforeCompile = sh => {
+      sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uExcite = crowdU.uExcite; sh.uniforms.uBounce = { value: bounce }; sh.uniforms.uScarf = { value: SCARF_REF };
+      sh.vertexShader = 'uniform float uTime; uniform float uExcite; uniform float uBounce; attribute float aPhase; attribute vec3 aTintA; attribute vec3 aTintB; varying vec3 vTintA; varying vec3 vTintB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        vTintA = aTintA; vTintB = aTintB;
+        float ph = aPhase * 6.2831;
+        transformed.y += abs(sin(uTime * (3.0 + aPhase * 2.5) + ph)) * (0.025 + uExcite * 0.32) * uBounce;
+        transformed.x += sin(uTime * 1.3 + ph) * 0.025 * max(position.y, 0.0);`);
+      sh.fragmentShader = 'uniform vec3 uScarf; varying vec3 vTintA; varying vec3 vTintB;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+        #ifdef USE_MAP
+          vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+          if (distance(sampledDiffuseColor.rgb, vec3(1.0)) < 0.05) sampledDiffuseColor.rgb = vTintA;
+          else if (distance(sampledDiffuseColor.rgb, uScarf) < 0.05) sampledDiffuseColor.rgb = vTintB;
+          diffuseColor *= sampledDiffuseColor;
+        #endif`);
+    };
+    m.customProgramCacheKey = () => 'crowdfig' + bounce;
+    return m;
+  }
+  let crowdFigs = null;
+  function loadCrowdFigures() {
+    if (crowdFigs) return crowdFigs;
+    const jobs = [];
+    for (const sp of CROWD_SPECIES) for (const pose of ['seated', 'standing']) jobs.push(loadGLTF(PROP_MODELS.crowd(sp, pose)).then(g => {
+      let mesh = null; if (g) g.scene.traverse(o => { if (o.isMesh && !mesh) mesh = o; });
+      return mesh ? { sp, pose, geo: mesh.geometry, mat: crowdFigureMat(mesh.material, pose === 'standing' ? 1.3 : 0.6) } : null;
+    }));
+    crowdFigs = Promise.all(jobs).then(list => list.filter(Boolean));
+    return crowdFigs;
+  }
+  /* seats: [{ x, y, z, ry, stand }] in world space */
+  function buildGLBCrowd(parent, seats, A) {
+    return loadCrowdFigures().then(figs => {
+      if (!figs.length || curArena !== A || !parent.parent || (parent === decoGroup && arenaGLB)) return false;
+      const seated = figs.filter(f => f.pose === 'seated'), standing = figs.filter(f => f.pose === 'standing');
+      if (!seated.length) return false;
+      const buckets = new Map();
+      for (const st of seats) {
+        const pool = st.stand && standing.length ? standing : seated;
+        const f = pool[Math.floor(Math.random() * pool.length)];
+        if (!buckets.has(f)) buckets.set(f, []); buckets.get(f).push(st);
+      }
+      const grp = new THREE.Group(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), v = new THREE.Vector3(), sc = new THREE.Vector3(), c = new THREE.Color();
+      for (const [f, list] of buckets) {
+        const n = list.length, geo = f.geo.clone();
+        const ph = new Float32Array(n), ta = new Float32Array(n * 3), tb = new Float32Array(n * 3);
+        const mesh = new THREE.InstancedMesh(geo, f.mat, n);
+        list.forEach((st, i) => {
+          v.set(st.x, st.y, st.z); q.setFromAxisAngle(up, st.ry + (Math.random() - 0.5) * 0.35); sc.setScalar(0.92 + Math.random() * 0.16);
+          m4.compose(v, q, sc); mesh.setMatrixAt(i, m4);
+          ph[i] = Math.random();
+          c.setHex(A.crowd[Math.floor(Math.random() * A.crowd.length)]).offsetHSL(0, 0, (Math.random() - 0.5) * 0.12); c.toArray(ta, i * 3);
+          c.setHex(A.crowd[Math.floor(Math.random() * A.crowd.length)]); c.toArray(tb, i * 3);
+        });
+        geo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 1));
+        geo.setAttribute('aTintA', new THREE.InstancedBufferAttribute(ta, 3));
+        geo.setAttribute('aTintB', new THREE.InstancedBufferAttribute(tb, 3));
+        mesh.frustumCulled = false; mesh.instanceMatrix.needsUpdate = true;
+        grp.add(mesh);
+      }
+      if (crowdGroup && crowdGroup.parent) crowdGroup.parent.remove(crowdGroup);
+      parent.add(grp); crowdGroup = grp;
+      if (crowdMesh) crowdMesh.visible = false;
+      return true;
+    });
+  }
+  /* Seats on our procedural stands. */
+  function proceduralSeats(max) {
+    const seats = [], v = new THREE.Vector3();
+    for (const st of STANDS) { st.g.updateMatrixWorld(); for (let t = 0; t < st.tiers; t++) for (let x = -st.w / 2 + 0.45; x < st.w / 2 - 0.3; x += 0.66) {
+      v.set(x + (Math.random() - 0.5) * 0.12, 0.7 + t * 0.75, -t * st.d - 0.15).applyMatrix4(st.g.matrixWorld);
+      seats.push({ x: v.x, y: v.y, z: v.z, ry: st.g.rotation.y, stand: Math.random() < (t === st.tiers - 1 ? 0.5 : 0.1) });
+    } }
+    for (let k = seats.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [seats[k], seats[j]] = [seats[j], seats[k]]; }
+    return seats.slice(0, max);
+  }
+  /* Seats on an arena GLB's stands: drop rays onto flat, upward faces outside the court. */
+  function glbSeats(root, names, max) {
+    const meshes = [];
+    for (const nm of names) { const n = root.getObjectByName(nm); if (n) n.traverse(o => { if (o.isMesh) meshes.push(o); }); }
+    if (!meshes.length) return [];
+    const bb = new THREE.Box3(); meshes.forEach(m => bb.expandByObject(m));
+    const rc = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0), o = new THREE.Vector3(), nrm = new THREE.Vector3();
+    const seats = [], grid = new Map(), cell = 0.62, key = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
+    for (let i = 0, tries = max * 3; i < tries && seats.length < max; i++) {
+      const x = bb.min.x + Math.random() * (bb.max.x - bb.min.x), z = bb.min.z + Math.random() * (bb.max.z - bb.min.z);
+      if (Math.abs(x) < HALF_L + 1.6 && Math.abs(z) < HALF_W + 1.6) continue;
+      if (z > HALF_W + 1.6 && Math.abs(x) < HALF_L + 3) continue; // keep the broadcast side open
+      if (grid.has(key(x, z))) continue;
+      o.set(x, bb.max.y + 1, z); rc.set(o, down);
+      const h = rc.intersectObjects(meshes, false)[0];
+      if (!h || !h.face || h.point.y < 0.25) continue;
+      nrm.copy(h.face.normal).transformDirection(h.object.matrixWorld);
+      if (nrm.y < 0.85) continue;
+      grid.set(key(x, z), 1);
+      const tx = clamp(x, -HALF_L, HALF_L), tz = clamp(z, -HALF_W, HALF_W);
+      seats.push({ x, y: h.point.y, z, ry: Math.atan2(tx - x, tz - z), stand: Math.random() < 0.12 });
+    }
+    return seats;
+  }
+  Render.crowdSeatsDebug = () => crowdGroup ? crowdGroup.children.reduce((a, m) => a + m.count, 0) : 0;
+
+  /* ---------- arena GLBs ---------- */
+  const glbMatCache = new Map();
+  function arenaMaterial(src) {
+    if (!src || glbMatCache.has(src.uuid)) return glbMatCache.get(src.uuid) || src;
+    let m;
+    const faint = src.transparent && src.opacity < 0.5;
+    if (src.isMeshBasicMaterial || faint) { // unlit cards, mist, light shafts, glass: keep them flat
+      m = new THREE.MeshBasicMaterial({ color: src.color, map: src.map || null, transparent: src.transparent, opacity: src.opacity, side: src.side, depthWrite: !src.transparent, alphaTest: src.alphaTest || 0, vertexColors: src.vertexColors });
+      if (src.emissive && faint) m.color.add(src.emissive.clone().multiplyScalar(src.emissiveIntensity * 0.4));
+    } else {
+      m = new THREE.MeshToonMaterial({ gradientMap, color: src.color, map: src.map || null, emissive: src.emissive || 0, emissiveMap: src.emissiveMap || null, emissiveIntensity: src.emissiveIntensity ?? 1, transparent: src.transparent, opacity: src.opacity, side: src.side, alphaTest: src.alphaTest || 0, vertexColors: src.vertexColors, depthWrite: src.depthWrite });
+      if (!src.transparent) halftonify(m);
+    }
+    m.name = src.name;
+    glbMatCache.set(src.uuid, m);
+    return m;
+  }
+  const isHiddenNode = o => { const u = o.userData || {}; return u.visible_default === false || u.defaultVisible === false || u.collider === true || /^collider/.test(o.name) || (o.material && o.material.name === 'mat_collider'); };
+  function prepareArenaGLB(root, AM) {
+    if (root.userData.fbPrepared) return;
+    root.userData.fbPrepared = true;
+    const hide = new Set(AM.hide || []);
+    root.traverse(o => {
+      if (hide.has(o.name) || isHiddenNode(o)) o.userData.fbHide = true;
+      if (o.isMesh) {
+        o.material = Array.isArray(o.material) ? o.material.map(arenaMaterial) : arenaMaterial(o.material);
+        o.castShadow = false; o.receiveShadow = true;
+      }
+    });
+    root.scale.setScalar(AM.scale || 1);
+  }
+  function mountArenaGLB(root, AM, A) {
+    prepareArenaGLB(root, AM);
+    root.traverse(o => { o.visible = !o.userData.fbHide; });
+    root.position.set(0, 0, 0); root.updateMatrixWorld(true);
+    if (AM.floor) { // sink the authored floor just under our markings (Tide's pier is tilted)
+      const f = root.getObjectByName('court_floor');
+      if (f) { const bb = new THREE.Box3().setFromObject(f); if (bb.max.y > -0.004) root.position.y = -0.004 - bb.max.y; }
+      courtMesh.visible = false;
+      arenaGroup.add(boundaryLines(A));
+    }
+    arenaGroup.add(root); arenaGLB = root; root.updateMatrixWorld(true);
+    decoGroup.visible = false;
+    if (AM.stands && CONFIG.render.glbCrowd !== false) buildGLBCrowd(arenaGroup, glbSeats(root, AM.stands, CONFIG.render.glbCrowdCount), A);
+    arenaDrv = AM.driver && ARENA_DRIVERS[AM.driver] ? ARENA_DRIVERS[AM.driver](root) : null;
+    if (Render.onArenaModel) Render.onArenaModel(root, A);
+  }
+  /* Sidelines, baselines, half line and centre circle — normally painted into our court texture. */
+  function boundaryLines(A) {
+    const mat = new THREE.MeshBasicMaterial({ color: A.floor.lines, side: THREE.DoubleSide }), g = new THREE.Group();
+    g.add(new THREE.Mesh(ribbonGeo([[-HALF_L, -HALF_W], [HALF_L, -HALF_W], [HALF_L, HALF_W], [-HALF_L, HALF_W], [-HALF_L, -HALF_W]], 0.12), mat));
+    g.add(new THREE.Mesh(ribbonGeo([[0, -HALF_W], [0, HALF_W]], 0.12), mat));
+    g.add(new THREE.Mesh(ribbonGeo(circlePts(0, 0, 2.4), 0.12), mat));
+    return g;
+  }
+  const nodeXZ = o => { const v = new THREE.Vector3(); o.getWorldPosition(v); return v; };
+  const nearestIdx = (list, x, z) => { let bi = -1, bd = 1e9; list.forEach((e, i) => { const d = (e.x - x) ** 2 + (e.z - z) ** 2; if (d < bd) { bd = d; bi = i; } }); return bi; };
+  const hzState = (s, type) => { const P = (curArena.hazards || []).find(h => h.type === type); return P && s.hazardsOn ? [s.arena.hz[P.id], P] : [null, P]; };
+  const ruState = (s, type) => { const P = (curArena.rules || []).find(h => h.type === type); return P && s.rulesOn ? [s.arena.ru[P.id], P] : [null, P]; };
+  function emissiveMats(node) { const out = []; node.traverse(o => { if (o.isMesh && o.material && o.material.emissive) { o.material = o.material.clone(); out.push(o.material); } }); return out; }
+  const ARENA_DRIVERS = {
+    storm(G) {
+      const strikes = [], rods = [];
+      for (let i = 1; i <= 16; i++) { const n = G.getObjectByName('hazard_strike_' + String(i).padStart(2, '0')); if (!n) continue; const p = nodeXZ(n); strikes.push({ x: p.x, z: p.z, marker: n.getObjectByName(n.name + '_marker'), scorch: n.getObjectByName(n.name + '_scorch'), burn: 0 }); }
+      for (let i = 1; i <= 8; i++) { const n = G.getObjectByName('hazard_rod_' + String(i).padStart(2, '0')); if (!n) continue; const p = nodeXZ(n); rods.push({ x: p.x, z: p.z, mats: emissiveMats(n) }); }
+      let last = 'idle', at = -1;
+      return { update(s, dt, t) {
+        const [st] = hzState(s, 'lightning');
+        const ph = st ? st.ph : 'idle';
+        if (ph === 'warn') at = nearestIdx(strikes, st.x, st.z);
+        if (last === 'warn' && ph === 'idle' && at >= 0) strikes[at].burn = 9;
+        last = ph;
+        const rod = ph === 'warn' && at >= 0 ? nearestIdx(rods, strikes[at].x, strikes[at].z) : -1, k = ph === 'warn' ? 1 - st.t / 120 : 0;
+        strikes.forEach((S, i) => {
+          S.burn = Math.max(0, S.burn - dt);
+          if (S.scorch) S.scorch.visible = S.burn > 0;
+          if (S.marker) { S.marker.visible = S.burn <= 0; const pulse = ph === 'warn' && i === at ? 1 + 0.12 * Math.sin(t * (10 + 30 * k)) : 1; S.marker.scale.set(pulse, 1, pulse); }
+        });
+        rods.forEach((R, i) => { const e = i === rod ? 3 * k : 0.15 + 0.1 * Math.sin(t * 3 + i); for (const m of R.mats) m.emissiveIntensity = e; });
+      } };
+    },
+    rooftop(G) {
+      const on = G.getObjectByName('hazard_scoreboard_on'), off = G.getObjectByName('hazard_scoreboard_blackout');
+      const banners = [1, 2, 3, 4].map(i => G.getObjectByName('banner_0' + i)).filter(Boolean).map(b => ({ b, ry: b.rotation.y }));
+      return { update(s, dt, t) {
+        const dark = s.arena.blackout || blackoutFlicker(s);
+        if (on) on.visible = !dark; if (off) off.visible = dark;
+        const [st] = hzState(s, 'wind');
+        const amp = !st ? 0.1 : st.ph === 'active' ? 0.6 : st.ph === 'warn' ? 0.3 : 0.1, dir = st ? st.dir : 1;
+        for (const B of banners) B.b.rotation.y = B.ry + dir * amp * 0.6 + Math.sin(t * (4 + amp * 10) + B.ry * 7) * amp * 0.5;
+      } };
+    },
+    tide(G) {
+      const beam = G.getObjectByName('lighthouse_beam'), wet = G.getObjectByName('court_variant_wet');
+      if (beam && !beam.userData.fbCone) {
+        const geo = new THREE.ConeGeometry(2.2, 26, 20, 1, true); geo.translate(0, -13, 0); geo.rotateZ(Math.PI / 2);
+        const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+        beam.add(cone); beam.userData.fbCone = cone;
+      }
+      return { update(s, dt, t) {
+        if (beam) beam.rotation.y += dt * 0.9;
+        const [st] = hzState(s, 'tide');
+        if (wet) wet.visible = !!st && (HALF_L - st.edge) / RULES.courtLength > 0.32;
+      } };
+    },
+    glacier(G) {
+      const ic = ['home', 'away'].map(side => { const cl = G.getObjectByName('hazard_icicle_' + side + '_cluster'); return { cl, fallen: G.getObjectByName('hazard_icicle_' + side + '_fallen'), x0: cl ? cl.position.x : 0, glow: emissiveMats(G.getObjectByName('hazard_icicle_' + side) || new THREE.Group()) }; });
+      return { update(s, dt, t) {
+        const [st] = ruState(s, 'iceFall');
+        ic.forEach((I, i) => {
+          const mine = st && st.ph !== 'idle' && (st.side > 0) === (i === 1);
+          const warn = mine && st.ph === 'warn', act = mine && st.ph === 'active';
+          if (I.cl) { I.cl.visible = !act; I.cl.position.x = I.x0 + (warn ? Math.sin(t * 70) * 0.06 : 0); }
+          if (I.fallen) I.fallen.visible = act;
+          for (const m of I.glow) m.emissiveIntensity = warn ? 1.5 + Math.sin(t * 20) : 0.15;
+        });
+      } };
+    },
+    dune(G) {
+      const pits = [];
+      for (let i = 1; i <= 6; i++) {
+        const n = G.getObjectByName('hazard_sand_0' + i); if (!n) continue;
+        const c = G.getObjectByName(n.name + '_center') || n, p = nodeXZ(c);
+        pits.push({ x: p.x, z: p.z, vortex: G.getObjectByName(n.name + '_vortex'), surface: G.getObjectByName(n.name + '_surface'), glow: emissiveMats(G.getObjectByName(n.name + '_glow') || new THREE.Group()) });
+      }
+      const shades = []; const cs = G.getObjectByName('canvas_shades'); if (cs) cs.children.forEach(o => { if (/^canvas_shade/.test(o.name) && o.isMesh) shades.push({ o, rx: o.rotation.x }); });
+      return { update(s, dt, t) {
+        const [st] = hzState(s, 'sinkSand');
+        pits.forEach((Pi, i) => {
+          const pa = st && st.patches.find(q => Math.abs(q.x - Pi.x) < 1.2 && Math.abs(q.z - Pi.z) < 1.2);
+          if (Pi.vortex) { Pi.vortex.visible = !!pa && pa.ph === 'on'; Pi.vortex.rotation.y += dt * 2.2; }
+          if (Pi.surface) Pi.surface.rotation.y += dt * (pa ? 0.8 : 0.1);
+          for (const m of Pi.glow) m.emissiveIntensity = pa && pa.ph === 'warn' ? 1.6 + Math.sin(t * 12) : pa ? 0.5 : 0.1;
+        });
+        const [ss] = hzState(s, 'sandstorm'), gust = ss && ss.ph === 'active' ? 1 : ss && ss.ph === 'warn' ? 0.4 : 0.08;
+        shades.forEach((S, i) => { S.o.rotation.x = S.rx + Math.sin(t * (3 + gust * 6) + i) * 0.04 * gust; });
+      } };
+    }
+  };
+
+
+  /* ---------- GLB hoops: origin under the backboard face, court toward +Z, rim centre (0, 4.48, 0.45) ---------- */
+  let hoopModelOn = false;
+  function attachHoopModels(file, A) {
+    hoopModelOn = false;
+    if (CONFIG.render.propModels === false) return;
+    loadGLTF(file).then(g => {
+      if (!g || curArena !== A) return;
+      const rimC = g.scene.getObjectByName('rim_centre'); g.scene.updateMatrixWorld(true);
+      const rc = rimC ? new THREE.Vector3().setFromMatrixPosition(rimC.matrixWorld) : new THREE.Vector3(0, 4.48, 0.45);
+      hoopGroups.forEach((hg, i) => {
+        const side = i ? 1 : -1, model = g.scene.clone(true);
+        const ms = []; model.traverse(o => { if (o.isMesh) ms.push(o); });
+        for (const o of ms) { o.material = arenaMaterial(o.material); o.castShadow = true; o.receiveShadow = true; if (!/net/.test(o.name) && !o.material.transparent) o.add(new THREE.Mesh(o.geometry, Render.outlineMat(0.02))); }
+        model.rotation.y = -side * Math.PI / 2;
+        model.position.set(side * rc.z, RULES.hoopHeight - rc.y, 0); // rotated: local +Z faces the court
+        for (const c of [...hg.children]) c.visible = false;
+        hg.add(model);
+        const n = nets.find(nn => nn.side === side);
+        if (n) n.strands = []; 
+        model.traverse(o => { if (/^net_strand_\d+$/.test(o.name) && n) { const a = Math.atan2(o.position.z - rc.z, o.position.x - rc.x); n.strands.push({ o, dx: Math.cos(a), dz: Math.sin(a) }); } });
+      });
+      hoopModelOn = true;
+    });
+  }
+  Render.hoopModelOn = () => hoopModelOn;
+
   /* ---------- build / switch arena ---------- */
   Render.setArena = function (key, s) {
     const A = ARENAS[key] || ARENAS.civic;
-    if (arenaGroup) { scene.remove(arenaGroup); arenaGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    if (arenaGroup) { if (arenaGLB) arenaGLB.parent.remove(arenaGLB); scene.remove(arenaGroup); arenaGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    arenaDrv = null;
     arenaGroup = new THREE.Group(); scene.add(arenaGroup);
     decoGroup = new THREE.Group(); arenaGroup.add(decoGroup);
     nets = []; hoopGroups = []; markGroups = []; hazardViews = []; STANDS.length = 0; arenaGLB = null;
@@ -3886,7 +4219,7 @@ const Render = {};
     apron.rotation.x = -Math.PI / 2; apron.position.y = -0.01; apron.receiveShadow = true;
     if (A.stands !== 'ends') decoGroup.add(apron);
     const court = new THREE.Mesh(new THREE.PlaneGeometry(RULES.courtLength, RULES.courtWidth), new THREE.MeshToonMaterial({ map: courtTexture(A), gradientMap }));
-    court.rotation.x = -Math.PI / 2; court.receiveShadow = true; arenaGroup.add(court);
+    court.rotation.x = -Math.PI / 2; court.receiveShadow = true; arenaGroup.add(court); courtMesh = court;
     for (const side of [-1, 1]) {
       const hg = buildHoop(side); hg.position.x = side * HOOP_X; arenaGroup.add(hg); hoopGroups.push(hg);
       const mg = buildMarkings(side, A); mg.position.x = side * HOOP_X; arenaGroup.add(mg); markGroups.push(mg);
@@ -3904,6 +4237,8 @@ const Render = {};
     mkStand(decoGroup, 26, 1.2, -CONFIG.court.standsX - 0.6, 0, Math.PI / 2, 8, standMat);
     mkStand(decoGroup, 26, 1.2, CONFIG.court.standsX + 0.6, 0, -Math.PI / 2, 8, standMat);
     buildCrowd(decoGroup, A);
+    crowdGroup = null;
+    if (CONFIG.render.glbCrowd !== false) buildGLBCrowd(decoGroup, proceduralSeats(CONFIG.render.glbCrowdCount), A);
     const wallMat = toon(0x15110e), bt = adBoardTexture(A);
     const boards = A.stands === 'full' ? [[44, 0, -HALF_W - 1.0, 0], [24, -HALF_L - 2.2, 0, Math.PI / 2], [24, HALF_L + 2.2, 0, -Math.PI / 2]] : [[24, -HALF_L - 2.2, 0, Math.PI / 2], [24, HALF_L + 2.2, 0, -Math.PI / 2]];
     for (const [w, x, z, ry] of boards) {
@@ -3915,7 +4250,9 @@ const Render = {};
     const hzOn = !s || s.hazardsOn, ruOn = !s || s.rulesOn;
     for (const P of A.hazards) if (hzOn) hazardViews.push({ P, view: HAZARD_VIEWS[P.type].build(arenaGroup, P), rule: false });
     for (const P of A.rules) if (ruOn) hazardViews.push({ P, view: HAZARD_VIEWS[P.type].build(arenaGroup, P), rule: true });
-    if (ARENA_MODELS[key]) loadGLTF(ARENA_MODELS[key]).then(g => { if (!g || curArena !== A) return; arenaGLB = g.scene; arenaGroup.add(arenaGLB); decoGroup.visible = false; });
+    attachHoopModels(key === 'foundry' ? PROP_MODELS.hoopCrane : PROP_MODELS.hoop, A);
+    const AM = ARENA_MODELS[key];
+    if (AM && CONFIG.render.arenaModels !== false) loadGLTF(AM.file).then(g => { if (g && curArena === A) mountArenaGLB(g.scene, AM, A); });
   };
   const _hoopCur = [HOOP_X, HOOP_X];
   Render.updateArena = function (s, dt, t) {
@@ -3953,8 +4290,8 @@ const Render = {};
     bm.material.emissive.setHex(chargedGlow ? 0xffd040 : 0x000000);
     bm.material.emissiveIntensity = chargedGlow ? 0.6 + 0.4 * Math.sin(t * 30) : 0;
     if (chargedGlow && Math.random() < 0.6) Render.spawnParticle(bm.position.x, bm.position.y, bm.position.z, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, 0.25, 0xfff080, 0.05);
-    // arena GLB hazard nodes mirror hazard activity
-    if (arenaGLB) arenaGLB.traverse(o => { if (/^hazard_/.test(o.name)) { const type = o.name.split('_')[1]; const hv = hazardViews.find(h => h.P.type === type); const st = hv && (hv.rule ? s.arena.ru[hv.P.id] : s.arena.hz[hv.P.id]); o.visible = !st || !st.ph || st.ph !== 'idle'; } });
+    // arena GLB hazard nodes mirror the hazard state
+    if (arenaDrv) arenaDrv.update(s, dt, t);
     flashBoost = Math.max(0, flashBoost - dt * 4);
     hemi.intensity = curArena.light.hemi + flashBoost;
   };
@@ -3983,6 +4320,14 @@ const Render = {};
     scene.add(ballMesh);
     ballShadow = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
     ballShadow.rotation.x = -Math.PI / 2; ballShadow.position.y = 0.012; scene.add(ballShadow);
+    if (CONFIG.render.propModels !== false) loadGLTF(PROP_MODELS.ball).then(g => {
+      let src = null; if (g) g.scene.traverse(o => { if (o.isMesh && !src) src = o; });
+      if (!src) return;
+      const geo = src.geometry.clone(); geo.computeBoundingBox();
+      const c = geo.boundingBox.getCenter(new THREE.Vector3()), sz = geo.boundingBox.getSize(new THREE.Vector3());
+      geo.translate(-c.x, -c.y, -c.z); geo.scale(BALL_R * 2 / sz.x, BALL_R * 2 / sz.y, BALL_R * 2 / sz.z);
+      ballMesh.geometry = geo; ballMesh.material = Render.toonFrom(src.material, null, !!geo.attributes.color);
+    });
   }
   Render.ball = () => ballMesh;
   Render.setBall = function (x, y, z, spin) {
@@ -4040,6 +4385,15 @@ const Render = {};
       scene.add(v.group);
       refs.push({ view: v, x: v.group.position.x, z: v.group.position.z, side: i ? -1 : 1, phase: 0 });
     }
+    if (CONFIG.render.propModels !== false) loadSpeciesAsset('__referee').then(asset => {
+      if (!asset || asset.mode !== 'rig') return;
+      for (const r of refs) {
+        try {
+          const v = buildRiggedCharacter(asset, { primary: 0x1a1a1a, secondary: 0xf4f4f0 }, 0);
+          v.group.position.copy(r.view.group.position); scene.remove(r.view.group); scene.add(v.group); r.view = v;
+        } catch (e) { console.warn('referee model fallback', e); }
+      }
+    });
   }
   function updateRefs(ballX, dt, t) {
     refs.forEach((r, i) => {
@@ -4049,6 +4403,7 @@ const Render = {};
       r.view.group.position.x = r.x;
       r.view.group.rotation.y = Math.abs(sp) > 0.3 ? (sp > 0 ? Math.PI / 2 : -Math.PI / 2) : (r.side > 0 ? Math.PI : 0);
       animateProcedural(r.view, { speed: Math.abs(sp), st: 'norm', hasBall: false, y: 0, t, stance: false }, dt);
+      if (r.view.chains) for (const c of r.view.chains) c.segs.forEach((sg, k) => { const u = (k + 1) / c.segs.length; sg.rotation.y = Math.sin(t * 5 - k * 0.7 + i) * 0.25 * u; sg.rotation.x = 0.15 * u; });
     });
   }
 
@@ -4059,8 +4414,11 @@ const Render = {};
   Render.frame = function (dt, ballX, usePost) {
     renderT += dt;
     crowdExcite = Math.max(0, crowdExcite - dt * 0.18);
-    if (crowdMat && crowdMat.userData.shader) { crowdMat.userData.shader.uniforms.uTime.value = renderT; crowdMat.userData.shader.uniforms.uExcite.value = crowdExcite; }
-    for (const n of nets) { n.pulse = Math.max(0, n.pulse - dt * 2.5); n.mesh.scale.y = 1 + Math.sin(n.pulse * Math.PI * 3) * 0.35 * n.pulse; n.mesh.position.y = RULES.hoopHeight - 0.28 - n.pulse * 0.1; }
+    crowdU.uTime.value = renderT; crowdU.uExcite.value = crowdExcite;
+    for (const n of nets) {
+      n.pulse = Math.max(0, n.pulse - dt * 2.5); n.mesh.scale.y = 1 + Math.sin(n.pulse * Math.PI * 3) * 0.35 * n.pulse; n.mesh.position.y = RULES.hoopHeight - 0.28 - n.pulse * 0.1;
+      if (n.strands) { const w = Math.sin(n.pulse * Math.PI * 3) * 0.45 * n.pulse + Math.sin(renderT * 2 + n.side) * 0.02; for (const S of n.strands) { S.o.rotation.z = w * S.dx; S.o.rotation.x = -w * S.dz; } }
+    }
     updateLines(dt);
     updateParticles(dt);
     Render.updateFrenzyLight(dt, renderT);
@@ -4475,11 +4833,26 @@ const CLIP_FOR_STATE = r => {
   if (r.speed > 7) return 'sprint';
   return r.speed > 0.6 ? 'dribble_run' : 'idle';
 };
+const BLOB = {
+  geo: (() => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g; })(),
+  tex: null,
+  mat() {
+    if (!this.tex) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d');
+      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64); this.tex = new THREE.CanvasTexture(cv);
+    }
+    return new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 });
+  }
+};
 class PlayerView {
   constructor(scene, p, colors) {
     this.pid = p.id; this.sp = p.sp; this.colors = colors; this.num = p.num;
     this.view = buildProceduralCharacter(SPECIES_BY_KEY[p.sp], colors);
     this.root = new THREE.Group(); this.root.add(this.view.group); scene.add(this.root);
+    // soft contact shadow: grounds the toon figures even where the shadow map is coarse
+    this.blob = new THREE.Mesh(BLOB.geo, BLOB.mat()); this.blob.renderOrder = 1;
+    this.blobR = (p.rad || 0.5) * 2.4; this.blob.scale.setScalar(this.blobR); this.root.add(this.blob);
     this.mixer = null; this.actions = null; this.current = '';
     this.celebrateT = 0;
     loadSpeciesAsset(p.sp).then(asset => {
@@ -4505,6 +4878,8 @@ class PlayerView {
     this.celebrateT = Math.max(0, this.celebrateT - dt);
     this.root.position.set(r.x, r.y, r.z);
     this.root.rotation.y = Math.atan2(r.fx, r.fz);
+    const air = Math.max(0, r.y - (r.gy || 0));
+    this.blob.position.y = 0.016 - air; this.blob.scale.setScalar(this.blobR * (1 - Math.min(0.5, air * 0.18))); this.blob.material.opacity = 0.42 * (1 - Math.min(0.7, air * 0.3));
     if (this.view.procedural) {
       animateProcedural(this.view, r, dt);
       if (this.view.chains) for (const c of this.view.chains) c.segs.forEach((sg, i) => {
@@ -4671,6 +5046,8 @@ class ControlManager {
     this.humanPid = -1; this.lastHolder = -1; this.lastPoss = -2; this.offBallLock = false;
     this.controllers = [];
     this.dummy = new DummyController(level);
+    this.captain = true;          // online: only the first human on a team follows the ball automatically
+    this.claimed = new Set();     // online: players other humans are controlling right now
   }
   assign(s) {
     for (let i = 0; i < s.players.length; i++) this.controllers[i] = (s.practice && this.humanTeam != null && s.players[i].team !== this.humanTeam) ? this.dummy : this.ai[s.players[i].team];
@@ -4678,24 +5055,25 @@ class ControlManager {
   }
   nearestToBall(s, team, exclude) {
     const b = s.ball;
-    return onCourtPlayers(s, team).filter(p => p.id !== exclude).sort((p, q) => vlen(p.x - b.x, p.z - b.z) - vlen(q.x - b.x, q.z - b.z) || p.id - q.id);
+    return onCourtPlayers(s, team).filter(p => p.id !== exclude && !this.claimed.has(p.id)).sort((p, q) => vlen(p.x - b.x, p.z - b.z) - vlen(q.x - b.x, q.z - b.z) || p.id - q.id);
   }
   /* auto rules — called every tick before intents are collected */
   update(s) {
     if (this.humanTeam == null) { this.assign(s); return; }
     const t = this.humanTeam, b = s.ball;
     const holder = b.st === 'held' ? b.holder : -1;
-    if (this.humanPid < 0 || !s.players[this.humanPid].onCourt) this.humanPid = this.nearestToBall(s, t)[0].id;
+    const free = () => (this.nearestToBall(s, t)[0] || onCourtPlayers(s, t)[0]).id;
+    if (this.humanPid < 0 || !s.players[this.humanPid].onCourt || this.claimed.has(this.humanPid)) this.humanPid = free();
     if (holder >= 0 && holder !== this.lastHolder) {
       const hp = s.players[holder];
-      if (hp.team === t) { this.humanPid = holder; this.offBallLock = false; }            // control follows the ball
-      else if (this.settings.autoSwitch) {
-        this.humanPid = this.nearestToBall(s, t)[0].id;                                       // auto-switch to nearest defender
+      if (hp.team === t) { if (this.captain && !this.claimed.has(holder)) { this.humanPid = holder; this.offBallLock = false; } }  // control follows the ball
+      else if (this.settings.autoSwitch && this.captain) {
+        this.humanPid = free();                                                               // auto-switch to nearest defender
       }
     }
     if (s.phase === 'ft' && s.ft && s.players[s.ft.shooter].team === t) this.humanPid = s.ft.shooter;
     // a dead ball restarts: re-pick the defender nearest the ball
-    if (s.phase === 'live' && this.lastPhase !== 'live' && s.possession >= 0 && s.possession !== t && this.settings.autoSwitch) this.humanPid = this.nearestToBall(s, t)[0].id;
+    if (s.phase === 'live' && this.lastPhase !== 'live' && s.possession >= 0 && s.possession !== t && this.settings.autoSwitch && this.captain) this.humanPid = free();
     this.lastPhase = s.phase;
     this.lastHolder = holder; this.lastPoss = s.possession;
     this.assign(s);
@@ -4705,7 +5083,7 @@ class ControlManager {
     if (this.humanTeam == null) return;
     const t = this.humanTeam, offense = s.possession === t;
     if (offense) {
-      const mates = onCourtPlayers(s, t).filter(p => p.id !== s.ball.holder).sort((a, b) => a.ri - b.ri);
+      const mates = onCourtPlayers(s, t).filter(p => p.id !== s.ball.holder && !this.claimed.has(p.id)).sort((a, b) => a.ri - b.ri);
       if (!mates.length) return;
       const i = mates.findIndex(p => p.id === this.humanPid);
       this.humanPid = mates[(i + 1) % mates.length].id; this.offBallLock = true;
@@ -4720,6 +5098,7 @@ class ControlManager {
     if (this.humanTeam == null || this.humanPid < 0) return [];
     return onCourtPlayers(s, this.humanTeam).filter(p => p.id !== this.humanPid).sort((a, b) => a.ri - b.ri).map(p => p.id);
   }
+  collectAI(s) { const out = new Array(s.players.length); for (const p of s.players) out[p.id] = p.onCourt ? this.ai[p.team].getIntent(s, p.id) : NULL_INTENT; return out; }
   collect(s, ctx) {
     const out = new Array(s.players.length);
     for (const p of s.players) out[p.id] = p.onCourt ? this.controllers[p.id].getIntent(s, p.id, ctx) : NULL_INTENT;
@@ -5010,7 +5389,7 @@ function drawLogo(cv, t) {
 function logoCanvas(t, size) { const cv = document.createElement('canvas'); cv.width = cv.height = size || 96; drawLogo(cv, t); return cv; }
 
 /* ---------------- screens ---------------- */
-const SCREENS = { title: 'scrTitle', teams: 'scrTeams', lineup: 'scrLineup', tourney: 'scrTourney', data: 'scrData', controls: 'scrControls', pause: 'scrPause', post: 'scrPost' };
+const SCREENS = { online: 'scrOnline', title: 'scrTitle', teams: 'scrTeams', lineup: 'scrLineup', tourney: 'scrTourney', data: 'scrData', controls: 'scrControls', pause: 'scrPause', post: 'scrPost' };
 function showScreen(name) {
   Game.screen = name;
   for (const id of Object.values(SCREENS)) $(id).classList.add('hidden');
@@ -5241,7 +5620,7 @@ document.addEventListener('click', e => {
     case 'meter': Game.settings.meter = !Game.settings.meter; updatePauseLabels(); persist(); break;
     case 'post': Game.settings.post = !Game.settings.post; updatePauseLabels(); persist(); break;
     case 'verify': $('verifyOut').textContent = verifyDeterminism(); break;
-    case 'quit': endMatch(); showScreen('title'); break;
+    case 'quit': if (Game.netMatch) { Online.leave(); Online.endMatch(); } else endMatch(); showScreen('title'); break;
     case 'again': if (Game.cfg) startMatch(Object.assign({}, Game.cfg, { seed: undefined })); break;
     case 'continue': endMatch(); renderTourney(); showScreen('tourney'); break;
     case 'menu': endMatch(); showScreen('title'); break;
@@ -5266,8 +5645,8 @@ function startMatch(cfg) {
   Game.mode = cfg.mode;
   const seed = cfg.seed != null ? cfg.seed >>> 0 : (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0; // chosen once, outside the sim
   const practice = cfg.mode === 'practice';
-  const s = createMatch({ seed, homeKey: cfg.home, awayKey: cfg.away, quarterMinutes: practice ? 60 : S.quarterMinutes, arenaKey: cfg.arena,
-    hazards: cfg.hazards, rules: cfg.rules, practice, lineups: Game.save.lineups });
+  const s = createMatch({ seed, homeKey: cfg.home, awayKey: cfg.away, quarterMinutes: practice ? 60 : (cfg.quarterMinutes ?? S.quarterMinutes), arenaKey: cfg.arena,
+    hazards: cfg.hazards, rules: cfg.rules, practice, lineups: cfg.lineups || Game.save.lineups });
   Game.s = s;
   Game.initial = snapshot(s);
   Game.log = new Int32Array(60 * 60 * 20 * 3 * (s.players.length + 2)); Game.logTicks = 0;
@@ -5311,6 +5690,313 @@ function renderMoveList() {
     ${p ? `<h4>${p.name}</h4><div><span>${SPECIES_BY_KEY[p.sp].trait.name}</span><b style="text-align:right;font-weight:normal">${SPECIES_BY_KEY[p.sp].trait.desc}</b></div><div><span>${p.sigName} (X / L3)</span><b style="text-align:right;font-weight:normal">${sig.desc}</b></div><div><span>Countered by</span><b style="text-align:right;font-weight:normal">${sig.counter}</b></div>` : ''}
     <h4>Moves</h4><div><span>Shoot</span><b>J hold</b></div><div><span>Pass / icon pass</span><b>K · Q+1–4</b></div><div><span>Slip / bulldoze</span><b>L</b></div><div><span>Cross · spin · step-back · euro</span><b>F G C V</b></div><div><span>Frenzy</span><b>Z</b></div><div><span>Switch player</span><b>E</b></div><div><span>Defence: stance · steal · block · check · charge</span><b>Space K J L R</b></div>`;
 }
+
+/* =====================================================================
+   ONLINE — live lobby (who is online, one click to host or join) over a
+   Supabase Realtime channel, game traffic over WebRTC data channels.
+
+   Model: deterministic input relay. Every peer runs the same simulation.
+   The host collects each human's intent, decides the authoritative intent
+   list for every tick and broadcasts it ("bundle"); guests simulate a few
+   ticks behind the host from those bundles. AI intents are a pure function
+   of MatchState, so every peer computes them locally. A state hash rides
+   along every two seconds; a mismatch triggers a snapshot resync.
+   ===================================================================== */
+const NETCFG = {
+  lobby: { url: 'https://ovikcgljthlkspzbxtov.supabase.co',   // shared with Vector; anon key is a public client key
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aWtjZ2xqdGhsa3NwemJ4dG92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDUyNTUsImV4cCI6MjA5MjI4MTI1NX0.VMxDeDseju-2vZqgqFYBsC5lLjvhZRW7LbWEQLwYj1o',
+    channel: 'fangball-lobby', lib: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm' },
+  stun: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'],
+  maxPlayers: 10, bufferTarget: 3, hashEvery: 120, joinTimeout: 20000
+};
+const NET_NAMES = ['Tusker', 'Bramble', 'Quill', 'Sable', 'Pounce', 'Rumble', 'Flick', 'Hollow', 'Cinder', 'Marsh', 'Vane', 'Burrow'];
+
+/* ---- signalling transports: Supabase Realtime (live) or BroadcastChannel (?net=local, same-browser testing) ---- */
+class SupabaseSignal {
+  constructor(id) { this.id = id; this.ch = null; this.ready = false; }
+  async connect(onPeers, onMsg, onStatus) {
+    const L = NETCFG.lobby;
+    const { createClient } = await import(L.lib);
+    const client = createClient(L.url, L.key, { realtime: { params: { eventsPerSecond: 20 } }, auth: { persistSession: false, autoRefreshToken: false } });
+    this.ch = client.channel(L.channel, { config: { presence: { key: this.id }, broadcast: { self: false, ack: false } } });
+    this.ch.on('presence', { event: 'sync' }, () => { const st = this.ch.presenceState(), peers = {}; for (const [k, m] of Object.entries(st)) if (k !== this.id && m && m.length) peers[k] = m[m.length - 1]; onPeers(peers); });
+    this.ch.on('broadcast', { event: 'sig' }, msg => { const m = msg.payload || msg; if (m && m.to === this.id) onMsg(m); });
+    this.ch.subscribe(st => { if (st === 'SUBSCRIBED') { this.ready = true; onStatus('Connected to the lobby.', true); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { this.ready = false; onStatus('Lobby connection lost (' + st + ').', false); } });
+  }
+  track(meta) { if (this.ready) this.ch.track(meta).catch(() => {}); }
+  send(to, payload) { if (this.ready) this.ch.send({ type: 'broadcast', event: 'sig', payload: Object.assign({}, payload, { to, from: this.id }) }).catch(() => {}); }
+}
+class LocalSignal {
+  constructor(id) { this.id = id; this.bc = null; this.meta = {}; this.seen = new Map(); this.timer = null; }
+  async connect(onPeers, onMsg, onStatus) {
+    this.bc = new BroadcastChannel('fangball-local-lobby');
+    this.bc.onmessage = e => {
+      const m = e.data; if (!m || m.from === this.id) return;
+      if (m.k === 'presence') { this.seen.set(m.from, { meta: m.meta, at: Date.now() }); this.emitPeers(onPeers); }
+      else if (m.k === 'bye') { this.seen.delete(m.from); this.emitPeers(onPeers); }
+      else if (m.k === 'sig' && m.to === this.id) onMsg(m.payload);
+    };
+    this.timer = setInterval(() => { this.bc.postMessage({ k: 'presence', from: this.id, meta: this.meta }); for (const [k, v] of this.seen) if (Date.now() - v.at > 4000) this.seen.delete(k); this.emitPeers(onPeers); }, 1000);
+    window.addEventListener('beforeunload', () => { try { this.bc.postMessage({ k: 'bye', from: this.id }); } catch (e) { } });
+    onStatus('Connected to the local test lobby (this browser only).', true);
+  }
+  emitPeers(cb) { const o = {}; for (const [k, v] of this.seen) o[k] = v.meta; cb(o); }
+  track(meta) { this.meta = meta; if (this.bc) this.bc.postMessage({ k: 'presence', from: this.id, meta }); }
+  send(to, payload) { this.bc.postMessage({ k: 'sig', to, from: this.id, payload: Object.assign({}, payload, { to, from: this.id }) }); }
+}
+
+const Online = {
+  role: 'off', myId: 'f' + Math.random().toString(36).slice(2, 10), name: '', sig: null, ready: false, status: 'Offline.',
+  lobbyPeers: {}, peers: new Map(), hostId: null, hostPc: null, hostDc: null, joining: null,
+  room: { home: 'mud', away: 'sky', arena: 'home', quarterMinutes: 4, difficulty: 'pro', hazards: true, rules: true },
+  roster: [],     // [{ id, name, side }] — host is authoritative; includes the host
+  mode: null,     // during a match: { host, mySide, captain, queue, lastSent, lastIntent }
+  get rtc() { return typeof RTCPeerConnection !== 'undefined'; },
+  localMode() { return /[?&]net=local/.test(location.search); },
+  async init() {
+    if (this.sig) return;
+    this.name = (Game.save.netName || '').slice(0, 16) || `${NET_NAMES[Math.floor(Math.random() * NET_NAMES.length)]}-${10 + Math.floor(Math.random() * 89)}`;
+    if (!this.rtc) { this.setStatus('This browser cannot open peer-to-peer connections, so online play is unavailable.'); return; }
+    this.sig = this.localMode() ? new LocalSignal(this.myId) : new SupabaseSignal(this.myId);
+    this.setStatus('Connecting to the lobby…');
+    try {
+      await this.sig.connect(p => { this.lobbyPeers = p; this.render(); }, m => this.onSignal(m), (txt, ok) => { this.ready = ok; this.setStatus(txt); this.track(); });
+    } catch (e) { this.setStatus('Lobby unavailable: ' + (e.message || e)); }
+  },
+  setStatus(t) { this.status = t; const el = $('netStatus'); if (el) el.textContent = t; },
+  setName(n) { this.name = (n || '').replace(/[<>&"]/g, '').trim().slice(0, 16) || this.name; Game.save.netName = this.name; persist(); this.track(); if (this.role === 'guest' && this.hostDc) this.sendTo(this.hostDc, { k: 'name', name: this.name }); if (this.role === 'host') { const me = this.roster.find(r => r.id === this.myId); if (me) me.name = this.name; this.pushRoom(); } },
+  track() {
+    if (!this.sig) return;
+    const r = this.room;
+    this.sig.track({ name: this.name, status: this.role === 'host' ? (Game.netMatch ? 'playing' : 'hosting') : this.role === 'guest' ? 'joined' : 'idle',
+      room: this.role === 'host' ? { home: r.home, away: r.away, arena: r.arena === 'home' ? TEAM_BY_KEY[r.home].home : r.arena, n: this.roster.length, max: NETCFG.maxPlayers, live: !!Game.netMatch } : null, t: Date.now() });
+    this.render();
+  },
+  /* ---------- WebRTC helpers (non-trickle: one offer, one answer) ---------- */
+  pc() { return new RTCPeerConnection({ iceServers: [{ urls: NETCFG.stun }] }); },
+  gathered(pc) { return new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 3500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); }); },
+  sendTo(dc, m) { if (dc && dc.readyState === 'open') { try { dc.send(JSON.stringify(m)); } catch (e) { } } },
+  /* ---------- host ---------- */
+  host() {
+    if (this.role === 'guest') this.leave();
+    this.role = 'host'; this.roster = [{ id: this.myId, name: this.name, side: 0 }];
+    const S = Game.settings; Object.assign(this.room, { home: Game.home, away: Game.away, arena: Game.arenaPick, quarterMinutes: S.quarterMinutes, difficulty: S.difficulty, hazards: S.hazards, rules: S.rules });
+    this.setStatus('Hosting. Players in the lobby can join your room; press Start when everyone is in.');
+    this.track(); this.render();
+  },
+  async onSignal(m) {
+    try {
+      if (m.t === 'join' && this.role === 'host') {
+        if (Game.netMatch || this.roster.length >= NETCFG.maxPlayers) return this.sig.send(m.from, { t: 'full' });
+        const pc = this.pc(), dc = pc.createDataChannel('game', { ordered: true });
+        const side = this.roster.filter(r => r.side === 0).length <= this.roster.filter(r => r.side === 1).length ? 0 : 1;
+        const peer = { id: m.from, name: (m.name || 'Player').slice(0, 16), pc, dc, side, intent: null, pid: -1, open: false };
+        this.peers.set(m.from, peer);
+        dc.onopen = () => { peer.open = true; this.roster.push({ id: peer.id, name: peer.name, side: peer.side }); this.pushRoom(); this.setStatus(`${peer.name} joined.`); this.track(); Sfx.pop(); };
+        dc.onmessage = e => this.hostMsg(peer, JSON.parse(e.data));
+        dc.onclose = () => this.dropPeer(peer);
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') this.dropPeer(peer); };
+        await pc.setLocalDescription(await pc.createOffer()); await this.gathered(pc);
+        this.sig.send(m.from, { t: 'offer', sdp: pc.localDescription.sdp });
+      } else if (m.t === 'answer' && this.role === 'host') {
+        const peer = this.peers.get(m.from); if (peer) await peer.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+      } else if (m.t === 'offer' && this.joining === m.from) {
+        const pc = this.pc(); this.hostPc = pc;
+        pc.ondatachannel = ev => {
+          const dc = ev.channel; this.hostDc = dc;
+          dc.onopen = () => { clearTimeout(this.joinTimer); this.role = 'guest'; this.hostId = m.from; this.joining = null; this.sendTo(dc, { k: 'name', name: this.name }); this.setStatus('Joined. Waiting for the host to start.'); this.track(); };
+          dc.onmessage = e => this.guestMsg(JSON.parse(e.data));
+          dc.onclose = () => this.hostGone();
+        };
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') this.hostGone(); };
+        await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
+        await pc.setLocalDescription(await pc.createAnswer()); await this.gathered(pc);
+        this.sig.send(m.from, { t: 'answer', sdp: pc.localDescription.sdp });
+      } else if (m.t === 'full' && this.joining === m.from) { this.joining = null; this.setStatus('That room is full or already playing.'); this.render(); }
+    } catch (e) { this.setStatus('Connection error: ' + (e.message || e)); }
+  },
+  join(hostId) {
+    if (!this.ready) return;
+    if (this.role !== 'off') this.leave();
+    this.joining = hostId; this.setStatus('Joining…');
+    this.sig.send(hostId, { t: 'join', name: this.name });
+    clearTimeout(this.joinTimer);
+    this.joinTimer = setTimeout(() => { if (this.joining) { this.joining = null; this.setStatus('Could not connect (no route between the two networks, or the host left). Try again or try another network.'); this.render(); } }, NETCFG.joinTimeout);
+    this.render();
+  },
+  pushRoom() { const msg = { k: 'room', room: this.room, roster: this.roster }; for (const p of this.peers.values()) this.sendTo(p.dc, msg); this.render(); },
+  dropPeer(peer) {
+    if (!this.peers.has(peer.id)) return;
+    this.peers.delete(peer.id); try { peer.pc.close(); } catch (e) { }
+    this.roster = this.roster.filter(r => r.id !== peer.id);
+    this.setStatus(`${peer.name} left.`);
+    if (Game.netMatch) toast(`${peer.name.toUpperCase()} DISCONNECTED — AI TAKES OVER`, 'warn', 2.5);
+    this.pushRoom(); this.track();
+  },
+  hostMsg(peer, m) {
+    if (m.k === 'name') { peer.name = (m.name || peer.name).replace(/[<>&"]/g, '').slice(0, 16); const r = this.roster.find(x => x.id === peer.id); if (r) r.name = peer.name; this.pushRoom(); }
+    else if (m.k === 'side' && !Game.netMatch) { peer.side = m.side ? 1 : 0; const r = this.roster.find(x => x.id === peer.id); if (r) r.side = peer.side; this.pushRoom(); }
+    else if (m.k === 'i') { peer.pid = m.pid; peer.intent = { mx: m.i[0], mz: m.i[1], b: m.i[2], pt: m.i[3] }; peer.lastTick = m.t; }
+    else if (m.k === 'desync' && Game.netMatch) { this.sendTo(peer.dc, { k: 'snap', t: Game.s.tick, state: serialize(Game.s) }); }
+  },
+  guestMsg(m) {
+    if (m.k === 'room') { this.room = m.room; this.roster = m.roster; this.render(); }
+    else if (m.k === 'start') this.beginMatch(m.cfg, false);
+    else if (m.k === 'b' && this.mode) { this.mode.queue.push(m); }
+    else if (m.k === 'snap' && this.mode) { Game.s = deserialize(m.state); this.mode.queue = this.mode.queue.filter(b => b.t > Game.s.tick); this.mode.resyncs++; toast('RESYNCED WITH HOST', 'warn', 1.2); }
+    else if (m.k === 'end') { toast('HOST ENDED THE MATCH', 'fire', 2.5); setTimeout(() => { if (Game.netMatch) { this.endMatch(); showScreen('title'); } }, 1500); }
+  },
+  hostGone() {
+    const wasPlaying = !!Game.netMatch;
+    this.role = 'off'; this.hostId = null; this.hostDc = null; try { this.hostPc && this.hostPc.close(); } catch (e) { } this.hostPc = null;
+    this.setStatus('Disconnected from the host.'); this.track();
+    if (wasPlaying && Game.s && Game.s.phase !== 'final') { toast('HOST DISCONNECTED', 'fire', 3); setTimeout(() => { this.endMatch(); showScreen('online'); renderOnline(); }, 2500); }
+  },
+  leave() {
+    if (this.role === 'host') { for (const p of this.peers.values()) { this.sendTo(p.dc, { k: 'end' }); try { p.pc.close(); } catch (e) { } } this.peers.clear(); }
+    if (this.role === 'guest') { try { this.hostPc.close(); } catch (e) { } }
+    this.role = 'off'; this.roster = []; this.hostId = null; this.hostDc = null; this.hostPc = null; this.joining = null;
+    this.setStatus(this.ready ? 'In the lobby.' : this.status); this.track();
+  },
+  /* ---------- match ---------- */
+  start() {
+    if (this.role !== 'host') return;
+    const r = this.room;
+    const cfg = { seed: (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0, home: r.home, away: r.away, arena: r.arena === 'home' ? TEAM_BY_KEY[r.home].home : r.arena,
+      hazards: r.hazards, rules: r.rules, quarterMinutes: r.quarterMinutes, difficulty: r.difficulty, lineups: Game.save.lineups, roster: this.roster.map(x => ({ id: x.id, name: x.name, side: x.side })) };
+    for (const p of this.peers.values()) this.sendTo(p.dc, { k: 'start', cfg });
+    this.beginMatch(cfg, true);
+  },
+  beginMatch(cfg, isHost) {
+    const me = cfg.roster.find(x => x.id === this.myId);
+    const mySide = me ? me.side : 0;
+    const captain = cfg.roster.filter(x => x.side === mySide)[0].id === this.myId;
+    Game.settings.difficulty = cfg.difficulty;
+    startMatch({ mode: 'online', home: cfg.home, away: cfg.away, arena: cfg.arena, hazards: cfg.hazards, rules: cfg.rules, side: mySide, seed: cfg.seed, quarterMinutes: cfg.quarterMinutes, lineups: cfg.lineups });
+    Game.control.captain = captain;
+    this.mode = { host: isHost, mySide, captain, queue: [], claims: new Map(), roster: cfg.roster, resyncs: 0, acc: 0, stalls: 0, sentAt: 0 };
+    Game.netMatch = true;
+    this.track();
+  },
+  /* the authoritative intent list for this tick: AI for everyone, then each human's intent on the player they control */
+  merge(s, humans) {
+    const intents = Game.control.collectAI(s);
+    const claims = new Map();
+    for (const h of humans) {
+      if (h.pid < 0 || h.pid >= s.players.length || claims.has(h.pid)) continue;
+      const p = s.players[h.pid]; if (!p.onCourt || p.team !== h.side) continue;
+      claims.set(h.pid, h.id); intents[h.pid] = h.intent;
+    }
+    return { intents, claims };
+  },
+  myIntent(s) {
+    const c = Game.control;
+    c.claimed = new Set([...this.mode.claims.entries()].filter(([pid, id]) => id !== this.myId).map(([pid]) => pid));
+    c.update(s);
+    const I = c.human.getIntent(s, c.humanPid, cameraCtx());
+    Game.input.endTick();
+    return { pid: c.humanPid, intent: I };
+  },
+  advance(dtReal) {
+    const s = Game.s, M = this.mode; if (!s || !M || s.phase === 'final') return;
+    M.acc += dtReal;
+    let steps = 0;
+    if (M.host) {
+      while (M.acc >= DT && steps < CONFIG.sim.maxStepsPerFrame) {
+        M.acc -= DT; steps++;
+        const mine = this.myIntent(s);
+        const humans = [{ id: this.myId, side: M.mySide, pid: mine.pid, intent: mine.intent }];
+        for (const r of M.roster) { if (r.id === this.myId) continue; const p = this.peers.get(r.id); if (p && p.intent) humans.push({ id: r.id, side: r.side, pid: p.pid, intent: p.intent }); }
+        const { intents, claims } = this.merge(s, humans);
+        M.claims = claims;
+        simTickWith(intents);
+        const b = { k: 'b', t: s.tick, h: [...claims.entries()].map(([pid, id]) => { const I = intents[pid]; return [pid, id, I.mx, I.mz, I.b, I.pt]; }) };
+        if (s.tick % NETCFG.hashEvery === 0) b.hs = hashState(s);
+        for (const p of this.peers.values()) this.sendTo(p.dc, b);
+        if (s.phase === 'final') break;
+      }
+      if (steps >= CONFIG.sim.maxStepsPerFrame) M.acc = 0;
+    } else {
+      // guest: send my intent every tick-time; simulate host bundles with a small jitter buffer
+      while (M.acc >= DT) { M.acc -= DT; const mine = this.myIntent(s); this.sendTo(this.hostDc, { k: 'i', t: s.tick, pid: mine.pid, i: [mine.intent.mx, mine.intent.mz, mine.intent.b, mine.intent.pt] }); }
+      const q = M.queue;
+      let budget = q.length > NETCFG.bufferTarget + 4 ? 4 : q.length > NETCFG.bufferTarget ? 2 : 1;
+      if (!q.length) M.stalls++;
+      M.buffered = q.length;
+      while (budget-- > 0 && q.length && s.phase !== 'final') {
+        const b = q.shift();
+        if (b.t !== s.tick + 1) { if (b.t <= s.tick) continue; this.sendTo(this.hostDc, { k: 'desync', t: s.tick }); q.length = 0; break; }
+        const intents = Game.control.collectAI(s);
+        const claims = new Map();
+        for (const [pid, id, mx, mz, bb, pt] of b.h) { intents[pid] = { mx, mz, b: bb, pt }; claims.set(pid, id); }
+        M.claims = claims;
+        simTickWith(intents);
+        if (b.hs && b.hs !== hashState(s)) { this.sendTo(this.hostDc, { k: 'desync', t: s.tick }); q.length = 0; break; }
+      }
+    }
+  },
+  endMatch() { Game.netMatch = false; this.mode = null; endMatch(); this.track(); },
+  render() { if (Game.screen === 'online') renderOnline(); }
+};
+
+/* ---------------- lobby / room screen ---------------- */
+/* Only touch the DOM when the markup changes, so presence heartbeats never eat a click or a keystroke. */
+function setHTML(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; return true; } return false; }
+function renderOnline() {
+  const O = Online;
+  if (document.activeElement !== $('netName')) $('netName').value = O.name;
+  $('netStatus').textContent = O.status;
+  const list = Object.entries(O.lobbyPeers).sort((a, b) => (b[1].status === 'hosting') - (a[1].status === 'hosting'));
+  setHTML($('netList'), list.length ? list.map(([id, p]) => {
+    const r = p.room;
+    const what = p.status === 'hosting' && r ? `hosting ${TEAM_BY_KEY[r.home] ? TEAM_BY_KEY[r.home].abbr : '?'} vs ${TEAM_BY_KEY[r.away] ? TEAM_BY_KEY[r.away].abbr : '?'} · ${ARENAS[r.arena] ? ARENAS[r.arena].name : ''} · ${r.n}/${r.max}` : p.status === 'playing' ? 'playing a match' : p.status === 'joined' ? 'in a room' : 'in the lobby';
+    const canJoin = p.status === 'hosting' && O.role !== 'host' && O.hostId !== id;
+    return `<div class="netrow"><span><b>${String(p.name || 'Player').replace(/[<>&]/g, '')}</b> <span style="opacity:.7">${what}</span></span>${canJoin ? `<button class="tbtn" data-netjoin="${id}">${O.joining === id ? 'Joining…' : 'Join'}</button>` : ''}</div>`;
+  }).join('') : '<div class="netrow"><span style="opacity:.7">Nobody else is online right now. Host a room and share the page — anyone who opens it will see you here.</span></div>');
+  const room = $('netRoom');
+  if (O.role === 'off') { setHTML(room, ''); }
+  else {
+    const R = O.room, isHost = O.role === 'host';
+    const side = s => O.roster.filter(x => x.side === s).map(x => `<div>${x.id === O.myId ? '★ ' : ''}${String(x.name).replace(/[<>&]/g, '')}${isHost && x.id !== O.myId ? ` <button class="tbtn" data-netside="${x.id}">⇄</button>` : ''}</div>`).join('') || '<div style="opacity:.6">AI only</div>';
+    const ar = R.arena === 'home' ? TEAM_BY_KEY[R.home].home : R.arena;
+    const ctl = (k, label, val) => isHost ? `<div class="opt"><span>${label}</span><button class="sel" data-netopt="${k}">${val}</button></div>` : `<div class="opt"><span>${label}</span><b>${val}</b></div>`;
+    const changed = setHTML(room, `<h3>${isHost ? 'Your room' : 'Room'}</h3>
+      <div class="matchup"><div class="teamsel" id="netHome"></div><div class="vs">VS</div><div class="teamsel" id="netAway"></div></div>
+      <div class="netsides"><div><b>${TEAM_BY_KEY[R.home].abbr} players</b>${side(0)}</div><div><b>${TEAM_BY_KEY[R.away].abbr} players</b>${side(1)}</div></div>
+      <div class="opts">${ctl('home', 'Home team', TEAM_BY_KEY[R.home].name)}${ctl('away', 'Away team', TEAM_BY_KEY[R.away].name)}${ctl('arena', 'Arena', ARENAS[ar].name + (R.arena === 'home' ? ' (home)' : ''))}${ctl('quarter', 'Quarter length', R.quarterMinutes + ' min')}${ctl('difficulty', 'AI difficulty', R.difficulty.toUpperCase())}${ctl('hazards', 'Hazards', R.hazards ? 'ON' : 'OFF')}${ctl('rules', 'Arena rules', R.rules ? 'ON' : 'OFF')}</div>
+      <div class="btnrow" style="margin-top:10px">${isHost ? `<button class="big" data-act="netStart">Start match (${O.roster.length} player${O.roster.length > 1 ? 's' : ''})</button>` : `<button class="big alt" data-act="netSwitchSide">Switch side</button>`}<button class="big alt" data-act="netLeave">${isHost ? 'Close room' : 'Leave room'}</button></div>`);
+    if (changed) { teamSelPanel($('netHome'), TEAM_BY_KEY[R.home]); teamSelPanel($('netAway'), TEAM_BY_KEY[R.away]); }
+  }
+  $('netHostBtn').classList.toggle('hidden', O.role !== 'off' || !O.ready);
+  refreshFocus();
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const O = Online;
+  if (btn.dataset.netjoin) { O.join(btn.dataset.netjoin); return; }
+  if (btn.dataset.netside && O.role === 'host') { const r = O.roster.find(x => x.id === btn.dataset.netside); if (r) { r.side = 1 - r.side; const p = O.peers.get(r.id); if (p) p.side = r.side; O.pushRoom(); } return; }
+  if (btn.dataset.netopt && O.role === 'host') {
+    const R = O.room, k = btn.dataset.netopt, keys = TEAMS.map(t => t.key);
+    const nextTeam = (cur, other) => { let i = keys.indexOf(cur); do i = (i + 1) % keys.length; while (keys[i] === other); return keys[i]; };
+    if (k === 'home') R.home = nextTeam(R.home, R.away);
+    if (k === 'away') R.away = nextTeam(R.away, R.home);
+    if (k === 'arena') { const opts = ['home'].concat(ARENA_ORDER); R.arena = opts[(opts.indexOf(R.arena) + 1) % opts.length]; }
+    if (k === 'quarter') R.quarterMinutes = QLENS[(QLENS.indexOf(R.quarterMinutes) + 1) % QLENS.length];
+    if (k === 'difficulty') R.difficulty = DIFFS[(DIFFS.indexOf(R.difficulty) + 1) % DIFFS.length];
+    if (k === 'hazards') R.hazards = !R.hazards;
+    if (k === 'rules') R.rules = !R.rules;
+    O.pushRoom(); O.track(); return;
+  }
+  switch (btn.dataset.act) {
+    case 'online': showScreen('online'); Online.init().then(() => renderOnline()); renderOnline(); break;
+    case 'netHost': Online.host(); renderOnline(); break;
+    case 'netLeave': Online.leave(); renderOnline(); break;
+    case 'netStart': Online.start(); break;
+    case 'netSwitchSide': if (Online.role === 'guest') { const me = Online.roster.find(x => x.id === Online.myId); Online.sendTo(Online.hostDc, { k: 'side', side: me ? 1 - me.side : 1 }); } break;
+    case 'netLobby': Online.endMatch(); showScreen('online'); renderOnline(); break;
+  }
+});
+document.addEventListener('change', e => { if (e.target.id === 'netName') Online.setName(e.target.value); });
 let bannerT = 0, toastT = 0;
 function toast(text, cls, secs) { if (!text) return; const el = $('toast'); el.textContent = text; el.className = cls || ''; toastT = secs || 1.5; }
 function banner(main, sub, secs) { $('banner').innerHTML = `${main}${sub ? `<small>${sub}</small>` : ''}`; bannerT = secs; }
@@ -5327,6 +6013,13 @@ function simTick() {
   const ctx = cameraCtx();
   const intents = Game.control.collect(s, ctx);
   inp.endTick();
+  simTickWith(intents);
+}
+/* Advance the match one tick with a given full intent array (offline, or the online host/guest after merging). */
+const NET_HASHES = {};
+function simTickWith(intents) {
+  const s = Game.s;
+  if (Game.netMatch && s.tick % 60 === 59) NET_HASHES[s.tick + 1] = null; // filled after the step below
   // input log for determinism verification / replays / Stage 4
   const need = (Game.logTicks + 1) * s.players.length * 3;
   if (need > Game.log.length) { const n = new Int32Array(Game.log.length * 2); n.set(Game.log); Game.log = n; }
@@ -5335,6 +6028,7 @@ function simTick() {
   Game.logTicks++;
   capturePrev();
   step(s, intents);
+  if (Game.netMatch && s.tick % 60 === 0) NET_HASHES[s.tick] = hashState(s);
   for (const ev of s.events) Game.bus.emit(ev);
   Game.snaps.push(snapshot(s));
   if (Game.snaps.length > CONFIG.sim.snapshotSeconds * HZ) Game.snaps.shift();
@@ -5422,7 +6116,7 @@ function renderState(s, alpha, dt) {
     const x = L(pp.x, p.x), y = L(pp.y, p.y) + (p.gy || 0), z = L(pp.z, p.z);
     const hasBall = s.ball.holder === p.id && s.ball.st === 'held';
     const sp = speedOf(p);
-    const r = { x, y, z, fx: p.fx, fz: p.fz, speed: sp, st: p.st, hold: p.hold, hasBall, stance: p.stance, charging: p.charging, kind: p.kind, t: t + p.id };
+    const r = { x, y, z, fx: p.fx, fz: p.fz, speed: sp, st: p.st, hold: p.hold, hasBall, stance: p.stance, charging: p.charging, kind: p.kind, t: t + p.id, gy: p.gy || 0 };
     v.update(r, dt);
     if (dt > 0 && !Game.replay) {
       // sneaker squeaks scaled by size; speed lines on fast moves
@@ -5579,6 +6273,11 @@ function updateHUD(s, dt) {
     $('playercard').classList.add('hidden'); Render.setControlRing(0, 0, 1, 0, false);
     if (lastPromptKey !== 'cpu') { lastPromptKey = 'cpu'; $('prompts').innerHTML = `<div class="prompt">${keyHTML('camera')}<span>Camera</span></div>`; }
   }
+  if (Game.netMatch && Online.mode) for (const [pid, id] of Online.mode.claims) {
+    const r = Online.mode.roster.find(x => x.id === id); const v = Game.views.get(pid); if (!r || !v || !v.root.visible) continue;
+    const pr = project(v.root.position.x, v.root.position.y + s.players[pid].h + 0.75, v.root.position.z);
+    html += `<div class="nametag ${id === Online.myId ? 'me' : ''}" style="left:${pr.x}px;top:${pr.y}px">${String(r.name).replace(/[<>&]/g, '')}</div>`;
+  }
   icons.innerHTML = html;
   // pass target ring (mouse aim)
   const tgt = c.humanTeam != null && s.possession === c.humanTeam && s.ball.holder === c.humanPid && Game.input.device === 'kbm' ? cursorTeammate() : null;
@@ -5692,8 +6391,8 @@ function wireBus() {
   bus.on('hazardCheck', e => { if (Math.random() < 0.35) C().say('hazardCheck', { a: nm(e.pid) }, 1); });
   bus.on('burrowPop', () => Sfx.pop());
 }
-function slowmo() { Game.slowmoT = CONFIG.fx.slowmoSeconds; }
-function offerReplay(kind, x, z) { if (Game.replay) return; Game.pendingOffer = { kind, tick: Game.s.tick, x, z, wait: CONFIG.replay.postSeconds }; }
+function slowmo() { if (!Game.netMatch) Game.slowmoT = CONFIG.fx.slowmoSeconds; }
+function offerReplay(kind, x, z) { if (Game.replay || Game.netMatch) return; Game.pendingOffer = { kind, tick: Game.s.tick, x, z, wait: CONFIG.replay.postSeconds }; }
 
 function startReplay() {
   const o = Game.offer; if (!o) return;
@@ -5743,7 +6442,9 @@ function showPostGame() {
   html += `<p class="note">3PT is three-point attempts; LONG is the four-point zone; SIG signature moves used; HZD times hit by a hazard; ARENA points created by arena rules. Seed ${s.seed} · ${s.tick} ticks.</p>`;
   $('postBox').innerHTML = html;
   const T = Game.save.tournament, tourney = Game.cfg && Game.cfg.recorded;
-  document.querySelector('#scrPost .btnrow').innerHTML = tourney
+  document.querySelector('#scrPost .btnrow').innerHTML = Game.cfg && Game.cfg.mode === 'online'
+    ? `<button class="big" data-act="netLobby">Back to lobby</button><button class="big alt" data-act="menu">Main Menu</button>`
+    : tourney
     ? `<button class="big" data-act="continue">${T && T.champion ? 'See champion' : 'Continue tournament'}</button><button class="big alt" data-act="menu">Main Menu</button>`
     : `<button class="big" data-act="again">Rematch</button><button class="big alt" data-act="menu">Main Menu</button>`;
   showScreen('post');
@@ -5760,6 +6461,7 @@ function frame(now) {
   if (Game.screen !== 'match') menuNav();
   const s = Game.s;
   let dt = dtReal;
+  if (s && Game.netMatch) Online.advance(dtReal);    // online: the match keeps running even behind the pause menu
   if (s && Game.screen === 'match') {
     if (inp.pressedUI('pause')) { Game.paused = true; updatePauseLabels(); $('verifyOut').textContent = ''; showScreen('pause'); }
     if (inp.pressedUI('camera')) Game.settings.camera = Game.settings.camera === 'broadcast' ? 'behind' : 'broadcast';
@@ -5775,12 +6477,15 @@ function frame(now) {
       if (Game.offer && inp.pressedUI('replay')) startReplay();
       if (!Game.replay) {
         if (inp.pressedUI('switch')) Game.control.manualSwitch(s);
-        if (Game.slowmoT > 0) { Game.slowmoT -= dtReal; Game.timeScale = CONFIG.fx.slowmoScale; } else Game.timeScale = 1;
-        dt = dtReal * Game.timeScale;
-        Game.acc += dt;
-        let steps = 0;
-        while (Game.acc >= DT && steps < CONFIG.sim.maxStepsPerFrame && s.phase !== 'final') { simTick(); Game.acc -= DT; steps++; }
-        if (steps >= CONFIG.sim.maxStepsPerFrame) Game.acc = 0;
+        if (Game.netMatch) { Game.timeScale = 1; dt = dtReal; } // no slow-motion online: everyone shares one clock
+        else {
+          if (Game.slowmoT > 0) { Game.slowmoT -= dtReal; Game.timeScale = CONFIG.fx.slowmoScale; } else Game.timeScale = 1;
+          dt = dtReal * Game.timeScale;
+          Game.acc += dt;
+          let steps = 0;
+          while (Game.acc >= DT && steps < CONFIG.sim.maxStepsPerFrame && s.phase !== 'final') { simTick(); Game.acc -= DT; steps++; }
+          if (steps >= CONFIG.sim.maxStepsPerFrame) Game.acc = 0;
+        }
         // replay offers appear a moment after the play so the post-roll exists
         if (Game.pendingOffer) { Game.pendingOffer.wait -= dt; if (Game.pendingOffer.wait <= 0) { Game.offer = Object.assign(Game.pendingOffer, { life: CONFIG.replay.offerSeconds }); Game.pendingOffer = null; $('replayPrompt').innerHTML = `${keyHTML('replay')} INSTANT REPLAY — ${Game.offer.kind.toUpperCase()}`; $('replayPrompt').classList.remove('hidden'); } }
         if (Game.offer) { Game.offer.life -= dtReal; if (Game.offer.life <= 0) { Game.offer = null; $('replayPrompt').classList.add('hidden'); } }
@@ -5790,7 +6495,7 @@ function frame(now) {
   if (Game.s) {
     let viewState = Game.s, alpha = Game.acc / DT;
     if (Game.replay) { viewState = Game.replay.frames[Math.floor(Game.replay.idx)]; alpha = 1; }
-    const paused = Game.screen !== 'match';
+    const paused = Game.screen !== 'match' && !Game.netMatch;
     const { bx, by, bz } = renderState(viewState, clamp(alpha, 0, 1), paused ? 0 : dt);
     updateCamera(dtReal, bx, by, bz, viewState, alpha);
     if (!Game.replay) updateHUD(Game.s, dtReal);
@@ -5808,7 +6513,7 @@ function frame(now) {
   }
   FX2D.draw(dtReal);
   Game.frameCount++;
-  if (Game.frameCount % 30 === 0) $('perf').textContent = `${Math.round(Game.fps)} fps · ${Render.info().render.calls} draws`;
+  if (Game.frameCount % 30 === 0) $('perf').textContent = `${Math.round(Game.fps)} fps · ${Render.info().render.calls} draws` + (Game.netMatch && Online.mode ? ` · ONLINE ${Online.mode.host ? 'HOST' : 'GUEST buf ' + (Online.mode.buffered || 0)} · ${Online.mode.roster.length}P` + (Online.mode.resyncs ? ` · resync ${Online.mode.resyncs}` : '') : '');
   inp.endFrame();
 }
 
@@ -5831,6 +6536,7 @@ function boot() {
 
 /* Debug / test surface (also used by automated checks). */
 window.FANGBALL = {
+  Online, NET_HASHES,
   GAME_TITLE, SPORT_NAME, CONFIG, RULES, SPECIES, TEAMS, ARENAS, BTN,
   createMatch, step, snapshot, restore, serialize, deserialize, hashState, makeIntent, simulateHeadless, createTournament, tournamentNext, tournamentRecord, Store, renderTourney,
   AIController, HumanController, RemoteController, ControlManager, EventBus, Game, contactRatio, verifyDeterminism, startMatch, offerReplay, holderOf,
