@@ -1,0 +1,2022 @@
+{
+  "project": "Fangball",
+  "session": "Prompt 5 — Supporting cast, crowd, ball, hoops, accessories",
+  "units": "metres",
+  "up": "+Y",
+  "forward": "+Z",
+  "notes": [
+    "Characters: T-pose, feet at Y=0, origin between feet. Eyes/whites/details use COLOR_0 vertex colour on mat_detail.",
+    "Tails: pivot at root, point along -Z, nested segment chain. Offsets are relative to the Mixamo Hips bone.",
+    "Kit items are authored along local +Y (Mixamo bone axis) at average-player scale; scale per species.",
+    "Crowd: seated origin = seat surface, standing origin = feet. Atlas is 4x4, 256px.",
+    "Hoops: origin on the floor below the backboard face, court toward +Z. Rim top at 4.50 m."
+  ],
+  "crowdAtlas": [
+    "#ffffff",
+    "#d4d6da",
+    "#f4efe6",
+    "#1a1a1e",
+    "#8a5a3a",
+    "#a9a9ad",
+    "#c9a46c",
+    "#e98a3c",
+    "#f2b3b0",
+    "#6c8f4a",
+    "#3a4e7a",
+    "#e8c23a",
+    "#5a3f2e",
+    "#b8865a",
+    "#e7e1d6",
+    "#7d6a58"
+  ],
+  "files": [
+    {
+      "file": "referee_zebra.glb",
+      "category": "Referees & coaches",
+      "triangles": 10068,
+      "budget": 18000,
+      "materials": [
+        "mat_body",
+        "mat_outfit",
+        "mat_outfit_secondary",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "referee_zebra_body",
+          "type": "mesh",
+          "purpose": "Single combined body mesh (Mixamo auto-rig target)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "accessoryFiles": [
+        "zebra_tail.glb"
+      ]
+    },
+    {
+      "file": "zebra_tail.glb",
+      "category": "Tail accessories",
+      "triangles": 1080,
+      "budget": null,
+      "materials": [
+        "mat_body",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "zebra_tail_seg0",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "zebra_tail_seg0_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "zebra_tail_seg1",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.12
+          ]
+        },
+        {
+          "name": "zebra_tail_seg1_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "zebra_tail_seg2",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.11
+          ]
+        },
+        {
+          "name": "zebra_tail_seg2_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "zebra_tail_seg3",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.1
+          ]
+        },
+        {
+          "name": "zebra_tail_seg3_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "zebra_tail_seg4",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.09
+          ]
+        },
+        {
+          "name": "zebra_tail_seg4_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Hips",
+      "offsetFromBone": [
+        0,
+        0.02,
+        -0.19
+      ],
+      "belongsTo": "referee_zebra"
+    },
+    {
+      "file": "referee_heron.glb",
+      "category": "Referees & coaches",
+      "triangles": 8138,
+      "budget": 18000,
+      "materials": [
+        "mat_body",
+        "mat_outfit",
+        "mat_outfit_secondary",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "referee_heron_body",
+          "type": "mesh",
+          "purpose": "Single combined body mesh (Mixamo auto-rig target)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "coach_veteran.glb",
+      "category": "Referees & coaches",
+      "triangles": 9060,
+      "budget": 18000,
+      "materials": [
+        "mat_body",
+        "mat_outfit",
+        "mat_outfit_secondary",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "coach_veteran_body",
+          "type": "mesh",
+          "purpose": "Single combined body mesh (Mixamo auto-rig target)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "prop_clipboard",
+          "type": "group",
+          "purpose": "Held prop — attach to RightHand after rigging",
+          "position": [
+            -0.74,
+            0.98,
+            0
+          ]
+        },
+        {
+          "name": "prop_clipboard_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "heldProps": [
+        {
+          "node": "prop_clipboard",
+          "bone": "RightHand"
+        }
+      ],
+      "accessoryFiles": [
+        "tortoise_tail.glb"
+      ]
+    },
+    {
+      "file": "tortoise_tail.glb",
+      "category": "Tail accessories",
+      "triangles": 560,
+      "budget": null,
+      "materials": [
+        "mat_body",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "tortoise_tail_seg0",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg0_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg1",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.05
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg1_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg2",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.045
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg2_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg3",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.04
+          ]
+        },
+        {
+          "name": "tortoise_tail_seg3_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Hips",
+      "offsetFromBone": [
+        0,
+        -0.04,
+        -0.3
+      ],
+      "belongsTo": "coach_veteran"
+    },
+    {
+      "file": "coach_fiery.glb",
+      "category": "Referees & coaches",
+      "triangles": 7598,
+      "budget": 18000,
+      "materials": [
+        "mat_body",
+        "mat_outfit",
+        "mat_outfit_secondary",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "coach_fiery_body",
+          "type": "mesh",
+          "purpose": "Single combined body mesh (Mixamo auto-rig target)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "accessoryFiles": [
+        "honeybadger_tail.glb"
+      ]
+    },
+    {
+      "file": "honeybadger_tail.glb",
+      "category": "Tail accessories",
+      "triangles": 560,
+      "budget": null,
+      "materials": [
+        "mat_body",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "honeybadger_tail_seg0",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg0_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg1",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.07
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg1_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg2",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.065
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg2_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg3",
+          "type": "group",
+          "purpose": "Physics segment, pivot at its joint; child of previous segment",
+          "position": [
+            0,
+            0,
+            -0.06
+          ]
+        },
+        {
+          "name": "honeybadger_tail_seg3_mesh",
+          "type": "mesh",
+          "purpose": "Segment geometry",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Hips",
+      "offsetFromBone": [
+        0,
+        0.03,
+        -0.2
+      ],
+      "belongsTo": "coach_fiery"
+    },
+    {
+      "file": "coach_scout.glb",
+      "category": "Referees & coaches",
+      "triangles": 7684,
+      "budget": 18000,
+      "materials": [
+        "mat_body",
+        "mat_outfit",
+        "mat_outfit_secondary",
+        "mat_detail"
+      ],
+      "nodes": [
+        {
+          "name": "coach_scout_body",
+          "type": "mesh",
+          "purpose": "Single combined body mesh (Mixamo auto-rig target)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "prop_notebook",
+          "type": "group",
+          "purpose": "Held prop — attach to RightHand after rigging",
+          "position": [
+            -0.89,
+            1.3,
+            0
+          ]
+        },
+        {
+          "name": "prop_notebook_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "heldProps": [
+        {
+          "node": "prop_notebook",
+          "bone": "RightHand"
+        }
+      ]
+    },
+    {
+      "file": "ball.glb",
+      "category": "Ball & hoops",
+      "triangles": 720,
+      "budget": 800,
+      "materials": [
+        "mat_ball"
+      ],
+      "nodes": [
+        {
+          "name": "ball_mesh",
+          "type": "mesh",
+          "purpose": "Game ball, 0.32 m diameter",
+          "position": [
+            0,
+            0.16,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "hoop_standard.glb",
+      "category": "Ball & hoops",
+      "triangles": 3136,
+      "budget": 6000,
+      "materials": [
+        "mat_frame",
+        "mat_pad",
+        "mat_backboard",
+        "mat_paint",
+        "mat_rim",
+        "mat_net"
+      ],
+      "nodes": [
+        {
+          "name": "stanchion",
+          "type": "group",
+          "purpose": "Padded stanchion base",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "stanchion_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "backboard",
+          "type": "group",
+          "purpose": "Backboard (bank-shot collision)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "backboard_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "rim",
+          "type": "group",
+          "purpose": "Rim (collision + shake)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "rim_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net",
+          "type": "group",
+          "purpose": "Net root, parent of 8 strands",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_0",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0.29,
+            4.45,
+            0.45
+          ]
+        },
+        {
+          "name": "net_strand_0_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_1",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0.2051,
+            4.45,
+            0.6551
+          ]
+        },
+        {
+          "name": "net_strand_1_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_2",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0,
+            4.45,
+            0.74
+          ]
+        },
+        {
+          "name": "net_strand_2_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_3",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            -0.2051,
+            4.45,
+            0.6551
+          ]
+        },
+        {
+          "name": "net_strand_3_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_4",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            -0.29,
+            4.45,
+            0.45
+          ]
+        },
+        {
+          "name": "net_strand_4_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_5",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            -0.2051,
+            4.45,
+            0.2449
+          ]
+        },
+        {
+          "name": "net_strand_5_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_6",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0,
+            4.45,
+            0.16
+          ]
+        },
+        {
+          "name": "net_strand_6_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_7",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0.2051,
+            4.45,
+            0.2449
+          ]
+        },
+        {
+          "name": "net_strand_7_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "rim_centre",
+          "type": "empty",
+          "purpose": "EMPTY — rim centre, scoring target",
+          "position": [
+            0,
+            4.48,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "file": "hoop_crane.glb",
+      "category": "Ball & hoops",
+      "triangles": 3576,
+      "budget": 6000,
+      "materials": [
+        "mat_frame",
+        "mat_hazard",
+        "mat_pad",
+        "mat_backboard",
+        "mat_paint",
+        "mat_rim",
+        "mat_net"
+      ],
+      "nodes": [
+        {
+          "name": "crane_frame",
+          "type": "group",
+          "purpose": "Static gantry columns",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "crane_frame_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "crane_rail",
+          "type": "group",
+          "purpose": "Static rail the carriage slides along (X axis)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "crane_rail_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "crane_carriage",
+          "type": "group",
+          "purpose": "Sliding carriage; parent of backboard, rim, net, rim_centre — translate on X",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "crane_carriage_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "backboard",
+          "type": "group",
+          "purpose": "Backboard (bank-shot collision)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "backboard_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "rim",
+          "type": "group",
+          "purpose": "Rim (collision + shake)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "rim_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net",
+          "type": "group",
+          "purpose": "Net root, parent of 8 strands",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_0",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0.29,
+            4.45,
+            0.45
+          ]
+        },
+        {
+          "name": "net_strand_0_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_1",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0.2051,
+            4.45,
+            0.6551
+          ]
+        },
+        {
+          "name": "net_strand_1_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_2",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0,
+            4.45,
+            0.74
+          ]
+        },
+        {
+          "name": "net_strand_2_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_3",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            -0.2051,
+            4.45,
+            0.6551
+          ]
+        },
+        {
+          "name": "net_strand_3_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_4",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            -0.29,
+            4.45,
+            0.45
+          ]
+        },
+        {
+          "name": "net_strand_4_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_5",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            -0.2051,
+            4.45,
+            0.2449
+          ]
+        },
+        {
+          "name": "net_strand_5_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_6",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0,
+            4.45,
+            0.16
+          ]
+        },
+        {
+          "name": "net_strand_6_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "net_strand_7",
+          "type": "group",
+          "purpose": "Net strand, pivot at rim — swing for swish",
+          "position": [
+            0.2051,
+            4.45,
+            0.2449
+          ]
+        },
+        {
+          "name": "net_strand_7_mesh",
+          "type": "mesh",
+          "purpose": "",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "rim_centre",
+          "type": "empty",
+          "purpose": "EMPTY — rim centre, scoring target",
+          "position": [
+            0,
+            4.48,
+            0.45
+          ]
+        },
+        {
+          "name": "crane_travel_min",
+          "type": "empty",
+          "purpose": "EMPTY — carriage travel limit on X",
+          "position": [
+            -4.2,
+            8,
+            -1
+          ]
+        },
+        {
+          "name": "crane_travel_max",
+          "type": "empty",
+          "purpose": "EMPTY — carriage travel limit on X",
+          "position": [
+            4.2,
+            8,
+            -1
+          ]
+        }
+      ]
+    },
+    {
+      "file": "acc_headband.glb",
+      "category": "Player accessory kit",
+      "triangles": 448,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_headband_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Head",
+      "offsetFromBone": [
+        0,
+        0.1,
+        0.01
+      ]
+    },
+    {
+      "file": "acc_sweatband.glb",
+      "category": "Player accessory kit",
+      "triangles": 448,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_sweatband_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Head",
+      "offsetFromBone": [
+        0,
+        0.09,
+        0.01
+      ]
+    },
+    {
+      "file": "acc_wristband.glb",
+      "category": "Player accessory kit",
+      "triangles": 288,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_wristband_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "LeftHand",
+      "offsetFromBone": [
+        0,
+        -0.04,
+        0
+      ]
+    },
+    {
+      "file": "acc_arm_sleeve.glb",
+      "category": "Player accessory kit",
+      "triangles": 288,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_arm_sleeve_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "LeftForeArm",
+      "offsetFromBone": [
+        0,
+        -0.18,
+        0
+      ]
+    },
+    {
+      "file": "acc_leg_sleeve.glb",
+      "category": "Player accessory kit",
+      "triangles": 184,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_leg_sleeve_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "LeftLeg",
+      "offsetFromBone": [
+        0,
+        -0.12,
+        0
+      ]
+    },
+    {
+      "file": "acc_knee_brace.glb",
+      "category": "Player accessory kit",
+      "triangles": 248,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_knee_brace_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "LeftLeg",
+      "offsetFromBone": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "file": "acc_goggles.glb",
+      "category": "Player accessory kit",
+      "triangles": 444,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_goggles_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Head",
+      "offsetFromBone": [
+        0,
+        0.05,
+        0.1
+      ]
+    },
+    {
+      "file": "acc_mouthguard.glb",
+      "category": "Player accessory kit",
+      "triangles": 152,
+      "budget": 500,
+      "materials": [
+        "mat_jersey_primary",
+        "mat_jersey_secondary"
+      ],
+      "nodes": [
+        {
+          "name": "acc_mouthguard_mesh",
+          "type": "mesh",
+          "purpose": "Cosmetic, pivot at attachment point",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "attachmentBone": "Head",
+      "offsetFromBone": [
+        0,
+        -0.03,
+        0.12
+      ]
+    },
+    {
+      "file": "crowd_bear_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 380,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_bear_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_bear_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 380,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_bear_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_hippo_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 356,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_hippo_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_hippo_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 356,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_hippo_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_rhino_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 340,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_rhino_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_rhino_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 340,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_rhino_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_giraffe_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 392,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_giraffe_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_giraffe_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 392,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_giraffe_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_elephant_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 348,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_elephant_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_elephant_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 348,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_elephant_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_lynx_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 368,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_lynx_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_lynx_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 368,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_lynx_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_pig_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 344,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_pig_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_pig_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 344,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_pig_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_owl_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 296,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_owl_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_owl_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 336,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_owl_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_crocodile_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 388,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_crocodile_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_crocodile_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 388,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_crocodile_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_kangaroo_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 332,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_kangaroo_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_kangaroo_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 332,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_kangaroo_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_moose_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 340,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_moose_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_moose_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 340,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_moose_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_mouse_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 360,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_mouse_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_mouse_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 360,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_mouse_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_lion_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 404,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_lion_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_lion_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 404,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_lion_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_warthog_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 344,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_warthog_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_warthog_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 344,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_warthog_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_otter_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 380,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_otter_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_otter_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 380,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_otter_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_flamingo_seated.glb",
+      "category": "Crowd figures",
+      "triangles": 332,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_flamingo_seated_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "crowd_flamingo_standing.glb",
+      "category": "Crowd figures",
+      "triangles": 332,
+      "budget": 600,
+      "materials": [
+        "mat_crowd"
+      ],
+      "nodes": [
+        {
+          "name": "crowd_flamingo_standing_mesh",
+          "type": "mesh",
+          "purpose": "Instanced crowd figure; atlas cell 0 = shirt (tint), cell 1 = scarf (tint secondary)",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}
