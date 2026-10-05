@@ -12,3 +12,9 @@ Browser space-combat game (Three.js r170, single-file). Open `index.html` from a
 Deployed automatically to GitHub Pages on every push to `main`.
 
 Play: https://rgallaghertt.github.io/vector-game/
+
+## Fangball
+
+5v5 full-contact animal basketball (Three.js, single file + GLB characters).
+
+Play: https://rgallaghertt.github.io/vector-game/fangball/
