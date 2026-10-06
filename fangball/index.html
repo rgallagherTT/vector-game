@@ -202,6 +202,76 @@ table.box tr.bench td { opacity: .7; }
 .netsides > div { border: 2px dashed rgba(21,17,14,.35); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
 .nametag { position: absolute; transform: translate(-50%, -100%); font-size: 13px; font-weight: 800; color: #fff; background: rgba(21,17,14,.75); border: 2px solid var(--ink); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
 .nametag.me { background: var(--accent); }
+
+/* ---------- coaching: play bar, coach screen, playbook ---------- */
+#playbar { position: absolute; left: 14px; top: 14px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; z-index: 11; }
+#playbar button { font-family: var(--ui); font-weight: 800; font-size: 14px; text-align: left; padding: 2px 8px 2px 4px; border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); color: var(--paper); cursor: pointer; display: flex; align-items: center; gap: 6px; min-width: 150px; }
+#playbar button .key { min-width: 20px; height: 20px; font-size: 12px; }
+#playbar button.on { background: var(--accent2); color: var(--ink); }
+#playbar button.to { background: var(--accent); color: #fff; justify-content: space-between; }
+#playbar button:disabled { opacity: .45; }
+#playnow { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); background: var(--accent2); color: var(--ink); border: 3px solid var(--ink); border-radius: 10px; padding: 2px 12px; font-weight: 800; font-size: 16px; letter-spacing: 1px; box-shadow: 3px 3px 0 var(--ink); white-space: nowrap; }
+#playnow .dots { margin-left: 8px; letter-spacing: 2px; }
+.coachgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.crow { display: grid; grid-template-columns: 34px 1fr 64px 46px 40px; gap: 6px; align-items: center; padding: 4px 6px; border: 2px solid transparent; border-bottom: 1px solid rgba(21,17,14,.15); font-size: 15px; cursor: pointer; border-radius: 6px; }
+.crow:hover { background: rgba(255,197,49,.2); }
+.crow.sel { border-color: var(--accent); background: rgba(255,77,46,.15); }
+.crow.out { opacity: .4; cursor: default; }
+.crow.pend { background: rgba(61,220,132,.2); }
+.crow .num { font-family: var(--display); font-size: 20px; }
+.crow .st { height: 8px; border-radius: 4px; background: #d8cdb8; overflow: hidden; border: 1px solid var(--ink); }
+.crow .st i { display: block; height: 100%; background: linear-gradient(90deg, #ff4d2e, #ffc531 40%, #3ddc84); }
+.crow .cls { font-size: 11px; font-weight: 800; padding: 0 5px; border-radius: 4px; background: var(--ink); color: var(--paper); justify-self: start; }
+.bookrow { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: center; margin: 3px 0; }
+.bookrow select, .pbname { font-family: var(--ui); font-weight: 700; font-size: 16px; border: 2px solid var(--ink); border-radius: 6px; padding: 2px 6px; background: #fff; color: var(--ink); width: 100%; }
+.coachsub { font-size: 17px; font-weight: 700; margin: -6px 0 8px; }
+.pbwrap { display: grid; grid-template-columns: 250px 1fr; gap: 14px; }
+.pblist button { display: block; width: 100%; text-align: left; margin: 3px 0; font-family: var(--ui); font-weight: 800; font-size: 15px; padding: 3px 8px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); cursor: pointer; }
+.pblist button.on { background: var(--accent2); }
+.pblist .lib { font-weight: 600; }
+#pbCanvas { height: min(58vh, 640px); width: auto; max-width: 100%; aspect-ratio: 720 / 800; margin: 0 auto; background: #c98d4e; border: 3px solid var(--ink); border-radius: 8px; touch-action: none; cursor: crosshair; display: block; }
+.pbtools { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.pbtools button.on { background: var(--accent2); }
+.pbsteps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pbsteps button.on { background: var(--accent); color: #fff; }
+.pbhelp { font-size: 14px; opacity: .8; min-height: 18px; }
+
+/* ---------- touch controls ---------- */
+#touch { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
+#touch * { -webkit-tap-highlight-color: transparent; }
+#tjoy { position: absolute; left: 0; bottom: 0; width: 46vw; height: 62vh; pointer-events: auto; touch-action: none; }
+#tjoyBase { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; border: 3px solid rgba(255,246,227,.55); background: rgba(21,17,14,.28); left: 110px; top: calc(100% - 120px); pointer-events: none; }
+#tjoyKnob { position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255,197,49,.85); border: 3px solid var(--ink); left: 50%; top: 50%; }
+#tbtns { position: absolute; right: 6px; bottom: 6px; width: 250px; height: 250px; pointer-events: none; }
+.tb { position: absolute; pointer-events: auto; touch-action: none; border-radius: 50%; border: 3px solid var(--ink); font-family: var(--display); letter-spacing: 1px; color: var(--ink); display: flex; align-items: center; justify-content: center; text-align: center; line-height: .95; box-shadow: 3px 3px 0 rgba(0,0,0,.45); user-select: none; }
+.tb.down { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,.45); filter: brightness(1.25); }
+.tb.l { width: 80px; height: 80px; font-size: 19px; }
+.tb.m { width: 60px; height: 60px; font-size: 14px; }
+.tb.s { width: 46px; height: 46px; font-size: 10px; }
+.tb.c1 { background: #3ddc84; } .tb.c2 { background: #3b8cff; color: #fff; } .tb.c3 { background: #ffc531; } .tb.c4 { background: #ff4d4d; color: #fff; } .tb.c5 { background: var(--paper); } .tb.c6 { background: #b06cff; color: #fff; }
+#ttop { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; pointer-events: auto; }
+#ttop button.sig { background: #b06cff; color: #fff; }
+#ttop button { font-family: var(--display); font-size: 16px; letter-spacing: 1px; padding: 4px 10px; border: 3px solid var(--ink); border-radius: 8px; background: var(--paper); color: var(--ink); }
+#rotateHint { position: absolute; inset: 0; z-index: 60; background: rgba(18,13,10,.94); display: none; align-items: center; justify-content: center; text-align: center; font-family: var(--display); font-size: 30px; letter-spacing: 2px; color: var(--accent2); padding: 30px; }
+body.touch #prompts, body.touch #perf { display: none; }
+body.touch #playbar { top: auto; bottom: auto; top: 64px; left: 8px; flex-direction: row; flex-wrap: wrap; max-width: 46vw; gap: 4px; }
+body.touch #playbar button { min-width: 0; font-size: 12px; padding: 4px 8px; }
+body.touch #playbar button .nm { display: none; }
+body.touch #playercard { display: none; }
+body.touch #comm { bottom: auto; top: 122px; width: 56vw; }
+body.touch #scorebug { left: 8px; top: 8px; transform: none; transform-origin: 0 0; scale: .82; }
+body.touch #playnow { top: 96px; left: 8px; transform: none; font-size: 13px; }
+body.touch #playbar { top: 62px; }
+body.touch #ttop button { font-size: 14px; padding: 3px 8px; }
+body.touch #comm .cline { font-size: 14px; }
+@media (orientation: portrait) and (pointer: coarse) { body.inmatch #rotateHint { display: flex; } }
+@media (max-width: 760px) {
+  .coachgrid, .pbwrap { grid-template-columns: 1fr; }
+  .crow { grid-template-columns: 30px 1fr 50px 40px 34px; font-size: 13px; }
+  .card { padding: 14px 12px; }
+  .card h2 { font-size: 30px; }
+  button.big { font-size: 20px; padding: 6px 16px; }
+}
 @media (max-width: 700px) {
   #scorebug .team { min-width: 92px; padding: 3px 7px; }
   #scorebug .team .abbr { font-size: 18px; }
@@ -243,7 +313,15 @@ table.box tr.bench td { opacity: .7; }
     <div id="replayBadge" class="hidden">REPLAY</div>
     <div id="letterbox" class="hidden"></div>
     <div id="perf"></div>
+    <div id="playbar"></div>
+    <div id="playnow" class="hidden"></div>
   </div>
+  <div id="touch" class="hidden">
+    <div id="tjoy"><div id="tjoyBase"><div id="tjoyKnob"></div></div></div>
+    <div id="tbtns"></div>
+    <div id="ttop"><button data-tkey="KeyX" class="sig">SIG</button><button data-tkey="KeyZ" class="sig">FRENZY</button><button data-tkey="KeyE">SWITCH</button><button data-tkey="Escape">II</button></div>
+  </div>
+  <div id="rotateHint">TURN YOUR PHONE SIDEWAYS<br>TO PLAY</div>
   <div id="onos"></div>
 
   <div id="scrTitle" class="screen hidden">
@@ -255,6 +333,7 @@ table.box tr.bench td { opacity: .7; }
         <button class="big" data-act="online">Online</button>
         <button class="big" data-act="tourney">Tournament</button>
         <button class="big alt" data-act="practice">Practice Court</button>
+        <button class="big alt" data-act="playbook">Playbook</button>
         <button class="big alt" data-act="controls">Controls</button>
         <button class="big alt" data-act="data">Save Data</button>
       </div>
@@ -333,6 +412,9 @@ table.box tr.bench td { opacity: .7; }
       <h1 class="title-logo" style="font-size:72px">PAUSED</h1>
       <div class="menu">
         <button data-act="resume">Resume</button>
+        <button data-act="coach">Coach: subs &amp; plays</button>
+        <button data-act="timeout">Call timeout</button>
+        <button data-act="touchToggle">Touch controls: Auto</button>
         <button data-act="camera">Camera: Broadcast</button>
         <button data-act="autoswitch">Auto-switch: On</button>
         <button data-act="meter">Shot meter: On</button>
@@ -345,6 +427,42 @@ table.box tr.bench td { opacity: .7; }
     </div>
   </div>
 
+
+  <div id="scrCoach" class="screen hidden">
+    <div class="card wide">
+      <h2 id="coachTitle">Coach</h2>
+      <div class="coachsub" id="coachSub"></div>
+      <div class="coachgrid">
+        <div><h3>On the floor</h3><div id="coachCourt"></div></div>
+        <div><h3>Bench</h3><div id="coachBench"></div></div>
+      </div>
+      <p class="pbhelp" id="coachHelp">Tap a player on the floor, then a bench player, to sub. Subs happen at the next dead ball.</p>
+      <div class="opt"><span>Auto-subs (bench rotates tired players)</span><button class="sel" data-act="autoSub" id="autoSubBtn">ON</button></div>
+      <h3>Playbook <span style="font-size:15px;font-family:var(--ui)">— keys 1-5 call these during play</span></h3>
+      <div id="coachBook"></div>
+      <div class="btnrow" style="margin-top:12px"><button class="big" data-act="coachResume" id="coachResumeBtn">Back to the game</button><button class="big alt" data-act="playbook">Edit plays</button></div>
+    </div>
+  </div>
+  <div id="scrPlays" class="screen hidden">
+    <div class="card wide">
+      <h2>Playbook</h2>
+      <div class="pbwrap">
+        <div class="pblist">
+          <h3 style="margin-top:0">Your plays (keys 1-5)</h3><div id="pbSlots"></div>
+          <h3>Library</h3><div id="pbLib"></div>
+          <h3>Your custom plays</h3><div id="pbCustom"></div>
+          <button data-act="pbNew">+ New custom play</button>
+        </div>
+        <div>
+          <div class="pbsteps"><input class="pbname" id="pbName" maxlength="24" style="width:220px"><span id="pbStepBtns" class="pbsteps"></span><button class="tbtn" data-act="pbAddStep">+ step</button><button class="tbtn" data-act="pbDelStep">− step</button></div>
+          <div class="pbtools" id="pbTools"></div>
+          <canvas id="pbCanvas" width="720" height="800"></canvas>
+          <div class="pbhelp" id="pbHelp"></div>
+          <div class="btnrow" style="margin-top:8px"><button class="big" data-act="pbSave">Save to slot</button><button class="big alt" data-act="pbBack">Done</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="scrPost" class="screen hidden">
     <div class="card" style="width:min(1100px,100%)">
       <div class="final-score" id="postScore"></div>
@@ -382,9 +500,9 @@ const CONFIG = {
   court: { outOfBoundsGrace: 0.15, playerBoundsMargin: 2.0, standsZ: 11.4, standsX: 20.2 },
   move: {
     runBase: 3.3, runPerSpeed: 0.043, sprintMult: 1.33, dribbleMult: 0.95,
-    accelBase: 6.0, accelPerAttr: 0.14, brakeMult: 1.7,
+    accelBase: 7.0, accelPerAttr: 0.15, brakeMult: 2.1, cutGrip: 0.9,
     stanceSpeedMult: 0.62, stanceAccelMult: 1.6,
-    facingLerp: 0.22, fatigueFloor: 0.72, gravity: 18.0,
+    facingLerp: 0.28, fatigueFloor: 0.72, gravity: 18.0,
     jumpBase: 3.2, jumpPerAttr: 0.05
   },
   stamina: {
@@ -920,10 +1038,21 @@ function maxSpeed(p, sprint, hasBall, stance) {
   return v;
 }
 function accelOf(p, stance) { const M = CONFIG.move; return (M.accelBase + p.a.accel * M.accelPerAttr) * (stance ? M.stanceAccelMult : 1) * (hasTrait(p, 'burst') ? 1.35 : 1) * (p.eAcc || 1); }
+/* Velocity steering with grip: the part of the error across the current heading (a cut) and
+   the part against it (braking) get extra authority, so players plant and change direction
+   crisply instead of drifting through turns; pure acceleration stays size-limited. */
 function steer(p, dvx, dvz, accel) {
+  const M = CONFIG.move;
   const ex = dvx - p.vx, ez = dvz - p.vz, e = vlen(ex, ez);
-  const braking = vlen(dvx, dvz) < speedOf(p);
-  const maxD = accel * (braking ? CONFIG.move.brakeMult * (p.eBrk || 1) : 1) * DT;
+  if (e < 1e-6) return;
+  const sp = speedOf(p);
+  let mult = 1;
+  if (sp > 0.3) {
+    const hx = p.vx / sp, hz = p.vz / sp, along = (ex * hx + ez * hz) / e;   // +1 speeding up, -1 braking
+    mult = along < 0 ? 1 + (M.brakeMult * (p.eBrk || 1) - 1) * Math.min(1, -along * 1.4) : 1 + M.cutGrip * (1 - along);
+    if (vlen(dvx, dvz) < 0.1) mult = Math.max(mult, M.brakeMult * (p.eBrk || 1));
+  }
+  const maxD = accel * mult * DT;
   if (e <= maxD) { p.vx = dvx; p.vz = dvz; } else { p.vx += ex / e * maxD; p.vz += ez / e * maxD; }
 }
 function faceToward(p, tx, tz, k) {
@@ -998,6 +1127,7 @@ function createMatch(opts) {
   for (let i = 0; i < s.players.length; i++) s.players[i].id = i;
   s.onCourt = [s.players.filter(p => p.team === 0 && p.onCourt).map(p => p.id), s.players.filter(p => p.team === 1 && p.onCourt).map(p => p.id)];
   for (let i = 0; i < s.players.length; i++) { s.match.push(-1); s.guardedBy.push(-1); }
+  coachInit(s, opts);
   placeBench(s);
   placeFormation(s, 'tip');
   arenaInit(s);
@@ -1101,9 +1231,10 @@ function turnoverDead(s, p, team, kind, x, z) {
 }
 function doSubs(s) {
   for (let t = 0; t < 2; t++) {
+    if (s.subQ) flushSubs(s, t);   // the coach's calls first
     for (let i = 0; i < s.onCourt[t].length; i++) {
       const p = s.players[s.onCourt[t][i]];
-      if (!p.fouledOut && p.stamina >= CONFIG.ai.subStamina) continue;
+      if (!p.fouledOut && (p.stamina >= CONFIG.ai.subStamina || (s.autoSub && !s.autoSub[t]))) continue;
       let best = null, bestScore = -1e9;
       for (const q of s.players) {
         if (q.team !== t || q.onCourt || q.fouledOut) continue;
@@ -2067,14 +2198,20 @@ function endQuarter(s) {
     emit(s, 'gameEnd', { winner: s.winner, score: s.score.slice() });
     return;
   }
-  s.phase = 'qbreak'; s.phaseTimer = CONFIG.rules.quarterBreakTicks; s.next = { type: 'quarter' };
+  s.half = s.quarter === RULES.quarters / 2;
+  s.phase = 'qbreak'; s.phaseTimer = s.half ? COACH.halftimeTicks : CONFIG.rules.quarterBreakTicks; s.next = { type: 'quarter' };
+  s.ready = [!s.humanTeams[0], !s.humanTeams[1]]; s.play = [null, null];
+  if (s.half) emit(s, 'halftime', { score: s.score.slice() });
   for (const p of allOnCourt(s)) { p.st = 'norm'; p.hold = 0; p.vx = p.vz = 0; }
 }
 function startQuarter(s) {
   s.quarter++;
   s.clock = s.quarter > RULES.quarters ? s.otTicks : s.quarterTicks;
   s.teamFouls = [0, 0];
-  for (const p of s.players) p.stamina = Math.min(1, p.stamina + 0.3);
+  if (s.quarter === RULES.quarters / 2 + 1) s.timeouts = [COACH.timeoutsPerHalf, COACH.timeoutsPerHalf];
+  if (s.quarter > RULES.quarters) s.timeouts = s.timeouts.map(n => Math.max(n, 1));
+  s.half = false; s.ready = [true, true];
+  for (const p of s.players) p.stamina = Math.min(1, p.stamina + (s.quarter === RULES.quarters / 2 + 1 ? 0.6 : 0.3));
   doSubs(s);
   placeFormation(s, 'start');
   const tw = s.tipWinner < 0 ? 0 : s.tipWinner;
@@ -2094,7 +2231,10 @@ function rulesTick(s) {
     }
     return;
   }
+  if (coachTick(s)) return;
   if (s.phase === 'dead') {
+    aiCoach(s);
+    if (s.phase === 'timeout') return;
     if (--s.phaseTimer <= 0) {
       const a = s.next; s.next = null;
       if (!a) { s.phase = 'live'; return; }
@@ -2115,7 +2255,8 @@ function rulesTick(s) {
     return;
   }
   if (s.phase === 'qbreak') {
-    if (--s.phaseTimer <= 0) startQuarter(s);
+    const full = s.half ? COACH.halftimeTicks : CONFIG.rules.quarterBreakTicks;
+    if (--s.phaseTimer <= 0 || (s.ready[0] && s.ready[1] && full - s.phaseTimer >= CONFIG.rules.quarterBreakTicks)) startQuarter(s);
     return;
   }
   if (s.phase !== 'live') return;
@@ -2138,9 +2279,10 @@ function rulesTick(s) {
 }
 
 /* ---------------- THE step ---------------- */
-function step(s, intents) {
+function step(s, intents, cmds) {
   s.events = [];
   s.tick++;
+  if (cmds) for (const c of cmds) applyCmd(s, c);
   arenaPreTick(s);
   for (const p of s.players) {
     if (!p.onCourt) continue;
@@ -2153,6 +2295,7 @@ function step(s, intents) {
   collide(s);
   ballTick(s);
   rulesTick(s);
+  playTick(s);
   arenaPostTick(s);
   frenzyTick(s);
   return s;
@@ -2763,6 +2906,225 @@ function tournamentMatchOpts(T, r, i, quarterMinutes) {
 }
 
 /* =====================================================================
+   COACHING — timeouts, halftime, substitutions and called plays.
+   A coach only touches MatchState through COMMANDS, which ride with the
+   tick's intents (step(s, intents, cmds)) and over the network, so every
+   peer applies the same command on the same tick.
+     { type: 'timeout', side }            call a timeout (ball in hand or dead ball)
+     { type: 'sub', side, out, in }       swap a player (now if the ball is dead, else at the next whistle)
+     { type: 'autoSub', side, on }        let the bench rotate tired players automatically
+     { type: 'ready', side }              leave the huddle / halftime early
+     { type: 'play', side, n }            run play n (1-5) from the team's playbook; 0 cancels
+   ===================================================================== */
+const COACH = {
+  timeoutsPerHalf: 3,
+  timeoutTicks: 30 * 60,        // a huddle ends after 30 s even if a coach is still thinking (online)
+  timeoutMinTicks: 100,         // ...and never before the players reach the bench
+  halftimeTicks: 45 * 60,
+  aiTimeoutRun: 8,              // an AI coach stops an 8-0 run
+  stepTicks: 80
+};
+
+/* Play coordinates are in the attacking frame: x = metres from half court toward the hoop
+   (rim at ~16.4), z = across the court. Slot 0 is whoever has the ball when the play is called,
+   slots 1-4 are the rest, smallest to biggest (4 = the big). Each step lasts `d` ticks. */
+const SPOT = {
+  top: [7.2, 0], wingL: [10, 6.2], wingR: [10, -6.2], cornerL: [15.2, 8.6], cornerR: [15.2, -8.6],
+  elbowL: [11.6, 2.6], elbowR: [11.6, -2.6], blockL: [14.4, 2.4], blockR: [14.4, -2.4], rim: [15.7, 0],
+  slotL: [8.4, 3.6], slotR: [8.4, -3.6], deepL: [4.5, 4], deepR: [4.5, -4]
+};
+const PLAY_LIBRARY = [
+  { id: 'pnr', name: 'Pick & Roll', desc: 'The big screens for the ball handler, then rolls to the rim for the pocket pass.',
+    steps: [
+      { d: 70, m: { 0: SPOT.top, 1: SPOT.cornerL, 2: SPOT.cornerR, 3: SPOT.wingL, 4: SPOT.slotR } },
+      { d: 70, m: { 0: [8.6, -1.5] }, sc: { 4: 0 } },
+      { d: 60, m: { 0: [11.5, -2.2], 4: SPOT.rim }, pass: [0, 4] },
+      { d: 50, shoot: 4 }] },
+  { id: 'gng', name: 'Give & Go', desc: 'Hit the wing, cut hard to the rim and get it straight back.',
+    steps: [
+      { d: 70, m: { 0: SPOT.slotR, 1: SPOT.wingR, 2: SPOT.cornerL, 3: SPOT.wingL, 4: SPOT.blockL } },
+      { d: 45, pass: [0, 1] },
+      { d: 55, m: { 0: SPOT.rim }, pass: [1, 0] },
+      { d: 50, shoot: 0 }] },
+  { id: 'post', name: 'Post Up', desc: 'Clear a side and feed the big on the block.',
+    steps: [
+      { d: 75, m: { 0: SPOT.wingR, 1: SPOT.cornerL, 2: SPOT.wingL, 3: SPOT.top, 4: SPOT.blockR } },
+      { d: 50, pass: [0, 4] },
+      { d: 60, drive: 4 }] },
+  { id: 'iso', name: 'Isolation', desc: 'Everyone clears to the corners and the deep slot — one on one.',
+    steps: [
+      { d: 70, m: { 0: SPOT.top, 1: SPOT.cornerL, 2: SPOT.cornerR, 3: SPOT.deepL, 4: SPOT.deepR } },
+      { d: 80, drive: 0 }] },
+  { id: 'flare', name: 'Flare Three', desc: 'A flare screen springs the shooter to the corner for three.',
+    steps: [
+      { d: 65, m: { 0: SPOT.slotL, 1: SPOT.elbowR, 2: SPOT.wingL, 3: [12.4, -4.4], 4: SPOT.blockL } },
+      { d: 65, m: { 1: SPOT.cornerR }, sc: { 3: 1 } },
+      { d: 45, pass: [0, 1] },
+      { d: 45, shoot: 1 }] },
+  { id: 'horns', name: 'Horns Pop', desc: 'Bigs at both elbows; the four screens and pops for the open look.',
+    steps: [
+      { d: 65, m: { 0: SPOT.top, 1: SPOT.cornerL, 2: SPOT.cornerR, 3: SPOT.elbowL, 4: SPOT.elbowR } },
+      { d: 60, m: { 0: [9.2, 3.4] }, sc: { 3: 0 } },
+      { d: 55, m: { 3: SPOT.slotL, 0: [12, 4] }, pass: [0, 3] },
+      { d: 45, shoot: 3 }] },
+  { id: 'back', name: 'Backdoor', desc: 'The wing fakes out, then cuts behind an overplaying defender.',
+    steps: [
+      { d: 65, m: { 0: SPOT.slotL, 1: [10.6, 7.4], 2: SPOT.cornerR, 3: SPOT.top, 4: SPOT.elbowR } },
+      { d: 50, m: { 1: SPOT.rim }, pass: [0, 1] },
+      { d: 45, shoot: 1 }] },
+  { id: 'oop', name: 'Alley-Oop', desc: 'Guards drift to the arc, the big slips in behind the help for the lob.',
+    steps: [
+      { d: 65, m: { 0: SPOT.wingL, 1: SPOT.cornerR, 2: SPOT.wingR, 3: SPOT.cornerL, 4: SPOT.elbowR } },
+      { d: 50, m: { 4: SPOT.rim }, pass: [0, 4] },
+      { d: 45, shoot: 4 }] }
+];
+const PLAY_BY_ID = Object.fromEntries(PLAY_LIBRARY.map(p => [p.id, p]));
+const DEFAULT_PLAYBOOK = ['pnr', 'gng', 'post', 'iso', 'flare'].map(id => PLAY_BY_ID[id]);
+/* A playbook is five plays; anything malformed falls back to the default for that slot. */
+function sanitizePlaybook(book) {
+  const out = [];
+  for (let i = 0; i < 5; i++) {
+    const p = book && book[i];
+    const ok = p && Array.isArray(p.steps) && p.steps.length && p.steps.length <= 8 && p.steps.every(st => st && typeof st === 'object');
+    out.push(ok ? JSON.parse(JSON.stringify({ id: String(p.id || 'custom').slice(0, 24), name: String(p.name || 'Custom').slice(0, 24), steps: p.steps.map(st => ({
+      d: clamp(Math.round(st.d || COACH.stepTicks), 20, 240),
+      m: st.m ? Object.fromEntries(Object.entries(st.m).filter(([k, v]) => +k >= 0 && +k <= 4 && Array.isArray(v)).map(([k, v]) => [k, [clamp(+v[0] || 0, 0, HALF_L - 0.5), clamp(+v[1] || 0, -HALF_W + 0.5, HALF_W - 0.5)]])) : undefined,
+      sc: st.sc ? Object.fromEntries(Object.entries(st.sc).filter(([k, v]) => +k >= 0 && +k <= 4 && +v >= 0 && +v <= 4 && +k !== +v).map(([k, v]) => [k, +v])) : undefined,
+      pass: Array.isArray(st.pass) && st.pass[0] !== st.pass[1] ? [clamp(+st.pass[0] | 0, 0, 4), clamp(+st.pass[1] | 0, 0, 4)] : undefined,
+      shoot: st.shoot != null ? clamp(+st.shoot | 0, 0, 4) : undefined,
+      drive: st.drive != null ? clamp(+st.drive | 0, 0, 4) : undefined
+    })) })) : JSON.parse(JSON.stringify(DEFAULT_PLAYBOOK[i])));
+  }
+  return out;
+}
+
+function coachInit(s, opts) {
+  s.humanTeams = (opts.humanTeams || [false, false]).map(Boolean);
+  s.timeouts = [COACH.timeoutsPerHalf, COACH.timeoutsPerHalf];
+  s.autoSub = [true, true];
+  s.subQ = [[], []];
+  s.ready = [true, true];
+  s.to = null; s.half = false; s.runTO = -1;
+  s.plays = [0, 1].map(t => sanitizePlaybook(opts.plays && opts.plays[t]));
+  s.play = [null, null];
+}
+
+/* ---------- commands ---------- */
+function canTimeout(s, side) {
+  if (s.timeouts[side] <= 0 || s.phase === 'final' || s.phase === 'timeout' || s.phase === 'tip' || s.phase === 'qbreak') return false;
+  if (s.phase === 'dead') return true;
+  const h = holderOf(s);
+  return s.phase === 'live' && h && h.team === side && (h.st === 'norm' || h.st === 'move');
+}
+function startTimeout(s, side) {
+  let resume = s.next;
+  if (s.phase === 'live') {
+    const h = holderOf(s);
+    resume = { type: 'inbound', team: side, x: clamp(h.x, -HALF_L + 1, HALF_L - 1), z: h.z >= 0 ? HALF_W - 0.4 : -HALF_W + 0.4 };
+    setDead(s, null, 0);
+  }
+  s.timeouts[side]--;
+  s.phase = 'timeout'; s.next = null;
+  s.to = { team: side, t: COACH.timeoutTicks, el: 0, resume };
+  s.ready = [!s.humanTeams[0], !s.humanTeams[1]];
+  s.play = [null, null];
+  emit(s, 'timeout', { team: side, left: s.timeouts[side] });
+}
+function applySub(s, t, outId, inId) {
+  const p = s.players[outId], q = s.players[inId];
+  if (!p || !q || p.team !== t || q.team !== t || !p.onCourt || q.onCourt || q.fouledOut) return false;
+  const i = s.onCourt[t].indexOf(p.id); if (i < 0) return false;
+  q.onCourt = true; p.onCourt = false;
+  q.x = p.x; q.z = p.z; q.y = 0; q.gy = p.gy || 0; q.vx = q.vz = q.vy = 0; q.fx = p.fx; q.fz = p.fz;
+  q.st = 'norm'; q.stT = 0; q.prevB = 0; p.st = 'norm'; p.stT = 0;
+  s.onCourt[t][i] = q.id;
+  for (let k = 0; k < s.match.length; k++) { if (s.match[k] === p.id) s.match[k] = q.id; if (s.guardedBy[k] === p.id) s.guardedBy[k] = q.id; }
+  s.match[q.id] = s.match[p.id]; s.guardedBy[q.id] = s.guardedBy[p.id]; s.match[p.id] = -1; s.guardedBy[p.id] = -1;
+  if (s.ball.holder === p.id) s.ball.holder = q.id;
+  emit(s, 'sub', { pid: q.id, out: p.id, team: t, fouledOut: p.fouledOut, coach: true });
+  return true;
+}
+const ballIsDead = s => s.phase === 'dead' || s.phase === 'timeout' || s.phase === 'qbreak' || s.phase === 'tip';
+function applyCmd(s, c) {
+  if (!c || (c.side !== 0 && c.side !== 1)) return;
+  const t = c.side;
+  if (c.type === 'timeout') { if (canTimeout(s, t)) startTimeout(s, t); else emit(s, 'timeoutDenied', { team: t }); }
+  else if (c.type === 'sub') {
+    const q = s.subQ[t].filter(x => x.out !== c.out && x.in !== c.in);
+    q.push({ out: c.out | 0, in: c.in | 0 }); s.subQ[t] = q.slice(-5);
+    if (ballIsDead(s)) { flushSubs(s, t); placeBench(s); }
+    else emit(s, 'subQueued', { team: t, pid: c.in | 0, out: c.out | 0 });
+  }
+  else if (c.type === 'autoSub') s.autoSub[t] = !!c.on;
+  else if (c.type === 'ready') s.ready[t] = true;
+  else if (c.type === 'play') startPlay(s, t, c.n | 0);
+  else if (c.type === 'playbook') { s.plays[t] = sanitizePlaybook(c.book); s.play[t] = null; }
+}
+function flushSubs(s, t) {
+  const q = s.subQ[t]; s.subQ[t] = [];
+  for (const x of q) applySub(s, t, x.out, x.in);
+}
+
+/* ---------- huddles ---------- */
+function coachTick(s) {
+  if (s.phase === 'timeout') {
+    const T = s.to; T.t--; T.el++;
+    if (T.t <= 0 || (T.el >= COACH.timeoutMinTicks && s.ready[0] && s.ready[1])) endTimeout(s);
+    return true;
+  }
+  return false;
+}
+function endTimeout(s) {
+  const T = s.to; s.to = null;
+  s.ready = [true, true];
+  s.phase = 'dead'; s.phaseTimer = CONFIG.rules.deadTicks; s.next = T.resume || { type: 'inbound', team: T.team, x: 0, z: HALF_W - 0.4 };
+  doSubs(s);
+  emit(s, 'timeoutEnd', { team: T.team });
+}
+/* AI coaches: stop the other team's run with a timeout when the ball is dead. */
+function aiCoach(s) {
+  if (s.phase !== 'dead' || !s.next || s.phaseTimer < 20) return;
+  const r = s.run;
+  if (r.team < 0 || r.pts < COACH.aiTimeoutRun || s.runTO === s.possStartTick) return;
+  const t = 1 - r.team;
+  if (s.humanTeams[t] || s.timeouts[t] <= 0) return;
+  s.runTO = s.possStartTick;
+  startTimeout(s, t);
+}
+
+/* ---------- called plays ---------- */
+function startPlay(s, t, n) {
+  if (n <= 0 || n > 5) { if (s.play[t]) { s.play[t] = null; emit(s, 'playEnd', { team: t, why: 'cancel' }); } return; }
+  const h = holderOf(s);
+  if (s.phase !== 'live' || s.possession !== t || !h || h.team !== t) { emit(s, 'playDenied', { team: t, n }); return; }
+  const mates = onCourtPlayers(s, t).filter(q => q.id !== h.id).sort((a, b) => clsIdx(a.cls) - clsIdx(b.cls) || a.h - b.h || a.id - b.id);
+  s.play[t] = { n, i: 0, t: 0, slots: [h.id].concat(mates.map(q => q.id)), wait: 0 };
+  emit(s, 'playCall', { team: t, n, name: s.plays[t][n - 1].name });
+}
+function playStep(s, t) { const P = s.play[t]; return P ? s.plays[t][P.n - 1].steps[P.i] : null; }
+function playSlot(s, p) { const P = s.play[p.team]; return P ? P.slots.indexOf(p.id) : -1; }
+/* attacking frame → world */
+function playXZ(s, t, v) { const d = attackDir(s, t); return [d * v[0] * (s.hoopX[d > 0 ? 1 : 0] / HOOP_X), v[1]]; }
+function playTick(s) {
+  for (let t = 0; t < 2; t++) {
+    const P = s.play[t]; if (!P) continue;
+    const b = s.ball, book = s.plays[t][P.n - 1];
+    const end = why => { s.play[t] = null; emit(s, 'playEnd', { team: t, why }); };
+    if (s.phase !== 'live' || s.possession !== t) { end('stopped'); continue; }
+    if (b.st === 'shot') { end('shot'); continue; }
+    if (P.slots.some(id => !s.players[id].onCourt)) { end('sub'); continue; }
+    if (b.st === 'pass') continue;                     // the step's clock waits for the ball
+    const st = book.steps[P.i];
+    if (!st) { end('done'); continue; }
+    P.t++;
+    let done = P.t >= st.d;
+    // a pass step waits (a little) for the ball to actually move
+    if (done && st.pass && b.st === 'held' && b.holder === P.slots[st.pass[0]] && P.wait < 45) { P.wait++; done = false; }
+    if (done) { P.i++; P.t = 0; P.wait = 0; if (P.i >= book.steps.length) end('done'); }
+  }
+}
+
+/* =====================================================================
    CONTROLLERS — every player is driven by one. Each tick a controller
    returns an intent { mx, mz, b, pt } for its player.
    ===================================================================== */
@@ -2939,6 +3301,11 @@ function aiIntentCore(s, p, sk) {
 
   // ---- dead ball: walk to sensible spots ----
   if (!live) {
+    if (s.phase === 'timeout') { // huddle at the bench
+      const k = s.onCourt[p.team].indexOf(p.id), side = p.team === 0 ? -1 : 1;
+      go(side * (4.6 + (k % 3) * 1.1), -HALF_W + 1.3 + Math.floor(k / 3) * 1.1, false);
+      return makeIntent(mx, mz, bits, -1);
+    }
     if (s.phase === 'dead' && s.next && s.next.type === 'inbound') {
       const team = s.next.team, hx = hoopX(s, team), d2 = attackDir(s, team);
       const slots = onCourtPlayers(s, p.team).map(q => q.id);
@@ -3019,9 +3386,37 @@ function aiIntentCore(s, p, sk) {
   if (offense) return hasBall ? handlerIntent(s, p, sk, r, press) : offBallIntent(s, p, sk, r, press);
   return defenseIntent(s, p, sk, r, press, 0);
 }
+/* Floor spacing: bigs take the weak-side block and strong-side elbow, everyone else takes the
+   free perimeter spot nearest them that is at least 4.5 m from the ball — no two players share a spot. */
+const PERIM_SPOTS = ['cornerL', 'cornerR', 'wingL', 'wingR', 'top', 'slotL', 'slotR'];
+function spacingSpot(s, p) {
+  const t = p.team, h = holderOf(s), d = attackDir(s, t);
+  const mates = onCourtPlayers(s, t).filter(q => !h || q.id !== h.id).sort((a, b) => a.id - b.id);
+  const hz = h ? h.z : 0, hxA = h && h.team === t ? h.x * d : 8;
+  const weak = hz >= 0 ? 'R' : 'L', strong = hz >= 0 ? 'L' : 'R';
+  const out = new Map(), taken = new Set();
+  mates.filter(q => clsIdx(q.cls) >= 2).slice(0, 2).forEach((q, i) => { const k = i ? 'elbow' + strong : 'block' + weak; out.set(q.id, k); taken.add(k); });
+  const cands = PERIM_SPOTS.filter(k => vlen(SPOT[k][0] - hxA, SPOT[k][1] - hz) > 4.5);
+  const pairs = [];
+  for (const q of mates) if (!out.has(q.id)) for (const k of cands) pairs.push([vlen(SPOT[k][0] - q.x * d, SPOT[k][1] - q.z) + PERIM_SPOTS.indexOf(k) * 0.01, q.id, k]);
+  pairs.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  for (const [, id, k] of pairs) if (!out.has(id) && !taken.has(k)) { out.set(id, k); taken.add(k); }
+  const key = out.get(p.id) || 'top';
+  // arena features still pull shooters: the crown deck and a storm-moved long bomb zone
+  const lb = s.arena.lb, lbOn = (lb.x || lb.z) && lb.x * d > -1;
+  if (key === 'top') { const c = crownSpot(s, t); if (c) return c; }
+  if (lbOn && (key === 'wingL' && lb.z > 0 || key === 'wingR' && lb.z <= 0)) return [lb.x, lb.z];
+  return playXZ(s, t, SPOT[key]);
+}
+/* Where slot k stands in the current step of a called play (its latest assigned spot). */
+function playSpot(s, t, k) {
+  const P = s.play[t]; if (!P) return null;
+  const steps = s.plays[t][P.n - 1].steps;
+  for (let i = P.i; i >= 0; i--) if (steps[i].m && steps[i].m[k]) return playXZ(s, t, steps[i].m[k]);
+  return null;
+}
 function offBallMove(s, p, sk, r, dir, myHoop) {
-  const spots = offenseSpots(s, p.team);
-  const sp = spots[assignSpot(s, p)];
+  const sp = spacingSpot(s, p);
   const m = moveTo(s, p, sp[0], sp[1], true, p.stamina);
   return [m.mx, m.mz];
 }
@@ -3049,9 +3444,27 @@ function offBallIntent(s, p, sk, r, press) {
   const myDef = s.guardedBy[p.id] >= 0 ? s.players[s.guardedBy[p.id]] : null;
   const age = s.tick - s.possStartTick;
   const inBack = (p.x - 0) * dir < -1;
+  // a called play overrides everything
+  const P = s.play[p.team], k = P ? P.slots.indexOf(p.id) : -1, st = k >= 0 ? playStep(s, p.team) : null;
+  if (st) {
+    if (st.sc && st.sc[k] != null) {
+      const mate = s.players[P.slots[st.sc[k]]], md = mate && s.guardedBy[mate.id] >= 0 ? s.players[s.guardedBy[mate.id]] : null;
+      if (md) {
+        let ux = myHoop - mate.x, uz = -mate.z; const ul = vlen(ux, uz) || 1; ux /= ul; uz /= ul;
+        const side = mate.z >= 0 ? -1 : 1, off = md.rad + p.rad + 0.1;
+        const dd = go(md.x - uz * side * off - ux * 0.2, md.z + ux * side * off - uz * 0.2, true);
+        if (dd < 0.6) { mx = 0; mz = 0; bits |= BTN.STANCE; }
+        return makeIntent(mx, mz, bits, -1);
+      }
+    }
+    if (st.drive === k) go(myHoop - dir * 1.2, 0, true);
+    else { const sp = playSpot(s, p.team, k) || spacingSpot(s, p); go(sp[0], sp[1], true); }
+    if ((st.pass && st.pass[1] === k) || st.shoot === k) bits |= BTN.CALLBALL;
+    return makeIntent(mx, mz, bits, -1);
+  }
   // transition: get into the front court
   if ((hld.x * dir < 0 && inBack) || age < 50) {
-    const sp = offenseSpots(s, p.team)[assignSpot(s, p)];
+    const sp = spacingSpot(s, p);
     go(sp[0], sp[1], true);
     return makeIntent(mx, mz, bits, -1);
   }
@@ -3095,8 +3508,8 @@ function offBallIntent(s, p, sk, r, press) {
       return makeIntent(mx, mz, bits, -1);
     }
   }
-  const sp = offenseSpots(s, p.team)[assignSpot(s, p)];
-  go(sp[0] + (r(43) - 0.5) * 1.5, sp[1] + (r(44) - 0.5) * 1.5, false);
+  const sp = spacingSpot(s, p);
+  go(sp[0] + (r(43) - 0.5) * 0.8, sp[1] + (r(44) - 0.5) * 0.8, false);
   if (openness(s, p) > CONFIG.ai.openDist && estimateMakeProb(s, p, p.x, p.z) * zoneValue(s, p.team, p.x, p.z) > 0.9) bits |= BTN.CALLBALL;
   return makeIntent(mx, mz, bits, -1);
 }
@@ -3139,6 +3552,24 @@ function handlerIntent(s, p, sk, r, press) {
   if (scSec < 2.2 && s.clock > 0) { bits |= BTN.SHOOT; return makeIntent(0, 0, bits, -1); }
   if (s.clock < HZ * 1.6 && s.clock > 0 && s.shotClock > s.clock) { bits |= BTN.SHOOT; return makeIntent(0, 0, bits, -1); }
 
+  // running a called play
+  const P = s.play[p.team], k = P ? P.slots.indexOf(p.id) : -1, st = k >= 0 ? playStep(s, p.team) : null;
+  if (st) {
+    const late = P.t >= st.d * 0.55;
+    if (st.pass && st.pass[0] === k && late) {
+      const q = s.players[P.slots[st.pass[1]]];
+      if (q && !isDown(q) && q.onCourt) { bits |= press(BTN.PASS); pt = q.id; return makeIntent(0, 0, bits, pt); }
+    }
+    if (st.shoot === k && late) { bits |= BTN.SHOOT; return makeIntent(0, 0, bits, -1); }
+    if (st.drive === k) {
+      go(myHoop - dir * 0.8, 0, true);
+      if (dHoop < 7 && p.cd.mv <= 0 && myDef && pdist(p, myDef) < 2.0 && r(64) < 0.25) bits |= press(BTN.EURO);
+      return makeIntent(mx, mz, bits, -1);
+    }
+    const sp = playSpot(s, p.team, k);
+    if (sp) go(sp[0], sp[1], false);
+    return makeIntent(mx, mz, bits, -1);
+  }
   // pass evaluation — mismatches are the strategic heart of the sport
   if (age > 25 && r(51) < sk.passVision * (0.75 + 0.5 * chemOf(s, p))) {
     let best = null, bestSc = myEV + 0.18;
@@ -4097,7 +4528,11 @@ const Render = {};
     storm(G) {
       const strikes = [], rods = [];
       for (let i = 1; i <= 16; i++) { const n = G.getObjectByName('hazard_strike_' + String(i).padStart(2, '0')); if (!n) continue; const p = nodeXZ(n); strikes.push({ x: p.x, z: p.z, marker: n.getObjectByName(n.name + '_marker'), scorch: n.getObjectByName(n.name + '_scorch'), burn: 0 }); }
-      for (let i = 1; i <= 8; i++) { const n = G.getObjectByName('hazard_rod_' + String(i).padStart(2, '0')); if (!n) continue; const p = nodeXZ(n); rods.push({ x: p.x, z: p.z, mats: emissiveMats(n) }); }
+      for (let i = 1; i <= 8; i++) {
+        const n = G.getObjectByName('hazard_rod_' + String(i).padStart(2, '0')); if (!n) continue; const p = nodeXZ(n);
+        if (p.z > HALF_W - 3) { n.visible = false; continue; } // camera-side rods would wall off the broadcast view
+        rods.push({ x: p.x, z: p.z, mats: emissiveMats(n) });
+      }
       let last = 'idle', at = -1;
       return { update(s, dt, t) {
         const [st] = hzState(s, 'lightning');
@@ -4574,47 +5009,164 @@ function buildProceduralCharacter(spec, colors) {
 }
 
 /* Procedural animation: target joint angles per state, eased toward. */
+/* Procedural animation: every pose is a target the bones ease toward, layered from
+   locomotion (stride, arm swing, hip twist, bob, lean into acceleration, bank into turns),
+   carriage (dribble rhythm, defensive slide, athletic idle) and the action state on top. */
+const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
 function animateProcedural(v, r, dt) {
-  const B = v.bones, k = 1 - Math.exp(-dt * 18);
-  const T = { hips: 0, lean: 0, shLx: 0, shLz: 0.15, shRx: 0, shRz: -0.15, elL: -0.2, elR: -0.2, hpL: 0, hpR: 0, knL: 0, knR: 0, rootRx: 0, rootY: 0, crouch: 0, headX: 0, tail: 0 };
-  const speed = r.speed;
-  v.runPhase += dt * speed * (3.2 / Math.max(0.5, v.legLen));
-  const ph = v.runPhase, sw = Math.min(1, speed / 4);
-  // locomotion
-  T.hpL = Math.sin(ph) * 0.9 * sw; T.hpR = -Math.sin(ph) * 0.9 * sw;
-  T.knL = Math.max(0, -Math.cos(ph)) * 1.2 * sw; T.knR = Math.max(0, Math.cos(ph)) * 1.2 * sw;
-  T.shLx = -Math.sin(ph) * 0.8 * sw; T.shRx = Math.sin(ph) * 0.8 * sw;
-  T.lean = 0.12 * sw + (speed > 7 ? 0.2 : 0);
-  const ao = v.armOut || 0; T.shLz += ao; T.shRz -= ao;
-  T.rootY = Math.abs(Math.sin(ph)) * 0.05 * sw * v.H;
-  T.tail = Math.sin(r.t * 6) * 0.25;
-  if (r.hasBall && r.st !== 'shoot' && r.st !== 'finish') { T.shRx = -0.6 + Math.sin(r.t * 9) * 0.15; T.elR = -0.5; }
-  if (r.stance) { T.crouch = 0.12; T.shLz = 1.1; T.shRz = -1.1; T.shLx = -0.3; T.shRx = -0.3; T.lean = 0.25; T.hpL -= 0.4; T.hpR -= 0.4; T.knL += 0.6; T.knR += 0.6; }
-  switch (r.st) {
-    case 'shoot': { const m = Math.min(1, r.hold / 20); T.shLx = -2.6 * m; T.shRx = -2.8 * m; T.elL = -1.2 + m * 0.8; T.elR = -1.4 + m * 0.9; T.crouch = 0.1 * (1 - m); T.lean = -0.05; break; }
-    case 'recover': if (r.y > 0.05) { T.shLx = -2.9; T.shRx = -3.0; T.elL = -0.1; T.elR = -0.05; } break;
-    case 'finish': T.shRx = -3.0; T.elR = -0.1; T.shLx = -1.2; T.hpL = -1.1; T.knL = 1.4; T.lean = 0.1; break;
-    case 'jump': T.shLx = -3.0; T.shRx = -3.0; T.elL = 0; T.elR = 0; T.shLz = 0.25; T.shRz = -0.25; break;
-    case 'steal': T.shRx = -1.5; T.elR = 0; T.lean = 0.45; break;
-    case 'check': T.lean = 0.6; T.shLx = -0.4; T.shLz = 0.2; T.shRx = 0.2; T.shRz = -0.9; T.crouch = 0.1; break;
-    case 'down': T.rootRx = -1.45; T.shLz = 1.4; T.shRz = -1.4; T.hpL = -0.3; T.hpR = 0.3; break;
-    case 'getup': T.rootRx = -0.7; T.crouch = 0.3; T.knL = 1.4; T.knR = 1.4; break;
-    case 'stagger': T.lean = -0.35 + Math.sin(r.t * 20) * 0.15; T.shLz = 1.3; T.shRz = -1.3; break;
-    case 'slip': T.crouch = 0.35; T.lean = 0.8; T.shLx = 0.8; T.shRx = 0.8; break;
-    case 'bulldoze': T.lean = 0.45; T.shLx = -0.9; T.shLz = 0.6; T.shRz = -0.3; T.headX = 0.3; break;
-    case 'move': T.crouch = 0.12; T.lean = 0.3; break;
-    case 'celebrate': T.shLx = -3.0; T.shRx = -3.0; T.shLz = 0.5; T.shRz = -0.5; T.rootY = Math.abs(Math.sin(r.t * 10)) * 0.25; break;
+  const B = v.bones, H = v.H || 1.8;
+  const T = { hips: 0, lean: 0, shLx: 0, shLz: 0.12, shRx: 0, shRz: -0.12, elL: -0.25, elR: -0.25, hpL: 0, hpR: 0, hpLz: 0, hpRz: 0, knL: 0.05, knR: 0.05,
+    rootRx: 0, rootY: 0, rootZ: 0, crouch: 0, headX: 0, headYaw: 0, tail: 0, hipYaw: 0, chestYaw: 0, bank: 0, chestX: 0 };
+  const speed = r.speed || 0, t = r.t || 0;
+  // state age (for timed actions)
+  if (r.st !== v.lastSt) { v.lastSt = r.st; v.stAge = 0; if (r.st === 'celebrate') v.celeb = (v.celeb == null ? Math.floor(Math.random() * 4) : (v.celeb + 1) % 4); }
+  v.stAge = (v.stAge || 0) + dt;
+  const age = v.stAge;
+  // motion signals: local velocity, turn rate, acceleration, landing
+  const fx = r.fx ?? 0, fz = r.fz ?? 1, vx = r.vx ?? fx * speed, vz = r.vz ?? fz * speed;
+  const side = vx * fz - vz * fx;                   // + = moving toward the character's left
+  const yaw = Math.atan2(fx, fz);
+  if (dt > 0) {
+    const turn = clamp(wrapA(yaw - (v.lastYaw ?? yaw)) / dt, -9, 9);
+    v.turnS = (v.turnS || 0) + (turn - (v.turnS || 0)) * Math.min(1, dt * 8);
+    const acc = clamp((speed - (v.lastSpeed ?? speed)) / dt, -18, 18);
+    v.accS = (v.accS || 0) + (acc - (v.accS || 0)) * Math.min(1, dt * 6);
+    const air = (r.y || 0) > 0.05;
+    if (v.wasAir && !air) v.land = 1;
+    v.wasAir = air; v.land = Math.max(0, (v.land || 0) - dt * 4);
   }
-  if (r.charging) { T.shLx = -0.3; T.shRx = -0.3; T.shLz = 0.3; T.shRz = -0.3; T.crouch = 0.08; T.lean = -0.1; }
-  const P = v.pose;
-  for (const key in T) { if (P[key] === undefined) P[key] = T[key]; P[key] += (T[key] - P[key]) * (key === 'rootRx' ? k * 0.6 : k); }
-  B.hpL.rotation.x = -P.hpL; B.hpR.rotation.x = -P.hpR; B.knL.rotation.x = P.knL; B.knR.rotation.x = P.knR;
+  v.lastYaw = yaw; v.lastSpeed = speed;
+  const air = (r.y || 0) > 0.05;
+  // ---- locomotion ----
+  const legL = Math.max(0.35, v.legLen || 0.9);
+  v.runPhase += dt * speed / (legL * 1.25) * 1.15;
+  const ph = v.runPhase, sw = Math.min(1, speed / 3.2), spr = clamp((speed - 5) / 2.5, 0, 1);
+  if (r.stance) {
+    // defensive slide: wide base, low hips, arms out and active; feet shuffle on lateral moves
+    const slide = Math.min(1, Math.abs(side) / 2.5), shuffle = Math.sin(ph * 1.6);
+    T.crouch = 0.16; T.lean = 0.28;
+    T.hpL = 0.55; T.hpR = 0.55; T.knL = 1.0; T.knR = 1.0;
+    T.hpLz = 0.32 + shuffle * 0.16 * slide; T.hpRz = -0.32 + shuffle * 0.16 * slide;
+    T.shLz = 1.15 + Math.sin(t * 7) * 0.06; T.shRz = -1.15 - Math.sin(t * 7 + 1) * 0.06; T.shLx = -0.35; T.shRx = -0.35; T.elL = -0.5; T.elR = -0.5;
+    T.bank = clamp(-side * 0.04, -0.15, 0.15);
+    T.rootY = Math.abs(shuffle) * 0.025 * H * slide;
+  } else if (sw > 0.08) {
+    const st = 0.75 + 0.4 * spr;
+    T.hpL = Math.sin(ph) * st * sw; T.hpR = -Math.sin(ph) * st * sw;
+    T.knL = (Math.max(0, Math.sin(ph - 1.3)) * (1.2 + 0.5 * spr) + 0.15) * sw; T.knR = (Math.max(0, Math.sin(ph + Math.PI - 1.3)) * (1.2 + 0.5 * spr) + 0.15) * sw;
+    T.shLx = -Math.sin(ph) * (0.7 + 0.35 * spr) * sw; T.shRx = Math.sin(ph) * (0.7 + 0.35 * spr) * sw;
+    T.elL = -(0.85 + 0.55 * spr) * sw - 0.15; T.elR = T.elL;
+    T.hipYaw = Math.sin(ph) * 0.16 * sw; T.chestYaw = -Math.sin(ph) * 0.2 * sw;
+    T.rootY = Math.abs(Math.cos(ph)) * 0.045 * H * sw;
+    T.lean = 0.07 * sw + 0.2 * spr + clamp(v.accS || 0, -10, 10) * 0.02;
+    T.bank = clamp(-(v.turnS || 0) * speed * 0.035, -0.4, 0.4);
+  } else {
+    // athletic idle: breathing, weight shift, soft knees
+    T.chestX = Math.sin(t * 2.1) * 0.035; T.rootZ = Math.sin(t * 0.85) * 0.035;
+    T.knL = 0.18; T.knR = 0.18; T.hpL = 0.1; T.hpR = 0.1; T.crouch = 0.03;
+    T.shLx = Math.sin(t * 1.3) * 0.05; T.shRx = -Math.sin(t * 1.3) * 0.05;
+  }
+  const ao = v.armOut || 0; T.shLz += ao; T.shRz -= ao;
+  T.tail = Math.sin(t * 6) * 0.25 + (v.turnS || 0) * -0.08;
+  // dribble: the ball hand pumps with the bounce, the off arm shields
+  if (r.hasBall && r.st !== 'shoot' && r.st !== 'finish' && r.st !== 'recover' && !r.stance) {
+    const sn = Math.abs(Math.sin(r.drib || t * 8));
+    T.shRx = -0.45 - sn * 0.35; T.elR = -0.55 - (1 - sn) * 0.45; T.shRz = -0.28 - ao;
+    T.shLx = -0.75; T.shLz = 0.55 + ao; T.elL = -1.25;
+    T.crouch = Math.max(T.crouch, 0.05); T.lean += 0.08;
+  }
+  // head follows the ball
+  if (r.bx != null) {
+    const dx = r.bx - (r.x || 0), dz = r.bz - (r.z || 0);
+    if (dx * dx + dz * dz > 0.25) T.headYaw = clamp(wrapA(Math.atan2(dx, dz) - yaw), -1.0, 1.0);
+  }
+  // ---- actions ----
+  const prog = d => clamp(age / d, 0, 1);
+  switch (r.st) {
+    case 'shoot': { // gather, rise, set the ball above the forehead
+      const m = Math.min(1, (r.hold || 0) / 20);
+      T.shRx = -1.4 - 1.5 * m; T.elR = -1.5 + 1.0 * m; T.shRz = -0.15;
+      T.shLx = -1.3 - 1.2 * m; T.elL = -1.2 + 0.5 * m; T.shLz = 0.4;
+      T.crouch = air ? 0 : 0.14 * (1 - m); T.lean = -0.06; T.headX = -0.15; T.headYaw = 0; T.hipYaw = 0; T.chestYaw = 0;
+      if (air) { T.knL = 0.35; T.knR = 0.25; T.hpL = 0.15; T.hpR = 0.1; } else { T.knL = 0.6 * (1 - m); T.knR = 0.6 * (1 - m); T.hpL = 0.3 * (1 - m); T.hpR = 0.3 * (1 - m); }
+      break;
+    }
+    case 'recover':
+      if (air) { T.shRx = -3.0; T.elR = -0.05; T.shLx = -2.4 + prog(0.4) * 1.2; T.elL = -0.6; T.knL = 0.4; T.knR = 0.2; T.lean = -0.08; T.headYaw = 0; }
+      else { T.shRx = -1.2 + prog(0.3) * 1.2; T.elR = -0.3; T.knL += 0.35 * (1 - prog(0.3)); T.knR += 0.35 * (1 - prog(0.3)); }
+      break;
+    case 'finish':
+      if (r.kind === 'dunk') {
+        if (age < 0.18) { T.crouch = 0.22; T.shLx = 0.7; T.shRx = 0.7; T.elL = -0.3; T.elR = -0.3; T.lean = 0.35; T.knL = 1.2; T.knR = 1.2; T.hpL = 0.7; T.hpR = 0.7; }
+        else { const sl = prog(0.55); T.shLx = -3.1 + sl * 1.0; T.shRx = -3.1 + sl * 1.3; T.elL = -0.15; T.elR = -0.1; T.knL = 1.4; T.knR = 1.1; T.hpL = 0.9; T.hpR = 0.5; T.lean = 0.1 + sl * 0.25; T.headX = -0.2; }
+      } else { T.shRx = -3.0; T.elR = -0.1; T.shLx = -1.3; T.elL = -0.6; T.hpL = 1.2; T.knL = 1.5; T.hpR = -0.1; T.knR = 0.15; T.lean = 0.12; }
+      T.headYaw = 0; T.hipYaw = 0; T.chestYaw = 0;
+      break;
+    case 'jump': // block / rebound: both arms all the way up, legs split
+      T.shLx = -3.05; T.shRx = -3.05; T.elL = -0.05; T.elR = -0.05; T.shLz = 0.2; T.shRz = -0.2;
+      T.knL = 0.7; T.knR = 0.25; T.hpL = 0.4; T.hpR = 0.05; T.lean = -0.05; T.headX = -0.25;
+      break;
+    case 'steal': { // lunge and reach low
+      const l = Math.sin(prog(0.25) * Math.PI);
+      T.lean = 0.35 + 0.3 * l; T.shRx = -1.2 - 0.5 * l; T.elR = -0.05; T.shLx = 0.3; T.shLz = 0.5;
+      T.hpR = 0.8 * l; T.knR = 0.9 * l; T.hpL = -0.2; T.crouch = 0.12 * l; T.hipYaw = 0.2; T.chestYaw = 0.35;
+      break;
+    }
+    case 'check': // lead with the shoulder
+      T.lean = 0.55; T.chestYaw = 0.65; T.hipYaw = 0.2; T.shLx = -0.3; T.shLz = 0.25; T.elL = -1.3; T.shRx = 0.3; T.shRz = -0.8; T.crouch = 0.12; T.hpL = 0.6; T.knL = 0.5; T.headYaw = 0;
+      break;
+    case 'down': { // thrown down: flail, then lie still
+      const f = 1 - prog(0.45);
+      T.rootRx = -1.45; T.shLz = 1.4 + Math.sin(age * 22) * 0.5 * f; T.shRz = -1.4 - Math.sin(age * 19) * 0.5 * f; T.shLx = -0.4 * f; T.shRx = -0.6 * f;
+      T.hpL = 0.4 + Math.sin(age * 15) * 0.4 * f; T.hpR = 0.1; T.knL = 0.8; T.knR = 0.4; T.headX = 0.4;
+      break;
+    }
+    case 'getup': { const g = prog(0.7); T.rootRx = -1.0 * (1 - g); T.crouch = 0.35 * (1 - g); T.knL = 1.4 * (1 - g); T.knR = 1.4 * (1 - g); T.hpL = 1.1 * (1 - g); T.hpR = 1.1 * (1 - g); T.shLx = -0.8 * (1 - g); T.shRx = -0.8 * (1 - g); break; }
+    case 'stagger': T.lean = -0.3 + Math.sin(t * 16) * 0.12; T.bank = Math.sin(t * 11) * 0.22; T.shLz = 1.25 + Math.sin(t * 13) * 0.3; T.shRz = -1.25 - Math.sin(t * 15) * 0.3; T.headX = Math.sin(t * 9) * 0.2; T.knL = 0.4; T.knR = 0.2; break;
+    case 'slip': T.crouch = 0.35; T.lean = 0.85; T.shLx = 0.9; T.shRx = 0.9; T.elL = -0.2; T.elR = -0.2; T.hpL = 0.9; T.knL = 1.2; T.hpR = -0.4; T.knR = 0.3; break;
+    case 'bulldoze': T.lean = 0.5; T.shLx = -0.9; T.shLz = 0.6; T.shRz = -0.3; T.headX = 0.35; T.chestYaw = 0.3; break;
+    case 'move': { // dribble moves
+      const m = prog(0.32), arc = Math.sin(m * Math.PI);
+      T.crouch = 0.12; T.lean = 0.25;
+      if (r.kind === 'spin') { T.rootYaw = -m * Math.PI * 2; T.shLz = 0.9; T.shRz = -0.9; T.crouch = 0.1; }
+      else if (r.kind === 'stepback') { T.lean = -0.35 * arc; T.rootY = arc * 0.08 * H; T.hpL = -0.3; T.knL = 0.6; T.shLx = -0.5; T.shLz = 0.7; }
+      else if (r.kind === 'euro') { T.bank = (m < 0.5 ? 1 : -1) * 0.3 * arc; T.hipYaw = (m < 0.5 ? 0.3 : -0.3); T.shRx = -1.0; T.shLz = 0.8; }
+      else { const dirS = (v.crossDir = age < dt * 1.5 ? -(v.crossDir || 1) : (v.crossDir || 1)); T.rootZ = dirS * 0.22 * arc; T.bank = dirS * 0.2 * arc; T.shRz = -0.3 + dirS * 0.9 * arc; T.shRx = -0.5; T.hpLz = 0.25 * arc; T.hpRz = -0.25 * arc; T.crouch = 0.16; }
+      break;
+    }
+    case 'celebrate': {
+      const c = v.celeb || 0, bounce = Math.abs(Math.sin(t * 9));
+      if (c === 0) { T.shLx = -3.0; T.shRx = -3.0; T.shLz = 0.5; T.shRz = -0.5; T.elL = -0.1; T.elR = -0.1; T.rootY = bounce * 0.22; }
+      else if (c === 1) { T.shRx = -2.2 - Math.sin(t * 12) * 0.6; T.elR = -1.6; T.shLz = 0.4; T.lean = -0.1; T.rootY = bounce * 0.08; }
+      else if (c === 2) { T.shLx = -1.3; T.shRx = -1.3; T.elL = -2.0 + Math.sin(t * 14) * 0.3; T.elR = -2.0 + Math.sin(t * 14 + 1) * 0.3; T.lean = -0.15; T.headX = -0.3; }
+      else { T.shLz = 1.5; T.shRz = -1.5; T.elL = -2.2; T.elR = -2.2; T.shLx = -0.3; T.shRx = -0.3; T.crouch = 0.08; T.rootY = bounce * 0.05; T.chestX = -0.15; }
+      T.headYaw = 0;
+      break;
+    }
+  }
+  if (r.charging) { T.shLx = -0.5; T.shRx = -0.5; T.shLz = 0.7; T.shRz = -0.7; T.elL = -1.6; T.elR = -1.6; T.crouch = 0.1; T.lean = -0.12; T.hpL = 0.3; T.hpR = 0.3; T.knL = 0.5; T.knR = 0.5; }
+  if (air && r.st !== 'shoot' && r.st !== 'finish' && r.st !== 'jump' && r.st !== 'recover') { T.knL = Math.max(T.knL, 0.6); T.knR = Math.max(T.knR, 0.4); }
+  // landing squash
+  if (v.land > 0) { T.crouch += 0.12 * v.land; T.knL += 0.5 * v.land; T.knR += 0.5 * v.land; T.hpL += 0.3 * v.land; T.hpR += 0.3 * v.land; }
+  // ease toward the targets (arms snappier than the body)
+  const P = v.pose, kB = 1 - Math.exp(-dt * 14), kA = 1 - Math.exp(-dt * 22);
+  for (const key in T) {
+    if (key === 'rootYaw') continue;
+    if (P[key] === undefined) P[key] = T[key];
+    const kk = key === 'rootRx' ? kB * 0.6 : (key[0] === 's' || key[0] === 'e') ? kA : kB;
+    P[key] += (T[key] - P[key]) * kk;
+  }
+  B.hpL.rotation.x = -P.hpL; B.hpR.rotation.x = -P.hpR; B.hpL.rotation.z = P.hpLz; B.hpR.rotation.z = P.hpRz;
+  B.knL.rotation.x = P.knL; B.knR.rotation.x = P.knR;
   B.shL.rotation.x = P.shLx; B.shR.rotation.x = P.shRx; B.shL.rotation.z = P.shLz; B.shR.rotation.z = P.shRz;
   B.elL.rotation.x = P.elL; B.elR.rotation.x = P.elR;
-  B.spine.rotation.x = P.lean; B.head.rotation.x = P.headX - P.lean * 0.6;
+  B.hips.rotation.y = P.hipYaw;
+  B.spine.rotation.x = P.lean; B.spine.rotation.z = P.bank;
+  B.chest.rotation.y = P.chestYaw - P.hipYaw; B.chest.rotation.x = P.chestX;
+  B.head.rotation.x = P.headX - P.lean * 0.6; B.head.rotation.y = P.headYaw * 0.75 - P.chestYaw * 0.5;
   B.tail.rotation.y = P.tail;
-  B.root.rotation.x = P.rootRx;
-  B.root.position.y = P.rootY - P.crouch * v.legLen + (P.rootRx < -0.5 ? v.torsoH * 0.25 : 0);
+  B.root.rotation.x = P.rootRx; B.root.rotation.z = P.rootZ; B.root.rotation.y = T.rootYaw || 0;
+  B.root.position.y = P.rootY - P.crouch * legL + (P.rootRx < -0.5 ? (v.torsoH || 0.6) * 0.25 : 0);
 }
 
 /* =====================================================================
@@ -4923,7 +5475,9 @@ const KEYMAP = {
   switch: ['KeyE'], screen: ['KeyR'], cross: ['KeyF'], spin: ['KeyG'], stepback: ['KeyC'], euro: ['KeyV'],
   stance: ['Space'], block: ['KeyJ'], steal: ['KeyK'], check: ['KeyL'], charge: ['KeyR'],
   sig: ['KeyX'], frenzy: ['KeyZ'],
-  camera: ['Tab'], pause: ['Escape', 'KeyP'], replay: ['Enter'], verify: []
+  camera: ['Tab'], pause: ['Escape', 'KeyP'], replay: ['Enter'], verify: [],
+  play1: ['Digit1', 'Numpad1'], play2: ['Digit2', 'Numpad2'], play3: ['Digit3', 'Numpad3'], play4: ['Digit4', 'Numpad4'], play5: ['Digit5', 'Numpad5'],
+  timeout: ['KeyT'], coach: ['KeyY']
 };
 const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, LS: 10, RS: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 class InputManager {
@@ -4931,6 +5485,8 @@ class InputManager {
     this.keys = new Set(); this.latched = new Set(); this.mouse = { x: 0, y: 0, l: false, r: false }; this.lastPassFromMouse = false;
     this.device = 'kbm'; this.pad = null; this.padPrev = []; this.padLatched = new Set(); this.edges = new Set();
     this.rsPrev = { x: 0, y: 0 };
+    this.touchMove = null; this.touchHeld = new Map(); this.sawTouch = false;
+    window.addEventListener('touchstart', () => { this.sawTouch = true; this.device = 'touch'; }, { passive: true });
     window.addEventListener('keydown', e => {
       if (e.code === 'Tab') e.preventDefault();
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -4964,6 +5520,12 @@ class InputManager {
       this.rsPrev = { x: rx, y: ry };
       this.padPrev = btn;
     }
+  }
+  /* on-screen buttons press key codes; several sources (a button, the joystick rim) can hold one code */
+  touchKey(code, on, src = 'btn') {
+    let h = this.touchHeld.get(code); if (!h) this.touchHeld.set(code, h = new Set());
+    if (on) { if (!h.size) { this.latched.add(code); this.edges.add(code); } h.add(src); this.keys.add(code); this.device = 'touch'; }
+    else { h.delete(src); if (!h.size) this.keys.delete(code); }
   }
   /* consumed once per sim tick */
   endTick() { this.latched.clear(); this.padLatched.clear(); }
@@ -5025,6 +5587,7 @@ class InputManager {
       if (this.pad.buttons[PAD.LEFT]?.pressed) x = -1; if (this.pad.buttons[PAD.RIGHT]?.pressed) x = 1;
       if (this.pad.buttons[PAD.UP]?.pressed) y = 1; if (this.pad.buttons[PAD.DOWN]?.pressed) y = -1;
     }
+    if (this.touchMove) { x = this.touchMove.x; y = this.touchMove.y; }
     const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
     return { x, y };
   }
@@ -5235,6 +5798,7 @@ const LINES = {
   cranes: [[1, 'The cranes are moving the hoops again. New distances, new angles.']],
   iceFall: [[0, 'THE CEILING\'S COMING DOWN! Ice in the paint!'], [1, 'That dunk shook loose half the rafters.']],
   slush: [[1, 'Crack in the ice — that\'s going to be slush in a second.']],
+  playCall: [[0, 'They\'re running {name}.'], [1, 'Called play — {name}. Watch the weak side.'], [0, 'Here comes {name}.']],
   sandstorm: [[0, 'HERE COMES THE SANDSTORM!'], [1, 'Visibility gone. Drivers love this. Help defenders hate it.']],
   stormBomb: [[0, 'THE LONG BOMB ZONE HAS MOVED!'], [1, 'Storm\'s up: the four-point zone has wandered off half court.']],
   lightning: [[0, 'LIGHTNING STRIKE!'], [1, 'Marked spot, telegraphed — and still people stand on it.']],
@@ -5329,7 +5893,7 @@ const FX2D = (() => {
    interpolation), HUD, replays, determinism verification.
    ===================================================================== */
 const $ = id => document.getElementById(id);
-const DEFAULT_SETTINGS = { difficulty: 'pro', quarterMinutes: RULES.quarterMinutes, side: 0, autoSwitch: true, meter: true, post: true, camera: 'broadcast', hazards: true, rules: true };
+const DEFAULT_SETTINGS = { touch: 'auto', difficulty: 'pro', quarterMinutes: RULES.quarterMinutes, side: 0, autoSwitch: true, meter: true, post: true, camera: 'broadcast', hazards: true, rules: true };
 const Game = {
   screen: 'title', settings: Object.assign({}, DEFAULT_SETTINGS),
   home: 'mud', away: 'sky', arenaPick: 'home', mode: 'exhibition', cfg: null, save: null, tourneyBusy: false,
@@ -5389,7 +5953,7 @@ function drawLogo(cv, t) {
 function logoCanvas(t, size) { const cv = document.createElement('canvas'); cv.width = cv.height = size || 96; drawLogo(cv, t); return cv; }
 
 /* ---------------- screens ---------------- */
-const SCREENS = { online: 'scrOnline', title: 'scrTitle', teams: 'scrTeams', lineup: 'scrLineup', tourney: 'scrTourney', data: 'scrData', controls: 'scrControls', pause: 'scrPause', post: 'scrPost' };
+const SCREENS = { coach: 'scrCoach', plays: 'scrPlays', online: 'scrOnline', title: 'scrTitle', teams: 'scrTeams', lineup: 'scrLineup', tourney: 'scrTourney', data: 'scrData', controls: 'scrControls', pause: 'scrPause', post: 'scrPost' };
 function showScreen(name) {
   Game.screen = name;
   for (const id of Object.values(SCREENS)) $(id).classList.add('hidden');
@@ -5550,11 +6114,14 @@ function renderControls() {
     ['Defensive stance / box out', 'Space', 'LT'], ['Block / jump', 'J / Left mouse', 'Y'],
     ['Steal', 'K / Right mouse', 'X'], ['Check (front/side of ball handler only)', 'L', 'B'],
     ['Take a charge (hold)', 'R', 'A'], ['Camera toggle', 'Tab', 'View/Back'],
-    ['Pause', 'Esc / P', 'Start'], ['Watch instant replay', 'Enter', 'Y (when offered)']
+    ['Pause', 'Esc / P', 'Start'], ['Watch instant replay', 'Enter', 'Y (when offered)'],
+    ['Call play 1–5 (with the ball)', '1 – 5', 'Pause → Coach'], ['Timeout (ball in hand or dead ball)', 'T', 'Pause → Call timeout'],
+    ['Coach: subs, auto-subs, playbook', 'Y', 'Pause → Coach']
   ];
   const sigs = Object.entries(SIG_TEMPLATES).map(([k, v]) => `<div><span><b>${v.label}</b> — ${v.desc}</span><b style="white-space:normal;max-width:45%;text-align:right">Counter: ${v.counter}</b></div>`).join('');
   $('controlsBody').innerHTML = `<div class="ctrlgrid">${rows.map(r => `<div><span>${r[0]}</span><b>${r[1]} · ${r[2]}</b></div>`).join('')}</div>
    <h3>Signature moves</h3><div class="ctrlgrid" style="grid-template-columns:1fr">${sigs}</div>
+   <h3>Coaching</h3><p class="note" style="opacity:1">Each team gets ${COACH.timeoutsPerHalf} timeouts per half. In a timeout or at halftime the coach screen opens: tap a player on the floor and one on the bench to sub (subs check in at the next dead ball), switch auto-subs, and pick the five plays your 1–5 keys call. Build your own plays in <b>Playbook</b> on the title screen. On phones and tablets a joystick and buttons appear automatically (Pause → Touch controls to force them on or off).</p>
    <p class="note">Contact is legal on the ball handler from the front or side — including into a hazard. Every hazard is telegraphed: glows, shadows, rumbles and markers come first. Frenzy fills from dunks, blocks, knockdowns, long bombs, signature moves and scoring runs — faster when you trail. A block, steal or knockdown by the other team breaks it.</p>`;
 }
 
@@ -5633,6 +6200,7 @@ function updatePauseLabels() {
   q('autoswitch').textContent = 'Auto-switch: ' + (S.autoSwitch ? 'On' : 'Off');
   q('meter').textContent = 'Shot meter: ' + (S.meter ? 'On' : 'Off');
   q('post').textContent = 'Post FX: ' + (S.post ? 'On' : 'Off');
+  q('touchToggle').textContent = 'Touch controls: ' + (S.touch || 'auto').toUpperCase();
 }
 
 /* ---------------- match lifecycle ---------------- */
@@ -5646,10 +6214,12 @@ function startMatch(cfg) {
   const seed = cfg.seed != null ? cfg.seed >>> 0 : (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0; // chosen once, outside the sim
   const practice = cfg.mode === 'practice';
   const s = createMatch({ seed, homeKey: cfg.home, awayKey: cfg.away, quarterMinutes: practice ? 60 : (cfg.quarterMinutes ?? S.quarterMinutes), arenaKey: cfg.arena,
-    hazards: cfg.hazards, rules: cfg.rules, practice, lineups: cfg.lineups || Game.save.lineups });
+    hazards: cfg.hazards, rules: cfg.rules, practice, lineups: cfg.lineups || Game.save.lineups,
+    humanTeams: cfg.humanTeams || [0, 1].map(t => (cfg.side != null ? cfg.side : S.side) === t),
+    plays: cfg.plays || [0, 1].map(t => (cfg.side != null ? cfg.side : S.side) === t ? Game.save.playbook : null) });
   Game.s = s;
   Game.initial = snapshot(s);
-  Game.log = new Int32Array(60 * 60 * 20 * 3 * (s.players.length + 2)); Game.logTicks = 0;
+  Game.log = new Int32Array(60 * 60 * 20 * 3 * (s.players.length + 2)); Game.logTicks = 0; Game.cmdLog = []; Game.pendingCmds = [];
   Game.snaps = [];
   const side = cfg.side != null ? cfg.side : S.side;
   Game.control = new ControlManager(Game.input, side === 2 ? null : side, S.difficulty, S);
@@ -5692,6 +6262,342 @@ function renderMoveList() {
 }
 
 /* =====================================================================
+   COACHING UI — commands, the coach screen (subs, auto-subs, playbook),
+   the play bar, the playbook editor and the touch controls.
+   ===================================================================== */
+Game.pendingCmds = [];
+Game.cmdLog = [];
+function userSide() {
+  if (Game.netMatch && Online.mode) return Online.mode.mySide;
+  return Game.control && Game.control.humanTeam != null ? Game.control.humanTeam : -1;
+}
+/* Every coaching action goes through here: queued for the next tick offline / on the host, sent to the host as a guest. */
+function sendCmd(c) {
+  const side = userSide(); if (side !== 0 && side !== 1 || !Game.s) return;
+  const cmd = Object.assign({}, c, { side });
+  if (Game.netMatch && Online.mode && !Online.mode.host) Online.toHost({ k: 'cmd', c: cmd });
+  else Game.pendingCmds.push(cmd);
+}
+function myPlaybook() { return sanitizePlaybook(Game.save.playbook); }
+function callPlay(n) { if (Game.s && Game.s.phase === 'live') sendCmd({ type: 'play', n }); }
+function callTimeout() {
+  const s = Game.s, side = userSide(); if (!s || side < 0) return;
+  if (s.timeouts[side] <= 0) { toast('NO TIMEOUTS LEFT', 'warn', 1.4); return; }
+  if (!canTimeout(s, side)) { toast('TIMEOUT: NEED THE BALL OR A DEAD BALL', 'warn', 1.6); return; }
+  sendCmd({ type: 'timeout' });
+}
+
+/* ---------------- coach screen ---------------- */
+const Coach = { sel: -1, reason: 'menu' };
+function openCoach(reason) {
+  if (!Game.s || userSide() < 0) return;
+  Coach.reason = reason; Coach.sel = -1;
+  showScreen('coach'); renderCoach();
+}
+function coachInHuddle() { const s = Game.s; return s && (s.phase === 'timeout' || (s.phase === 'qbreak' && s.half)); }
+function renderCoach() {
+  const s = Game.s; if (!s) return;
+  const t = userSide(), teams = teamsOf(s), T = teams[t];
+  const title = s.phase === 'timeout' ? `Timeout — ${teams[s.to.team].abbr}` : s.phase === 'qbreak' && s.half ? 'Halftime' : 'Coach';
+  $('coachTitle').textContent = title;
+  const secs = s.phase === 'timeout' ? Math.ceil(s.to.t / HZ) : s.phase === 'qbreak' ? Math.ceil(s.phaseTimer / HZ) : 0;
+  $('coachSub').innerHTML = `${teams[0].abbr} ${s.score[0]} – ${s.score[1]} ${teams[1].abbr} · Q${Math.min(s.quarter, 4)}${s.quarter > 4 ? ' OT' : ''} · ${T.name} timeouts left: ${s.timeouts[t]}` + (Game.netMatch && secs ? ` · resumes in ${secs}s` : '');
+  const pend = s.subQ[t];
+  const row = p => {
+    const cls = p.fouledOut ? 'out' : (Coach.sel === p.id ? 'sel' : pend.some(x => x.in === p.id || x.out === p.id) ? 'pend' : '');
+    const sp = SPECIES_BY_KEY[p.sp];
+    return `<div class="crow ${cls}" data-cp="${p.id}"><span class="num">${p.num}</span><span><b>${p.name}</b> <span class="cls">${p.pos}</span><br><small>${sp.name} · ${p.stats.pts} pts · ${p.fouls} PF${p.fouledOut ? ' · FOULED OUT' : ''}</small></span><div class="st"><i style="width:${Math.round(p.stamina * 100)}%"></i></div><span>${Math.round(p.stamina * 100)}%</span><span>${p.stats.pts}</span></div>`;
+  };
+  setHTML($('coachCourt'), s.onCourt[t].map(id => row(s.players[id])).join(''));
+  setHTML($('coachBench'), s.players.filter(p => p.team === t && !p.onCourt).map(row).join('') || '<p>No bench.</p>');
+  $('coachHelp').textContent = pend.length ? `Waiting to check in: ${pend.map(x => `${s.players[x.in].name} for ${s.players[x.out].name}`).join(', ')} — at the next dead ball.` : 'Tap a player on the floor, then one on the bench, to sub. Subs check in at the next dead ball.';
+  $('autoSubBtn').textContent = s.autoSub[t] ? 'ON' : 'OFF';
+  const lib = PLAY_LIBRARY.concat(Game.save.customPlays || []);
+  setHTML($('coachBook'), s.plays[t].map((pl, i) => `<div class="bookrow"><span class="key">${i + 1}</span><select data-slot="${i}">${lib.map(L => `<option value="${L.id}" ${L.id === pl.id ? 'selected' : ''}>${L.name}</option>`).join('')}${lib.some(L => L.id === pl.id) ? '' : `<option selected>${pl.name}</option>`}</select></div>`).join(''));
+  $('coachResumeBtn').textContent = coachInHuddle() ? (s.ready[t] ? 'Ready — waiting…' : 'Ready, back to the game') : 'Back to the game';
+}
+function coachClick(pid) {
+  const s = Game.s, t = userSide(), p = s.players[pid];
+  if (!p || p.team !== t || p.fouledOut) return;
+  if (Coach.sel < 0) { Coach.sel = pid; renderCoach(); return; }
+  const a = s.players[Coach.sel];
+  if (a.id === pid) { Coach.sel = -1; renderCoach(); return; }
+  if (a.onCourt === p.onCourt) { Coach.sel = pid; renderCoach(); return; }
+  const out = a.onCourt ? a : p, inn = a.onCourt ? p : a;
+  sendCmd({ type: 'sub', out: out.id, in: inn.id });
+  Coach.sel = -1;
+  if (!Game.netMatch) { stepCmdsNow(); }
+  setTimeout(renderCoach, Game.netMatch ? 250 : 0); renderCoach();
+}
+/* Offline the sim is paused behind the coach screen: apply queued commands right away with a no-input tick
+   only when the ball is already dead (subs then show immediately). */
+function stepCmdsNow() {
+  const s = Game.s; if (!s || Game.netMatch || !Game.pendingCmds.length) return;
+  if (!ballIsDead(s)) return;
+  const intents = s.players.map(() => NULL_INTENT);
+  simTickWith(intents, Game.pendingCmds.splice(0));
+}
+function setBookSlot(i, id) {
+  const lib = PLAY_LIBRARY.concat(Game.save.customPlays || []);
+  const pl = lib.find(L => L.id === id); if (!pl) return;
+  const book = myPlaybook(); book[i] = pl;
+  Game.save.playbook = book; persist();
+  if (Game.s && userSide() >= 0) { sendCmd({ type: 'playbook', book }); if (!Game.netMatch) stepCmdsNow(); }
+}
+function coachResume() {
+  const s = Game.s;
+  if (coachInHuddle() && s) sendCmd({ type: 'ready' });
+  showScreen('match');
+}
+
+/* ---------------- HUD: play bar, called play, timeouts ---------------- */
+let lastBar = '';
+function updateCoachHUD(s) {
+  const t = userSide();
+  const bar = $('playbar');
+  if (t < 0 || !s || Game.replay) { if (lastBar) { bar.innerHTML = ''; lastBar = ''; } $('playnow').classList.add('hidden'); return; }
+  const P = s.play[t], canCall = s.phase === 'live' && s.possession === t;
+  const html = s.plays[t].map((pl, i) => `<button data-play="${i + 1}" class="${P && P.n === i + 1 ? 'on' : ''}" ${canCall ? '' : 'disabled'}><span class="key">${i + 1}</span><span class="nm">${pl.name}</span></button>`).join('')
+    + `<button class="to" data-act="timeout"><span class="key">T</span><span class="nm">TIMEOUT</span><b>${s.timeouts[t]}</b></button>`;
+  if (html !== lastBar) { bar.innerHTML = html; lastBar = html; }
+  // the play being run, with the next pass target highlighted for a human ball handler
+  const now = $('playnow');
+  if (P) {
+    const steps = s.plays[t][P.n - 1].steps;
+    now.innerHTML = `PLAY ${P.n}: ${s.plays[t][P.n - 1].name.toUpperCase()}<span class="dots">${steps.map((_, i) => i < P.i ? '●' : i === P.i ? '◉' : '○').join('')}</span>`;
+    now.classList.remove('hidden');
+  } else now.classList.add('hidden');
+}
+function playPassHint(s) {
+  const t = userSide(); if (t < 0) return null;
+  const P = s.play[t], st = P ? playStep(s, t) : null, h = holderOf(s);
+  if (!st || !h || h.id !== Game.control.humanPid) return null;
+  const k = P.slots.indexOf(h.id);
+  if (st.pass && st.pass[0] === k) return s.players[P.slots[st.pass[1]]];
+  return null;
+}
+
+/* ---------------- playbook editor ---------------- */
+const PB = { slot: 0, play: null, step: 0, tool: 'move', pick: -1, drag: -1, ret: 'title' };
+const PB_TOOLS = { move: 'Move', screen: 'Screen', pass: 'Pass', shoot: 'Shoot', drive: 'Drive', clear: 'Clear step' };
+const PB_HELP = { move: 'Drag a player to where they go in this step.', screen: 'Tap the screener, then the teammate they screen for.', pass: 'Tap the passer, then the receiver.', shoot: 'Tap the player who shoots at the end of this step.', drive: 'Tap the player who drives to the rim.', clear: '' };
+const PB_DEFAULT = [SPOT.top, SPOT.wingL, SPOT.wingR, SPOT.cornerL, SPOT.blockR];
+function openPlaybook(ret) {
+  PB.ret = ret || (Game.screen === 'coach' ? 'coach' : 'title');
+  if (!Game.save.customPlays) Game.save.customPlays = [];
+  pbLoad(myPlaybook()[PB.slot], PB.slot);
+  showScreen('plays');
+}
+function pbLoad(play, slot) {
+  if (slot != null) PB.slot = slot;
+  PB.play = JSON.parse(JSON.stringify(play)); PB.step = 0; PB.pick = -1;
+  renderPlaybook();
+}
+function pbPos(stepIdx) { // where each slot stands at the end of a step
+  const pos = PB_DEFAULT.map(v => v.slice());
+  for (let i = 0; i <= stepIdx; i++) { const st = PB.play.steps[i]; if (st && st.m) for (const k in st.m) pos[k] = st.m[k].slice(); if (st && st.drive != null) pos[st.drive] = SPOT.rim.slice(); }
+  return pos;
+}
+function renderPlaybook() {
+  const book = myPlaybook(), customs = Game.save.customPlays || [];
+  $('pbSlots').innerHTML = book.map((pl, i) => `<button data-pbslot="${i}" class="${i === PB.slot ? 'on' : ''}"><span class="key">${i + 1}</span> ${pl.name}</button>`).join('');
+  $('pbLib').innerHTML = PLAY_LIBRARY.map(pl => `<button class="lib" data-pblib="${pl.id}" title="${pl.desc}">${pl.name}</button>`).join('');
+  $('pbCustom').innerHTML = customs.map(pl => `<button class="lib" data-pbcustom="${pl.id}">${pl.name}</button>`).join('') || '<small>None yet.</small>';
+  $('pbName').value = PB.play.name;
+  $('pbStepBtns').innerHTML = PB.play.steps.map((_, i) => `<button class="tbtn ${i === PB.step ? 'on' : ''}" data-pbstep="${i}">Step ${i + 1}</button>`).join('');
+  $('pbTools').innerHTML = Object.entries(PB_TOOLS).map(([k, l]) => `<button class="tbtn ${PB.tool === k ? 'on' : ''}" data-pbtool="${k}">${l}</button>`).join('');
+  const lib = PLAY_BY_ID[PB.play.id];
+  $('pbHelp').textContent = (lib ? lib.desc + ' ' : '') + (PB_HELP[PB.tool] || '') + (PB.pick >= 0 ? ` (picked ${PB.pick + 1})` : '');
+  drawPlaybook();
+}
+function pbXY(cv, v) { // court (x from half court, z across) → canvas px; hoop at the top
+  const W = cv.width, Hh = cv.height, m = 30;
+  return [W / 2 - v[1] / HALF_W * (W / 2 - m), Hh - m - v[0] / HALF_L * (Hh - 2 * m)];
+}
+function pbCourt(cv, x, y) { const W = cv.width, Hh = cv.height, m = 30; return [clamp((Hh - m - y) / (Hh - 2 * m) * HALF_L, 0, HALF_L - 0.5), clamp(-(x - W / 2) / (W / 2 - m) * HALF_W, -HALF_W + 0.5, HALF_W - 0.5)]; }
+function drawPlaybook() {
+  const cv = $('pbCanvas'), g = cv.getContext('2d'), W = cv.width, Hh = cv.height;
+  g.fillStyle = '#d59a5b'; g.fillRect(0, 0, W, Hh);
+  g.strokeStyle = '#fff6e3'; g.lineWidth = 4;
+  const P = v => pbXY(cv, v);
+  const line = (a, b) => { g.beginPath(); g.moveTo(...P(a)); g.lineTo(...P(b)); g.stroke(); };
+  line([0, -HALF_W], [0, HALF_W]); line([HALF_L, -HALF_W], [HALF_L, HALF_W]); line([0, -HALF_W], [HALF_L, -HALF_W]); line([0, HALF_W], [HALF_L, HALF_W]);
+  // paint, arc, rim
+  const hx = HOOP_X;
+  g.fillStyle = 'rgba(42,111,219,.35)';
+  const a = P([hx + RULES.hoopInset - RULES.laneLength, RULES.laneHalfWidth]), b = P([HALF_L, -RULES.laneHalfWidth]);
+  g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+  g.beginPath(); for (let i = 0; i <= 40; i++) { const zz = -RULES.cornerZ + 2 * RULES.cornerZ * i / 40; const xx = hx - Math.sqrt(RULES.arcRadius ** 2 - zz * zz); const q = P([xx, zz]); i ? g.lineTo(...q) : g.moveTo(...q); } g.stroke();
+  line([hx - Math.sqrt(RULES.arcRadius ** 2 - RULES.cornerZ ** 2), RULES.cornerZ], [HALF_L, RULES.cornerZ]); line([hx - Math.sqrt(RULES.arcRadius ** 2 - RULES.cornerZ ** 2), -RULES.cornerZ], [HALF_L, -RULES.cornerZ]);
+  const rim = P([hx, 0]); g.strokeStyle = '#ff5a1f'; g.beginPath(); g.arc(rim[0], rim[1], 9, 0, Math.PI * 2); g.stroke();
+  const st = PB.play.steps[PB.step] || {};
+  const before = PB.step > 0 ? pbPos(PB.step - 1) : PB_DEFAULT, after = pbPos(PB.step);
+  const arrow = (from, to, color, dash) => {
+    const [x0, y0] = P(from), [x1, y1] = P(to), ang = Math.atan2(y1 - y0, x1 - x0);
+    g.strokeStyle = color; g.fillStyle = color; g.lineWidth = 4; g.setLineDash(dash ? [10, 8] : []);
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1 - Math.cos(ang) * 22, y1 - Math.sin(ang) * 22); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.moveTo(x1 - Math.cos(ang) * 18, y1 - Math.sin(ang) * 18); g.lineTo(x1 - Math.cos(ang) * 34 - Math.sin(ang) * 9, y1 - Math.sin(ang) * 34 + Math.cos(ang) * 9); g.lineTo(x1 - Math.cos(ang) * 34 + Math.sin(ang) * 9, y1 - Math.sin(ang) * 34 - Math.cos(ang) * 9); g.fill();
+  };
+  for (let k = 0; k < 5; k++) if (vlen(after[k][0] - before[k][0], after[k][1] - before[k][1]) > 0.3) arrow(before[k], after[k], st.drive === k ? '#ff4d2e' : '#15110e', false);
+  if (st.sc) for (const k in st.sc) { const [x0, y0] = P(after[k]), [x1, y1] = P(after[st.sc[k]]); g.strokeStyle = '#8a2be2'; g.lineWidth = 5; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + (x1 - x0) * 0.55, y0 + (y1 - y0) * 0.55); g.stroke(); }
+  if (st.pass) arrow(after[st.pass[0]], after[st.pass[1]], '#fff6e3', true);
+  for (let k = 0; k < 5; k++) {
+    const [x, y] = P(after[k]);
+    g.fillStyle = k === 0 ? '#ffc531' : '#fff6e3'; g.strokeStyle = PB.pick === k ? '#ff4d2e' : '#15110e'; g.lineWidth = PB.pick === k ? 6 : 4;
+    g.beginPath(); g.arc(x, y, 20, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#15110e'; g.font = 'bold 22px Bangers, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(k + 1), x, y + 1);
+    if (st.shoot === k) { g.fillStyle = '#ff4d2e'; g.fillText('★', x + 24, y - 20); }
+    if (st.sc && st.sc[k] != null) { g.fillStyle = '#8a2be2'; g.font = 'bold 15px sans-serif'; g.fillText('SCREEN', x, y + 32); }
+  }
+  g.fillStyle = 'rgba(21,17,14,.75)'; g.font = 'bold 18px sans-serif'; g.textAlign = 'left';
+  g.fillText('1 = ball handler · 2-5 = teammates, smallest to biggest', 12, Hh - 10);
+}
+function pbHit(cv, ev) {
+  const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * cv.width / r.width, y = (ev.clientY - r.top) * cv.height / r.height;
+  const pos = pbPos(PB.step);
+  let best = -1, bd = 34;
+  pos.forEach((v, k) => { const [px, py] = pbXY(cv, v), d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = k; } });
+  return { k: best, x, y };
+}
+function pbPointer(type, ev) {
+  const cv = $('pbCanvas'), st = PB.play.steps[PB.step]; if (!st) return;
+  const h = pbHit(cv, ev);
+  if (PB.tool === 'move') {
+    if (type === 'down' && h.k >= 0) { PB.drag = h.k; cv.setPointerCapture(ev.pointerId); }
+    else if (type === 'move' && PB.drag >= 0) { st.m = st.m || {}; st.m[PB.drag] = pbCourt(cv, h.x, h.y).map(v => Math.round(v * 10) / 10); drawPlaybook(); }
+    else if (type === 'up') PB.drag = -1;
+    return;
+  }
+  if (type !== 'down' || h.k < 0) return;
+  if (PB.tool === 'shoot') { st.shoot = st.shoot === h.k ? undefined : h.k; }
+  else if (PB.tool === 'drive') { st.drive = st.drive === h.k ? undefined : h.k; }
+  else if (PB.tool === 'screen' || PB.tool === 'pass') {
+    if (PB.pick < 0) { PB.pick = h.k; renderPlaybook(); return; }
+    if (PB.pick !== h.k) { if (PB.tool === 'pass') st.pass = [PB.pick, h.k]; else { st.sc = st.sc || {}; st.sc[PB.pick] = h.k; } }
+    PB.pick = -1;
+  }
+  renderPlaybook();
+}
+function pbSave() {
+  const p = PB.play;
+  p.name = ($('pbName').value || p.name || 'Custom').slice(0, 24);
+  if (PLAY_BY_ID[p.id] && JSON.stringify(PLAY_BY_ID[p.id].steps) !== JSON.stringify(p.steps)) p.id = 'c' + Date.now().toString(36); // an edited library play becomes a custom one
+  if (!PLAY_BY_ID[p.id]) {
+    const list = Game.save.customPlays = (Game.save.customPlays || []).filter(c => c.id !== p.id);
+    list.push(JSON.parse(JSON.stringify(p)));
+  }
+  setBookSlot(PB.slot, p.id);
+  toast(`SAVED TO SLOT ${PB.slot + 1}`, '', 1.2);
+  renderPlaybook();
+}
+
+/* ---------------- touch controls ---------------- */
+const TOUCH_BTNS = [ // [key code, size, color, x, y, offense label, defense label]
+  ['KeyJ', 'l', 'c1', 14, 14, 'SHOOT', 'BLOCK'],
+  ['KeyK', 'l', 'c2', 113, 10, 'PASS', 'STEAL'],
+  ['KeyL', 'm', 'c4', 24, 116, 'SPECIAL', 'CHECK'],
+  ['ShiftLeft', 'm', 'c3', 91, 91, 'SPRINT', 'SPRINT'],
+  ['KeyF', 's', 'c5', 196, 37, 'CROSS', '—'],
+  ['KeyG', 's', 'c5', 178, 106, 'SPIN', '—'],
+  ['KeyR', 's', 'c5', 133, 161, 'SCREEN', 'CHARGE'],
+  ['Space', 's', 'c5', 68, 192, 'STANCE', 'STANCE']
+];
+const TouchUI = { on: false, mode: '' };
+function touchWanted() {
+  const pref = Game.settings.touch || 'auto';
+  if (pref === 'on') return true; if (pref === 'off') return false;
+  return Game.input && Game.input.sawTouch;
+}
+function initTouch() {
+  const box = $('tbtns');
+  box.innerHTML = TOUCH_BTNS.map(([code, sz, col, x, y, lab]) => `<div class="tb ${sz} ${col}" data-tkey="${code}" style="right:${x}px;bottom:${y}px">${lab}</div>`).join('');
+  const inp = Game.input;
+  const press = (el, code, on) => { el.classList.toggle('down', on); inp.touchKey(code, on); };
+  for (const el of document.querySelectorAll('#touch [data-tkey]')) {
+    const code = el.dataset.tkey;
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture(e.pointerId); press(el, code, true); });
+    for (const evn of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(evn, () => press(el, code, false));
+  }
+  // joystick: appears where the thumb lands
+  const joy = $('tjoy'), base = $('tjoyBase'), knob = $('tjoyKnob');
+  let jid = null, cx = 0, cy = 0;
+  const R = 56;
+  joy.addEventListener('pointerdown', e => { e.preventDefault(); jid = e.pointerId; joy.setPointerCapture(jid); const r = joy.getBoundingClientRect(); cx = e.clientX; cy = e.clientY; base.style.left = (cx - r.left) + 'px'; base.style.top = (cy - r.top) + 'px'; inp.touchMove = { x: 0, y: 0 }; });
+  joy.addEventListener('pointermove', e => {
+    if (e.pointerId !== jid) return;
+    let dx = e.clientX - cx, dy = e.clientY - cy; const l = Math.hypot(dx, dy);
+    if (l > R) { dx *= R / l; dy *= R / l; }
+    knob.style.left = `calc(50% + ${dx}px)`; knob.style.top = `calc(50% + ${dy}px)`;
+    const m = Math.min(1, l / R), dead = 0.15;
+    inp.touchMove = m < dead ? { x: 0, y: 0 } : { x: dx / R, y: -dy / R };
+    if (m > 0.97) inp.touchKey('ShiftLeft', true, 'joy'); else inp.touchKey('ShiftLeft', false, 'joy'); // push to the rim to sprint
+  });
+  const up = e => { if (e.pointerId !== jid) return; jid = null; inp.touchMove = null; inp.touchKey('ShiftLeft', false, 'joy'); knob.style.left = '50%'; knob.style.top = '50%'; base.style.left = '110px'; base.style.top = 'calc(100% - 120px)'; };
+  joy.addEventListener('pointerup', up); joy.addEventListener('pointercancel', up);
+}
+function updateTouch(s) {
+  const want = touchWanted() && (Game.screen === 'match');
+  if (want !== TouchUI.on) { TouchUI.on = want; $('touch').classList.toggle('hidden', !want); document.body.classList.toggle('touch', want); }
+  document.body.classList.toggle('inmatch', Game.screen === 'match');
+  if (!want || !s) return;
+  const p = Game.control && Game.control.humanPid >= 0 ? s.players[Game.control.humanPid] : null;
+  const mode = p && (s.possession === p.team || s.phase === 'ft') ? 'off' : 'def';
+  if (mode !== TouchUI.mode) {
+    TouchUI.mode = mode;
+    for (const el of $('tbtns').children) { const b = TOUCH_BTNS.find(x => x[0] === el.dataset.tkey); el.textContent = mode === 'off' ? b[5] : b[6]; }
+  }
+}
+
+/* ---------------- wiring ---------------- */
+function initCoachUI() {
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-cp],[data-play],[data-pbslot],[data-pblib],[data-pbcustom],[data-pbstep],[data-pbtool]');
+    if (el) {
+      if (el.dataset.cp) coachClick(+el.dataset.cp);
+      else if (el.dataset.play) callPlay(+el.dataset.play);
+      else if (el.dataset.pbslot) pbLoad(myPlaybook()[+el.dataset.pbslot], +el.dataset.pbslot);
+      else if (el.dataset.pblib) pbLoad(PLAY_BY_ID[el.dataset.pblib]);
+      else if (el.dataset.pbcustom) pbLoad((Game.save.customPlays || []).find(c => c.id === el.dataset.pbcustom));
+      else if (el.dataset.pbstep) { PB.step = +el.dataset.pbstep; PB.pick = -1; renderPlaybook(); }
+      else if (el.dataset.pbtool) { PB.tool = el.dataset.pbtool; PB.pick = -1; if (PB.tool === 'clear') { const st = PB.play.steps[PB.step]; PB.play.steps[PB.step] = { d: st.d }; PB.tool = 'move'; } renderPlaybook(); }
+      return;
+    }
+    const btn = e.target.closest('button'); if (!btn) return;
+    switch (btn.dataset.act) {
+      case 'playbook': openPlaybook(); break;
+      case 'coach': openCoach('menu'); break;
+      case 'timeout': if (Game.screen === 'pause') showScreen('match'); callTimeout(); break;
+      case 'coachResume': coachResume(); break;
+      case 'autoSub': { const s = Game.s, t = userSide(); if (s && t >= 0) { sendCmd({ type: 'autoSub', on: !s.autoSub[t] }); stepCmdsNow(); setTimeout(renderCoach, 200); renderCoach(); } break; }
+      case 'touchToggle': { const o = ['auto', 'on', 'off'], cur = Game.settings.touch || 'auto'; Game.settings.touch = o[(o.indexOf(cur) + 1) % 3]; btn.textContent = 'Touch controls: ' + Game.settings.touch.toUpperCase(); persist(); break; }
+      case 'pbNew': pbLoad({ id: 'c' + Date.now().toString(36), name: 'My Play', steps: [{ d: 70, m: {} }, { d: 60 }] }); break;
+      case 'pbAddStep': if (PB.play.steps.length < 8) { PB.play.steps.splice(PB.step + 1, 0, { d: 60 }); PB.step++; renderPlaybook(); } break;
+      case 'pbDelStep': if (PB.play.steps.length > 1) { PB.play.steps.splice(PB.step, 1); PB.step = Math.max(0, PB.step - 1); renderPlaybook(); } break;
+      case 'pbSave': pbSave(); break;
+      case 'pbBack': if (PB.ret === 'coach' && Game.s) { showScreen('coach'); renderCoach(); } else showScreen('title'); break;
+    }
+  });
+  document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.slot != null) { setBookSlot(+e.target.dataset.slot, e.target.value); renderCoach(); } });
+  const cv = $('pbCanvas');
+  cv.addEventListener('pointerdown', e => pbPointer('down', e));
+  cv.addEventListener('pointermove', e => pbPointer('move', e));
+  cv.addEventListener('pointerup', e => pbPointer('up', e));
+  initTouch();
+  const bus = Game.bus;
+  const mine = e => e.team === userSide();
+  bus.on('timeout', e => { banner('TIMEOUT', teamsOf(Game.s)[e.team].name.toUpperCase(), 1.6); Sfx.whistle && Sfx.whistle(); if (userSide() >= 0 && Game.screen === 'match' && !Game.replay) setTimeout(() => { if (Game.s && Game.s.phase === 'timeout' && Game.screen === 'match') openCoach('timeout'); }, Game.netMatch ? 300 : 900); });
+  bus.on('timeoutEnd', () => { if (Game.screen === 'coach' && Game.netMatch) showScreen('match'); });
+  bus.on('halftime', () => { banner('HALFTIME', '', 2); if (userSide() >= 0 && !Game.replay) setTimeout(() => { if (Game.s && Game.s.phase === 'qbreak' && Game.screen === 'match') openCoach('halftime'); }, 1600); });
+  bus.on('quarterStart', () => { if (Game.screen === 'coach' && Game.netMatch) showScreen('match'); });
+  bus.on('timeoutDenied', e => { if (mine(e)) toast('CAN\'T CALL TIMEOUT NOW', 'warn', 1.2); });
+  bus.on('playCall', e => { Game.comm && Game.comm.say && Game.comm.say('playCall', { name: e.name }, 1); });
+  bus.on('playDenied', e => { if (mine(e)) toast('CALL PLAYS WITH THE BALL IN HAND', 'warn', 1.2); });
+  bus.on('subQueued', e => { if (mine(e)) toast(`${Game.s.players[e.pid].name.toUpperCase()} CHECKS IN AT THE NEXT WHISTLE`, '', 1.6); });
+  // keep the coach screen live while the sim runs behind it (online)
+  setInterval(() => { if (Game.screen === 'coach' && Game.s) renderCoach(); }, 500);
+}
+
+/* =====================================================================
    ONLINE — live lobby (who is online, one click to host or join) over a
    Supabase Realtime channel, game traffic over WebRTC data channels.
 
@@ -5701,13 +6607,22 @@ function renderMoveList() {
    ticks behind the host from those bundles. AI intents are a pure function
    of MatchState, so every peer computes them locally. A state hash rides
    along every two seconds; a mismatch triggers a snapshot resync.
+
+   Relay: when a direct WebRTC link can't be made (school / mobile / strict
+   NAT networks), that guest falls back to a per-room Supabase Realtime
+   channel. Same messages, bundles batched at 20 Hz and a deeper jitter
+   buffer — so it works on any network that can load the page.
    ===================================================================== */
 const NETCFG = {
   lobby: { url: 'https://ovikcgljthlkspzbxtov.supabase.co',   // shared with Vector; anon key is a public client key
     key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aWtjZ2xqdGhsa3NwemJ4dG92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDUyNTUsImV4cCI6MjA5MjI4MTI1NX0.VMxDeDseju-2vZqgqFYBsC5lLjvhZRW7LbWEQLwYj1o',
     channel: 'fangball-lobby', lib: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm' },
   stun: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'],
-  maxPlayers: 10, bufferTarget: 3, hashEvery: 120, joinTimeout: 20000
+  maxPlayers: 10, bufferTarget: 3, hashEvery: 120, joinTimeout: 20000,
+  p2pTimeout: 7000,          // no direct link after this long → relay
+  relayBatch: 3,             // ticks per relay bundle message (20 Hz)
+  relayBuffer: 9,            // guest jitter buffer on relay, in ticks
+  relayIdle: 12000           // ms of silence before a relay peer counts as gone
 };
 const NET_NAMES = ['Tusker', 'Bramble', 'Quill', 'Sable', 'Pounce', 'Rumble', 'Flick', 'Hollow', 'Cinder', 'Marsh', 'Vane', 'Burrow'];
 
@@ -5717,7 +6632,8 @@ class SupabaseSignal {
   async connect(onPeers, onMsg, onStatus) {
     const L = NETCFG.lobby;
     const { createClient } = await import(L.lib);
-    const client = createClient(L.url, L.key, { realtime: { params: { eventsPerSecond: 20 } }, auth: { persistSession: false, autoRefreshToken: false } });
+    const client = createClient(L.url, L.key, { realtime: { params: { eventsPerSecond: 40 } }, auth: { persistSession: false, autoRefreshToken: false } });
+    this.client = client;
     this.ch = client.channel(L.channel, { config: { presence: { key: this.id }, broadcast: { self: false, ack: false } } });
     this.ch.on('presence', { event: 'sync' }, () => { const st = this.ch.presenceState(), peers = {}; for (const [k, m] of Object.entries(st)) if (k !== this.id && m && m.length) peers[k] = m[m.length - 1]; onPeers(peers); });
     this.ch.on('broadcast', { event: 'sig' }, msg => { const m = msg.payload || msg; if (m && m.to === this.id) onMsg(m); });
@@ -5725,6 +6641,17 @@ class SupabaseSignal {
   }
   track(meta) { if (this.ready) this.ch.track(meta).catch(() => {}); }
   send(to, payload) { if (this.ready) this.ch.send({ type: 'broadcast', event: 'sig', payload: Object.assign({}, payload, { to, from: this.id }) }).catch(() => {}); }
+  /* a game relay channel for one room; messages queue until it is joined */
+  room(name, onMsg) {
+    const me = this.id, ch = this.client.channel('fangball-room-' + name, { config: { broadcast: { self: false, ack: false } } });
+    let open = false; const q = [];
+    ch.on('broadcast', { event: 'g' }, msg => { const m = msg.payload || msg; if (m && m.from !== me && (m.to === me || m.to === '*')) onMsg(m); });
+    ch.subscribe(st => { if (st === 'SUBSCRIBED') { open = true; while (q.length) ch.send(q.shift()).catch(() => {}); } });
+    return {
+      send(to, m) { const pkt = { type: 'broadcast', event: 'g', payload: Object.assign({}, m, { to, from: me }) }; if (open) ch.send(pkt).catch(() => {}); else q.push(pkt); },
+      close() { try { ch.unsubscribe(); } catch (e) { } }
+    };
+  }
 }
 class LocalSignal {
   constructor(id) { this.id = id; this.bc = null; this.meta = {}; this.seen = new Map(); this.timer = null; }
@@ -5743,6 +6670,11 @@ class LocalSignal {
   emitPeers(cb) { const o = {}; for (const [k, v] of this.seen) o[k] = v.meta; cb(o); }
   track(meta) { this.meta = meta; if (this.bc) this.bc.postMessage({ k: 'presence', from: this.id, meta }); }
   send(to, payload) { this.bc.postMessage({ k: 'sig', to, from: this.id, payload: Object.assign({}, payload, { to, from: this.id }) }); }
+  room(name, onMsg) {
+    const me = this.id, bc = new BroadcastChannel('fangball-room-' + name);
+    bc.onmessage = e => { const m = e.data; if (m && m.from !== me && (m.to === me || m.to === '*')) onMsg(JSON.parse(JSON.stringify(m))); };
+    return { send(to, m) { bc.postMessage(Object.assign({}, m, { to, from: me })); }, close() { bc.close(); } };
+  }
 }
 
 const Online = {
@@ -5753,18 +6685,68 @@ const Online = {
   mode: null,     // during a match: { host, mySide, captain, queue, lastSent, lastIntent }
   get rtc() { return typeof RTCPeerConnection !== 'undefined'; },
   localMode() { return /[?&]net=local/.test(location.search); },
+  forceRelay() { return /[?&]relay=1/.test(location.search) || !this.rtc; },
+  relay: null, viaRelay: false,
+  openRelay(roomId) { if (this.relay) this.relay.close(); this.relay = this.sig.room(roomId, m => this.onRelay(m)); },
+  closeRelay() { if (this.relay) this.relay.close(); this.relay = null; this.viaRelay = false; },
+  onRelay(m) {
+    if (this.role === 'host') {
+      let peer = this.peers.get(m.from);
+      if (m.k === 'hello') { // a guest that could not get a direct link
+        if (Game.netMatch || this.roster.length >= NETCFG.maxPlayers) return this.relay.send(m.from, { k: 'full' });
+        if (peer && peer.open && !peer.relay) return; // already linked directly
+        if (!peer) { peer = { id: m.from, name: (m.name || 'Player').slice(0, 16), side: this.pickSide(), intent: null, pid: -1, open: false }; this.peers.set(m.from, peer); }
+        if (peer.pc) { try { peer.pc.close(); } catch (e) { } peer.pc = null; peer.dc = null; }
+        peer.relay = true; peer.seen = Date.now();
+        if (!peer.open) { peer.open = true; this.roster.push({ id: peer.id, name: peer.name, side: peer.side }); this.setStatus(`${peer.name} joined (relay).`); Sfx.pop(); }
+        this.relay.send(m.from, { k: 'welcome' }); this.pushRoom(); this.track();
+        return;
+      }
+      if (peer && peer.relay) { peer.seen = Date.now(); this.hostMsg(peer, m); }
+    } else if (m.from === (this.hostId || this.joining)) {
+      this.hostSeen = Date.now();
+      if (m.k === 'welcome') { if (this.joining) this.joinedVia(true, m.from); else if (this.role === 'guest' && !this.viaRelay) { this.viaRelay = true; try { this.hostPc && this.hostPc.close(); } catch (e) { } this.hostPc = null; this.hostDc = null; } return; }
+      if (m.k === 'full') { this.joining = null; this.closeRelay(); this.setStatus('That room is full or already playing.'); this.render(); return; }
+      if (this.viaRelay) this.guestMsg(m);
+    }
+  },
+  pickSide() { return this.roster.filter(r => r.side === 0).length <= this.roster.filter(r => r.side === 1).length ? 0 : 1; },
+  /* send to one peer by whichever link it has */
+  sendPeer(peer, m) { if (peer.relay) { if (this.relay) this.relay.send(peer.id, m); } else this.sendTo(peer.dc, m); },
+  toHost(m) { if (this.viaRelay) { if (this.relay) this.relay.send(this.hostId, m); } else this.sendTo(this.hostDc, m); },
+  joinedVia(relay, hostId) {
+    clearTimeout(this.joinTimer); clearTimeout(this.p2pTimer);
+    this.role = 'guest'; this.hostId = hostId; this.joining = null; this.viaRelay = relay; this.hostSeen = Date.now();
+    if (relay) { try { this.hostPc && this.hostPc.close(); } catch (e) { } this.hostPc = null; this.hostDc = null; }
+    this.toHost({ k: 'name', name: this.name });
+    this.toHost({ k: 'plays', plays: myPlaybook() });
+    this.setStatus(relay ? 'Joined via relay (direct link blocked on this network). Waiting for the host to start.' : 'Joined. Waiting for the host to start.');
+    this.track();
+  },
+  goRelay(hostId) { // direct link failed or is slow: say hello on the room relay
+    if (!this.sig || this.role === 'guest') return;
+    if (!this.relay) this.openRelay(hostId);
+    this.setStatus('Direct link blocked — connecting through the relay…');
+    this.relay.send(hostId, { k: 'hello', name: this.name });
+  },
+  /* relay peers have no close event: watch for silence */
+  relayWatch() {
+    const now = Date.now();
+    if (this.role === 'host') { for (const p of [...this.peers.values()]) if (p.relay && p.open && now - (p.seen || now) > NETCFG.relayIdle) this.dropPeer(p); if (this.relay && this.peers.size && now - (this.lastPing || 0) > 2000) { this.lastPing = now; this.relay.send('*', { k: 'ping' }); } }
+    else if (this.role === 'guest' && this.viaRelay) { if (now - (this.lastPing || 0) > 2000) { this.lastPing = now; this.toHost({ k: 'ping' }); } if (now - (this.hostSeen || now) > NETCFG.relayIdle) this.hostGone(); }
+  },
   async init() {
     if (this.sig) return;
     this.name = (Game.save.netName || '').slice(0, 16) || `${NET_NAMES[Math.floor(Math.random() * NET_NAMES.length)]}-${10 + Math.floor(Math.random() * 89)}`;
-    if (!this.rtc) { this.setStatus('This browser cannot open peer-to-peer connections, so online play is unavailable.'); return; }
     this.sig = this.localMode() ? new LocalSignal(this.myId) : new SupabaseSignal(this.myId);
+    setInterval(() => this.relayWatch(), 1000);
     this.setStatus('Connecting to the lobby…');
     try {
       await this.sig.connect(p => { this.lobbyPeers = p; this.render(); }, m => this.onSignal(m), (txt, ok) => { this.ready = ok; this.setStatus(txt); this.track(); });
     } catch (e) { this.setStatus('Lobby unavailable: ' + (e.message || e)); }
   },
   setStatus(t) { this.status = t; const el = $('netStatus'); if (el) el.textContent = t; },
-  setName(n) { this.name = (n || '').replace(/[<>&"]/g, '').trim().slice(0, 16) || this.name; Game.save.netName = this.name; persist(); this.track(); if (this.role === 'guest' && this.hostDc) this.sendTo(this.hostDc, { k: 'name', name: this.name }); if (this.role === 'host') { const me = this.roster.find(r => r.id === this.myId); if (me) me.name = this.name; this.pushRoom(); } },
+  setName(n) { this.name = (n || '').replace(/[<>&"]/g, '').trim().slice(0, 16) || this.name; Game.save.netName = this.name; persist(); this.track(); if (this.role === 'guest') this.toHost({ k: 'name', name: this.name }); if (this.role === 'host') { const me = this.roster.find(r => r.id === this.myId); if (me) me.name = this.name; this.pushRoom(); } },
   track() {
     if (!this.sig) return;
     const r = this.room;
@@ -5780,6 +6762,7 @@ const Online = {
   host() {
     if (this.role === 'guest') this.leave();
     this.role = 'host'; this.roster = [{ id: this.myId, name: this.name, side: 0 }];
+    if (this.sig) this.openRelay(this.myId);
     const S = Game.settings; Object.assign(this.room, { home: Game.home, away: Game.away, arena: Game.arenaPick, quarterMinutes: S.quarterMinutes, difficulty: S.difficulty, hazards: S.hazards, rules: S.rules });
     this.setStatus('Hosting. Players in the lobby can join your room; press Start when everyone is in.');
     this.track(); this.render();
@@ -5789,13 +6772,13 @@ const Online = {
       if (m.t === 'join' && this.role === 'host') {
         if (Game.netMatch || this.roster.length >= NETCFG.maxPlayers) return this.sig.send(m.from, { t: 'full' });
         const pc = this.pc(), dc = pc.createDataChannel('game', { ordered: true });
-        const side = this.roster.filter(r => r.side === 0).length <= this.roster.filter(r => r.side === 1).length ? 0 : 1;
+        const side = this.pickSide();
         const peer = { id: m.from, name: (m.name || 'Player').slice(0, 16), pc, dc, side, intent: null, pid: -1, open: false };
         this.peers.set(m.from, peer);
-        dc.onopen = () => { peer.open = true; this.roster.push({ id: peer.id, name: peer.name, side: peer.side }); this.pushRoom(); this.setStatus(`${peer.name} joined.`); this.track(); Sfx.pop(); };
+        dc.onopen = () => { if (peer.relay || peer.open) return; peer.open = true; this.roster.push({ id: peer.id, name: peer.name, side: peer.side }); this.pushRoom(); this.setStatus(`${peer.name} joined.`); this.track(); Sfx.pop(); };
         dc.onmessage = e => this.hostMsg(peer, JSON.parse(e.data));
-        dc.onclose = () => this.dropPeer(peer);
-        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') this.dropPeer(peer); };
+        dc.onclose = () => { if (!peer.relay) this.dropPeer(peer); };
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed' && !peer.relay && peer.open) this.dropPeer(peer); };
         await pc.setLocalDescription(await pc.createOffer()); await this.gathered(pc);
         this.sig.send(m.from, { t: 'offer', sdp: pc.localDescription.sdp });
       } else if (m.t === 'answer' && this.role === 'host') {
@@ -5804,11 +6787,11 @@ const Online = {
         const pc = this.pc(); this.hostPc = pc;
         pc.ondatachannel = ev => {
           const dc = ev.channel; this.hostDc = dc;
-          dc.onopen = () => { clearTimeout(this.joinTimer); this.role = 'guest'; this.hostId = m.from; this.joining = null; this.sendTo(dc, { k: 'name', name: this.name }); this.setStatus('Joined. Waiting for the host to start.'); this.track(); };
-          dc.onmessage = e => this.guestMsg(JSON.parse(e.data));
-          dc.onclose = () => this.hostGone();
+          dc.onopen = () => { if (this.viaRelay || this.joining !== m.from) return; this.joinedVia(false, m.from); };
+          dc.onmessage = e => { if (!this.viaRelay) this.guestMsg(JSON.parse(e.data)); };
+          dc.onclose = () => setTimeout(() => { if (!this.viaRelay && this.hostDc === dc) this.hostGone(); }, 1500);
         };
-        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') this.hostGone(); };
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') { if (this.joining === m.from) this.goRelay(m.from); else if (!this.viaRelay && this.hostPc === pc) this.hostGone(); } };
         await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
         await pc.setLocalDescription(await pc.createAnswer()); await this.gathered(pc);
         this.sig.send(m.from, { t: 'answer', sdp: pc.localDescription.sdp });
@@ -5819,42 +6802,49 @@ const Online = {
     if (!this.ready) return;
     if (this.role !== 'off') this.leave();
     this.joining = hostId; this.setStatus('Joining…');
-    this.sig.send(hostId, { t: 'join', name: this.name });
+    this.openRelay(hostId);
+    if (this.forceRelay()) this.goRelay(hostId);
+    else { this.sig.send(hostId, { t: 'join', name: this.name }); clearTimeout(this.p2pTimer); this.p2pTimer = setTimeout(() => { if (this.joining === hostId) this.goRelay(hostId); }, NETCFG.p2pTimeout); }
     clearTimeout(this.joinTimer);
-    this.joinTimer = setTimeout(() => { if (this.joining) { this.joining = null; this.setStatus('Could not connect (no route between the two networks, or the host left). Try again or try another network.'); this.render(); } }, NETCFG.joinTimeout);
+    this.joinTimer = setTimeout(() => { if (this.joining) { this.joining = null; this.closeRelay(); this.setStatus('Could not reach that room — the host may have left. Try again.'); this.render(); } }, NETCFG.joinTimeout);
     this.render();
   },
-  pushRoom() { const msg = { k: 'room', room: this.room, roster: this.roster }; for (const p of this.peers.values()) this.sendTo(p.dc, msg); this.render(); },
+  pushRoom() { const msg = { k: 'room', room: this.room, roster: this.roster }; for (const p of this.peers.values()) if (p.open) this.sendPeer(p, msg); this.render(); },
   dropPeer(peer) {
     if (!this.peers.has(peer.id)) return;
-    this.peers.delete(peer.id); try { peer.pc.close(); } catch (e) { }
+    this.peers.delete(peer.id); try { peer.pc && peer.pc.close(); } catch (e) { }
     this.roster = this.roster.filter(r => r.id !== peer.id);
     this.setStatus(`${peer.name} left.`);
     if (Game.netMatch) toast(`${peer.name.toUpperCase()} DISCONNECTED — AI TAKES OVER`, 'warn', 2.5);
     this.pushRoom(); this.track();
   },
   hostMsg(peer, m) {
+    if (m.k === 'bye') { this.dropPeer(peer); return; }
     if (m.k === 'name') { peer.name = (m.name || peer.name).replace(/[<>&"]/g, '').slice(0, 16); const r = this.roster.find(x => x.id === peer.id); if (r) r.name = peer.name; this.pushRoom(); }
     else if (m.k === 'side' && !Game.netMatch) { peer.side = m.side ? 1 : 0; const r = this.roster.find(x => x.id === peer.id); if (r) r.side = peer.side; this.pushRoom(); }
-    else if (m.k === 'i') { peer.pid = m.pid; peer.intent = { mx: m.i[0], mz: m.i[1], b: m.i[2], pt: m.i[3] }; peer.lastTick = m.t; }
-    else if (m.k === 'desync' && Game.netMatch) { this.sendTo(peer.dc, { k: 'snap', t: Game.s.tick, state: serialize(Game.s) }); }
+    else if (m.k === 'i') { peer.pid = m.pid; peer.intent = { mx: m.i[0], mz: m.i[1], b: m.i[2], pt: m.i[3] }; peer.pendB = (peer.pendB || 0) | m.i[2]; peer.lastTick = m.t; }
+    else if (m.k === 'plays') peer.plays = m.plays;
+    else if (m.k === 'cmd' && Game.netMatch) Game.pendingCmds.push(Object.assign({}, m.c, { side: peer.side }));
+    else if (m.k === 'desync' && Game.netMatch && (!peer.lastSnap || performance.now() - peer.lastSnap > 1500)) { peer.lastSnap = performance.now(); this.sendPeer(peer, { k: 'snap', t: Game.s.tick, state: serialize(Game.s) }); }
   },
   guestMsg(m) {
     if (m.k === 'room') { this.room = m.room; this.roster = m.roster; this.render(); }
     else if (m.k === 'start') this.beginMatch(m.cfg, false);
     else if (m.k === 'b' && this.mode) { this.mode.queue.push(m); }
+    else if (m.k === 'bb' && this.mode) { for (const b of m.list) this.mode.queue.push(b); }
     else if (m.k === 'snap' && this.mode) { Game.s = deserialize(m.state); this.mode.queue = this.mode.queue.filter(b => b.t > Game.s.tick); this.mode.resyncs++; toast('RESYNCED WITH HOST', 'warn', 1.2); }
     else if (m.k === 'end') { toast('HOST ENDED THE MATCH', 'fire', 2.5); setTimeout(() => { if (Game.netMatch) { this.endMatch(); showScreen('title'); } }, 1500); }
   },
   hostGone() {
     const wasPlaying = !!Game.netMatch;
-    this.role = 'off'; this.hostId = null; this.hostDc = null; try { this.hostPc && this.hostPc.close(); } catch (e) { } this.hostPc = null;
+    this.role = 'off'; this.hostId = null; this.hostDc = null; try { this.hostPc && this.hostPc.close(); } catch (e) { } this.hostPc = null; this.closeRelay();
     this.setStatus('Disconnected from the host.'); this.track();
     if (wasPlaying && Game.s && Game.s.phase !== 'final') { toast('HOST DISCONNECTED', 'fire', 3); setTimeout(() => { this.endMatch(); showScreen('online'); renderOnline(); }, 2500); }
   },
   leave() {
-    if (this.role === 'host') { for (const p of this.peers.values()) { this.sendTo(p.dc, { k: 'end' }); try { p.pc.close(); } catch (e) { } } this.peers.clear(); }
-    if (this.role === 'guest') { try { this.hostPc.close(); } catch (e) { } }
+    if (this.role === 'host') { for (const p of this.peers.values()) { this.sendPeer(p, { k: 'end' }); try { p.pc && p.pc.close(); } catch (e) { } } this.peers.clear(); }
+    if (this.role === 'guest') { this.toHost({ k: 'bye' }); try { this.hostPc && this.hostPc.close(); } catch (e) { } }
+    clearTimeout(this.p2pTimer); this.closeRelay();
     this.role = 'off'; this.roster = []; this.hostId = null; this.hostDc = null; this.hostPc = null; this.joining = null;
     this.setStatus(this.ready ? 'In the lobby.' : this.status); this.track();
   },
@@ -5864,7 +6854,9 @@ const Online = {
     const r = this.room;
     const cfg = { seed: (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0, home: r.home, away: r.away, arena: r.arena === 'home' ? TEAM_BY_KEY[r.home].home : r.arena,
       hazards: r.hazards, rules: r.rules, quarterMinutes: r.quarterMinutes, difficulty: r.difficulty, lineups: Game.save.lineups, roster: this.roster.map(x => ({ id: x.id, name: x.name, side: x.side })) };
-    for (const p of this.peers.values()) this.sendTo(p.dc, { k: 'start', cfg });
+    cfg.humanTeams = [0, 1].map(t => this.roster.some(x => x.side === t));
+    cfg.plays = [0, 1].map(t => { const cap = this.roster.find(x => x.side === t); if (!cap) return null; if (cap.id === this.myId) return myPlaybook(); const p = this.peers.get(cap.id); return p && p.plays ? p.plays : null; });
+    for (const p of this.peers.values()) if (p.open) this.sendPeer(p, { k: 'start', cfg });
     this.beginMatch(cfg, true);
   },
   beginMatch(cfg, isHost) {
@@ -5872,9 +6864,9 @@ const Online = {
     const mySide = me ? me.side : 0;
     const captain = cfg.roster.filter(x => x.side === mySide)[0].id === this.myId;
     Game.settings.difficulty = cfg.difficulty;
-    startMatch({ mode: 'online', home: cfg.home, away: cfg.away, arena: cfg.arena, hazards: cfg.hazards, rules: cfg.rules, side: mySide, seed: cfg.seed, quarterMinutes: cfg.quarterMinutes, lineups: cfg.lineups });
+    startMatch({ mode: 'online', home: cfg.home, away: cfg.away, arena: cfg.arena, hazards: cfg.hazards, rules: cfg.rules, side: mySide, seed: cfg.seed, quarterMinutes: cfg.quarterMinutes, lineups: cfg.lineups, humanTeams: cfg.humanTeams, plays: cfg.plays });
     Game.control.captain = captain;
-    this.mode = { host: isHost, mySide, captain, queue: [], claims: new Map(), roster: cfg.roster, resyncs: 0, acc: 0, stalls: 0, sentAt: 0 };
+    this.mode = { host: isHost, mySide, captain, queue: [], claims: new Map(), roster: cfg.roster, resyncs: 0, acc: 0, stalls: 0, sentAt: 0, batch: [], lastI: '', iAt: 0 };
     Game.netMatch = true;
     this.track();
   },
@@ -5906,32 +6898,50 @@ const Online = {
         M.acc -= DT; steps++;
         const mine = this.myIntent(s);
         const humans = [{ id: this.myId, side: M.mySide, pid: mine.pid, intent: mine.intent }];
-        for (const r of M.roster) { if (r.id === this.myId) continue; const p = this.peers.get(r.id); if (p && p.intent) humans.push({ id: r.id, side: r.side, pid: p.pid, intent: p.intent }); }
+        for (const r of M.roster) { if (r.id === this.myId) continue; const p = this.peers.get(r.id); if (p && p.intent) { humans.push({ id: r.id, side: r.side, pid: p.pid, intent: Object.assign({}, p.intent, { b: p.intent.b | (p.pendB || 0) }) }); p.pendB = 0; } }
         const { intents, claims } = this.merge(s, humans);
         M.claims = claims;
-        simTickWith(intents);
+        const cmds = Game.pendingCmds.length ? Game.pendingCmds.splice(0) : null;
+        simTickWith(intents, cmds);
         const b = { k: 'b', t: s.tick, h: [...claims.entries()].map(([pid, id]) => { const I = intents[pid]; return [pid, id, I.mx, I.mz, I.b, I.pt]; }) };
+        if (cmds) b.c = cmds;
         if (s.tick % NETCFG.hashEvery === 0) b.hs = hashState(s);
-        for (const p of this.peers.values()) this.sendTo(p.dc, b);
+        let relayed = false;
+        for (const p of this.peers.values()) { if (!p.open) continue; if (p.relay) relayed = true; else this.sendTo(p.dc, b); }
+        if (relayed) { M.batch.push(b); if (M.batch.length >= NETCFG.relayBatch || b.hs || s.phase === 'final') { this.relay.send('*', { k: 'bb', list: M.batch }); M.batch = []; } }
         if (s.phase === 'final') break;
       }
       if (steps >= CONFIG.sim.maxStepsPerFrame) M.acc = 0;
     } else {
       // guest: send my intent every tick-time; simulate host bundles with a small jitter buffer
-      while (M.acc >= DT) { M.acc -= DT; const mine = this.myIntent(s); this.sendTo(this.hostDc, { k: 'i', t: s.tick, pid: mine.pid, i: [mine.intent.mx, mine.intent.mz, mine.intent.b, mine.intent.pt] }); }
-      const q = M.queue;
-      let budget = q.length > NETCFG.bufferTarget + 4 ? 4 : q.length > NETCFG.bufferTarget ? 2 : 1;
+      while (M.acc >= DT) {
+        M.acc -= DT; const mine = this.myIntent(s), I = mine.intent;
+        const msg = { k: 'i', t: s.tick, pid: mine.pid, i: [I.mx, I.mz, I.b, I.pt] };
+        if (!this.viaRelay) this.toHost(msg);
+        else { // relay: button changes go at once, stick moves at ~22 Hz, plus a slow heartbeat
+          const key = msg.pid + ',' + msg.i.join(','), now = performance.now();
+          if (key !== M.lastI) M.dirty = true;
+          if ((M.dirty && (I.b !== M.lastB || now - M.iAt > 45)) || now - M.iAt > 250) { this.toHost(msg); M.lastI = key; M.lastB = I.b; M.iAt = now; M.dirty = false; }
+        }
+      }
+      const q = M.queue, target = this.viaRelay ? NETCFG.relayBuffer : NETCFG.bufferTarget;
+      if (M.waiting && q.length >= target) M.waiting = false;
+      if (!q.length) { M.waiting = true; }
+      // play bundles at real-time speed, a touch faster when the buffer is fat, slower when it runs thin
+      const rate = q.length > target + 6 ? 1.6 : q.length > target + 2 ? 1.1 : q.length < Math.max(1, target / 3) ? 0.9 : 1;
+      M.owed = M.waiting ? 0 : Math.min(6, (M.owed || 0) + dtReal / DT * rate);
+      let budget = Math.floor(M.owed); M.owed -= budget;
       if (!q.length) M.stalls++;
       M.buffered = q.length;
       while (budget-- > 0 && q.length && s.phase !== 'final') {
         const b = q.shift();
-        if (b.t !== s.tick + 1) { if (b.t <= s.tick) continue; this.sendTo(this.hostDc, { k: 'desync', t: s.tick }); q.length = 0; break; }
+        if (b.t !== s.tick + 1) { if (b.t <= s.tick) continue; this.toHost({ k: 'desync', t: s.tick }); q.length = 0; break; }
         const intents = Game.control.collectAI(s);
         const claims = new Map();
         for (const [pid, id, mx, mz, bb, pt] of b.h) { intents[pid] = { mx, mz, b: bb, pt }; claims.set(pid, id); }
         M.claims = claims;
-        simTickWith(intents);
-        if (b.hs && b.hs !== hashState(s)) { this.sendTo(this.hostDc, { k: 'desync', t: s.tick }); q.length = 0; break; }
+        simTickWith(intents, b.c || null);
+        if (b.hs && b.hs !== hashState(s)) { this.toHost({ k: 'desync', t: s.tick }); q.length = 0; break; }
       }
     }
   },
@@ -5992,7 +7002,7 @@ document.addEventListener('click', e => {
     case 'netHost': Online.host(); renderOnline(); break;
     case 'netLeave': Online.leave(); renderOnline(); break;
     case 'netStart': Online.start(); break;
-    case 'netSwitchSide': if (Online.role === 'guest') { const me = Online.roster.find(x => x.id === Online.myId); Online.sendTo(Online.hostDc, { k: 'side', side: me ? 1 - me.side : 1 }); } break;
+    case 'netSwitchSide': if (Online.role === 'guest') { const me = Online.roster.find(x => x.id === Online.myId); Online.toHost({ k: 'side', side: me ? 1 - me.side : 1 }); } break;
     case 'netLobby': Online.endMatch(); showScreen('online'); renderOnline(); break;
   }
 });
@@ -6013,11 +7023,11 @@ function simTick() {
   const ctx = cameraCtx();
   const intents = Game.control.collect(s, ctx);
   inp.endTick();
-  simTickWith(intents);
+  simTickWith(intents, Game.pendingCmds.length ? Game.pendingCmds.splice(0) : null);
 }
 /* Advance the match one tick with a given full intent array (offline, or the online host/guest after merging). */
 const NET_HASHES = {};
-function simTickWith(intents) {
+function simTickWith(intents, cmds) {
   const s = Game.s;
   if (Game.netMatch && s.tick % 60 === 59) NET_HASHES[s.tick + 1] = null; // filled after the step below
   // input log for determinism verification / replays / Stage 4
@@ -6025,9 +7035,10 @@ function simTickWith(intents) {
   if (need > Game.log.length) { const n = new Int32Array(Game.log.length * 2); n.set(Game.log); Game.log = n; }
   const base = Game.logTicks * s.players.length * 3;
   for (let i = 0; i < s.players.length; i++) packIntent(intents[i], Game.log, base + i * 3);
+  if (cmds && cmds.length) Game.cmdLog[Game.logTicks] = cmds;
   Game.logTicks++;
   capturePrev();
-  step(s, intents);
+  step(s, intents, cmds);
   if (Game.netMatch && s.tick % 60 === 0) NET_HASHES[s.tick] = hashState(s);
   for (const ev of s.events) Game.bus.emit(ev);
   Game.snaps.push(snapshot(s));
@@ -6041,7 +7052,7 @@ function verifyDeterminism() {
   for (let t = 0; t < n; t++) {
     const intents = new Array(P);
     for (let i = 0; i < P; i++) intents[i] = unpackIntent(Game.log, (t * P + i) * 3);
-    step(s2, intents);
+    step(s2, intents, Game.cmdLog[t]);
   }
   const a = hashState(Game.s), b = hashState(s2), same = serialize(Game.s) === serialize(s2);
   const ms = (performance.now() - t0).toFixed(0);
@@ -6116,7 +7127,7 @@ function renderState(s, alpha, dt) {
     const x = L(pp.x, p.x), y = L(pp.y, p.y) + (p.gy || 0), z = L(pp.z, p.z);
     const hasBall = s.ball.holder === p.id && s.ball.st === 'held';
     const sp = speedOf(p);
-    const r = { x, y, z, fx: p.fx, fz: p.fz, speed: sp, st: p.st, hold: p.hold, hasBall, stance: p.stance, charging: p.charging, kind: p.kind, t: t + p.id, gy: p.gy || 0 };
+    const r = { x, y, z, fx: p.fx, fz: p.fz, speed: sp, st: p.st, hold: p.hold, hasBall, stance: p.stance, charging: p.charging, kind: p.kind, t: t + p.id, gy: p.gy || 0, vx: p.vx, vz: p.vz, bx: s.ball.x, bz: s.ball.z, drib: hasBall ? dribble.phase : 0 };
     v.update(r, dt);
     if (dt > 0 && !Game.replay) {
       // sneaker squeaks scaled by size; speed lines on fast moves
@@ -6477,6 +7488,9 @@ function frame(now) {
       if (Game.offer && inp.pressedUI('replay')) startReplay();
       if (!Game.replay) {
         if (inp.pressedUI('switch')) Game.control.manualSwitch(s);
+        if (!inp.key('iconMod')) for (let n = 1; n <= 5; n++) if (inp.pressedUI('play' + n)) callPlay(n);
+        if (inp.pressedUI('timeout')) callTimeout();
+        if (inp.pressedUI('coach')) openCoach('menu');
         if (Game.netMatch) { Game.timeScale = 1; dt = dtReal; } // no slow-motion online: everyone shares one clock
         else {
           if (Game.slowmoT > 0) { Game.slowmoT -= dtReal; Game.timeScale = CONFIG.fx.slowmoScale; } else Game.timeScale = 1;
@@ -6498,7 +7512,8 @@ function frame(now) {
     const paused = Game.screen !== 'match' && !Game.netMatch;
     const { bx, by, bz } = renderState(viewState, clamp(alpha, 0, 1), paused ? 0 : dt);
     updateCamera(dtReal, bx, by, bz, viewState, alpha);
-    if (!Game.replay) updateHUD(Game.s, dtReal);
+    if (!Game.replay) { updateHUD(Game.s, dtReal); updateCoachHUD(Game.s); }
+    updateTouch(Game.s);
     Game.comm.update(now / 1000);
     Render.updateArena(viewState, paused ? 0 : dtReal, now / 1000);
     const fz = Game.s.frenzy.findIndex(f => f.t > 0);
@@ -6513,7 +7528,7 @@ function frame(now) {
   }
   FX2D.draw(dtReal);
   Game.frameCount++;
-  if (Game.frameCount % 30 === 0) $('perf').textContent = `${Math.round(Game.fps)} fps · ${Render.info().render.calls} draws` + (Game.netMatch && Online.mode ? ` · ONLINE ${Online.mode.host ? 'HOST' : 'GUEST buf ' + (Online.mode.buffered || 0)} · ${Online.mode.roster.length}P` + (Online.mode.resyncs ? ` · resync ${Online.mode.resyncs}` : '') : '');
+  if (Game.frameCount % 30 === 0) $('perf').textContent = `${Math.round(Game.fps)} fps · ${Render.info().render.calls} draws` + (Game.netMatch && Online.mode ? ` · ONLINE ${Online.mode.host ? 'HOST' : 'GUEST' + (Online.viaRelay ? ' RELAY' : '') + ' buf ' + (Online.mode.buffered || 0)} · ${Online.mode.roster.length}P` + (Online.mode.resyncs ? ` · resync ${Online.mode.resyncs}` : '') : '');
   inp.endFrame();
 }
 
@@ -6529,6 +7544,7 @@ function boot() {
   Game.input = new InputManager(document.querySelector('canvas.gl'));
   Game.comm = new Commentary($('comm'));
   wireBus();
+  initCoachUI();
   $('loading').remove();
   showScreen('title');
   requestAnimationFrame(frame);
@@ -6536,7 +7552,7 @@ function boot() {
 
 /* Debug / test surface (also used by automated checks). */
 window.FANGBALL = {
-  Online, NET_HASHES,
+  Online, NET_HASHES, sendCmd, callPlay, callTimeout, openCoach, PLAY_LIBRARY,
   GAME_TITLE, SPORT_NAME, CONFIG, RULES, SPECIES, TEAMS, ARENAS, BTN,
   createMatch, step, snapshot, restore, serialize, deserialize, hashState, makeIntent, simulateHeadless, createTournament, tournamentNext, tournamentRecord, Store, renderTourney,
   AIController, HumanController, RemoteController, ControlManager, EventBus, Game, contactRatio, verifyDeterminism, startMatch, offerReplay, holderOf,
