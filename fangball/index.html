@@ -705,6 +705,22 @@ const SPECIES = [
     attrs: [46, 38, 30, 84, 26, 42, 99, 80, 28, 86, 56, 34],
     look: { fur: 0x3a2a22, belly: 0x5a4434, ears: 'small', snout: 0.6, tail: 'thin', tailColor: 0x2a1e18, horn: 0xd8cca8, eye: 0x140c08 } }
 ];
+/* SUPERSTAR HYBRIDS — five one-of-a-kind players (hand-made models in chars/superstars/). Each is built from two parent
+   species: ratings start from the same-size parent and take half of anything the other parent does better, plus 4
+   (they are deliberately a bit overpowered). They never appear as generated roster filler. */
+(() => {
+  const sp = k => SPECIES.find(s => s.key === k);
+  const mix = (home, other) => home.attrs.map((v, i) => Math.min(99, Math.max(v, Math.round((v + other.attrs[i]) / 2)) + 4));
+  const H = (key, name, cls, height, mass, home, other, traitFrom, look, blurb) => {
+    const a = sp(home), b = sp(other);
+    SPECIES.push({ key, name, cls, height, mass, superstar: true, parents: [home, other], blurb, trait: Object.assign({}, sp(traitFrom).trait), flav: a.flav, attrs: mix(a, b), look: Object.assign({}, a.look, look) });
+  };
+  H('chiparoo', 'Chiparoo', 'small', 1.15, 26, 'squirrel', 'kangaroo', 'kangaroo', { fur: 0xb8763e, belly: 0xf4dcb4, tail: 'bushy', tailColor: 0x6e4a2a }, 'Half chipmunk, half kangaroo: pocket-sized and spring-loaded.');
+  H('crocodog', 'Crocodog', 'medium', 1.85, 120, 'wolf', 'crocodile', 'crocodile', { fur: 0x5d6a3e, belly: 0xc8b88a, tail: 'kangaroo', tailColor: 0x4d5a32 }, 'A good boy with a crocodile\'s back. Fetches anything. Never lets go.');
+  H('crocogorilla', 'Crocogorilla', 'large', 2.45, 270, 'gorilla', 'crocodile', 'gorilla', { fur: 0x26262a, face: 0x6a7a4a }, 'Gorilla arms, crocodile jaws. The paint belongs to it.');
+  H('giraffcoon', 'Giraffcoon', 'giant', 4.0, 260, 'giraffe', 'mongoose', 'giraffe', { belly: 0x9a9690, tail: 'bushy', tailColor: 0x5a5650 }, 'A giraffe up top, a raccoon below: sees every pass and steals it.');
+  H('kangabear', 'Kangabear', 'large', 2.4, 215, 'bear', 'kangaroo', 'kangaroo', { fur: 0xa8744a, belly: 0xd8b088, tail: 'kangaroo', tailColor: 0xa8744a }, 'Grizzly strength on kangaroo legs.');
+})();
 const ATTR_KEYS = ['speed', 'accel', 'handling', 'inside', 'outside', 'passing', 'strength', 'blocking', 'stealing', 'rebounding', 'stamina', 'jump'];
 const SPECIES_BY_KEY = Object.fromEntries(SPECIES.map(s => [s.key, s]));
 
@@ -733,7 +749,11 @@ const CHARACTER_MODELS = {
   // giant
   rhino: { file: 'chars/rhino.glb', tail: 'chars/rhino_tail.glb' }, elephant: { file: 'chars/elephant.glb', tail: 'chars/elephant_tail.glb', trunk: 'chars/elephant_trunk.glb' },
   hippo: { file: 'chars/hippo.glb', tail: 'chars/hippo_tail.glb' }, giraffe: { file: 'chars/giraffe.glb', tail: 'chars/giraffe_tail.glb' },
-  camel: { file: 'chars/camel.glb', tail: 'chars/camel_tail.glb' }, ostrich: { file: 'chars/ostrich.glb' }, gaur: { file: 'chars/gaur.glb', tail: 'chars/gaur_tail.glb' }
+  camel: { file: 'chars/camel.glb', tail: 'chars/camel_tail.glb' }, ostrich: { file: 'chars/ostrich.glb' }, gaur: { file: 'chars/gaur.glb', tail: 'chars/gaur_tail.glb' },
+  // superstars: sculpted, textured, posed models shown as rigid figures with whole-body animation (len = max body length in m)
+  chiparoo: { file: 'chars/superstars/chiparoo.glb', rigid: true, len: 1.6 }, crocodog: { file: 'chars/superstars/crocodog.glb', rigid: true, len: 2.6 },
+  crocogorilla: { file: 'chars/superstars/crocogorilla.glb', rigid: true, len: 3.0 }, giraffcoon: { file: 'chars/superstars/giraffcoon.glb', rigid: true, len: 3.6 },
+  kangabear: { file: 'chars/superstars/kangabear.glb', rigid: true, len: 2.8 }
 };
 
 /* =====================================================================
@@ -940,25 +960,25 @@ const TEAM_DEFS = [
   { key: 'sky', city: 'Skyline', name: 'Sprinters', abbr: 'SKY', primary: 0x2a6fdb, secondary: 0xffffff, trim: 0x9fd0ff, home: 'rooftop', identity: 'runslip', region: 'sky', chemistry: 80,
     logo: { shape: 'circle', emblem: 'bolt' }, stars: [['Juno Flick', 'rabbit', 2, 'PG'], ['Reza Whitlock', 'cheetah', 14, 'SG']] },
   { key: 'cop', city: 'Copperwood', name: 'Bruisers', abbr: 'COP', primary: 0xc4512b, secondary: 0x1d1d1d, trim: 0xffb27a, home: 'foundry', identity: 'bruisers', region: 'ember', chemistry: 68,
-    logo: { shape: 'hex', emblem: 'fist' }, stars: [['Big Rook Halvard', 'gorilla', 42, 'PF'], ['Ida Ironsides', 'elephant', 52, 'C']] },
+    logo: { shape: 'hex', emblem: 'fist' }, stars: [['Big Rook Halvard', 'gorilla', 42, 'PF'], ['Ida Ironsides', 'elephant', 52, 'C'], ['Grond Jawfist', 'crocogorilla', 66, 'PF']] },
   { key: 'sal', city: 'Saltmarsh', name: 'Squalls', abbr: 'SAL', primary: 0x1f8a70, secondary: 0xfff1c9, trim: 0x7fe0c4, home: 'tide', identity: 'shooting', region: 'coast', chemistry: 77,
-    logo: { shape: 'circle', emblem: 'wave' }, stars: [['Mina Coldbrook', 'wolf', 20, 'SG'], ['Wren Tidewell', 'otter', 1, 'PG']] },
+    logo: { shape: 'circle', emblem: 'wave' }, stars: [['Mina Coldbrook', 'wolf', 20, 'SG'], ['Wren Tidewell', 'otter', 1, 'PG'], ['Rex Snapwag', 'crocodog', 15, 'SF']] },
   { key: 'frost', city: 'Frostmere', name: 'Howlers', abbr: 'FRM', primary: 0x8fb8d8, secondary: 0x1a2a3a, trim: 0xffffff, home: 'glacier', identity: 'defense', region: 'frost', chemistry: 82,
     logo: { shape: 'diamond', emblem: 'moon' }, stars: [['Svana Rimewold', 'walrus', 9, 'C'], ['Tove Driftholm', 'hyena', 23, 'SF']] },
   { key: 'emb', city: 'Emberreach', name: 'Cinders', abbr: 'EMB', primary: 0xe8572a, secondary: 0xffd23a, trim: 0x3a1a0a, home: 'foundry', identity: 'shooting', region: 'ember', chemistry: 71,
     logo: { shape: 'shield', emblem: 'flame' }, stars: [['Asha Cindergate', 'panda', 11, 'SG'], ['Torv Anvilhand', 'tiger', 31, 'SF']] },
   { key: 'thorn', city: 'Thornhollow', name: 'Swingers', abbr: 'THN', primary: 0x4a8a2a, secondary: 0xf4e08a, trim: 0x2a4a1a, home: 'canopy', identity: 'skyline', region: 'forest', chemistry: 75,
-    logo: { shape: 'hex', emblem: 'leaf' }, stars: [['Rowan Briarleaf', 'monkey', 7, 'PG'], ['Alder Highbough', 'giraffe', 40, 'C']] },
+    logo: { shape: 'hex', emblem: 'leaf' }, stars: [['Rowan Briarleaf', 'monkey', 7, 'PG'], ['Alder Highbough', 'giraffe', 40, 'C'], ['Bandit Highneck', 'giraffcoon', 27, 'C']] },
   { key: 'sun', city: 'Sunscar', name: 'Nomads', abbr: 'SUN', primary: 0xd89a2a, secondary: 0x5a2a1a, trim: 0xffe8b0, home: 'dune', identity: 'pace', region: 'dune', chemistry: 73,
     logo: { shape: 'circle', emblem: 'sun' }, stars: [['Zara Dunestrider', 'fennec', 5, 'PG'], ['Kasim Ochrewalker', 'camel', 33, 'C']] },
   { key: 'volt', city: 'Voltcrest', name: 'Thunderheads', abbr: 'VLT', primary: 0x6a4ad8, secondary: 0xffe04a, trim: 0xd0c8ff, home: 'storm', identity: 'bombers', region: 'storm', chemistry: 70,
-    logo: { shape: 'diamond', emblem: 'bolt' }, stars: [['Arc Stormwell', 'kangaroo', 8, 'SF'], ['Kira Nimbuscall', 'owl', 13, 'SG']] },
+    logo: { shape: 'diamond', emblem: 'bolt' }, stars: [['Arc Stormwell', 'kangaroo', 8, 'SF'], ['Kira Nimbuscall', 'owl', 13, 'SG'], ['Boomer Grizzlehop', 'kangabear', 25, 'PF']] },
   { key: 'dusk', city: 'Duskharbor', name: 'Lanterns', abbr: 'DSK', primary: 0x1a1a2a, secondary: 0xff4ad8, trim: 0x4af0ff, home: 'rooftop', identity: 'defense', region: 'night', chemistry: 79,
     logo: { shape: 'shield', emblem: 'eye' }, stars: [['Nyx Lanternrow', 'mongoose', 3, 'PG'], ['Sable Glasswire', 'crocodile', 32, 'PF']] },
   { key: 'peak', city: 'Hollowpeak', name: 'Avalanche', abbr: 'HPK', primary: 0xf4f4f4, secondary: 0x2a4a8a, trim: 0x8ab8ff, home: 'glacier', identity: 'bully', region: 'frost', chemistry: 69,
     logo: { shape: 'hex', emblem: 'peak' }, stars: [['Ulf Snowberg', 'gaur', 50, 'C'], ['Yrsa Hailfell', 'moose', 35, 'PF']] },
   { key: 'briar', city: 'Briarwood', name: 'Burrowers', abbr: 'BRW', primary: 0x6a4a2a, secondary: 0x9ad04a, trim: 0xf4e8c8, home: 'canopy', identity: 'runslip', region: 'forest', chemistry: 84,
-    logo: { shape: 'circle', emblem: 'paw' }, stars: [['Bryn Burrowden', 'armadillo', 4, 'PG'], ['Hazel Rootgrove', 'squirrel', 10, 'SG']] }
+    logo: { shape: 'circle', emblem: 'paw' }, stars: [['Bryn Burrowden', 'armadillo', 4, 'PG'], ['Hazel Rootgrove', 'squirrel', 10, 'SG'], ['Pip Pocketjump', 'chiparoo', 22, 'PG']] }
 ];
 const POS_FOR = { small: ['PG', 'SG'], medium: ['SG', 'SF'], large: ['PF', 'SF'], giant: ['C', 'PF'] };
 function buildTeam(def) {
@@ -971,7 +991,7 @@ function buildTeam(def) {
   const mkAttrs = (sp, name, star) => {
     const a = attrsFor(sp, name);
     for (const k in style.attr) a[k] = clamp(a[k] + style.attr[k], 5, 99);
-    if (star) for (const k of ATTR_KEYS) a[k] = clamp(a[k] + 6, 5, 99);
+    if (star) for (const k of ATTR_KEYS) a[k] = clamp(a[k] + (SPECIES_BY_KEY[sp].superstar ? 8 : 6), 5, 99);
     return a;
   };
   for (const [name, sp, num, pos] of def.stars) {
@@ -981,7 +1001,7 @@ function buildTeam(def) {
   const classes = ['small', 'medium', 'large', 'giant'];
   let i = 0;
   for (let c = 0; c < 4; c++) {
-    const pool = SPECIES.filter(s => s.cls === classes[c]).map(s => s.key);
+    const pool = SPECIES.filter(s => s.cls === classes[c] && !s.superstar).map(s => s.key);
     for (let k = 0; k < need[c]; k++, i++) {
       let sp = pool[Math.floor(H(i, 7) * pool.length)];
       for (let t = 0; t < pool.length && (spCount[sp] || 0) >= 2; t++) sp = pool[(pool.indexOf(sp) + 1) % pool.length];
@@ -1144,7 +1164,7 @@ function createMatch(opts) {
       const id = t * R + i;
       s.players.push({
         id, team: t, ri: i, name: r.name, num: r.num, pos: r.pos, star: !!r.star, sp, cls: spec.cls, h: spec.height, mass: spec.mass,
-        rad: SIZE_CLASSES[spec.cls].radius * (sp === 'giraffe' || sp === 'ostrich' ? 0.78 : 1), a: tunedAttrs(r.attrs, sp),
+        rad: SIZE_CLASSES[spec.cls].radius * (sp === 'giraffe' || sp === 'ostrich' || sp === 'giraffcoon' ? 0.78 : 1), a: tunedAttrs(r.attrs, sp),
         trait: spec.trait.id, quirk: r.quirk || null,
         x: 0, z: 0, y: 0, gy: 0, vx: 0, vz: 0, vy: 0, fx: t === 0 ? 1 : -1, fz: 0,
         stamina: 1, fouls: 0, fouledOut: false, onCourt: i < RULES.teamSize,
@@ -1270,12 +1290,12 @@ function doSubs(s) {
     if (s.subQ) flushSubs(s, t);   // the coach's calls first
     for (let i = 0; i < s.onCourt[t].length; i++) {
       const p = s.players[s.onCourt[t][i]];
-      if (!p.fouledOut && (p.stamina >= CONFIG.ai.subStamina || (s.autoSub && !s.autoSub[t]))) continue;
+      if (!p.fouledOut && (p.stamina >= CONFIG.ai.subStamina * (SPECIES_BY_KEY[p.sp].superstar ? 0.6 : 1) || (s.autoSub && !s.autoSub[t]))) continue; // superstars play through more fatigue
       let best = null, bestScore = -1e9;
       for (const q of s.players) {
         if (q.team !== t || q.onCourt || q.fouledOut) continue;
         if (!p.fouledOut && q.stamina < CONFIG.ai.subInStamina) continue;
-        const sc = q.stamina * 3 - Math.abs(clsIdx(q.cls) - clsIdx(p.cls)) * 0.8 - q.id * 1e-4;
+        const sc = q.stamina * 3 - Math.abs(clsIdx(q.cls) - clsIdx(p.cls)) * 0.8 - q.id * 1e-4 + (SPECIES_BY_KEY[q.sp].superstar ? 1.5 : 0); // rested superstars check back in first
         if (sc > bestScore) { bestScore = sc; best = q; }
       }
       if (!best) continue;
@@ -3496,7 +3516,8 @@ function zonesTick(s) {
   // decoys drift and expire
   const D = s.decoys;
   for (let i = D.length - 1; i >= 0; i--) { const d = D[i]; d.t++; d.x += d.vx * DT; d.z += d.vz * DT; d.vx *= 0.985; d.vz *= 0.985; if (d.t >= d.T) D.splice(i, 1); }
-  // a stashed ball hangs in the air
+  // a stashed ball hangs in the air (a dead ball, foul or free throw cancels the stash)
+  if (s.stash && s.ball.st !== 'stash') s.stash = null;
   if (s.stash) {
     const st = s.stash, b = s.ball; st.t++;
     b.x = st.x; b.z = st.z; b.y = st.y; b.vx = b.vz = b.vy = 0;
@@ -3670,7 +3691,9 @@ const STAR_QUIRKS = {
   'Svana Rimewold': ['frost', 'mob'], 'Tove Driftholm': ['siphon', 'sig'], 'Asha Cindergate': ['hotHand', 'sig'], 'Torv Anvilhand': ['longHaul', 'ult'],
   'Rowan Briarleaf': ['quickdraw', 'mob'], 'Alder Highbough': ['farReach', 'sig'], 'Zara Dunestrider': ['prism', 'sig'], 'Kasim Ochrewalker': ['thrifty', 'sig'],
   'Arc Stormwell': ['spark', 'mob'], 'Kira Nimbuscall': ['shadow', 'mob'], 'Nyx Lanternrow': ['quickdraw', 'sig'], 'Sable Glasswire': ['longHaul', 'sig'],
-  'Ulf Snowberg': ['aftershock', 'mob'], 'Yrsa Hailfell': ['magnet', 'sig'], 'Bryn Burrowden': ['tailwind', 'mob'], 'Hazel Rootgrove': ['glory', 'ult']
+  'Ulf Snowberg': ['aftershock', 'mob'], 'Yrsa Hailfell': ['magnet', 'sig'], 'Bryn Burrowden': ['tailwind', 'mob'], 'Hazel Rootgrove': ['glory', 'ult'],
+  // superstars
+  'Pip Pocketjump': ['doubleCharge', 'mob'], 'Rex Snapwag': ['tailwind', 'mob'], 'Grond Jawfist': ['aftershock', 'sig'], 'Bandit Highneck': ['farReach', 'sig'], 'Boomer Grizzlehop': ['featherweight', 'mob']
 };
 function quirkFor(p) {
   const st = STAR_QUIRKS[p.name];
@@ -4111,6 +4134,33 @@ POWERKITS.gaur = mk(
 );
 
 /* helpers used by kits */
+/* ---------------- SUPERSTARS ---------------- */
+/* each superstar's power is a parent's power, renamed and souped up: 15% bigger, 15% cheaper, 15% shorter cooldown */
+function starPow(src, id, name, desc) {
+  const d = POWERS[src];
+  return defPow(Object.assign({}, d, { id, name, desc: desc || d.desc, pow: (d.pow || 1) * 1.15, costMul: d.costMul * 0.85, cd: d.cd * 0.85, star: true }));
+}
+POWERKITS.chiparoo = mk(
+  starPow('boing', 'pocketSpring', 'Pocket Spring'),
+  starPow('stash', 'cheekStash', 'Cheek Stash'),
+  starPow('summit', 'treetopSummit', 'Treetop Summit'));
+POWERKITS.crocodog = mk(
+  starPow('packSprint', 'zoomies', 'Zoomies'),
+  starPow('lurk', 'logLurk', 'Log Lurk'),
+  starPow('jaws', 'snapjaw', 'Snapjaw'));
+POWERKITS.crocogorilla = mk(
+  starPow('deathSpin', 'gatorSpin', 'Gator Spin'),
+  starPow('chestPound', 'chestThunder', 'Chest Thunder'),
+  starPow('summitSlam', 'swampSlam', 'Swamp Slam'));
+POWERKITS.giraffcoon = mk(
+  starPow('longStride', 'banditStride', 'Bandit Stride'),
+  starPow('snakeSteal', 'banditPaws', 'Bandit Paws', 'Long raccoon paws snatch the ball from range.'),
+  starPow('tower', 'lookoutTower', 'Lookout Tower'));
+POWERKITS.kangabear = mk(
+  starPow('boing', 'grizzlyBound', 'Grizzly Bound'),
+  starPow('hugBoard', 'bearHugBoard', 'Bear Hug Board'),
+  starPow('mountain', 'grizzlyMountain', 'Grizzly Mountain'));
+
 function c0def(s, p) { const id = s.guardedBy[p.id]; return id >= 0 ? s.players[id] : nearestOppP(s, p, 4); }
 function bestPassTarget(s, p, far) {
   let best = null, bs = -1e9;
@@ -6629,6 +6679,7 @@ function loadSpeciesAsset(spKey) {
     if (!gltf) return null;
     const root = def.node ? gltf.scene.getObjectByName(def.node) : gltf.scene;
     if (!root) return null;
+    if (def.rigid) return { mode: 'rigid', root, def };
     let skinned = false; root.traverse(o => { if (o.isSkinnedMesh) skinned = true; });
     if (skinned && gltf.animations.length) return { mode: 'clips', gltf, root };
     const bodyNode = root.getObjectByName((def.node || spKey) + '_body') || root.children.find(c => /_body$/.test(c.name)) || bodyMeshes(root)[0];
@@ -6718,6 +6769,42 @@ function buildRiggedCharacter(asset, colors, num) {
   const armOut = Math.max(0, Math.atan2(R.bellyHalf - R.shoulderX + 0.04 * R.H, Math.max(0.1, R.elbowX - R.shoulderX) * 2));
   return { group, bones, H: R.H, legLen: R.hipY, torsoH: R.armY - R.hipY, armLen: (R.tipX - R.shoulderX), headR: (R.H - R.neckY) / 2, pose: {}, runPhase: Math.random() * 6, procedural: true, rigged: true, armOut, chains };
 }
+/* Superstar models: sculpted in a natural pose, so they are not auto-rigged — the whole figure is scaled to the
+   species height (capped by body length), grounded, and animated as one piece: bounding run, lean, hop, squash,
+   spins, a tumble when knocked down and a pulse on every power. */
+function buildRigidCharacter(asset, spec) {
+  const model = asset.root.clone(true);
+  model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material && o.material.map) o.material.map.anisotropy = 4; } });
+  const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3());
+  const H = spec.height, k = Math.min(H / Math.max(1e-3, size.y), (asset.def.len || H * 1.4) / Math.max(1e-3, size.x, size.z));
+  model.scale.setScalar(k);
+  const c = box.getCenter(new THREE.Vector3());
+  model.position.set(-c.x * k, -box.min.y * k, -c.z * k);
+  const body = new THREE.Group(); body.add(model);   // lean / squash / tumble pivot at the feet
+  const group = new THREE.Group(); group.add(body);
+  return { group, body, H: size.y * k, rigid: true, ph: 0, lean: 0, roll: 0, spin: 0, sq: 1, wasAir: false, pulse: 0 };
+}
+function animateRigid(v, r, dt) {
+  const sp = r.speed || 0, air = Math.max(0, (r.y || 0) - (r.gy || 0)) > 0.05;
+  v.ph += dt * (5 + sp * 1.5);
+  const run = sp > 0.6 && !air;
+  const bob = run ? Math.abs(Math.sin(v.ph)) * Math.min(0.22, 0.04 + sp * 0.02) * Math.min(1.5, v.H * 0.45) : Math.sin((r.t || 0) * 2.2) * 0.012 * v.H;
+  const down = r.st === 'down', getup = r.st === 'getup';
+  const tLean = down ? 0 : air ? -0.12 : r.stance ? 0.18 : Math.min(0.3, sp * 0.03) + (r.st === 'check' || r.st === 'bulldoze' ? 0.3 : 0);
+  v.lean += (tLean - v.lean) * Math.min(1, dt * 10);
+  const tRoll = down ? Math.PI / 2 * 0.92 : getup ? 0.5 : 0;
+  v.roll += (tRoll - v.roll) * Math.min(1, dt * (down ? 12 : 6));
+  if (r.st === 'move' && r.kind === 'spin') v.spin += dt * 16; else if (r.st === 'celebrate') v.spin += dt * 7; else if (r.pmode === 'roll' || r.pmode === 'spin') v.spin += dt * 20;
+  else v.spin *= Math.max(0, 1 - dt * 10);
+  if (v.wasAir && !air) v.sq = 0.82; v.wasAir = air;
+  const tSq = air ? 1.08 : 1; v.sq += (tSq - v.sq) * Math.min(1, dt * 9);
+  if (r.pcast) v.pulse = 1; v.pulse = Math.max(0, v.pulse - dt * 3);
+  const pk = 1 + Math.sin(v.pulse * Math.PI) * 0.12;
+  const hop = r.st === 'celebrate' ? Math.abs(Math.sin((r.t || 0) * 9)) * 0.35 : 0;
+  v.body.position.y = bob + hop;
+  v.body.rotation.set(v.lean, v.spin, v.roll);
+  v.body.scale.set(pk / Math.sqrt(v.sq), pk * v.sq, pk / Math.sqrt(v.sq));
+}
 const CLIP_FOR_STATE = r => {
   if (r.pcast || r.pmode) return 'power_' + ({ mob: 'mobility', sig: 'signature', ult: 'ultimate' }[r.pcast] || 'mobility');
   if (r.st === 'down') return 'knocked_down';
@@ -6756,10 +6843,15 @@ class PlayerView {
     this.blobR = (p.rad || 0.5) * 2.4; this.blob.scale.setScalar(this.blobR); this.root.add(this.blob);
     this.mixer = null; this.actions = null; this.current = '';
     this.celebrateT = 0;
+    if (SPECIES_BY_KEY[p.sp].superstar) { // superstar aura: a slow gold halo on the floor
+      this.aura = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.9, 40), new THREE.MeshBasicMaterial({ color: 0xffc531, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      this.aura.rotation.x = -Math.PI / 2; this.aura.renderOrder = 2; this.aura.scale.setScalar(this.blobR * 0.75); this.root.add(this.aura);
+    }
     loadSpeciesAsset(p.sp).then(asset => {
       if (!asset || this.disposed) return;
       try {
-        if (asset.mode === 'clips') this.useClips(asset.gltf, asset.root);
+        if (asset.mode === 'rigid') { const v = buildRigidCharacter(asset, SPECIES_BY_KEY[p.sp]); this.root.remove(this.view.group); this.view = v; this.root.add(v.group); }
+        else if (asset.mode === 'clips') this.useClips(asset.gltf, asset.root);
         else { const v = buildRiggedCharacter(asset, colors, p.num); this.root.remove(this.view.group); this.view = v; this.root.add(v.group); }
       } catch (e) { console.warn('model fallback for', p.sp, e); }
     });
@@ -6781,7 +6873,9 @@ class PlayerView {
     this.root.rotation.y = Math.atan2(r.fx, r.fz);
     const air = Math.max(0, r.y - (r.gy || 0));
     this.blob.position.y = 0.016 - air; this.blob.scale.setScalar(this.blobR * (1 - Math.min(0.5, air * 0.18))); this.blob.material.opacity = 0.42 * (1 - Math.min(0.7, air * 0.3));
-    if (this.view.procedural) {
+    if (this.aura) { this.aura.position.y = 0.02 - air; this.aura.rotation.z += dt * 0.8; this.aura.material.opacity = 0.32 + Math.sin(r.t * 3) * 0.14; }
+    if (this.view.rigid) animateRigid(this.view, r, dt);
+    else if (this.view.procedural) {
       animateProcedural(this.view, r, dt);
       if (this.view.chains) for (const c of this.view.chains) c.segs.forEach((sg, i) => {
         const k = (i + 1) / c.segs.length, w = Math.sin(r.t * (c.axis === 'z' ? 7 : 2.5) - i * 0.7);
@@ -7499,7 +7593,7 @@ function teamSelPanel(el, t) {
   el.innerHTML = '';
   el.appendChild(logoCanvas(t, 120));
   const info = document.createElement('div');
-  const stars = t.roster.filter(r => r.star).map(r => `★ ${r.name} <span style="opacity:.6">${SPECIES_BY_KEY[r.sp].name} · ${POWERS[POWERKITS[r.sp].ult].name}</span>`).join('<br>');
+  const stars = t.roster.filter(r => r.star).map(r => `${SPECIES_BY_KEY[r.sp].superstar ? '🌟 SUPERSTAR' : '★'} ${r.name} <span style="opacity:.6">${SPECIES_BY_KEY[r.sp].name} · ${POWERS[POWERKITS[r.sp].ult].name}</span>`).join('<br>');
   info.innerHTML = `<div class="tname" style="color:${hex(t.primary === 0xffffff || t.primary === 0xf4f4f4 ? t.secondary : t.primary)}">${t.name}</div>
     <div class="meta"><b>${t.style.label}</b> — ${t.style.blurb}</div>
     <div class="meta">Home: ${ARENAS[t.home].name} · Chemistry ${t.chemistry}</div>
@@ -7561,7 +7655,7 @@ function renderLineup() {
   $('lineupTitle').textContent = 'Lineup — ' + t.name;
   $('lineupBody').innerHTML = order.map((ri, i) => {
     const r = t.roster[ri], sp = SPECIES_BY_KEY[r.sp];
-    return `<div class="lrow ${i < 5 ? 'starter' : ''}"><b>${i < 5 ? 'S' + (i + 1) : i + 1}</b><span>${r.star ? '★ ' : ''}#${r.num} ${r.name} <span style="opacity:.6">${sp.name}</span></span><span><span class="cls">${SIZE_CLASSES[sp.cls].label}</span> ${r.pos}</span><span>OVR ${ovr(r)}</span><span style="font-size:12px">${sp.sig.name}<br><span style="opacity:.6">${sp.trait.name}</span></span><span><button data-lu="${i}" data-dir="-1">▲</button> <button data-lu="${i}" data-dir="1">▼</button></span></div>`;
+    return `<div class="lrow ${i < 5 ? 'starter' : ''}"><b>${i < 5 ? 'S' + (i + 1) : i + 1}</b><span>${sp.superstar ? '🌟 ' : r.star ? '★ ' : ''}#${r.num} ${r.name} <span style="opacity:.6">${sp.name}</span></span><span><span class="cls">${SIZE_CLASSES[sp.cls].label}</span> ${r.pos}</span><span>OVR ${ovr(r)}</span><span style="font-size:12px">${POWERS[POWERKITS[r.sp].sig].name}<br><span style="opacity:.6">${sp.trait.name}</span></span><span><button data-lu="${i}" data-dir="-1">▲</button> <button data-lu="${i}" data-dir="1">▼</button></span></div>`;
   }).join('');
   refreshFocus();
 }
@@ -8911,7 +9005,7 @@ function updateHUD(s, dt) {
     const p = s.players[c.humanPid];
     $('playercard').classList.remove('hidden');
     $('pcName').textContent = `#${p.num} ${p.name}`;
-    $('pcSub').innerHTML = `<span class="cls">${SIZE_CLASSES[p.cls].label}</span>${SPECIES_BY_KEY[p.sp].name} · ${teams[p.team].abbr}`;
+    $('pcSub').innerHTML = `<span class="cls">${SIZE_CLASSES[p.cls].label}</span>${SPECIES_BY_KEY[p.sp].superstar ? '<span class="cls" style="background:#ffc531;color:#15110e">🌟 SUPERSTAR</span>' : ''}${SPECIES_BY_KEY[p.sp].name} · ${teams[p.team].abbr}`;
     $('pcStam').style.width = Math.round(p.stamina * 100) + '%';
     $('pcState').textContent = p.stamina < 0.3 ? 'GASSED' : 'STAMINA';
     $('pcFouls').textContent = 'FOULS ' + p.fouls;
