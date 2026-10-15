@@ -340,6 +340,7 @@
     §HOLOHUD                a holographic flight and field display
     §FLASHBACK              memories of the life and the Path, surfacing when they want to
       §FLASHBACK.HUD          the display gets its instruments: a segmented, rotating, breathing reticle cluster
+    §HUNTER                 the Ironclad wears clan plate: ./s11/hunter_helmeted.glb + hunter_unhelmeted.glb
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -713,6 +714,11 @@
     §INTERIORS sgPanelAct — meditation opens the past
     §SBXUI sbxHandleEscape — Escape ends a flashback
     §HOLOHUD hxDraw — instruments, the boot, warnings; memories on their clock
+    §CHARACTER charBuildGeo — Ironclad clan plate from the hunter GLBs
+    §CHARACTER charKey — helmet state is part of the look
+    §CHARACTER CharRig.buildProc — hunter geometry brings its own PBR materials
+    §ONFOOT ofSpawnRig — the player's Ironclad wears the hunter plate
+    §CHARACTER ccPreviewRig — Ironclad preview wears the hunter plate
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -23633,6 +23639,119 @@ function hx2Draw(dt) {
 const _hx2 = hxDraw;
 hxDraw = function (dt) { _hx2(dt); try { hx2Draw(dt); } catch (e) { if (!HX2.err) { HX2.err = true; console.warn('hud2', e); } } fbkStep(dt); };   // S11-EDIT(§HOLOHUD hxDraw): instruments, the boot, warnings; memories on their clock
 Object.assign(S9X, { FBK, fbkShow, fbkEnd, fbkMemories, hx2Draw, ORIGIN_ORDER });
+
+
+// =====================================================================================
+// §HUNTER — the Ironclad wears clan plate: ./s11/hunter_helmeted.glb + hunter_unhelmeted.glb
+//  The models are static T-pose meshes. On load each vertex is weighted to the procedural
+//  skeleton (blended at shoulder, elbow, wrist, hip, knee, ankle and neck), the arms are
+//  re-posed down to the rig's rest pose, and the result is one skinned geometry per helmet
+//  state, so the hunter runs, aims, swings and ragdolls on the same procedural animation as
+//  every other body. Helmet on/off is the player's choice (pause menu, or K on foot).
+// =====================================================================================
+const HUNT = { url: { h: './s11/hunter_helmeted.glb', u: './s11/hunter_unhelmeted.glb' }, src: {}, status: 'idle', geo: new Map() };
+// bind landmarks (model space, T-pose, metres): shoulder, elbow, wrist on +x; hip, knee, ankle at +x
+const HUNT_BIND = { sh: [0.19, 1.455], el: 0.47, wr: 0.74, hip: [0.13, 0.88], knee: 0.53, ank: 0.1, neck: 1.52, head: 1.6, arm: 0.22 };
+function huntLoad() {
+  if (HUNT.status !== 'idle') return; HUNT.status = 'loading'; const loader = new GLTFLoader(); let n = 0;
+  for (const k of ['h', 'u']) loader.load(HUNT.url[k], (g) => { HUNT.src[k] = g.scene; if (++n === 2) { HUNT.status = 'ready'; huntRefreshPlayer(); } },
+    undefined, () => { HUNT.status = 'missing'; console.info(`[hunter] ${HUNT.url[k]} unavailable — procedural Ironclad`); });
+}
+const _hss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+/** Weights for one bind-space vertex: [[bone, w], ...] (at most two). */
+function huntWeights(x, y) {
+  const B = HUNT_BIND; const s = x >= 0 ? 'l' : 'r'; const ax = Math.abs(x);
+  if (ax > 0.16 && y > 1.33) {   // arm
+    if (ax < 0.3) { const t = _hss(0.16, 0.27, ax); return [['chest', 1 - t], [s + 'UpperArm', t]]; }
+    if (ax < B.wr - 0.03) { const t = _hss(B.el - 0.04, B.el + 0.04, ax); return [[s + 'UpperArm', 1 - t], [s + 'Forearm', t]]; }
+    const t = _hss(B.wr - 0.02, B.wr + 0.03, ax); return [[s + 'Forearm', 1 - t], [s + 'Hand', t]];
+  }
+  if (y > 1.5 && ax < 0.17) { if (y < B.head) { const t = _hss(B.neck, B.head + 0.02, y); return [['chest', 1 - t], ['neck', t]]; } const t = _hss(B.head, B.head + 0.05, y); return [['neck', 1 - t], ['head', t]]; }
+  if (y > 0.95) { if (y < 1.12) { const t = _hss(0.97, 1.1, y); return [['hips', 1 - t], ['spine', t]]; } const t = _hss(1.12, 1.26, y); return [['spine', 1 - t], ['chest', t]]; }
+  if (ax < 0.04 && y > 0.74) return [['hips', 1]];
+  if (y > B.knee + 0.04) { const t = _hss(0.97, 0.84, y); return [['hips', 1 - t], [s + 'Thigh', t]]; }
+  if (y > B.ank + 0.04) { const t = _hss(B.knee + 0.04, B.knee - 0.04, y); return [[s + 'Thigh', 1 - t], [s + 'Shin', t]]; }
+  const t = _hss(B.ank + 0.04, B.ank - 0.03, y); return [[s + 'Shin', 1 - t], [s + 'Foot', t]];
+}
+/** Rest skeleton (arms hanging, angled out) in the same space, matching CH_BONES order. */
+function huntAbs(sc) {
+  const B = HUNT_BIND; const V = (x, y) => new THREE.Vector3(x * sc, y * sc, 0); const dx = Math.sin(B.arm), dy = -Math.cos(B.arm);
+  const arm = (sg, L) => V(sg * (B.sh[0] + dx * L), B.sh[1] + dy * L);
+  const P = { hips: V(0, B.hip[1] + 0.04), spine: V(0, 1.04), chest: V(0, 1.22), neck: V(0, B.neck), head: V(0, B.head),
+    lUpperArm: V(B.sh[0], B.sh[1]), lForearm: arm(1, B.el - B.sh[0]), lHand: arm(1, B.wr - B.sh[0]),
+    rUpperArm: V(-B.sh[0], B.sh[1]), rForearm: arm(-1, B.el - B.sh[0]), rHand: arm(-1, B.wr - B.sh[0]),
+    lThigh: V(B.hip[0], B.hip[1]), lShin: V(B.hip[0] + 0.01, B.knee), lFoot: V(B.hip[0] + 0.02, B.ank),
+    rThigh: V(-B.hip[0], B.hip[1]), rShin: V(-B.hip[0] - 0.01, B.knee), rFoot: V(-B.hip[0] - 0.02, B.ank) };
+  return CH_BONES.map(([n]) => P[n]);
+}
+function huntBuildGeo(spec) {
+  const helm = spec.hunter === 'u' ? 'u' : 'h'; const S = SPECIES[spec.species] || SPECIES.human; const sc = S.h / 1.83 * (1 + (spec.look?.height || 0) * 0.05);
+  const key = helm + '|' + sc.toFixed(3); if (HUNT.geo.has(key)) return HUNT.geo.get(key);
+  const meshes = []; HUNT.src[helm].updateMatrixWorld(true); HUNT.src[helm].traverse(o => { if (o.isMesh) meshes.push(o); });
+  // the primitives share one vertex buffer: re-pose and weight it once, then concatenate indices as groups
+  const g0 = meshes[0].geometry; const pos = g0.attributes.position, nor = g0.attributes.normal, n = pos.count;
+  const P = new Float32Array(n * 3), N = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  const B = HUNT_BIND; const rot = (sg) => -sg * (Math.PI / 2 - B.arm);   // +x arm → hanging, angled out
+  const v = new THREE.Vector3(), w = new THREE.Vector3(), nn = new THREE.Vector3(), nw = new THREE.Vector3(); const shL = new THREE.Vector3(B.sh[0], B.sh[1], 0), shR = new THREE.Vector3(-B.sh[0], B.sh[1], 0);
+  const q = { l: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rot(1)), r: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rot(-1)) };
+  for (let i = 0; i < n; i++) {
+    v.fromBufferAttribute(pos, i); nn.fromBufferAttribute(nor, i); const W = huntWeights(v.x, v.y);
+    // how much of this vertex rides the arm (upper arm, forearm, hand all share the re-pose rotation)
+    let armW = 0; for (const [b, ww] of W) if (/Arm|Forearm|Hand/.test(b)) armW += ww;
+    if (armW > 0) { const s = v.x >= 0 ? 'l' : 'r'; const sh = s === 'l' ? shL : shR; w.copy(v).sub(sh).applyQuaternion(q[s]).add(sh); v.lerp(w, armW); nw.copy(nn).applyQuaternion(q[s]); nn.lerp(nw, armW).normalize(); }
+    P[i * 3] = v.x * sc; P[i * 3 + 1] = v.y * sc; P[i * 3 + 2] = v.z * sc; N[i * 3] = nn.x; N[i * 3 + 1] = nn.y; N[i * 3 + 2] = nn.z;
+    for (let k = 0; k < W.length; k++) { si[i * 4 + k] = CHB[W[k][0]]; sw[i * 4 + k] = W[k][1]; }
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+  if (g0.attributes.uv) geo.setAttribute('uv', g0.attributes.uv); if (g0.attributes.color) geo.setAttribute('color', g0.attributes.color);
+  geo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  const idx = []; const mats = []; for (const m of meshes) { const ia = m.geometry.index; const start = idx.length; for (let i = 0; i < ia.count; i++) idx.push(ia.getX(i)); geo.addGroup(start, ia.count, mats.length);
+    const mt = m.material.clone(); mt.vertexColors = !!g0.attributes.color; mats.push(mt); }
+  geo.setIndex(idx); geo.computeBoundingSphere(); geo.boundingSphere.radius = 1.4 * S.h;
+  const abs = huntAbs(sc); const out = { geo, abs, glow: null, height: (helm === 'h' ? 1.88 : 1.83) * sc, mats, hunter: helm };
+  HUNT.geo.set(key, out); return out;
+}
+// the geometry builder hands back the hunter when the spec asks for one and the models are in
+const _huntGeo = charBuildGeo;
+charBuildGeo = function (spec, lite = false) { if (spec?.hunter && !lite && HUNT.status === 'ready') return huntBuildGeo(spec); return _huntGeo(spec, lite); };   // S11-EDIT(§CHARACTER charBuildGeo): Ironclad clan plate from the hunter GLBs
+const _huntKey = charKey;
+charKey = function (spec) { return _huntKey(spec) + (spec?.hunter && HUNT.status === 'ready' ? '|hunter:' + spec.hunter : ''); };   // S11-EDIT(§CHARACTER charKey): helmet state is part of the look
+const _huntProc = CharRig.prototype.buildProc;
+// S11-EDIT(§CHARACTER CharRig.buildProc): hunter geometry brings its own PBR materials
+CharRig.prototype.buildProc = function (G) { _huntProc.call(this, G); if (G.mats) { this.full.material = G.mats; this.full.castShadow = false; } };
+/** Is this the player's body, and do they wear the clan plate? */
+function huntSpecFor(ch) { return ch?.cls === 'ironclad' ? (ch.helmOff ? 'u' : 'h') : null; }
+const _huntSpawn = ofSpawnRig;
+ofSpawnRig = function (u) {   // S11-EDIT(§ONFOOT ofSpawnRig): the player's Ironclad wears the hunter plate
+  if (u?.kind === 'player' && u.spec && !u.spec.model) { const h = huntSpecFor(charOf()); if (h) { if (HUNT.status === 'idle') huntLoad(); u.spec = { ...u.spec, hunter: h, cloak: false }; } else if (u.spec.hunter) { u.spec = { ...u.spec }; delete u.spec.hunter; } }
+  return _huntSpawn(u);
+};
+/** Swap the standing player's body (model arrived, or the helmet came off / went on). */
+function huntRefreshPlayer() {
+  const me = typeof OF !== 'undefined' && OF.active ? OF.me : null; if (!me || !me.rig || me.rig.ragdoll || !me.alive) return;
+  const r = me.rig; charRigRelease(r); me.rig = null; ofSpawnRig(me);
+}
+function huntToggleHelm() {
+  const ch = charOf(); if (ch?.cls !== 'ironclad') { sbxToast('Only Ironclad clan plate has a helmet to take off.'); return; }
+  ch.helmOff = !ch.helmOff; sbxToast(ch.helmOff ? 'Helmet off — the clan sees your face.' : 'Helmet on. Seals green.'); huntRefreshPlayer();
+}
+// the creation preview shows the plate when Ironclad is picked
+const _huntPrev = ccPreviewRig;
+ccPreviewRig = function () {   // S11-EDIT(§CHARACTER ccPreviewRig): Ironclad preview wears the hunter plate
+  const s = CC.sel; if (s?.cls !== 'ironclad') return _huntPrev();
+  if (HUNT.status !== 'ready') { if (HUNT.status === 'idle') { huntLoad(); } if (HUNT.status !== 'missing') setTimeout(() => { if (CC.open && CC.sel?.cls === 'ironclad' && HUNT.status === 'ready') ccPreviewRig(); }, 400); return _huntPrev(); }
+  const P = CC.preview; if (!P) return; while (P.pivot.children.length) P.pivot.remove(P.pivot.children[0]);
+  if (!P.sc.environment) { try { P.sc.environment = new THREE.PMREMGenerator(P.r).fromScene(new RoomEnvironment(), 0.04).texture; P.sc.environmentIntensity = 0.6; } catch (e) { /* plain lights only */ } }
+  const G = charBuildGeo({ species: s.species, look: s.look, role: 'player', hunter: 'h' }); const bones = charMakeBones(G.abs, false);
+  const m = new THREE.SkinnedMesh(G.geo, G.mats); m.add(bones[0]); m.updateMatrixWorld(true); m.bind(new THREE.Skeleton(bones)); m.frustumCulled = false; P.pivot.add(m); CC.rig = { bones, phase: 0 };
+  const sc = 1.8 / SPECIES[s.species].h; P.pivot.scale.setScalar(Math.min(1.15, sc));
+};
+// K on foot toggles the helmet (only when nothing else owns the key this frame)
+addEventListener('keydown', (e) => { if (e.code !== 'KeyK' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  if (typeof OF !== 'undefined' && OF.active && OF.me && charOf()?.cls === 'ironclad') huntToggleHelm(); });
+(function huntUI() { const pc = document.querySelector('#s-paused .card'); if (!pc) return; const b = document.createElement('button'); b.textContent = 'Helmet on / off'; b.title = 'Ironclad: take the clan helmet off or seal it (K on foot)'; b.onclick = () => huntToggleHelm(); pc.appendChild(b); })();
+huntLoad();
+Object.assign(S9X, { HUNT, huntLoad, huntBuildGeo, huntToggleHelm, huntRefreshPlayer, huntWeights, ccOpenNow: (...a) => ccOpen(...a), ccPreviewRigNow: () => ccPreviewRig(), get CC() { return CC; } });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
