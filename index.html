@@ -347,6 +347,9 @@
     §WILDS                  things to do out in the terrain
     §RESFIX                 Resonance powers that clearly work
     §SPEEDER                the ship carries a speeder, not a rover
+    §BLADEFIX               the sabre lands, and you see it
+    §EMBERFIX               a Cinder's powers are the Ember's
+    §CITYPLACES             more kinds of place behind the doors
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -745,6 +748,20 @@
     §ONFOOT.STEP OF.step — the speeder comes and goes with you
     §ONFOOT OF.exit — the speeder is stowed
     §SBXUI sbxToast — rover → speeder
+    §VEHICLES vehStep — speeders stay on the deck at speed
+    §BLADE bladeStrike — your swings meet a fair guard; bystanders can be cut
+    §BLADE bladeSwing — a visible arc for every swing
+    §BLADE bladeStepAll — swing arcs fade
+    §RESONANCE resEnter — your Path's set first
+    §AWAKEN awAwaken — powers of the Path you chose
+    §AWAKEN awSwitch — powers follow the turn
+    §INTERIORS inKindOf — more kinds of place
+    §CHARACTER charMaxHp — subdermal plating
+    §CHARACTER charMaxDefl — deflector lattice
+    §ONFOOT.DAMAGE ofDamage — workshop tuning on your blade and your barrel
+    §VEHICLES vehSpawn — garage upgrades
+    §ONFOOT.STEP OF.step — augments and training
+    §CITY sgPanelAct — the new places
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -24250,6 +24267,139 @@ vehStep = function (v, dt) {   // S11-EDIT(§VEHICLES vehStep): speeders stay on
 };
 MM_HINTS.ON_FOOT = [...(MM_HINTS.ON_FOOT || []), 'speeder'].filter((k, i, a) => a.indexOf(k) === i);
 Object.assign(S9X, { SPD, spdSpawn, spdHave });
+
+
+// =====================================================================================
+// §BLADEFIX — the sabre lands, and you see it
+//  The forgiving all-round guard is the player's alone: when you swing, an enemy's guard is
+//  judged on the normal cone and costs normal stamina, so blade-wielders can be broken. A swing
+//  cuts anyone in the arc who is not on your side (a bystander included — that is on you).
+//  Every swing leaves a bright arc in the blade's colour.
+// =====================================================================================
+const BX = { fx: [] };
+const _bxStrike = bladeStrike;
+bladeStrike = function (u, kind, extra) {   // S11-EDIT(§BLADE bladeStrike): your swings meet a fair guard; bystanders can be cut
+  if (u !== OF.me) return _bxStrike(u, kind, extra);
+  const B = CF.base, keep = { c: BLADE.frontCone, l: BLADE.stamLightBlock, h: BLADE.stamHeavyBlock };
+  BLADE.frontCone = B.frontCone; BLADE.stamLightBlock = B.stamLightBlock; BLADE.stamHeavyBlock = B.stamHeavyBlock;
+  const hp0 = new Map(OF.units.map(v => [v, v.hp]));
+  try { _bxStrike(u, kind, extra); } finally { BLADE.frontCone = keep.c; BLADE.stamLightBlock = keep.l; BLADE.stamHeavyBlock = keep.h; }
+  // the base strike only cuts the hostile: the rest of the arc (not your squad, not your side) is cut too
+  const f = _fv[5].set(Math.sin(u.yaw), 0, Math.cos(u.yaw)); const reach = BLADE.reach + (kind === 'lunge' ? 0.4 : 0) + (kind === 'heavy' ? 0.2 : 0); let hits = 0;
+  for (const v of OF.units) {
+    if (v === u || !v.alive || v.kind === 'vehicle' || v.team === 'player' || v.team === 'ally' || (SQ?.units || []).includes(v)) continue; if ((hp0.get(v) ?? v.hp) > v.hp) { hits++; continue; }
+    if (ofHostile(u, v)) continue; const d = _fv[6].set(v.pos.x - u.pos.x, 0, v.pos.z - u.pos.z); const dist = d.length(); if (dist > reach + 0.5 || Math.abs(v.pos.y - u.pos.y) > 2 || f.angleTo(d.normalize()) > BLADE.arc / 2) continue;
+    const dmg = kind === 'heavy' ? BLADE.heavy : kind === 'lunge' ? BLADE.lungeDmg : BLADE.light[u.blade.combo || 0]; ofDamage(v, dmg * (extra ? 0.6 : 1), u, { kind: 'melee', dir: _fv[9].copy(d), force: 3 });
+    if (v.alive && v.team === 'neutral') { v.team = 'hostile'; if (v.ai) v.ai.state = 'flee'; v.flee = 6; } world.sparks(_fv[7].copy(v.pos).add(_fv[8].set(0, 1.2, 0)), 6, u.blade.color); hits++;
+  }
+  if (!hits && OF.me) { for (const p of OF.props || []) if (Math.hypot(p.x - u.pos.x, p.z - u.pos.z) < reach + (p.r || 0.5)) { world.sparks(_fv[7].set(p.x, u.pos.y + 1, p.z), 10, u.blade.color); break; } }
+};
+const _bxSwing = bladeSwing;
+bladeSwing = function (u, kind) {   // S11-EDIT(§BLADE bladeSwing): a visible arc for every swing
+  const ok = _bxSwing(u, kind); if (!ok || !u.blade) return ok; if (OF.me && u !== OF.me && u.pos.distanceTo(OF.me.pos) > 60) return ok;
+  const heavy = kind === 'heavy'; const R = BLADE.reach + 0.5; const g = new THREE.RingGeometry(0.55, R, 28, 1, -Math.PI * 0.45, Math.PI * 0.9);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: u.blade.color || 0x9fe8ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }));
+  m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + (heavy ? 0.5 : (u.blade.combo % 2 ? 0.25 : -0.25)), u.yaw + Math.PI / 2, 0); m.position.set(u.pos.x, u.pos.y + (heavy ? 1.5 : 1.15), u.pos.z);
+  scene.add(m); BX.fx.push({ m, t: 0, life: heavy ? 0.32 : 0.2, delay: kind === 'heavy' ? 0.3 : kind === 'lunge' ? 0.2 : 0.08, u }); return ok;
+};
+const _bxStep = bladeStepAll;
+bladeStepAll = function (dt) {   // S11-EDIT(§BLADE bladeStepAll): swing arcs fade
+  _bxStep(dt);
+  for (let i = BX.fx.length - 1; i >= 0; i--) { const F = BX.fx[i]; F.t += dt; const k = (F.t - F.delay) / F.life; F.m.visible = k >= 0;
+    if (k >= 1) { scene.remove(F.m); F.m.geometry.dispose(); F.m.material.dispose(); BX.fx.splice(i, 1); continue; }
+    if (k >= 0) { F.m.position.set(F.u.pos.x, F.m.position.y, F.u.pos.z); F.m.material.opacity = 0.85 * (1 - k); F.m.scale.setScalar(1 + k * 0.15); } }
+};
+
+// =====================================================================================
+// §EMBERFIX — a Cinder's powers are the Ember's
+//  The power bar opens on your own Path: the Cinder Court's on the Ember set, the Wardens' on
+//  the Quiet. Awakening or turning switches it at once.
+// =====================================================================================
+const efSet = (ch = charOf()) => (ch?.path?.order === 'cinder' || (ch?.align || 0) > 0) ? 'ember' : 'quiet';
+const _efEnter = resEnter;
+resEnter = function (me) { const r = _efEnter(me); RES.set = efSet(); return r; };   // S11-EDIT(§RESONANCE resEnter): your Path's set first
+const _efAwaken = awAwaken;
+awAwaken = function (side) { const r = _efAwaken(side); RES.set = side === 'ember' ? 'ember' : 'quiet'; return r; };   // S11-EDIT(§AWAKEN awAwaken): powers of the Path you chose
+const _efSwitch = awSwitch;
+awSwitch = function (side) { const r = _efSwitch(side); RES.set = side === 'ember' ? 'ember' : 'quiet'; return r; };   // S11-EDIT(§AWAKEN awSwitch): powers follow the turn
+const _efInput = resInput;
+resInput = function (me, dt) { const ch = charOf(); const k = (ch?.path?.order || '') + (ch?.cls || ''); if (k !== RES.efKey) { RES.efKey = k; RES.set = efSet(ch); } return _efInput(me, dt); };   // S11-EDIT(§RESONANCE resInput): a new Path or order brings its own set
+
+// =====================================================================================
+// §CITYPLACES — more kinds of place behind the doors
+//  Diners, hotels, fight pits, banks, archives, tailors, augment clinics, workshops, speeder
+//  garages, nightclubs, temples and fences join the homes, shops, bars, clinics, workplaces,
+//  arcades, market halls, offices, garrisons and shrines. Each takes over a share of the
+//  buildings of the kind it most resembles; each does something you keep.
+// =====================================================================================
+Object.assign(SG_CELLS, {
+  diner: { cell: 'int_bar', name: 'Diner', light: 0xffc890 }, hotel: { cell: 'int_quarters', name: 'Hotel', light: 0xffe0b0 }, pit: { cell: 'int_bar', name: 'Fight pit', light: 0xff6a4a },
+  bank: { cell: 'int_office', name: 'Bank', light: 0xf0f4ff }, archive: { cell: 'int_office', name: 'Archive', light: 0xe8dcc0 }, tailor: { cell: 'int_shop', name: 'Tailor', light: 0xffd8f0 },
+  augment: { cell: 'int_office', name: 'Augment clinic', light: 0x9ff0ff }, workshop: { cell: 'int_shop', name: 'Workshop', light: 0xffd090 }, garage: { cell: 'int_shop', name: 'Speeder garage', light: 0xa8d8ff },
+  club: { cell: 'int_bar', name: 'Nightclub', light: 0xd060ff }, temple: { cell: 'int_quarters', name: 'Temple', light: 0xfff2c0 }, fence: { cell: 'int_shop', name: 'Fence', light: 0xb0a070 } });
+const CP_SPLIT = { home: [[9, 1, 'diner'], [9, 4, 'hotel'], [13, 6, 'tailor'], [17, 8, 'temple'], [11, 3, 'club'], [19, 10, 'bank'], [23, 12, 'archive']], work: [[4, 1, 'workshop'], [6, 3, 'pit'], [7, 5, 'garage'], [9, 7, 'club']], shop: [[5, 2, 'augment'], [6, 4, 'fence'], [7, 1, 'tailor'], [11, 7, 'bank']], admin: [[3, 1, 'bank'], [3, 2, 'archive']], bar: [[2, 1, 'club']], market: [[3, 1, 'fence']] };
+const _cpKind = inKindOf;
+inKindOf = function (b, i) { const k = _cpKind(b, i); for (const [m, r, nk] of CP_SPLIT[k] || []) if (i % m === r) return nk; return k; };   // S11-EDIT(§INTERIORS inKindOf): more kinds of place
+function cpAug(ch = charOf()) { if (!ch.aug) ch.aug = { hp: 0, stam: 0, defl: 0 }; return ch.aug; }
+function cpMods(ch = charOf()) { if (!ch.mods) ch.mods = { blade: 0, barrel: 0 }; return ch.mods; }
+function cpBank(p = SBX.profile) { if (!p.bank) p.bank = { bal: 0, t: Date.now() }; const B = p.bank; const days = (Date.now() - B.t) / 864e5; if (days > 0 && B.bal > 0) B.bal = Math.floor(B.bal * Math.pow(1.03, days)); B.t = Date.now(); return B; }
+function cpSpd(p = SBX.profile) { if (!p.spdMods) p.spdMods = { speed: 0, hull: 0 }; return p.spdMods; }
+const _cpHp = charMaxHp; charMaxHp = function (ch = charOf()) { return _cpHp(ch) + (ch?.aug?.hp || 0); };   // S11-EDIT(§CHARACTER charMaxHp): subdermal plating
+const _cpDefl = charMaxDefl; charMaxDefl = function (ch = charOf()) { return _cpDefl(ch) + (ch?.aug?.defl || 0); };   // S11-EDIT(§CHARACTER charMaxDefl): deflector lattice
+const _cpDmg = ofDamage;
+ofDamage = function (u, dmg, from, o = {}) {   // S11-EDIT(§ONFOOT.DAMAGE ofDamage): workshop tuning on your blade and your barrel
+  if (from && from === OF.me) { const M = charOf()?.mods; if (M) { if (o.kind === 'melee' && from.blade?.lit) dmg *= 1 + 0.2 * (M.blade || 0); else if (o.kind === 'bolt') dmg *= 1 + 0.15 * (M.barrel || 0); } }
+  return _cpDmg(u, dmg, from, o);
+};
+const _cpVeh = vehSpawn;
+vehSpawn = function (cls, fac, team, pos, yaw, o) { const v = _cpVeh(cls, fac, team, pos, yaw, o); if (cls === 'speeder') { const S = cpSpd(); v.D = { ...v.D, speed: v.D.speed * (1 + 0.15 * S.speed), accel: v.D.accel * (1 + 0.12 * S.speed) }; v.hpMax *= 1 + 0.4 * S.hull; v.hp = v.hpMax; if (v.unit) { v.unit.hp = v.hp; v.unit.hpMax = v.hpMax; } } return v; };   // S11-EDIT(§VEHICLES vehSpawn): garage upgrades
+// stamina from the lungs and the pit's training, applied as you set foot down
+const _cpStep = OF.step;
+OF.step = function (dt) { _cpStep(dt); const me = OF.me; if (me && me.kind === 'player' && me._cpStam !== true) { const ch = charOf(); if (ch) { me.stamMax += (ch.aug?.stam || 0) + (ch.train || 0) * 5; me.stam = Math.min(me.stamMax, me.stam); me._cpStam = true; } } };   // S11-EDIT(§ONFOOT.STEP OF.step): augments and training
+const CP_LORE = ['The first Wardens were miners who heard the rock answer back.', 'The Cinder Court was founded by a Warden who would not let a city burn quietly.', 'Every monolith on every world points to the same empty patch of sky.', 'The Concordance banned the Resonance for forty years. It came back in the prisons first.', 'Ironclad clans keep their helmets on in front of anyone who is not family.', 'The old trade lanes were charted by a blind pilot who navigated by the hum of the gates.'];
+Object.assign(IN_RENDER, {
+  diner: (btn, pr, p) => `<p class="small">Grease, steam and a counter worn smooth by elbows. The cook does not ask your name.</p><div class="actions">${btn('cp-eat:1', `Snack · ${pr(25)} cr`, p.isk >= pr(25))}${btn('cp-eat:2', `Hot meal · ${pr(70)} cr`, p.isk >= pr(70))}${btn('cp-eat:3', `Feast for the table · ${pr(220)} cr`, p.isk >= pr(220), 'amber')}</div><p class="small">A snack mends a little; a meal most of it; a feast feeds your whole squad.</p>`,
+  hotel: (btn, pr, p) => `<p class="small">Clean sheets, a lock that works, a window over the lights.</p><div class="actions">${btn('cp-sleep', `A room till morning · ${pr(150)} cr`, p.isk >= pr(150), 'amber')}</div><p class="small">Full rest, the night passes, and your journey is saved.</p>`,
+  pit: (btn, pr, p) => { const ch = charOf(); return `<p class="small">Sand, blood and a crowd that wants both. Fight for the purse, or train with the regulars.</p><div class="actions">${[200, 1000, 5000].map(n => btn('cp-pit:' + n, `Fight · stake ${fmtIsk(n)} cr`, p.isk >= n)).join('')}${btn('cp-train', `Train · ${pr(400)} cr${ch?.train ? ` (${ch.train}/6)` : ''}`, p.isk >= pr(400) && (ch?.train || 0) < 6)}</div><p class="small">Odds favour the strong, the armoured and anyone carrying a lit blade. Training adds stamina for good.</p>`; },
+  bank: (btn, pr, p) => { const B = cpBank(p); return `<p class="small">Marble, guards, and money that grows while you are away: 3% a day.</p><div class="ovrow"><span class="k">Savings</span><span class="n">${fmtIsk(B.bal)} cr</span></div><div class="actions">${[1000, 10000, 100000].map(n => btn('cp-dep:' + n, `Deposit ${fmtIsk(n)}`, p.isk >= n)).join('')}${btn('cp-wd', 'Withdraw all', B.bal > 0, 'amber')}</div>`; },
+  archive: (btn, pr, p) => `<p class="small">Shelves of data slates and one archivist who has read them all.</p><div class="actions">${btn('cp-chart', `Buy survey charts of ${SRF.planet.name} · ${pr(400)} cr`, p.isk >= pr(400), 'amber')}${btn('cp-read', 'Read the histories')}</div><p class="small">Charts mark every landmark at every settlement on this world.</p>`,
+  tailor: (btn, pr, p) => { const ch = charOf(); return `<p class="small">Bolts of cloth, a mirror, a tailor with pins in their mouth.</p><div class="actions">${btn('cp-hair', `New hair · ${pr(120)} cr (${CHAR_STYLES[(ch?.look?.style ?? 0) % CHAR_STYLES.length]})`, p.isk >= pr(120))}${btn('cp-dye', `Re-dye your gear · ${pr(180)} cr`, p.isk >= pr(180))}${btn('cp-tall', `Boot lifts · ${pr(90)} cr`, p.isk >= pr(90))}</div>`; },
+  augment: (btn, pr, p) => { const A = cpAug(); return `<p class="small">Chrome trays, a surgeon with steady hands. Permanent.</p>` + [['hp', 'Subdermal plating', '+20 health', 6000], ['stam', 'Synthetic lungs', '+25 stamina', 5000], ['defl', 'Deflector lattice', '+20 deflector', 7000]].map(([k, n, d, c]) => `<div class="fitslot"><b>${n}</b><i class="small">${d} · fitted ${A[k] ? Math.round(A[k] / (k === 'stam' ? 25 : 20)) : 0}/3</i>${btn('cp-aug:' + k, `${fmtIsk(pr(c))} cr`, p.isk >= pr(c) && A[k] < (k === 'stam' ? 75 : 60))}</div>`).join(''); },
+  workshop: (btn, pr, p) => { const M = cpMods(); return `<p class="small">Benches, lathes, and a mechanic who loves a problem.</p><div class="fitslot"><b>Blade crystal tuning</b><i class="small">+20% sabre damage per stage · ${M.blade}/3</i>${btn('cp-mod:blade', `${fmtIsk(pr(4000))} cr`, p.isk >= pr(4000) && M.blade < 3)}</div><div class="fitslot"><b>Barrel tuning</b><i class="small">+15% blaster damage per stage · ${M.barrel}/3</i>${btn('cp-mod:barrel', `${fmtIsk(pr(3500))} cr`, p.isk >= pr(3500) && M.barrel < 3)}</div>`; },
+  garage: (btn, pr, p) => { const S = cpSpd(p); return `<p class="small">Hover-bikes on stands, fans in pieces, the smell of coolant.</p><div class="fitslot"><b>Fan and drive upgrade</b><i class="small">+15% speed per stage · ${S.speed}/3</i>${btn('cp-spd:speed', `${fmtIsk(pr(4500))} cr`, p.isk >= pr(4500) && S.speed < 3)}</div><div class="fitslot"><b>Armoured fairings</b><i class="small">+40% hull per stage · ${S.hull}/2</i>${btn('cp-spd:hull', `${fmtIsk(pr(3000))} cr`, p.isk >= pr(3000) && S.hull < 2)}</div><div class="actions">${btn('cp-spd:fix', `Rush a replacement speeder · ${pr(800)} cr`, p.isk >= pr(800))}</div>`; },
+  club: (btn, pr, p) => `<p class="small">Bass you feel in your teeth, lights that never sit still.</p><div class="actions">${btn('cp-dance', 'Dance')}${btn('cp-round', `Buy the house a round · ${pr(300)} cr`, p.isk >= pr(300), 'amber')}</div><p class="small">A round makes friends of whoever holds this city.</p>`,
+  temple: (btn, pr, p) => `<p class="small">Candles, quiet, the smell of old wax.</p><div class="actions">${btn('cp-pray', 'Sit and pray')}${btn('cp-donate', `Donate · ${pr(500)} cr`, p.isk >= pr(500), 'amber')}</div><p class="small">A donation cools any warrant you carry here and settles the soul.</p>`,
+  fence: (btn, pr, p) => { const ship = SBX.ship(); const hot = Object.entries(ship?.cargo || {}).filter(([id, n]) => n > 0 && ['art_relic', 'tg_luxuries', 'tg_machinery', 'tg_medical'].includes(id) || (n > 0 && ITEMS[id]?.cat === 'forage')); return '<p class="small">No sign on the door. "I buy what others ask questions about."</p>' + (hot.length ? hot.map(([id, n]) => `<div class="fitslot"><b>${ITEMS[id].name}</b><i class="small">×${n}</i>${btn('cp-fence:' + id, `Sell · ${fmtIsk(Math.round(ITEMS[id].base * 1.2 * n))} cr`)}</div>`).join('') : '<p class="small">"Nothing I want. Come back with relics, luxuries, machinery, medicine or wild goods."</p>'); },
+});
+const _cpAct = sgPanelAct;
+sgPanelAct = function (a) {   // S11-EDIT(§CITY sgPanelAct): the new places
+  const [act, x] = a.split(':'); if (!act.startsWith('cp-')) return _cpAct(a); const p = SBX.profile; const k = sgPriceK(SRF.planet, SRF.site.i); const me = OF.me; const ch = charOf();
+  const pay = (n) => { n = Math.round(n); if (p.isk < n) { sbxToast('Not enough credits.'); return false; } p.isk -= n; SBX.dirty = true; return true; }; const say = (m) => { SG.panel.msg = m; };
+  if (act === 'cp-eat') { const n = +x; if (!pay([0, 25, 70, 220][n] * k)) return; const f = [0, 0.25, 0.6, 1][n]; if (me) { me.hp = Math.min(me.hpMax, me.hp + me.hpMax * f); me.stam = me.stamMax; } if (n === 3) for (const u of SQ?.units || []) if (u.alive) u.hp = u.hpMax; say(['', 'Something fried on a stick. Better.', 'A plate of something hot and honest. Much better.', 'The whole table eats. Nobody is hurting now.'][n]); }
+  else if (act === 'cp-sleep') { if (!pay(150 * k)) return; if (me) { me.hp = me.hpMax; me.defl = me.deflMax; me.stam = me.stamMax; } const D = CONFIG.srf.dayLength, t = Date.now() / 1000; SRF.siteSt.wx = (((0.22 * D - t) % D) + D) % D; sbxSave('hotel'); say('You sleep through the night. Morning light, a full night\'s rest — and your journey is saved.'); }
+  else if (act === 'cp-pit') { const n = +x; if (!pay(n)) return; const odds = clamp(0.38 + (me ? me.hp / me.hpMax * 0.12 : 0) + (me?.blade?.lit ? 0.15 : 0) + (['heavy', 'ironclad'].includes(ch?.cls) ? 0.1 : 0) + (ch?.train || 0) * 0.02 + (ch?.aug?.hp ? 0.04 : 0), 0.2, 0.8);
+    if (me) me.hp = Math.max(1, me.hp - me.hpMax * (0.15 + Math.random() * 0.25)); if (Math.random() < odds) { p.isk += Math.round(n * 2.6); say(`You leave your opponent in the sand. The purse: ${fmtIsk(Math.round(n * 2.6))} cr. The crowd chants something that might be your name.`); } else say('You wake up on the sand with the crowd already leaving. The stake is gone.'); }
+  else if (act === 'cp-train') { if ((ch.train || 0) >= 6 || !pay(400 * k)) return; ch.train = (ch.train || 0) + 1; if (me) { me.stamMax += 5; me.stam = me.stamMax; } say(`Rounds with the regulars. You are harder to tire now (+5 stamina, ${ch.train}/6).`); }
+  else if (act === 'cp-dep') { const n = +x; if (!pay(n)) return; cpBank(p).bal += n; say(`${fmtIsk(n)} cr deposited. It will grow while you are gone.`); }
+  else if (act === 'cp-wd') { const B = cpBank(p); p.isk += B.bal; say(`You withdraw ${fmtIsk(B.bal)} cr.`); B.bal = 0; SBX.dirty = true; }
+  else if (act === 'cp-chart') { if (!pay(400 * k)) return; const pl = SRF.planet; for (let i = 0; i < pl.nSites; i++) { const st = srfSiteState(pl, i); st.lm = st.lm || {}; for (let j = 0; j < 5; j++) st.lm['s' + j] = 1; } say(`Every landmark at every settlement on ${pl.name} is on your charts now.`); }
+  else if (act === 'cp-read') say(CP_LORE[Math.floor(Math.random() * CP_LORE.length)]);
+  else if (act === 'cp-hair' || act === 'cp-dye' || act === 'cp-tall') { if (!pay((act === 'cp-hair' ? 120 : act === 'cp-dye' ? 180 : 90) * k)) return; ch.look = ch.look || {};
+    if (act === 'cp-hair') ch.look.style = ((ch.look.style ?? 0) + 1) % CHAR_STYLES.length; else if (act === 'cp-dye') ch.look.armour = ((ch.look.armour ?? 0) + 1) % CHAR_ARMOUR.length; else ch.look.height = clamp((ch.look.height || 0) + 0.5, -2, 2);
+    if (me?.rig) { charRigRelease(me.rig); me.rig = null; me.spec = { ...me.spec, look: { ...ch.look } }; ofSpawnRig(me); } say(act === 'cp-hair' ? `A new look: ${CHAR_STYLES[ch.look.style]}.` : act === 'cp-dye' ? 'Your gear comes back a new colour.' : 'You stand a little taller.'); }
+  else if (act === 'cp-aug') { const A = cpAug(); const c = { hp: 6000, stam: 5000, defl: 7000 }[x]; const step = x === 'stam' ? 25 : 20; if (A[x] >= (x === 'stam' ? 75 : 60) || !pay(c * k)) return; A[x] += step;
+    if (me) { if (x === 'hp') { me.hpMax += step; me.hp += step; } else if (x === 'defl') { me.deflMax += step; me.defl += step; } else { me.stamMax += step; me.stam = me.stamMax; } } say('The anaesthetic wears off. Something in you is stronger than it was, for good.'); }
+  else if (act === 'cp-mod') { const M = cpMods(); if (M[x] >= 3 || !pay((x === 'blade' ? 4000 : 3500) * k)) return; M[x]++; say(x === 'blade' ? `Your blade's crystal is tuned (stage ${M.blade}/3). It bites deeper.` : `Your barrels are tuned (stage ${M.barrel}/3). Every bolt hits harder.`); }
+  else if (act === 'cp-spd') { const S = cpSpd(p); if (x === 'fix') { if (!pay(800 * k)) return; SPD.lostT = -1e9; say('A replacement speeder will be waiting in your bay. Press Y outside to call it.'); }
+    else { const c = x === 'speed' ? 4500 : 3000; if (S[x] >= (x === 'speed' ? 3 : 2) || !pay(c * k)) return; S[x]++; if (SPD.v) { vehRemove(SPD.v); SPD.v = null; } say(x === 'speed' ? `Faster fans, a hotter drive (stage ${S.speed}/3). Call your speeder to feel it.` : `Armoured fairings (stage ${S.hull}/2).`); } }
+  else if (act === 'cp-dance') { if (me) me.stam = me.stamMax; say('For a while there is nothing but the beat. You come out lighter.'); }
+  else if (act === 'cp-round') { if (!pay(300 * k)) return; const f = sgOwner(SRF.planet, SRF.site.i); if (f) { p.standings[f] = clamp((p.standings[f] || 0) + 0.3, -10, 10); say(`The whole house drinks to you. ${gsShort(f)} standing +0.3.`); } else say('The whole house drinks to you.'); }
+  else if (act === 'cp-pray') { if (me) me.hp = Math.min(me.hpMax, me.hp + me.hpMax * 0.2); say('The quiet does you good.'); }
+  else if (act === 'cp-donate') { if (!pay(500 * k)) return; const f = sgOwner(SRF.planet, SRF.site.i); const L = f && p.law?.[f]; if (L) L.heat = Math.max(0, (L.heat || 0) * 0.5 - 10); if (ch?.res) ch.align = clamp((ch.align || 0) - 2, -100, 100); say('The priest blesses the gift. Whatever was chasing you here has cooled.'); }
+  else if (act === 'cp-fence') { const ship = SBX.ship(); const n = ship.cargo[x] || 0; if (!n) return; const v = Math.round(ITEMS[x].base * 1.2 * n); SBX.removeCargo(ship, x, n); p.isk += v; SBX.dirty = true; say(`${n} ${ITEMS[x].name}, gone. ${fmtIsk(v)} cr, no questions.`); }
+  audio.click(); sgPanelRender();
+};
+Object.assign(S9X, { BX, efSet, cpAug, cpMods, cpBank, cpSpd, CP_SPLIT, bladeStrikeNow: (...a) => bladeStrike(...a), sgPanelOpenNow: (k) => sgPanelOpen(k) });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
