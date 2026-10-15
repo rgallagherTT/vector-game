@@ -341,6 +341,11 @@
     §FLASHBACK              memories of the life and the Path, surfacing when they want to
       §FLASHBACK.HUD          the display gets its instruments: a segmented, rotating, breathing reticle cluster
     §HUNTER                 the Ironclad wears clan plate: ./s11/hunter_helmeted.glb + hunter_unhelmeted.glb
+    §SURVEY2                every village and city is a place on the orbital survey
+    §TERRAIN2               the ground looks like ground: finer mesh, per-pixel rock / snow / shore,
+      §TERRAIN2.COVER         ground cover in 24 m tiles around the camera, built a few tiles per frame
+    §WILDS                  things to do out in the terrain
+    §RESFIX                 Resonance powers that clearly work
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -719,6 +724,21 @@
     §CHARACTER CharRig.buildProc — hunter geometry brings its own PBR materials
     §ONFOOT ofSpawnRig — the player's Ironclad wears the hunter plate
     §CHARACTER ccPreviewRig — Ironclad preview wears the hunter plate
+    §ORBITAL srfRenderOrbital — every settlement charted, named and listed
+    §TERRAIN TERRA.init — the upgraded ground shader, a nicer tree, room for forests
+    §TERRAIN TERRA.begin — biome uniforms for the ground shader
+    §TERRAIN TERRA.scatterProps — forests and rock fields in clumps, four times the scatter, no trees on cliffs
+    §SURFACE weather — ground cover and the wilds tick with the weather
+    §ONFOOT ofInteract — forage, outcrops and landmarks
+    §ONFOOT ofDropsStep — wilds prompts
+    §SBXUI sbxOverviewEntries — landmarks on the ground overview
+    §SURFACE shutdownVisuals — the wilds go with the site
+    §RESONANCE resGate — no Unbound cap
+    §RESONANCE resEnter — repair a Path that never registered
+    §RESONANCE resCast — generous targeting, no wasted casts, visible every time
+    §RESONANCE resInput — never silently deaf
+    §RESONANCE resStep — shockwaves and beams
+    §RESONANCE resExit — effects go with the mode
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -23752,6 +23772,416 @@ addEventListener('keydown', (e) => { if (e.code !== 'KeyK' || e.repeat || e.ctrl
 (function huntUI() { const pc = document.querySelector('#s-paused .card'); if (!pc) return; const b = document.createElement('button'); b.textContent = 'Helmet on / off'; b.title = 'Ironclad: take the clan helmet off or seal it (K on foot)'; b.onclick = () => huntToggleHelm(); pc.appendChild(b); })();
 huntLoad();
 Object.assign(S9X, { HUNT, huntLoad, huntBuildGeo, huntToggleHelm, huntRefreshPlayer, huntWeights, ccOpenNow: (...a) => ccOpen(...a), ccPreviewRigNow: () => ccPreviewRig(), get CC() { return CC; } });
+
+
+// =====================================================================================
+// §SURVEY2 — every village and city is a place on the orbital survey
+//  Settled worlds are charted: every settlement site is shown at once (no surveyor needed),
+//  labelled with its name, and listed under the globe — click a row to swing the globe to it.
+// =====================================================================================
+const SV_ICON = { metro: '★', city: '■', village: '◆' };
+const _svOrb = srfRenderOrbital;
+srfRenderOrbital = function () {   // S11-EDIT(§ORBITAL srfRenderOrbital): every settlement charted, named and listed
+  const p = ORB.planet; if (p && rkvInhabited(p)) { const ps = srfPState(p); if (ps.scanned < p.nSites) ps.scanned = p.nSites; }
+  const r = _svOrb(); if (!p) return r;
+  const g = $('planetcanvas')?.getContext('2d'); const plan = sgPlan(p);
+  if (g) for (const m of ORB.markers || []) { const t = plan?.tiers[m.i]; if (!t) continue; const s = srfSiteDef(p, m.i);
+    g.font = tkFont(t === 'village' ? '600 11px' : '700 12px'); g.fillStyle = t === 'metro' ? tk('--accent') : tk('--fg', t === 'village' ? 0.8 : 1); g.fillText(sgName(p, s), m.x + 10, m.y - 9); }
+  if (rkvInhabited(p)) $('orb-hint').textContent = `Every settlement on ${p.name} is charted — pick one on the globe or in the list. Drag to rotate.`;
+  const el = $('orb-info'); if (!el || !plan) return r;
+  const here = SRF.active && SRF.planet?.key === p.key ? SRF.site?.i : -1;
+  const rows = plan.tiers.map((t, i) => { const s = srfSiteDef(p, i); const st = srfSiteState(p, i); const own = sgOwner(p, i); const lm = wlLandmarks(p, s); const found = lm.filter(L => st.lm?.[L.i]).length;
+    const kind = t === 'metro' ? 'Metropolis' : t === 'city' ? 'City' : `Village · ${sgVillageKind(p, s)}`;
+    return `<button class="sv-row ${ORB.sel === i ? 'on' : ''}" data-sv="${i}"><b>${SV_ICON[t]} ${sgName(p, s)}</b><span>${kind} · ${BIOMES[s.biome].name}${own ? ' · ' + gsShort(own) : ''}${i === here ? ' · YOU ARE HERE' : st.visited ? ' · visited' : ''} · landmarks ${found}/${lm.length}</span></button>`; }).join('');
+  el.insertAdjacentHTML('beforeend', `<h3 style="margin:14px 0 6px">Places on ${p.name}</h3><div class="sv-list">${rows}</div>`);
+  el.querySelectorAll('[data-sv]').forEach(b => { b.onclick = () => { const i = +b.dataset.sv; ORB.sel = i; ORB.yaw = -srfSiteDef(p, i).lon * Math.PI / 180; audio.click(); srfRenderOrbital(); }; });
+  return r;
+};
+(function svCss() { const s = document.createElement('style'); s.textContent = `.sv-list { display: flex; flex-direction: column; gap: 4px; max-height: 210px; overflow-y: auto; padding-right: 4px; }
+  .sv-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 6px 9px; background: var(--bg-panel); border: var(--line) solid var(--rule); color: var(--fg); cursor: pointer; }
+  .sv-row b { font-weight: 600; } .sv-row span { font-size: 11px; opacity: .7; } .sv-row.on, .sv-row:hover { border-color: var(--accent); } .sv-row.on b { color: var(--accent); }`; document.head.appendChild(s); })();
+
+// =====================================================================================
+// §TERRAIN2 — the ground looks like ground: finer mesh, per-pixel rock / snow / shore,
+//  world-space bump detail, crevice shading, glints on ice and wet sand, glowing cracks on
+//  volcanic ground, sun-warmed haze; clumped forests and rock fields; and a carpet of grass,
+//  flowers, shrubs, pebbles, fungus or ice spikes (by biome) that sways in the wind near you.
+// =====================================================================================
+CONFIG.srf.seg = 64;   // 16 m vertex spacing (was 21 m); LOD strides 1 / 2 / 4 still divide it
+const TR2_BIOME = { temperate: { snow: 0.5, gloss: 0.05 }, ice: { snow: 1, gloss: 0.42 }, barren: { snow: 0, gloss: 0.04 }, volcanic: { snow: 0, gloss: 0.1, lava: 1 }, toxic: { snow: 0, gloss: 0.16 } };
+const TR2_FRAG = `
+  uniform vec3 sunDir, sunCol, ambS, ambG, fogColor, cSteep; uniform float fogDensity, amp, water, snow, wet, gloss, lava, lavaY; uniform sampler2D detail;
+  varying vec3 vN; varying vec3 vC; varying vec3 vW; varying float vD;
+  float tri(vec3 w, float s) { return texture2D(detail, vW.yz * s).r * w.x + texture2D(detail, vW.xz * s).r * w.y + texture2D(detail, vW.xy * s).r * w.z; }
+  void main() {
+    vec3 N = normalize(vN); vec3 w = abs(N); w = w * w * w * w; w /= (w.x + w.y + w.z);
+    float d1 = tri(w, 0.045), d2 = tri(w, 0.21), d3 = tri(w, 0.0061), d4 = tri(w, 0.9);
+    float near = clamp(1.0 - vD / 260.0, 0.0, 1.0);
+    // bump from the detail layers by world-space finite differences (smooth, no pixel-quad blocks)
+    vec2 q = vW.xz; float e1 = 0.35, e2 = 0.9;
+    float a1 = texture2D(detail, q * 0.21).r, a2 = texture2D(detail, q * 0.045).r;
+    float gx = (texture2D(detail, (q + vec2(e1, 0.0)) * 0.21).r - a1) * 0.9 * near + (texture2D(detail, (q + vec2(e2, 0.0)) * 0.045).r - a2) * 1.6;
+    float gz = (texture2D(detail, (q + vec2(0.0, e1)) * 0.21).r - a1) * 0.9 * near + (texture2D(detail, (q + vec2(0.0, e2)) * 0.045).r - a2) * 1.6;
+    vec3 Nb = normalize(N + vec3(-gx, 0.0, -gz) * 2.2 * w.y);
+    float slope = 1.0 - N.y;
+    vec3 base = vC * (0.8 + 0.4 * d3);
+    float rockT = smoothstep(0.22, 0.45, slope + (d2 - 0.5) * 0.18);
+    float strata = 0.93 + 0.07 * sin(vW.y * 0.7 + d1 * 9.0 + d3 * 14.0);
+    base = mix(base, cSteep * strata * (0.7 + 0.6 * d2), rockT);
+    float ao = 0.7 + 0.3 * smoothstep(0.25, 0.75, d2);
+    float sn = step(0.01, snow) * smoothstep(amp * (1.25 - 0.8 * snow), amp * (1.7 - 0.8 * snow), vW.y + (d3 - 0.5) * amp * 0.5) * (1.0 - smoothstep(0.12, 0.3, slope));
+    base = mix(base, vec3(0.8, 0.84, 0.9) * (0.9 + 0.1 * d4), sn);
+    float sh = wet * (1.0 - smoothstep(0.0, 5.0 + 3.0 * d1, vW.y - water)) * step(water - 2.0, vW.y);
+    base = mix(base, base * 0.55 + vec3(0.07, 0.06, 0.04), sh * 0.75);
+    vec3 V = normalize(cameraPosition - vW);
+    vec3 amb = mix(ambG, ambS, Nb.y * 0.5 + 0.5) * ao;
+    float nd = dot(Nb, sunDir); float dl = max(nd, 0.0); float wrap = max(nd * 0.5 + 0.5, 0.0) * 0.1;
+    vec3 Hh = normalize(sunDir + V); float spec = pow(max(dot(Nb, Hh), 0.0), 40.0) * (gloss + sh * 0.35 + sn * 0.2) * dl;
+    vec3 col = base * (amb + sunCol * (dl + wrap)) + sunCol * spec;
+    float hot = lava * (1.0 - smoothstep(0.0, 30.0, vW.y - lavaY)) * smoothstep(0.66, 0.78, 1.0 - d2);
+    col += vec3(1.0, 0.32, 0.06) * hot * 1.3;
+    float f = clamp(1.0 - exp(-fogDensity * fogDensity * vD * vD * 2.2), 0.0, 1.0);
+    float toSun = pow(max(dot(-V, sunDir), 0.0), 6.0);
+    gl_FragColor = vec4(mix(col, fogColor + sunCol * 0.1 * toSun, f), 1.0);
+  }`;
+/** A pine in four tiers, coloured per vertex (trunk, shaded lower boughs, lighter tips). */
+function tr2Pine() {
+  const col = (g, c0, c1) => { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeBoundingBox(); const bb = g.boundingBox; const n = g.attributes.position.count; const a = new Float32Array(n * 3); const A = new THREE.Color(c0), B = new THREE.Color(c1), C = new THREE.Color();
+    for (let i = 0; i < n; i++) { const t = (g.attributes.position.getY(i) - bb.min.y) / Math.max(0.01, bb.max.y - bb.min.y); C.copy(A).lerp(B, t); a[i * 3] = C.r; a[i * 3 + 1] = C.g; a[i * 3 + 2] = C.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
+  const parts = [col(new THREE.CylinderGeometry(0.16, 0.3, 3.4, 6).translate(0, 1.7, 0), 0x3a2a1e, 0x5a4030)];
+  [[2.5, 2.5, 2.4], [2.0, 2.3, 3.7], [1.45, 2.1, 4.9], [0.85, 1.9, 6.1]].forEach(([r, h, y], k) => parts.push(col(new THREE.ConeGeometry(r, h, 8).translate(0, y, 0).rotateY(k * 0.7), 0x1f3d22, k === 3 ? 0x6a9a52 : 0x4a7a3c)));
+  return mergeGeometries(parts, false);
+}
+// the ground everyone stands on is the ground that is drawn: heights between the mesh's 16 m
+// nodes follow its triangles (same diagonal as the index buffer), node heights are cached
+const _tr2Height = srfMakeHeight;
+srfMakeHeight = function (site) {   // S11-EDIT(§PLANETS srfMakeHeight): collision, props and cover match the drawn mesh
+  const raw = _tr2Height(site); const { chunk: CH, grid: G, seg: SEG } = CONFIG.srf; const step = CH / SEG, o = -G / 2 * CH, N = G * SEG + 1;
+  const cache = new Float32Array(N * N).fill(NaN);
+  const node = (i, j) => { if (i < 0 || j < 0 || i >= N || j >= N) return raw(o + i * step, o + j * step); const k = j * N + i; let v = cache[k]; if (v !== v) v = cache[k] = raw(o + i * step, o + j * step); return v; };
+  const H = (x, z) => { const gx = (x - o) / step, gz = (z - o) / step; const i = Math.floor(gx), j = Math.floor(gz); const fx = gx - i, fz = gz - j;
+    if (fx < 1e-6 && fz < 1e-6) return node(i, j);
+    if (fx + fz <= 1) { const a = node(i, j); return a + (node(i + 1, j) - a) * fx + (node(i, j + 1) - a) * fz; }
+    const d = node(i + 1, j + 1); return d + (node(i, j + 1) - d) * (1 - fx) + (node(i + 1, j) - d) * (1 - fz); };
+  H.raw = raw; return H;
+};
+const _tr2Init = TERRA.init;
+TERRA.init = function () {   // S11-EDIT(§TERRAIN TERRA.init): the upgraded ground shader, a nicer tree, room for forests
+  const first = !this.built; _tr2Init.call(this); if (!first) return;
+  const m = this.mat; Object.assign(m.uniforms, { cSteep: { value: new THREE.Color() }, amp: { value: 150 }, water: { value: -1e4 }, snow: { value: 0 }, wet: { value: 0 }, gloss: { value: 0.05 }, lava: { value: 0 }, lavaY: { value: -1e4 } });
+  m.fragmentShader = TR2_FRAG; m.needsUpdate = true;
+  for (const [k, old] of Object.entries(this.props)) { const tree = k === 'tree'; const geo = tree ? tr2Pine() : old.geometry;
+    const mat = tree ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true }) : old.material;
+    const nm = new THREE.InstancedMesh(geo, mat, 900); nm.count = 0; nm.frustumCulled = false; this.group.remove(old); this.group.add(nm); this.props[k] = nm; }
+  GC.init(this.group);
+};
+const _tr2Begin = TERRA.begin;
+TERRA.begin = function (site, H) {   // S11-EDIT(§TERRAIN TERRA.begin): biome uniforms for the ground shader
+  const r = _tr2Begin.call(this, site, H); const B = this.B, u = this.mat.uniforms, T = TR2_BIOME[site.biome] || {};
+  u.cSteep.value.setHex(B.pal.steep); u.amp.value = B.amp; u.water.value = B.water ?? -1e4; u.wet.value = B.water != null ? 1 : 0; u.snow.value = T.snow || 0; u.gloss.value = T.gloss || 0.05; u.lava.value = T.lava && B.lava != null ? 1 : 0; u.lavaY.value = B.lava ?? -1e4;
+  GC.reset(site); WL.site = null; return r;
+};
+TERRA.scatterProps = function (site) {   // S11-EDIT(§TERRAIN TERRA.scatterProps): forests and rock fields in clumps, four times the scatter, no trees on cliffs
+  const B = this.B, H = this.H; const rng = makeRng(site.seed ^ 0x9e37); const dens = skyNoise((site.seed ^ 0xf0e5) >>> 0); const dummy = new THREE.Object3D();
+  const liquid = (y) => (B.water != null && y < B.water + 0.5) || (B.lava != null && y < B.lava + 1);
+  for (const [k, m] of Object.entries(this.props)) {
+    const want = B.props.includes(k) ? (k === B.props[0] ? 820 : 420) : 0; let n = 0, tries = 0;
+    const baseC = { rock: 0x7d7468, spire: 0x5c4a3c, shard: 0xcfe6f2, crystal: 0x9fe0c8, blob: 0x6d7a4a, tree: 0xffffff }[k];
+    while (n < want && tries++ < want * 5) {
+      const x = (rng() - 0.5) * 7200, z = (rng() - 0.5) * 7200; const dm = dens(x / 19200 + 0.31, z / 9600 + 0.67);
+      if (dm < (k === 'tree' ? 0.5 : 0.4) && rng() > 0.1) continue;
+      const y = H(x, z); if (liquid(y)) continue;
+      if (k === 'tree' && Math.abs(H(x + 4, z) - y) + Math.abs(H(x, z + 4) - y) > 3.2) continue;
+      dummy.scale.setScalar((k === 'tree' ? 0.8 + rng() * 0.9 : 0.7 + rng() * (k === 'spire' ? 6 : 2.2)));
+      dummy.position.set(x, y - (k === 'rock' ? 0.4 : 0), z); dummy.rotation.set(k === 'rock' ? rng() * 3 : 0, rng() * 6.3, k === 'rock' ? rng() * 3 : (rng() - 0.5) * 0.12);
+      dummy.updateMatrix(); m.setMatrixAt(n, dummy.matrix);
+      if (k === 'tree') m.setColorAt(n, _c.setRGB(0.8 + rng() * 0.25, 0.85 + rng() * 0.2, 0.75 + rng() * 0.2)); else m.setColorAt(n, _c.setHex(baseC).offsetHSL(0, 0, (rng() - 0.5) * 0.12));
+      n++;
+    }
+    m.count = n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }
+};
+
+// §TERRAIN2.COVER — ground cover in 24 m tiles around the camera, built a few tiles per frame
+const GC_CFG = { tile: 24, cell: 1.75, rad: 4, perTile: { grass: 150, flower: 14, shrub: 8, pebble: 26, fungus: 12, spike: 14, forage: 1, outcrop: 1 } };
+const GC_SET = {   // per biome: [type, chance per cell]
+  temperate: [['grass', 0.72], ['flower', 0.06], ['shrub', 0.03], ['pebble', 0.03]], toxic: [['grass', 0.45], ['fungus', 0.1], ['shrub', 0.04], ['pebble', 0.06]],
+  barren: [['pebble', 0.22], ['grass', 0.06]], ice: [['spike', 0.1], ['pebble', 0.1], ['grass', 0.08]], volcanic: [['pebble', 0.24], ['spike', 0.03]] };
+const GC = { meshes: {}, tiles: new Map(), free: [], uTime: { value: 0 }, site: null, built: false, pending: [],
+  geo() {
+    const blade = (h, lean, yaw) => { const g = new THREE.BufferGeometry(); const w = 0.07; g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-w, 0, 0, w, 0, 0, lean, h, 0.02]), 3)); g.rotateY(yaw); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array([0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 1, 1, 1]), 3)); return g; };
+    const clump = (n, h) => { const p = []; for (let i = 0; i < n; i++) { const g = blade(h * (0.6 + ((i * 37) % 10) / 22), ((i * 13) % 7 - 3) * 0.05, i * 2.4); g.translate(((i * 29) % 9 - 4) * 0.05, 0, ((i * 17) % 9 - 4) * 0.05); p.push(g); } const m = mergeGeometries(p, false); const nn = new Float32Array(m.attributes.position.count * 3); for (let i = 0; i < nn.length; i += 3) nn[i + 1] = 1; m.setAttribute('normal', new THREE.BufferAttribute(nn, 3)); return m; };   // lit like the ground it stands on
+    const vc = (g, c) => { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); const n = g.attributes.position.count; const a = new Float32Array(n * 3); const C = new THREE.Color(c); for (let i = 0; i < n; i++) { a[i * 3] = C.r; a[i * 3 + 1] = C.g; a[i * 3 + 2] = C.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
+    const flower = mergeGeometries([vc(clump(4, 0.45), 0x4a7a3c), vc(new THREE.OctahedronGeometry(0.07, 0).translate(0.02, 0.48, 0.02), 0xffe080), vc(new THREE.OctahedronGeometry(0.06, 0).translate(-0.1, 0.38, 0.05), 0xffffff)], false);
+    const fungus = mergeGeometries([vc(new THREE.CylinderGeometry(0.05, 0.07, 0.5, 5).translate(0, 0.25, 0), 0xb0b090), vc(new THREE.SphereGeometry(0.22, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.48, 0), 0xffffff)], false);
+    return { grass: clump(11, 0.62), flower, shrub: vc(mergeGeometries([[0, 0.32, 0, 0.42], [0.32, 0.22, 0.1, 0.3], [-0.28, 0.2, -0.12, 0.32], [0.05, 0.2, 0.33, 0.28], [-0.08, 0.5, -0.05, 0.26]].map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 0).translate(x, y, z).toNonIndexed()), false), 0x9ab088), pebble: vc(new THREE.IcosahedronGeometry(0.22, 0).scale(1, 0.55, 1.2), 0xffffff),
+      fungus, spike: vc(new THREE.ConeGeometry(0.12, 0.9, 4).translate(0, 0.4, 0), 0xffffff),
+      forage: mergeGeometries([vc(clump(6, 0.6), 0x6aa060), vc(new THREE.IcosahedronGeometry(0.12, 0).translate(0, 0.62, 0), 0xffffff), vc(new THREE.IcosahedronGeometry(0.09, 0).translate(0.15, 0.48, 0.05), 0xffffff)], false),
+      outcrop: vc(mergeGeometries([new THREE.OctahedronGeometry(0.5, 0).scale(0.6, 1.6, 0.6).translate(0, 0.5, 0), new THREE.OctahedronGeometry(0.4, 0).scale(0.6, 1.3, 0.6).rotateZ(0.5).translate(0.35, 0.35, 0.1), new THREE.OctahedronGeometry(0.35, 0).scale(0.6, 1.2, 0.6).rotateZ(-0.6).translate(-0.3, 0.3, -0.1)].map(g => g.toNonIndexed()), false), 0xffffff) };
+  },
+  init(group) {
+    if (this.built) return; this.built = true; const G = this.geo(); const cap = (k) => GC_CFG.perTile[k] * (2 * GC_CFG.rad + 1) ** 2;
+    const sway = (m) => { m.onBeforeCompile = (sh) => { sh.uniforms.uTime = GC.uTime; sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        float gph = instanceMatrix[3].x * 0.21 + instanceMatrix[3].z * 0.17;
+        transformed.x += sin(uTime * 1.9 + gph) * 0.12 * position.y; transformed.z += cos(uTime * 1.4 + gph) * 0.08 * position.y;
+      #endif`); }; return m; };
+    for (const [k, g] of Object.entries(G)) {
+      const soft = k === 'grass' || k === 'flower' || k === 'forage' || k === 'fungus';
+      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: k === 'spike' ? 0.3 : 0.92, metalness: 0, flatShading: !soft, side: soft ? THREE.DoubleSide : THREE.FrontSide,
+        envMapIntensity: 0.3, emissive: k === 'forage' ? 0x2a6a40 : k === 'outcrop' ? 0x1a3a50 : k === 'fungus' ? 0x16200a : 0x000000, emissiveIntensity: k === 'forage' || k === 'outcrop' ? 0.9 : 1 });
+      if (soft) sway(mat); const m = new THREE.InstancedMesh(g, mat, cap(k)); m.count = cap(k); m.frustumCulled = false; m.name = 'gc_' + k;
+      const z = new THREE.Matrix4().makeScale(0, 0, 0); for (let i = 0; i < m.count; i++) m.setMatrixAt(i, z); m.setColorAt(0, _c.setRGB(1, 1, 1)); group.add(m); this.meshes[k] = m;
+    }
+    for (let s = 0; s < (2 * GC_CFG.rad + 1) ** 2; s++) this.free.push(s);
+  },
+  reset(site) { this.site = site; for (const [, t] of this.tiles) this.clearTile(t); this.tiles.clear(); this.pending.length = 0; },
+  clearTile(t) { const z = _gm.makeScale(0, 0, 0); for (const [k, m] of Object.entries(this.meshes)) { const n = GC_CFG.perTile[k]; for (let i = 0; i < n; i++) m.setMatrixAt(t.slot * n + i, z); m.instanceMatrix.needsUpdate = true; } this.free.push(t.slot); },
+  /** Is this spot paved, built on or under liquid? */
+  blocked(x, z, y) {
+    const B = SRF.B; if ((B.water != null && y < B.water + 0.3) || (B.lava != null && y < B.lava + 0.6)) return true;
+    const C = WORLD.city?.c; if (C && Math.hypot(x - C.x, z - C.z) < C.R + 12) return true;
+    const T = SETL.town; if (T && Math.hypot(x - T.x, z - T.z) < T.R + 6) return true;
+    return Math.hypot(x, z) < 34 || Math.hypot(x - 60, z + 80) < 34;
+  },
+  buildTile(tx, tz) {
+    const slot = this.free.pop(); if (slot == null) return; const t = { tx, tz, slot, nodes: [] }; this.tiles.set(tx + ',' + tz, t);
+    const site = this.site, H = TERRA.H, set = GC_SET[site.biome] || GC_SET.barren; const T = GC_CFG.tile, C = GC_CFG.cell, n = T / C;
+    const rng = makeRng(((site.seed >>> 0) ^ Math.imul(tx, 73856093) ^ Math.imul(tz, 19349663)) >>> 0); const patch = GC.patch;
+    const used = {}; const mo = new THREE.Object3D(); const tint = new THREE.Color(SRF.B.pal.mid).lerp(_c.setRGB(1, 1, 1), 0.18);
+    const put = (k, x, y, z, s, col) => { const m = this.meshes[k]; const per = GC_CFG.perTile[k]; const u = used[k] || 0; if (u >= per) return -1; used[k] = u + 1;
+      mo.position.set(x, y, z); mo.rotation.set((rng() - 0.5) * 0.2, rng() * 6.28, (rng() - 0.5) * 0.2); mo.scale.setScalar(s); mo.updateMatrix(); m.setMatrixAt(slot * per + u, mo.matrix); m.setColorAt(slot * per + u, col); return slot * per + u; };
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const x = tx * T + (i + rng()) * C, z = tz * T + (j + rng()) * C; const pd = patch(x / 2560 + 0.2, z / 1280 + 0.4); let r = rng() * (0.55 + pd); let pick = null;
+      for (const [k, p] of set) { if (r < p) { pick = k; break; } r -= p; } if (!pick) continue;
+      const y = H(x, z); if (this.blocked(x, z, y)) continue;
+      const col = pick === 'shrub' ? _c.copy(tint).multiplyScalar(0.55).offsetHSL((rng() - 0.5) * 0.05, 0, (rng() - 0.5) * 0.08) : pick === 'grass' ? _c.copy(tint).offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.12) : pick === 'pebble' ? _c.setHex(SRF.B.pal.steep).lerp(GC.grey, 0.5).offsetHSL(0, 0, (rng() - 0.5) * 0.15) : pick === 'spike' ? _c.setRGB(0.8, 0.9, 1) : pick === 'fungus' ? _c.setHSL(0.18 + rng() * 0.5, 0.5, 0.6) : _c.setRGB(1, 1, 1);
+      put(pick, x, y - 0.05, z, pick === 'pebble' ? 0.6 + rng() * 1.6 : pick === 'shrub' ? 0.8 + rng() * 1.1 : 0.7 + rng() * 0.7, col);
+    }
+    // the rare finds: one forage plant and one ore outcrop at most, persistently gathered
+    const st = SRF.siteSt; const key = (k) => `${tx},${tz},${k}`; const now = Date.now();
+    for (const [k, p] of [['forage', site.biome === 'barren' || site.biome === 'volcanic' ? 0.22 : 0.5], ['outcrop', 0.16]]) {
+      if (rng() > p) continue; const x = tx * T + 3 + rng() * (T - 6), z = tz * T + 3 + rng() * (T - 6); const y = H(x, z); if (this.blocked(x, z, y)) continue;
+      const took = st.wild?.[key(k)]; if (took && now - took < WL_CFG.regrowMs) continue;
+      const idx = put(k, x, y - 0.05, z, k === 'outcrop' ? 1 + rng() * 0.5 : 1, k === 'forage' ? _c.setHSL(WL_FORAGE[site.biome]?.hue ?? 0.35, 0.8, 0.7) : _c.setHex(0x9fd8ff));
+      if (idx >= 0) t.nodes.push({ k, x, y, z, idx, key: key(k) });
+    }
+    for (const m of Object.values(this.meshes)) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+  },
+  step(dt) {
+    this.uTime.value += dt; if (!this.built || !SRF.active || !TERRA.H || !this.site) return;
+    const vis = !(typeof HS !== 'undefined' && HS.aboard && HS.ctx === 'space') && !SG.cell; for (const m of Object.values(this.meshes)) m.visible = vis; if (!vis) return;
+    const p = MM.mode === 'ON_FOOT' && OF.me ? OF.me.pos : camera.position; const T = GC_CFG.tile, R = GC_CFG.rad;
+    const ground = SRF.groundY(p.x, p.z); if (p.y - ground > 160) return;
+    const cx = Math.floor(p.x / T), cz = Math.floor(p.z / T);
+    for (const [k, t] of this.tiles) if (Math.abs(t.tx - cx) > R || Math.abs(t.tz - cz) > R) { this.clearTile(t); this.tiles.delete(k); }
+    const want = []; for (let dx = -R; dx <= R; dx++) for (let dz = -R; dz <= R; dz++) { const k = (cx + dx) + ',' + (cz + dz); if (!this.tiles.has(k)) want.push([cx + dx, cz + dz, dx * dx + dz * dz]); }
+    want.sort((a, b) => a[2] - b[2]); const t0 = performance.now(); for (const [tx, tz] of want) { if (performance.now() - t0 > 3) break; this.buildTile(tx, tz); }
+  },
+  /** Take one rare find out of the world (it grows back later). */
+  take(t, node) { const m = this.meshes[node.k]; m.setMatrixAt(node.idx, _gm.makeScale(0, 0, 0)); m.instanceMatrix.needsUpdate = true; t.nodes.splice(t.nodes.indexOf(node), 1); },
+};
+GC.patch = skyNoise(0x9a7c4); GC.grey = new THREE.Color(0.6, 0.58, 0.55);
+
+// =====================================================================================
+// §WILDS — things to do out in the terrain
+//  Forage: glowing plants by biome (herbs, spore caps, frost lichen, fire salts, geodes) —
+//  gather with E, sell at any village or city market. Outcrops: chip ore out of a crystal
+//  vein on foot. Landmarks, five per site, seeded: a resonant monolith (it shows you your
+//  past), a crashed freighter to salvage, a wanderers' camp (rest, and they buy your forage),
+//  a hot spring (heals everything) and a lookout (charts every landmark). Discovering one
+//  pays a finder's fee. All of it is on the overview and counted on the orbital survey.
+// =====================================================================================
+const WL_CFG = { regrowMs: 20 * 60 * 1000, discoverR: 32, useR: 7, fee: 1200 };
+const WL_FORAGE = { temperate: { id: 'fg_herbs', hue: 0.33 }, toxic: { id: 'fg_spores', hue: 0.8 }, ice: { id: 'fg_lichen', hue: 0.55 }, volcanic: { id: 'fg_salts', hue: 0.06 }, barren: { id: 'fg_geode', hue: 0.72 } };
+Object.assign(ITEMS, {
+  fg_herbs: { name: 'Wild herbs', cat: 'forage', vol: 0.5, base: 95 }, fg_spores: { name: 'Spore caps', cat: 'forage', vol: 0.5, base: 130 },
+  fg_lichen: { name: 'Frost lichen', cat: 'forage', vol: 0.5, base: 120 }, fg_salts: { name: 'Fire salts', cat: 'forage', vol: 0.4, base: 160 }, fg_geode: { name: 'Desert geode', cat: 'forage', vol: 0.8, base: 210 },
+});
+const WL_KINDS = {
+  monolith: { name: 'Resonant monolith', act: 'touch the monolith', col: '#c98cff' }, wreck: { name: 'Crashed freighter', act: 'salvage the wreck', col: '#d9c9a0' },
+  camp: { name: "Wanderers' camp", act: 'sit at the fire — rest and trade', col: '#ffb347' }, spring: { name: 'Hot spring', act: 'bathe in the spring', col: '#7fd8ff' },
+  lookout: { name: 'Lookout peak', act: 'survey from the peak', col: '#9dffb0' } };
+const WL = { site: null, list: [], group: null, lights: [], promptT: 0 };
+/** The landmarks of a site (pure function of the seed; clear of the city, the town and the LZ). */
+const WL_H = new Map(); function srfHeightOf(site) { if (SRF.active && SRF.site?.seed === site.seed && TERRA.H) return TERRA.H; let H = WL_H.get(site.seed); if (!H) { if (WL_H.size > 24) WL_H.clear(); H = srfMakeHeight(site); WL_H.set(site.seed, H); } return H; }
+function wlLandmarks(planet, site) {
+  const rng = makeRng((site.seed ^ 0x1a4d) >>> 0); const out = []; const C = worldCityOf(planet, site), T = setlOf(planet, site);
+  ['monolith', 'wreck', 'camp', 'spring', 'lookout'].forEach((kind, i) => { let x = 0, z = 0;
+    for (let k = 0; k < 10; k++) { const a = rng() * Math.PI * 2, r = 650 + rng() * 2500; x = Math.cos(a) * r; z = Math.sin(a) * r;
+      const B = BIOMES[site.biome]; const y = srfHeightOf(site)(x, z); const dry = !((B.water != null && y < B.water + 2) || (B.lava != null && y < B.lava + 3));
+      if (dry && (!C || Math.hypot(x - C.x, z - C.z) > C.R + 150) && (!T || Math.hypot(x - T.x, z - T.z) > T.R + 120)) break; }
+    out.push({ i, kind, x, z, name: WL_KINDS[kind].name }); });
+  return out;
+}
+function wlBuild() {
+  wlClear(); const pl = SRF.planet, site = SRF.site; WL.site = site.seed; WL.list = wlLandmarks(pl, site); WL.group = new THREE.Group(); WL.group.name = 'wilds'; TERRA.group.add(WL.group);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0.1, flatShading: true, ...o });
+  const glowM = (c) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
+  // the lookout stands on the highest ground nearby
+  const L = WL.list.find(l => l.kind === 'lookout'); if (L) { let best = -1e9, bx = L.x, bz = L.z; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, r = 60 + (k % 4) * 90; const x = L.x + Math.cos(a) * r, z = L.z + Math.sin(a) * r; const y = SRF.groundY(x, z); if (y > best) { best = y; bx = x; bz = z; } } L.x = bx; L.z = bz; }
+  for (const l of WL.list) {
+    const g = new THREE.Group(); const y = SRF.groundY(l.x, l.z); l.y = y; g.position.set(l.x, y, l.z); const add = (geo, mat, x = 0, yy = 0, z = 0, ry = 0, rx = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, yy, z); m.rotation.set(rx, ry, rz); g.add(m); return m; };
+    if (l.kind === 'monolith') { const dark = M(0x22262c, { metalness: 0.5, roughness: 0.4 }); add(new THREE.BoxGeometry(2.2, 14, 1.2), dark, 0, 6.5, 0, 0.3, 0, 0.04);
+      for (let k = 0; k < 5; k++) add(new THREE.BoxGeometry(0.16, 1.4, 0.05), glowM(0xb88cff), -0.5 + (k % 3) * 0.5, 3 + k * 2, 0.62, 0.3);
+      for (let k = 0; k < 3; k++) add(new THREE.BoxGeometry(1.4, 4, 0.9), dark, Math.cos(k * 2.1) * 6, 1, Math.sin(k * 2.1) * 6, k, 1.2, 0.3); l.glow = 0xb88cff; }
+    else if (l.kind === 'wreck') { const hull = M(0x6a6f76, { metalness: 0.6, roughness: 0.55 }), rust = M(0x6b4a32);
+      add(new THREE.CylinderGeometry(4, 4.6, 24, 10, 1, true), hull, 0, 1.6, 0, 0.4, Math.PI / 2 - 0.12, 0.2); add(new THREE.ConeGeometry(4, 7, 10), hull, Math.sin(0.4) * 15, 2.6, Math.cos(0.4) * 15, 0.4, Math.PI / 2 - 0.12, 0);
+      add(new THREE.BoxGeometry(9, 0.5, 4), rust, -4, 3.5, -3, 0.9, 0.2, 0.6); add(new THREE.BoxGeometry(0.6, 6, 3.5), hull, -9, 3.5, -5, 0.4, 0, 0.5);
+      for (let k = 0; k < 6; k++) add(new THREE.BoxGeometry(1.5 + k % 3, 0.25, 1.2), k % 2 ? rust : hull, Math.cos(k * 1.7) * (10 + k * 2), 0.2, Math.sin(k * 1.7) * (10 + k * 2), k, 0.3, 0.2); l.glow = 0xff7040; }
+    else if (l.kind === 'camp') { const cloth = M(0x8a6a48), wood = M(0x5a4030);
+      for (let k = 0; k < 3; k++) add(new THREE.ConeGeometry(2.2, 3.2, 6), cloth, Math.cos(k * 2.2) * 7, 1.6, Math.sin(k * 2.2) * 7, k);
+      add(new THREE.ConeGeometry(0.5, 1.1, 6), glowM(0xff8a3a), 0, 0.55, 0); for (let k = 0; k < 4; k++) add(new THREE.CylinderGeometry(0.12, 0.12, 1.6, 5), wood, 0, 0.12, 0, k * 0.8, 0, Math.PI / 2);
+      for (let k = 0; k < 3; k++) add(new THREE.BoxGeometry(1, 0.8, 0.8), wood, 4 + k * 1.1, 0.4, -3, k * 0.4);
+      const pl2 = new THREE.PointLight(0xff8a3a, 3, 28, 1.6); pl2.position.set(0, 1.4, 0); g.add(pl2); WL.lights.push(pl2); l.glow = 0xff8a3a; }
+    else if (l.kind === 'spring') { add(new THREE.CircleGeometry(7, 20), new THREE.MeshStandardMaterial({ color: 0x5fb8d0, emissive: 0x0c3040, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.88 }), 0, 0.35, 0, 0, -Math.PI / 2);
+      const st = M(0x8a8478); for (let k = 0; k < 14; k++) add(new THREE.IcosahedronGeometry(0.9 + (k % 3) * 0.4, 0), st, Math.cos(k / 14 * 6.28) * 7.6, 0.2, Math.sin(k / 14 * 6.28) * 7.6, k);
+      l.steam = []; for (let k = 0; k < 6; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.particle, color: 0xe8f4ff, transparent: true, opacity: 0.3, depthWrite: false })); sp.scale.setScalar(4); g.add(sp); l.steam.push(sp); } l.glow = 0x7fd8ff; }
+    else if (l.kind === 'lookout') { const mast = M(0x59636e, { metalness: 0.6, roughness: 0.4 }); add(new THREE.CylinderGeometry(0.25, 0.4, 14, 6), mast, 0, 7, 0); add(new THREE.BoxGeometry(3.6, 0.3, 3.6), mast, 0, 9, 0);
+      for (let k = 0; k < 3; k++) add(new THREE.CylinderGeometry(0.1, 0.1, 9.5, 4), mast, Math.cos(k * 2.1) * 2.4, 4.4, Math.sin(k * 2.1) * 2.4, 0, Math.sin(k * 2.1) * 0.25, -Math.cos(k * 2.1) * 0.25);
+      l.beacon = add(new THREE.SphereGeometry(0.4, 8, 6), glowM(0xff3030), 0, 14.3, 0); l.glow = 0x9dffb0; }
+    WL.group.add(g); l.g = g;
+  }
+}
+function wlClear() { if (WL.group) { WL.group.parent?.remove(WL.group); WL.group.traverse(o => { o.geometry?.dispose?.(); }); } WL.group = null; WL.list = []; WL.lights = []; }
+function wlState() { const st = SRF.siteSt; if (!st.lm) st.lm = {}; return st; }
+function wlNearest(me, r) { let best = null, bd = r; for (const l of WL.list) { const d = Math.hypot(me.x - l.x, me.z - l.z); if (d < bd) { bd = d; best = l; } } return best; }
+function wlNode(me) { let best = null, bt = null, bd = 2.6; for (const [, t] of GC.tiles) for (const n of t.nodes) { const d = Math.hypot(me.x - n.x, me.z - n.z); if (d < bd) { bd = d; best = n; bt = t; } } return best ? { n: best, t: bt } : null; }
+function wlTarget() {
+  const me = OF.me; if (!me?.alive || me.mounted || !SRF.active || SG.cell) return null; const nd = wlNode(me.pos);
+  if (nd) return nd.n.k === 'forage' ? { label: `gather ${ITEMS[WL_FORAGE[SRF.site.biome]?.id || 'fg_herbs'].name.toLowerCase()}`, fn: () => wlGather(nd) } : { label: `chip ore from the vein — ${ITEMS[SRF.site.ore]?.name || 'ore'}`, fn: () => wlGather(nd) };
+  const l = wlNearest(me.pos, WL_CFG.useR); if (l) return { label: WL_KINDS[l.kind].act, fn: () => wlUse(l) };
+  return null;
+}
+function wlGather({ n, t }) {
+  const st = wlState(); if (!st.wild) st.wild = {}; st.wild[n.key] = Date.now(); GC.take(t, n); audio.click(true);
+  if (n.k === 'forage') { const id = WL_FORAGE[SRF.site.biome]?.id || 'fg_herbs'; const q = 1 + Math.floor(Math.random() * 3); const got = SBX.addCargo(SBX.ship(), id, q); sbxToast(got > 0 ? `+${got}× ${ITEMS[id].name} — stowed aboard. Any market buys them.` : 'No room in the hold.'); }
+  else { const id = SRF.site.ore; const q = 2 + Math.floor(Math.random() * 3); const got = SBX.addCargo(SBX.ship(), id, q); sbxToast(got > 0 ? `You chip ${got}× ${ITEMS[id]?.name || id} out of the vein.` : 'No room in the hold for ore.'); }
+  SBX.dirty = true;
+}
+function wlUse(l) {
+  const st = wlState(); const me = OF.me; const p = SBX.profile; const ch = charOf(); const cd = st.lmCd || (st.lmCd = {}); const now = OF.t;
+  if (l.kind === 'monolith') { if (cd[l.i] > now) return sbxToast('The stone is quiet. Give it time.'); cd[l.i] = now + 240;
+    if (ch?.res) { ch.res.pool = typeof resMax === 'function' ? resMax(ch) : ch.res.pool; ch.align = clamp((ch.align || 0) + (Math.random() < 0.5 ? -2 : 2), -100, 100); }
+    if (typeof fbkShow === 'function') fbkShow(null, 'the stone remembers you'); else sbxToast('The stone hums under your palm.'); }
+  else if (l.kind === 'wreck') { if (st.lm['w' + l.i]) return sbxToast('Picked clean. Someone got here first — you.'); st.lm['w' + l.i] = 1;
+    const loot = [['tg_machinery', 3 + Math.floor(Math.random() * 4)], ['ammo_cells', 6 + Math.floor(Math.random() * 10)], ['tg_medical', 2]]; if (Math.random() < 0.25) loot.push(['art_relic', 1]);
+    const got = loot.map(([id, q]) => { const n = SBX.addCargo(SBX.ship(), id, q); return n ? `${n}× ${ITEMS[id].name}` : null; }).filter(Boolean); sbxToast(got.length ? `Salvaged: ${got.join(', ')}.` : 'No room in the hold for salvage.'); }
+  else if (l.kind === 'camp') { if (me) me.hp = me.hpMax; const ship = SBX.ship(); let v = 0, n = 0; for (const id of Object.keys(ITEMS)) if (ITEMS[id].cat === 'forage' && ship.cargo[id]) { const q = ship.cargo[id]; v += Math.round(ITEMS[id].base * 1.25 * q); n += q; SBX.removeCargo(ship, id, q); }
+    if (n) { p.isk += v; sbxToast(`You rest by the fire. The wanderers buy your ${n} foraged goods for ${fmtIsk(v)} cr — better than any market.`); } else sbxToast('You rest by the fire. Health restored. (The wanderers pay well for foraged goods.)'); }
+  else if (l.kind === 'spring') { if (me) { me.hp = me.hpMax; me.defl = me.deflMax; me.stam = me.stamMax; } sbxToast('The water is hot and smells of iron. Every ache lets go — fully healed.'); }
+  else if (l.kind === 'lookout') { for (const o of WL.list) st.lm['s' + o.i] = 1; if (!st.lm.look) { st.lm.look = 1; p.isk += 800; } sbxToast(`From the peak you chart the whole site: ${WL.list.map(o => o.name).join(', ')} — all on your overview.`); }
+  SBX.dirty = true;
+}
+function wlStep(dt) {
+  if (!SRF.active || !SRF.site || !TERRA.group) return; if (WL.site !== SRF.site.seed) wlBuild(); const t = performance.now() / 1000;
+  for (const pl2 of WL.lights) pl2.intensity = 2.4 + Math.sin(t * 13) * 0.5 + Math.sin(t * 7.3) * 0.4;
+  for (const l of WL.list) { if (l.beacon) l.beacon.visible = (t % 1.6) < 0.5; if (l.steam) l.steam.forEach((s, k) => { const ph = (t * 0.25 + k / 6) % 1; s.position.set(Math.sin(k * 2.3) * 3, 0.5 + ph * 7, Math.cos(k * 2.3) * 3); s.material.opacity = 0.32 * Math.sin(ph * Math.PI); s.scale.setScalar(3 + ph * 4); }); }
+  const me = MM.mode === 'ON_FOOT' && OF.me?.alive ? OF.me.pos : null; if (!me) return; const st = wlState();
+  for (const l of WL.list) if (!st.lm[l.i] && Math.hypot(me.x - l.x, me.z - l.z) < WL_CFG.discoverR) { st.lm[l.i] = 1; const fee = WL_CFG.fee + 400 * (SRF.site.hazard || 1); SBX.profile.isk += fee; SBX.dirty = true; sbxToast(`Discovered: ${l.name} — finder's fee ${fmtIsk(fee)} cr. Press ${mmKey('interact')} up close to ${WL_KINDS[l.kind].act}.`); }
+}
+// hooks: per-frame (both in the ship near the ground and on foot), E, the prompt line, the overview
+const _wlWeather = SRF.weather;
+SRF.weather = function (dt) { const r = _wlWeather.call(this, dt); try { GC.step(dt); wlStep(dt); } catch (e) { console.warn('[wilds]', e); } return r; };   // S11-EDIT(§SURFACE weather): ground cover and the wilds tick with the weather
+const _wlInteract = ofInteract;
+ofInteract = function () { const t = wlTarget(); if (t) { t.fn(); return; } return _wlInteract(); };   // S11-EDIT(§ONFOOT ofInteract): forage, outcrops and landmarks
+const _wlDrops = ofDropsStep;
+ofDropsStep = function (dt) { _wlDrops(dt); if (OF.prompt || !OF.me?.alive || OF.me.mounted) return; const t = wlTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): wilds prompts
+LT_COL.landmark = '#c9b8ff'; LT_COL.forage = '#9dffb0';
+const _wlEntries = sbxOverviewEntries;
+sbxOverviewEntries = function () {   // S11-EDIT(§SBXUI sbxOverviewEntries): landmarks on the ground overview
+  const out = _wlEntries(); if (!SRF.active || !WL.list.length) return out; const me = MM.mode === 'ON_FOOT' && OF.me ? OF.me.pos : world.player.pos; const st = wlState();
+  for (const l of WL.list) { const known = st.lm[l.i] || st.lm['s' + l.i]; const pos = new THREE.Vector3(l.x, l.y ?? 0, l.z); out.push({ kind: 'landmark', name: known ? `${l.name}${st.lm[l.i] ? '' : ' (charted)'}` : 'Unknown landmark — a signal on the scanner', pos, ref: pos, dist: Math.hypot(l.x - me.x, l.z - me.z) }); }
+  return out.sort((a, b) => a.dist - b.dist);
+};
+const _wlShut = SRF.shutdownVisuals;
+if (_wlShut) SRF.shutdownVisuals = function (...a) { wlClear(); WL.site = null; GC.reset(null); return _wlShut.apply(this, a); };   // S11-EDIT(§SURFACE shutdownVisuals): the wilds go with the site
+Object.assign(S9X, { GC, WL, wlLandmarks, wlTarget, wlUse, wlGather, wlBuild, TR2_FRAG });
+
+
+// =====================================================================================
+// §RESFIX — Resonance powers that clearly work
+//  Gates eased (any lean toward a Path opens its middle tier; 15 opens the top tier at the
+//  first rank; the Unbound cap is gone). Characters from older saves who are Resonant but
+//  whose Path never registered are repaired on landing. Targeting is generous: the nearest
+//  enemy in a wide arc in front is picked for you, and a targeted power with nobody in reach
+//  costs nothing and says so. Every cast shows: a callout, a colour flash, a ground
+//  shockwave, a beam to whoever it touched.
+// =====================================================================================
+Object.assign(RES_GATE, { t2Align: 0, t3Align: 15, lockout: 90, t3Rank: 1 });
+const _rfGate = resGate;
+resGate = function (id, ch = resChar()) { const g = _rfGate(id, ch); if (!g.ok && g.cap) return { ok: true }; return g; };   // S11-EDIT(§RESONANCE resGate): no Unbound cap
+/** A Resonant whose Path never registered (older saves, odd orders of events) is made whole. */
+function rfRepair(ch = charOf()) {
+  if (!ch) return false; const res = ch.cls === 'resonant' || (ch.res?.known?.length > 0); if (!res) return false;
+  if (!ch.path) pathInit(ch); const P = ch.path; let fixed = false;
+  if ((P.stage || 0) < 1) { P.stage = 1; fixed = true; }
+  if (!P.order && !P.master && !P.unbound) { const o = (ch.align || 0) > 0 ? 'cinder' : 'wardens'; P.order = o; P.master = o; fixed = true; }
+  if ((P.rank || 0) < 1) { P.rank = 1; fixed = true; }
+  if (!ch.res) ch.res = { known: [], pool: 0 }; if (ch.cls === 'resonant' && ch.res.known.length < Object.keys(RES_POWERS).length) { ch.res.known = Object.keys(RES_POWERS); fixed = true; }
+  if (ch.res.pool == null || isNaN(ch.res.pool)) ch.res.pool = resMax(ch);
+  if (Math.abs(ch.align || 0) < 5) ch.align = (ch.path.order === 'cinder' ? 1 : -1) * 20;
+  return fixed;
+}
+const _rfEnter = resEnter;
+resEnter = function (me) { if (rfRepair()) sbxToast('The Resonance steadies in you — keys 4 to 8 call your powers, Tab switches Path.'); return _rfEnter(me); };   // S11-EDIT(§RESONANCE resEnter): repair a Path that never registered
+const RF_TARGETED = { pull: 26, drain: 22, ignite: 28, rend: 26 };
+const RF_COL = { quiet: 0x7fd8ff, ember: 0xff6a2a };
+const RF = { fx: [], call: null, flash: null };
+function rfBest(u, range, arc = 1.15) {
+  const f = _fv[0].set(Math.sin(u.yaw), 0, Math.cos(u.yaw)); let best = null, bs = 1e9;
+  if (OF.aimHit && OF.aimHit.alive && OF.aimHit !== u && ofHostile(u, OF.aimHit) && OF.aimHit.pos.distanceTo(u.pos) < range) return OF.aimHit;
+  for (const v of OF.units) { if (v === u || !v.alive || !ofHostile(u, v)) continue; const d = v.pos.distanceTo(u.pos); if (d > range) continue; const a = f.angleTo(_fv[1].subVectors(v.pos, u.pos).setY(0).normalize()); if (a > arc) continue; const s = d * (1 + a * 1.5); if (s < bs) { bs = s; best = v; } }
+  return best;
+}
+const _rfCast = resCast;
+resCast = function (u, id, target = null) {   // S11-EDIT(§RESONANCE resCast): generous targeting, no wasted casts, visible every time
+  const isMe = u === OF.me; if (!isMe) return _rfCast(u, id, target); const P = RES_POWERS[id]; if (!P) return _rfCast(u, id, target);
+  if (!target && RF_TARGETED[id]) { target = rfBest(u, RF_TARGETED[id]);
+    const pullable = id === 'pull' && (OF.drops.some(d => Math.hypot(d.x - u.pos.x, d.z - u.pos.z) < 26) || (typeof PATH !== 'undefined' && PATH.active));
+    if (!target && !pullable && resGate(id).ok && !((RES.cd[id] || 0) > OF.t)) { sbxToast(`${P.name}: nobody in reach — face an enemy within ${RF_TARGETED[id]} m.`); rfCallout(P, false); return 'no target'; } }
+  const c0 = RES.casts; const r = _rfCast(u, id, target);
+  if (RES.casts > c0) {
+    const col = RF_COL[P.path]; rfCallout(P, true); rfFlash(col); rfWave(u.pos, col, id === 'push' || id === 'dread' ? 16 : id === 'ward' ? 6 : 9);
+    if (id === 'push') { const f = _fv[0].set(Math.sin(u.yaw), 0, Math.cos(u.yaw)); for (const v of OF.units) { if (v === u || !v.alive || !ofHostile(u, v)) continue; const d = v.pos.distanceTo(u.pos); if (d > 16) continue; const dir = _fv[2].subVectors(v.pos, u.pos).setY(0).normalize(); if (f.angleTo(dir) > 1.2 || (d < 12 && f.angleTo(dir) < 0.6)) continue; if (!ofThrow(v, _fv[3].copy(dir).multiplyScalar(14).setY(4))) v.vel.addScaledVector(dir, 10); ofDamage(v, 8, u, { kind: 'power', dir }); } }
+    if (target && target.alive) rfBeam(u, target, col, id === 'drain' ? 1.5 : 0.45);
+    if (id === 'leap') rfWave(u.pos, 0xc9b89a, 5);
+    if (id === 'sense') rfFlash(0xffffff, 0.18);
+  }
+  return r;
+};
+const _rfInput = resInput;
+resInput = function (me, dt) { const ch = resChar(); if (ch && (ch.cls === 'resonant' || ch.res?.known?.length) && (!ch.path || ch.path.stage < 1)) rfRepair(ch); return _rfInput(me, dt); };   // S11-EDIT(§RESONANCE resInput): never silently deaf
+function rfCallout(P, ok) {
+  if (!RF.call) { RF.call = document.createElement('div'); RF.call.id = 'rf-call'; document.body.appendChild(RF.call); RF.flash = document.createElement('div'); RF.flash.id = 'rf-flash'; document.body.appendChild(RF.flash);
+    const s = document.createElement('style'); s.textContent = `#rf-call { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; font: 700 26px/1 var(--font-num, sans-serif); letter-spacing: .5em; text-transform: uppercase; opacity: 0; text-shadow: 0 0 18px currentColor; }
+      #rf-call.go { animation: rfCall .9s ease-out; } @keyframes rfCall { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -62%) scale(1); } }
+      #rf-flash { position: fixed; inset: 0; z-index: 29; pointer-events: none; opacity: 0; } #rf-flash.go { animation: rfFlash .5s ease-out; } @keyframes rfFlash { 0% { opacity: var(--a, .35); } 100% { opacity: 0; } }`; document.head.appendChild(s); }
+  RF.call.textContent = ok ? P.name : `${P.name} — no target`; RF.call.style.color = ok ? (P.path === 'quiet' ? '#9fe8ff' : '#ff8a4a') : '#ff6060'; RF.call.classList.remove('go'); void RF.call.offsetWidth; RF.call.classList.add('go');
+}
+function rfFlash(col, a = 0.3) { if (!RF.flash) return; const c = new THREE.Color(col); RF.flash.style.background = `radial-gradient(ellipse at center, transparent 35%, rgba(${c.r * 255 | 0},${c.g * 255 | 0},${c.b * 255 | 0},.9) 100%)`; RF.flash.style.setProperty('--a', a); RF.flash.classList.remove('go'); void RF.flash.offsetWidth; RF.flash.classList.add('go'); }
+function rfWave(at, col, r) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, blending: THREE.AdditiveBlending }));
+  m.position.set(at.x, ofG(at.x, at.z) + 0.25, at.z); scene.add(m); RF.fx.push({ m, t: 0, life: 0.55, r, kind: 'wave' });
+}
+function rfBeam(u, v, col, life) {
+  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); const l = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.95, toneMapped: false, blending: THREE.AdditiveBlending }));
+  l.frustumCulled = false; scene.add(l); RF.fx.push({ m: l, t: 0, life, u, v, kind: 'beam' });
+}
+const _rfStep = resStep;
+resStep = function (dt) {   // S11-EDIT(§RESONANCE resStep): shockwaves and beams
+  _rfStep(dt);
+  for (let i = RF.fx.length - 1; i >= 0; i--) { const F = RF.fx[i]; F.t += dt; const k = F.t / F.life;
+    if (k >= 1 || (F.kind === 'beam' && (!F.v.alive || !F.u.alive))) { scene.remove(F.m); F.m.geometry.dispose(); F.m.material.dispose(); RF.fx.splice(i, 1); continue; }
+    if (F.kind === 'wave') { const s = 1 + F.r * Math.sqrt(k); F.m.scale.set(s, 1, s); F.m.material.opacity = 0.85 * (1 - k); }
+    else { const p = F.m.geometry.attributes.position; const a = ofChest(F.u, _fv[6]), b = ofChest(F.v, _fv[7]); const j = (Math.random() - 0.5) * 0.3; p.setXYZ(0, a.x, a.y + j, a.z); p.setXYZ(1, b.x, b.y - j, b.z); p.needsUpdate = true; F.m.material.opacity = 0.95 * (1 - k * 0.6);
+      if (Math.random() < dt * 40) world.particles.emit(_fv[8].lerpVectors(a, b, Math.random()), _fv[9].set(0, 0.6, 0), 0.25, 0.5, F.m.material.color.getHex(), 1.4); } }
+};
+const _rfExit = resExit;
+resExit = function () { for (const F of RF.fx) scene.remove(F.m); RF.fx.length = 0; return _rfExit(); };   // S11-EDIT(§RESONANCE resExit): effects go with the mode
+// the power list sat under the help button
+(function rfCss() { const s = document.createElement('style'); s.textContent = '#of-powers { padding-bottom: 34px; }'; document.head.appendChild(s); })();
+Object.assign(S9X, { RF, rfRepair, rfBest, resCastNow: (...a) => resCast(...a), resGateNow: (...a) => resGate(...a) });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
