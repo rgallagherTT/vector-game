@@ -346,6 +346,7 @@
       §TERRAIN2.COVER         ground cover in 24 m tiles around the camera, built a few tiles per frame
     §WILDS                  things to do out in the terrain
     §RESFIX                 Resonance powers that clearly work
+    §SPEEDER                the ship carries a speeder, not a rover
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -725,6 +726,7 @@
     §ONFOOT ofSpawnRig — the player's Ironclad wears the hunter plate
     §CHARACTER ccPreviewRig — Ironclad preview wears the hunter plate
     §ORBITAL srfRenderOrbital — every settlement charted, named and listed
+    §PLANETS srfMakeHeight — collision, props and cover match the drawn mesh
     §TERRAIN TERRA.init — the upgraded ground shader, a nicer tree, room for forests
     §TERRAIN TERRA.begin — biome uniforms for the ground shader
     §TERRAIN TERRA.scatterProps — forests and rock fields in clumps, four times the scatter, no trees on cliffs
@@ -739,6 +741,10 @@
     §RESONANCE resInput — never silently deaf
     §RESONANCE resStep — shockwaves and beams
     §RESONANCE resExit — effects go with the mode
+    §SURFACE deployRover — the speeder replaces the rover
+    §ONFOOT.STEP OF.step — the speeder comes and goes with you
+    §ONFOOT OF.exit — the speeder is stowed
+    §SBXUI sbxToast — rover → speeder
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -8474,7 +8480,7 @@ const HINTS = {
         if (SRF.prospect) return `Prospector live — drive toward a rising signal, then park beside the deposit to drill. ${K('E')} loots and transfers.`;
         return `${K('W/S')} drive · steer with the mouse · ${K('P')} prospector · ${K('E')} use / transfer · ${K('R')} board. Amber crates are salvage; the amber ring starts a timed circuit.`;
       }
-      if (SRF.landed) return `Landed. ${K('R')} deploys the rover · ${K('B')} anchors an outpost beside a deposit · hold ${K('Shift')} to lift off.`;
+      if (SRF.landed) return `Landed. ${K('R')} takes the speeder out · ${K('B')} anchors an outpost beside a deposit · hold ${K('Shift')} to lift off.`;
       return `Watch ALT and V/S (top left). Touch down under 12 m/s on flat ground — ${K('H')} holds altitude. Climb past 900 m to reach orbit.`;
     }
     if (p.docked) return `You're docked. MARKET trades · FITTING arms the ship · MISSIONS pay · SKILLS train while you're away. Undock (top right) when ready.`;
@@ -24182,6 +24188,68 @@ resExit = function () { for (const F of RF.fx) scene.remove(F.m); RF.fx.length =
 // the power list sat under the help button
 (function rfCss() { const s = document.createElement('style'); s.textContent = '#of-powers { padding-bottom: 34px; }'; document.head.appendChild(s); })();
 Object.assign(S9X, { RF, rfRepair, rfBest, resCastNow: (...a) => resCast(...a), resGateNow: (...a) => resGate(...a) });
+
+
+// =====================================================================================
+// §SPEEDER — the ship carries a speeder, not a rover
+//  A fast hover-speeder from the army vehicle kit (the hover bike, tuned for speed: ~260 km/h
+//  boosted) rides in every ship's bay — the old Rover Mk1 item is the speeder now, so saves
+//  keep theirs. Landed: R drops the ramp and puts you in the saddle. On foot: Y calls it to
+//  you. G gets off. If it is wrecked the ship's bay fabricates another in a minute. Leaving
+//  the surface stows it.
+// =====================================================================================
+ITEMS.rover_mk1.name = 'Speeder';
+VEH_KITS.speeder = VEH_KITS.bike;
+VEH_DEFS.speeder = { ...VEH_DEFS.bike, name: 'Speeder', hull: 260, armor: 0.18, speed: 62, accel: 52, turn: 2.4, hover: 0.75, cam: [8.5, 2.7], partMul: 0.5 };
+MM_BIND.ON_FOOT.speeder = 'KeyY';
+const SPD = { v: null, pending: false, lostT: -1e9, rebuild: 60 };
+const spdHave = () => (SBX.ship()?.cargo?.rover_mk1 || 0) > 0;
+const spdFac = () => allegOf()?.fac || 'combine';
+/** Put the speeder down beside you (or beside the ramp) and, if asked, climb straight on. */
+function spdSpawn(mount) {
+  const me = OF.me; if (!me) return 'not on the ground';
+  if (!spdHave()) return 'No speeder in the bay — buy or build one (it is the old Rover Mk1 slot).';
+  const now = performance.now() / 1000; if (now - SPD.lostT < SPD.rebuild) return `The bay is still fabricating a new speeder — ${Math.ceil(SPD.rebuild - (now - SPD.lostT))} s.`;
+  const v0 = SPD.v; if (v0 && v0.alive && !v0.removed) { if (v0.pos.distanceTo(me.pos) < 30) { if (mount) vehMount(v0); return null; } vehRemove(v0); }
+  const f = _vv[0].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)); const at = me.pos.clone().addScaledVector(f, 4.5).addScaledVector(_vv[1].set(f.z, 0, -f.x), 1.5);
+  const v = vehSpawn('speeder', spdFac(), 'player', at, OF.cam.yaw, { ai: false, label: 'your speeder' }); v.crew = false; v.reqBy = 'player'; v.mine = true; SPD.v = v;
+  v.obj.traverse(o => { if (!o.isMesh) return; const dim = (m) => { if (!m?.emissive || m.emissiveIntensity <= 0.6) return m; m = m.clone(); m.emissiveIntensity *= 0.3; return m; }; o.material = Array.isArray(o.material) ? o.material.map(dim) : dim(o.material); });   // its lamps glow, they do not bloom across the screen
+  world.particles && world.sparks(at.clone().setY(at.y + 0.5), 10, 0x9fd8ff);
+  if (mount) vehMount(v); else sbxToast(`Your speeder is here. ${mmKey('interact')} to get on — ${mmKey('throttle', 'GROUND_VEHICLE')} to go, Shift to boost, ${mmKey('exit', 'GROUND_VEHICLE')} to get off.`);
+  return null;
+}
+// landed: R puts you on the speeder instead of deploying a rover
+const _spdDeploy = SRF.deployRover;
+SRF.deployRover = function () {   // S11-EDIT(§SURFACE deployRover): the speeder replaces the rover
+  if (!SRF.active || !SRF.landed || SRF.mode !== 'ship') return sbxToast('Land first — the speeder rolls out down the ramp.');
+  if (!spdHave()) return sbxToast('No speeder in the bay — buy or build one (it is the old Rover Mk1 slot).');
+  if (!charOf()) { sbxToast('Create your character first.'); return ccOpen(() => SRF.deployRover()); }
+  SPD.pending = true; ofDisembark();
+};
+// the on-foot tick: a pending ramp launch, the call key, a wrecked speeder starts the rebuild clock
+const _spdStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): the speeder comes and goes with you
+  _spdStep(dt);
+  if (SPD.v && (!SPD.v.alive || SPD.v.removed)) { if (!SPD.v.alive && !SPD.v.removed) { SPD.lostT = performance.now() / 1000; sbxToast(`Your speeder is wrecked. The bay will have a new one in ${SPD.rebuild} s.`); } SPD.v = null; }
+  if (MM.mode !== 'ON_FOOT' || !OF.me?.alive || OF.me.mounted) return;
+  if (SPD.pending && OF.t > 0.3) { SPD.pending = false; const why = spdSpawn(true); if (why) sbxToast(why); }
+  if (mmHit('speeder')) { if (!SRF.active || (typeof HS !== 'undefined' && HS.aboard) || SG.cell) sbxToast('The speeder only comes to you out on the open ground.'); else { const why = spdSpawn(false); if (why) sbxToast(why); } }
+};
+// leaving the world (the ship, orbit) stows it; a fresh landing starts clean
+const _spdExit = OF.exit;
+OF.exit = function (next, o) { if (next !== 'GROUND_VEHICLE') { SPD.v = null; SPD.pending = false; } return _spdExit(next, o); };   // S11-EDIT(§ONFOOT OF.exit): the speeder is stowed
+// the words on screen say speeder
+const _spdToast = sbxToast;
+sbxToast = function (msg) { if (typeof msg === 'string') msg = msg.replace(/R deploys the rover/g, 'R takes the speeder out').replace(/No rover in the hold — buy or build a Rover Mk1\./g, 'No speeder in the bay.'); return _spdToast(msg); };   // S11-EDIT(§SBXUI sbxToast): rover → speeder
+// a speeder hugs the ground: small hops over crests, then straight back down; it reads the slope ahead
+const _spdVehStep = vehStep;
+vehStep = function (v, dt) {   // S11-EDIT(§VEHICLES vehStep): speeders stay on the deck at speed
+  _spdVehStep(v, dt); if (v.cls !== 'speeder' || !v.alive || v.crashing) return;
+  const hov = v.D.hover; const g = ofG(v.pos.x, v.pos.z), ga = ofG(v.pos.x + v.vel.x * 0.3, v.pos.z + v.vel.z * 0.3); const want = Math.max(g, (g + ga) / 2) + hov;
+  if (v.pos.y > want + 0.3) { v.pos.y = Math.max(want, v.pos.y - 25 * dt); v.vel.y = Math.min(v.vel.y, 0); } else if (v.pos.y < want) v.pos.y = damp(v.pos.y, want, 14, dt);
+};
+MM_HINTS.ON_FOOT = [...(MM_HINTS.ON_FOOT || []), 'speeder'].filter((k, i, a) => a.indexOf(k) === i);
+Object.assign(S9X, { SPD, spdSpawn, spdHave });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
