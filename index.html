@@ -335,6 +335,7 @@
       §AWAKEN.SIDES           what each allegiance and each Resonance path gives you
     §TITANWALK              every inhabited system keeps a flagship in space; land in its bay and walk aboard
     §INTERIORS              every city building opens: homes, shops, bars, clinics, workplaces, shrines
+    §ROAM                   the fleets at large: warships of every class and commercial haulers on their rounds
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -697,6 +698,9 @@
     §CITY sgTarget — every building's keeper serves it
     §ONFOOT ofInteract — titan rooms
     §ONFOOT ofDropsStep — titan prompts, side perks, the jetpack
+    §SYSTEM sbxLoadSystem — the system's traffic takes to space
+    §MODEMGR SPACE update — roaming traffic, and docking alongside to walk aboard
+    §SBXCONTROL sbxKeys — E walks aboard a hailed ship or a friendly titan before the station keys take it
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -23231,21 +23235,20 @@ titanSystemRoster = function (sysIdx) {   // S11-EDIT(§TITAN titanSystemRoster)
   if (own !== 'player' && !out.some(r => r.faction === own)) out.push({ faction: own, name: `${gsShort(own)} flagship ${sys.name} Sentinel`, at: [-5400, 700, -4400] }); return out;
 };
 const _twLand = titanLand;
-titanLand = function (t, pad) { const r = _twLand(t, pad); setTimeout(() => sbxToast(`${t.owner === 'player' ? 'T' : 'E'} — walk aboard the ${t.name}.`), 900); return r; };   // S11-EDIT(§TITAN titanLand): the walk-aboard prompt
+titanLand = function (t, pad) { const r = _twLand(t, pad); setTimeout(() => sbxToast(`${t.owner === 'player' ? 'Y' : 'E'} — walk aboard the ${t.name}.`), 900); return r; };   // S11-EDIT(§TITAN titanLand): the walk-aboard prompt
 const _twInteract = titanPlayerInteract;
 titanPlayerInteract = function (dt) {   // S11-EDIT(§TITAN titanPlayerInteract): from the pad, on foot into the ship
-  const L = TITAN.landed; if (L && L.titan.alive && MM.mode === 'SPACE' && !TW.aboard) { const own = L.titan.owner === 'player'; if (input.pressed.has(own ? 'KeyT' : 'KeyE')) { input.pressed.delete(own ? 'KeyT' : 'KeyE'); twBoard(L.titan); return; } }
   return _twInteract(dt);
 };
 function twBoard(t) {
-  if (!charOf()) return sbxToast('Create your character first.'); if (BD.active) return; bdLayout('cruiser');
-  HS.host = t; HS.boardKind = 'board_cruiser'; TW.aboard = t; TW.stats.walks++; mmSet('ON_FOOT_ABOARD', { from: 'airlock', why: 'titan walk' }); if (MM.mode !== 'ON_FOOT_ABOARD') { twEnd(); return; }
-  const L = HS.built.L; const fac = t.owner === 'player' ? (allegFac?.() || 'authority') : t.faction; const posts = ['bridge', 'engineering', 'medbay', 'armoury', 'mess', 'hangar_control', 'barracks'];
+  if (!charOf()) return sbxToast('Create your character first.'); if (BD.active) return; const cls = t.war?.cls || 'cruiser'; bdLayout(cls);
+  HS.host = t; HS.boardKind = 'board_' + cls; if (t.war) { t.rmSpeed = t.speedMul ?? 1; t.speedMul = 0; t.turnMul = 0; t.vel.multiplyScalar(0.2); } TW.aboard = t; TW.stats.walks++; mmSet('ON_FOOT_ABOARD', { from: 'airlock', why: 'titan walk' }); if (MM.mode !== 'ON_FOOT_ABOARD') { twEnd(); return; }
+  const L = HS.built.L; const fac = t.owner === 'player' ? (allegFac?.() || 'authority') : (t.war?.fac || t.faction); const posts = ['bridge', 'engineering', 'medbay', 'armoury', 'mess', 'hangar_control', 'barracks'];
   TW.squads = posts.map((k, i) => { if (!L.rooms[k]) return null; const [x, z] = bdRoomCentre(L, k); const at = hsW(x + (i % 2 ? 1.2 : -1.2), z); at.y = HS.anchor.y; const S = aiSpawnSquad(FACTION_LOOK[fac] ? fac : 'authority', k === 'barracks' ? 3 : 2, at, { team: 'neutral', label: 'crew', roles: k === 'bridge' ? ['officer', 'trooper'] : ['trooper', 'trooper', 'trooper'] }); S.fixedPatrol = true; S.patrolR = 1.6; for (const u of S.units) { u.pos.y = HS.anchor.y; u.crewPost = k; u.name = k === 'bridge' && u.role === 'officer' ? 'Captain' : 'Crew'; } return S; }).filter(Boolean);
   if (typeof squadSpawnAll === 'function') { squadSpawnAll(); for (const u of SQ.units) u.pos.y = HS.anchor.y; } bdNav(true);
   sbxToast(`Aboard the ${t.name}. The captain is on the bridge; the medbay, armoury and mess are down the spine. Walk back to the airlock to fly again.`);
 }
-function twEnd() { if (!TW.aboard) return; TW.aboard = null; TW.squads = []; if (HS.host && !BD.active) { HS.host = null; HS.boardKind = null; } }
+function twEnd() { if (!TW.aboard) return; const t = TW.aboard; if (t.war) { t.speedMul = t.rmSpeed ?? 1; t.turnMul = 1; } TW.aboard = null; TW.squads = []; if (HS.host && !BD.active) { HS.host = null; HS.boardKind = null; } }
 const _twExit = hsExit;
 hsExit = function (next, o) { const r = _twExit(next, o); twEnd(); return r; };   // S11-EDIT(§HOMESHIP hsExit): stepping off a titan
 function twTarget() {
@@ -23256,6 +23259,8 @@ function twTarget() {
   if (room === 'medbay') return { kind: 'heal', label: 'medbay — get patched up' };
   if (room === 'armoury') return { kind: 'arm', label: 'armoury — refill charges and kit' };
   if (room === 'mess' || room === 'quarters' || room === 'galley') return { kind: 'rest', label: 'rest a while' };
+  if (room === 'engineering') return { kind: 'work-eng', label: TW.workT > 0 ? `engineering — next shift in ${Math.ceil(TW.workT)} s` : 'engineering — work a shift' };
+  if (room === 'stores' || room === 'hangar control' || room === 'hangar_control' || room === 'workshop') return { kind: 'work-deck', label: TW.workT > 0 ? `deck work — next shift in ${Math.ceil(TW.workT)} s` : 'deck work — haul and fix for pay' };
   return null;
 }
 function twAct(t) {
@@ -23263,7 +23268,8 @@ function twAct(t) {
   if (t.kind === 'leave') { mmSet('SPACE', { why: 'back to the pad' }); return true; }
   if (t.kind === 'heal' || t.kind === 'rest') { me.hp = me.hpMax; me.defl = me.deflMax; me.stam = me.stamMax; for (const u of SQ?.units || []) if (u.alive) { u.hp = u.hpMax; u.downed = false; } sbxToast(t.kind === 'heal' ? 'The medic seals you up. Good as new.' : 'An hour in a bunk, a hot meal. Ready.'); return true; }
   if (t.kind === 'arm') { OF.grenadeCharges = (charClass().grenades || 2) + 1; AW.jet = 1; sbxToast('Charges racked, cells swapped, jet fuel topped.'); return true; }
-  if (t.kind === 'captain') { const S = gsState?.(); const fac = ship.faction; const wars = (S?.wars || []).filter(w => w.phase !== 'over' && (w.a === fac || w.d === fac)).slice(0, 3);
+  if (t.kind === 'work-eng' || t.kind === 'work-deck') return rmWork(t.kind === 'work-eng');
+  if (t.kind === 'captain') { const S = gsState?.(); const fac = ship.war?.fac || ship.faction; const wars = (S?.wars || []).filter(w => w.phase !== 'over' && (w.a === fac || w.d === fac)).slice(0, 3);
     if (typeof pathDialog === 'function') pathDialog(`${ship.name} — the bridge`, [`"Welcome aboard. ${ship.owner === 'player' ? 'She\'s yours, captain.' : `You fly under ${gsShort(fac)} colours here.`}"`, wars.length ? `"${wars.map(w => `${gsShort(w.a)} against ${gsShort(w.d)}`).join('; ')}. Every pilot counts."` : '"Quiet sector. Enjoy it while it lasts."'],
       [{ t: allegFac?.() ? 'Allegiance and contracts' : `Swear to ${gsShort(fac)}`, fn: () => { if (!allegFac?.() && fac && fac !== 'player') { const r = allegPledge(fac); if (r) sbxToast(r); } else allegOpen(true); }, cls: 'amber' }, { t: 'Carry on', fn: () => {} }], { escape: 1 });
     return true; }
@@ -23345,6 +23351,73 @@ const _twDrops = ofDropsStep;
 ofDropsStep = function (dt) { _twDrops(dt); awStep(dt); if (OF.prompt || !OF.me?.alive) return; const t = twTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): titan prompts, side perks, the jetpack
 
 Object.assign(S9X, { AW, awAwaken, awAsk, awSides, SIDE_PERKS, TW, TITAN, titanSystemRosterNow: (i) => titanSystemRoster(i), bdRoomCentre, hsW, sgPanelOpen, twBoard, twTarget, twAct, inDoors, inKindOf, IN_RENDER, charCreateNow: (o) => charCreate(o), ofAbilityNow: () => ofAbility(), sgPanelActNow: (a) => sgPanelAct(a), setlPriceMulNow2: (f) => setlPriceMul(f) });
+
+// =====================================================================================
+// §ROAM — the fleets at large: warships of every class and commercial haulers on their rounds
+//  Every settled system has its traffic: heavy fighters, bombers, corvettes, frigates, now and then
+//  a cruiser, mostly the owner's with a few visitors, and commercial haulers and liners, all flying
+//  between the stations, lanes and the planet. Factions at war with you come for you; the rest go
+//  about their business. Pull alongside any of them that is not hostile (corvette or larger) and
+//  press E to dock and walk aboard: the crew is at their posts. Engineers can work a shift in
+//  engineering (warships pay more and earn standing; commercial ships pay steady); anyone can do
+//  deck work in the stores, workshop or hangar control. Fighters and bombers are cockpits only.
+// =====================================================================================
+const RM = { list: [], tipT: 0, stats: { spawned: 0, walks: 0, shifts: 0 } };
+const RM_MIX = [['heavy', 2], ['bomber', 1], ['corvette', 2], ['frigate', 1], ['cruiser', 0.35]];
+const RM_NAMES = ['Vigil', 'Harrow', 'Tern', 'Lantern', 'Bastion', 'Cutter', 'Errant', 'Solace', 'Marrow', 'Keel', 'Ardent', 'Wake', 'Fathom', 'Brand', 'Sable', 'Hearth'];
+const RM_WALK = new Set(['corvette', 'frigate', 'cruiser']);
+function rmClear() { for (const e of RM.list) if (e.alive && e.active) { e.alive = false; world.enemies.release(e); } RM.list = []; }
+function rmGoal(e) { const P = (SBX.points || []).filter(p => ['station', 'gate', 'planet', 'belt'].includes(p.kind)); const p = P[Math.floor(Math.random() * P.length)]; if (!p) return; const off = _v[0].set(rand(-1, 1), rand(-0.2, 0.2), rand(-1, 1)).normalize().multiplyScalar(rand(800, 2200));
+  e.goal = e.target = { pos: p.pos.clone().add(off), vel: new THREE.Vector3(), alive: true, active: true, radius: 450 }; e.rmGoalAt = performance.now(); }
+function rmSpawnAll(sysIdx) {
+  rmClear(); if (game.humansOnly || SRF.active) return; const sys = SBX.systems[sysIdx]; if (!sys?.stations?.length) return; const S = gsState?.(); const own = S?.owners?.[sysIdx] && S.owners[sysIdx] !== 'player' ? S.owners[sysIdx] : sys.stations[0].faction || 'authority';
+  const rng = makeRng((CONFIG.sbx.seed ^ (sysIdx * 6151 + 0x40a)) >>> 0); const facs = ['authority', 'combine', 'guild', 'syndicate']; const P = (SBX.points || []).filter(p => ['station', 'gate', 'planet'].includes(p.kind)); if (!P.length) return;
+  const spawn = (cls, fac, extra, name) => { const p = P[Math.floor(rng() * P.length)]; const at = p.pos.clone().add(_v[1].set(rng() - 0.5, (rng() - 0.5) * 0.3, rng() - 0.5).normalize().multiplyScalar(2500 + rng() * 5000));
+    const e = wsSpawn(cls, fac, at, extra); if (!e) return null; e.name = name; e.rm = true; e.speedMul = 0.55; rmGoal(e); RM.list.push(e); RM.stats.spawned++; return e; };
+  for (const [cls, n] of RM_MIX) { const count = Math.floor(n) + (rng() < n % 1 ? 1 : 0); for (let k = 0; k < count; k++) { const fac = rng() < 0.75 ? own : facs[Math.floor(rng() * facs.length)]; spawn(cls, fac, { kind: 'roam' }, `${gsShort(fac)} ${SHIP_CLASSES[cls].name.toLowerCase()} ${RM_NAMES[Math.floor(rng() * RM_NAMES.length)]}`); } }
+  for (let k = 0; k < 2; k++) { const cls = k ? 'frigate' : 'corvette'; spawn(cls, rng() < 0.5 ? 'guild' : own, { kind: 'roam', commercial: true }, `${k ? 'Bulk hauler' : 'Liner'} ${RM_NAMES[Math.floor(rng() * RM_NAMES.length)]}`); }
+}
+const rmHostile = (e) => !e.npc?.commercial && typeof gsPlayerHostileTo === 'function' && gsPlayerHostileTo(e.npc?.faction);
+function rmStep(dt) {
+  const pl = world.player; RM.list = RM.list.filter(e => e.alive && e.active); if (!pl || SRF.active) return;
+  for (const e of RM.list) { if (TW.aboard === e) { e.speedMul = 0; continue; }
+    if (rmHostile(e) && pl.alive && !pl.hangared && !SBX.profile?.docked && e.pos.distanceTo(pl.pos) < 3500) { e.npc.aggro = true; if (e.target !== pl) { e.goal = null; e.target = pl; } continue; }
+    if (e.target === pl && !rmHostile(e)) { e.npc.aggro = false; rmGoal(e); }
+    if (!e.goal || e.pos.distanceTo(e.goal.pos) < 600 || performance.now() - (e.rmGoalAt || 0) > 180000) rmGoal(e); }
+  TW.workT = Math.max(0, (TW.workT || 0) - dt);
+}
+/** The nearest ship you could walk aboard: not hostile, big enough, close alongside. */
+function rmBoardable() { const pl = world.player; let best = null, bd = Infinity; for (const e of RM.list) { if (!e.alive || !e.war || !RM_WALK.has(e.war.cls) || rmHostile(e) || e.boardable) continue; const d = e.pos.distanceTo(pl.pos) - (e.radius || 50); if (d < 1200 && d < bd) { bd = d; best = e; } } return best; }
+function rmWork(eng) {
+  const ship = TW.aboard; const p = SBX.profile; const ch = charOf(); if (!ship) return false; if (TW.workT > 0) { sbxToast(`The shift lead waves you off — come back in ${Math.ceil(TW.workT)} s.`); return true; }
+  const isEng = ch?.cls === 'engineer' || charHasPerk('hacking'); if (eng && !isEng) { sbxToast('"Engineering is for engineers. Try the stores or the workshop — there\'s always lifting to do."'); return true; }
+  const commercial = !!ship.npc?.commercial; const cls = ship.war?.cls || 'cruiser'; const size = { corvette: 1, frigate: 1.5, cruiser: 2.2 }[cls] || 2;
+  const base = eng ? (commercial ? rand(1800, 3000) : rand(2600, 4200)) : rand(600, 1200); const pay = Math.round(base * size * (1 + (allegOf?.()?.rank || 0) * 0.1));
+  p.isk += pay; SBX.dirty = true; TW.workT = 45; RM.stats.shifts++; const fac = ship.war?.fac || ship.faction;
+  if (eng && !commercial && fac && p.standings) p.standings[fac] = clamp((p.standings[fac] || 0) + 0.15, -10, 10);
+  sbxToast(eng ? `${commercial ? 'You rebalance the drive couplings and clear a coolant fault.' : 'You realign the shield capacitors and trace a fault in the battery feeds.'} ${fmtIsk(pay)} cr${!commercial && fac ? ` and the crew of ${gsShort(fac)} will remember it` : ''}.` : `Crates hauled, a hatch rehung, a deck swept. ${fmtIsk(pay)} cr.`);
+  if (OF.me) OF.me.stam = Math.max(0, OF.me.stam - 30); sbxSave('shift'); return true;
+}
+const _rmLoad = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entry) { const r = _rmLoad(sysIdx, entry); try { rmSpawnAll(sysIdx); } catch (e) { console.warn('roam', e); } return r; };   // S11-EDIT(§SYSTEM sbxLoadSystem): the system's traffic takes to space
+const _rmSpace = MM_DEFS.SPACE.update;
+MM_DEFS.SPACE.update = function (dt) {   // S11-EDIT(§MODEMGR SPACE update): roaming traffic, and docking alongside to walk aboard
+  const ok = game.mode === 'sandbox' && !TITAN.landed && !BD.active && !TW.aboard; const c = ok ? rmBoardable() : null;
+  const nearDock = c && (SBX.points || []).some(p => p.kind === 'station' && p.pos.distanceTo(world.player.pos) < CONFIG.sbx.dock.radius * 1.3);
+  if (c && !nearDock && input.pressed.has('KeyE')) { input.pressed.delete('KeyE'); RM.stats.walks++; twBoard(c); return; }
+  const r = _rmSpace.call(this, dt); rmStep(dt); if (!ok) return r;
+  if (c) { RM.tipT -= dt; if (RM.tipT <= 0) { RM.tipT = 8; sbxToast(`${c.name} in hailing range — E to request docking and go aboard.${c.npc?.commercial ? ' Commercial: steady work for engineers.' : ''}`); } }
+  return r;
+};
+const _rmKeys = sbxKeys;
+sbxKeys = function () {   // S11-EDIT(§SBXCONTROL sbxKeys): E walks aboard a hailed ship or a friendly titan before the station keys take it
+  const pl = world.player; const L = TITAN.landed;
+  if (L && L.titan.alive && !TW.aboard && input.pressed.has(L.titan.owner === 'player' ? 'KeyY' : 'KeyE')) { input.pressed.delete(L.titan.owner === 'player' ? 'KeyY' : 'KeyE'); twBoard(L.titan); return; }
+  if (!L && !BD.active && !TW.aboard && input.pressed.has('KeyE')) { const c = rmBoardable(); const busy = (SBX.points || []).some(p => (p.kind === 'station' && p.pos.distanceTo(pl.pos) < CONFIG.sbx.dock.radius * 1.3) || (p.kind === 'wormhole' && p.pos.distanceTo(pl.pos) < 400) || (p.kind === 'planet' && p.pos.distanceTo(pl.pos) < 2600));
+    if (c && !busy && !c.boardable) { input.pressed.delete('KeyE'); RM.stats.walks++; twBoard(c); return; } }
+  return _rmKeys();
+};
+Object.assign(S9X, { RM, RM_MIX, rmSpawnAll, rmStep, rmBoardable, rmWork, rmClear, rmHostile });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
