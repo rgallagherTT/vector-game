@@ -331,6 +331,10 @@
     §PROFILES               many players, many people: each profile is its own save and its own character
       §PROFILES.BRIGHTNESS    one slider for the whole picture, remembered on this device; the default is darker than before
       §PARRY.ASSIST           below Hard the blade guards on its own: no timing, no luck
+    §AWAKEN                 the Resonance for anyone who wants it, the Ironclad, and what each side gives you
+      §AWAKEN.SIDES           what each allegiance and each Resonance path gives you
+    §TITANWALK              every inhabited system keeps a flagship in space; land in its bay and walk aboard
+    §INTERIORS              every city building opens: homes, shops, bars, clinics, workplaces, shrines
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -673,6 +677,26 @@
     §BLADE bladeInput — the blade raises itself against what is coming
     §BLADE bladeStrike — the automatic guard meets blades
     §BLADE bladeOnBolt — the automatic guard meets bolts
+    §CHARACTER charCreate — Resonant can be chosen; it awakens at once
+    §CHARACTER charHasPerk — the Ironclad's jetpack survives a later awakening
+    §ONFOOT.CLASS ofAbility — wrist rockets
+    §SETTLEMENT setlPriceMul — your side's discount
+    §SIEGE sgPriceK — your side's discount in cities
+    §LAW lawDecay — some sides shake a warrant faster
+    §ONFOOT ofDamage — side benefits in a fight
+    §SBXUI sbxToast — side bonus on bounty pay
+    §ONFOOT OF.enter — the Concordance's issue deflector
+    §ONFOOT ofDamage — regeneration waits for a lull
+    §TITAN titanSystemRoster — a flagship in every settled system
+    §TITAN titanLand — the walk-aboard prompt
+    §TITAN titanPlayerInteract — from the pad, on foot into the ship
+    §HOMESHIP hsExit — stepping off a titan
+    §WORLDS.CITY worldCityBuild — every building gets its door
+    §CITY sgPanelRender — what each kind of building offers
+    §CITY sgPanelAct — the building actions
+    §CITY sgTarget — every building's keeper serves it
+    §ONFOOT ofInteract — titan rooms
+    §ONFOOT ofDropsStep — titan prompts, side perks, the jetpack
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -23092,6 +23116,235 @@ const _paStrike = bladeStrike;
 bladeStrike = function (u, kind, extra) { const me = OF.me; const b = me?.blade; if (u !== me && paAuto(me) && !b.blocking) { b.blocking = true; b.blockT = 0; try { return _paStrike(u, kind, extra); } finally { b.blocking = false; } } return _paStrike(u, kind, extra); };   // S11-EDIT(§BLADE bladeStrike): the automatic guard meets blades
 const _paBolt = bladeOnBolt;
 bladeOnBolt = function (u, bolt, at) { const b = u?.blade; if (u === OF.me && paAuto(u) && !b.blocking) { b.blocking = true; b.blockT = 0; try { return _paBolt(u, bolt, at); } finally { b.blocking = false; } } return _paBolt(u, bolt, at); };   // S11-EDIT(§BLADE bladeOnBolt): the automatic guard meets bolts
+
+// =====================================================================================
+// §AWAKEN — the Resonance for anyone who wants it, the Ironclad, and what each side gives you
+//  The Resonance is no longer locked behind the whole Path: choose Resonant at character
+//  creation, or awaken later from the pause menu or at any city shrine (old-quarter ruins),
+//  choosing the Quiet (the Wardens) or the Ember (the Cinder Court). You become a Resonant at
+//  once, with a bonded blade and the first powers; the Path's trials and missions still raise
+//  your rank and your pool. The Ironclad is a clan-armoured hunter: heavy plate, a jetpack (hold
+//  jump in the air), wrist rockets (the class ability) and better bounty pay. Every allegiance and
+//  both Resonance paths carry clear, working benefits, listed in the pause menu.
+// =====================================================================================
+CLASSES.resonant.earned = false; CLASSES.resonant.desc = 'Mystic powers and a bonded arc blade; weak at range. Choose the Quiet or the Ember when you awaken.'; CLASSES.resonant.abilityName = 'Resonance powers';
+CLASSES.ironclad = { name: 'Ironclad', desc: 'Clan-forged plate, a jetpack and wrist rockets. Hunters for hire: bounties pay more.', weapons: ['repeater', 'pistol'], hp: 140, defl: 65, speed: 1.0, armour: 0.22, grenades: 2, ability: 'rockets', abilityName: 'Wrist rockets' };
+CLASS_ORDER.splice(CLASS_ORDER.indexOf('resonant'), 0, 'ironclad');
+CHAR_PERKS.ironclad = { id: 'jetpack', name: 'Jetpack' };
+const AW = { jet: 1, jetting: false, el: null, side: null, sideT: 0, healPar: 0 };
+/** Awaken now: Quiet (Wardens) or Ember (Cinder Court). The old class becomes a former life with its perk. */
+function awAwaken(side = 'quiet') {
+  const ch = charOf(); if (!ch) return 'no character'; if (ch.cls === 'resonant') return 'already a Resonant';
+  pathInit(ch); const P = ch.path; const order = side === 'ember' ? 'cinder' : 'wardens'; P.order = order; P.master = order; P.rank = Math.max(P.rank || 0, 1);
+  ch.align = side === 'ember' ? Math.max(ch.align || 0, 20) : Math.min(ch.align || 0, -20);
+  if (!ch.blade) { const col = bladeAlignColor(ch.align); ch.blade = { hilt: { ...HILT_DEFAULT }, color: col, align: ch.align, colorName: bladeColorName(col), forgedAt: Date.now(), where: `${SRF.planet?.name || 'a quiet place'}`, bonded: true }; }
+  pathBecomeResonant(); ch.res.pool = resMax(ch);
+  if (OF.me) { bladeFromChar(OF.me, ch); OF.me.hpMax = charMaxHp(ch); }
+  sbxToast(`The Resonance answers. ${side === 'ember' ? 'The Ember burns in you' : 'The Quiet settles in you'} — press 3 for your blade; 4 to 8 for powers.`); sbxSave('awaken'); return null;
+}
+function awAsk() { if (typeof pathDialog !== 'function') return awAwaken('quiet'); const ch = charOf(); if (!ch) return; if (ch.cls === 'resonant') return sbxToast('You are already a Resonant.');
+  pathDialog('Awaken the Resonance', ['Close your eyes. Listen past the noise. Something listens back.', 'The Quiet: protection, calm, Push and Pull, the Ward. The Ember: hunger, Drain and Ignite, Dread and Rend.'],
+    [{ t: 'The Quiet — join the Wardens', fn: () => awAwaken('quiet'), cls: 'amber' }, { t: 'The Ember — join the Cinder Court', fn: () => awAwaken('ember'), cls: 'amber' }, { t: 'Not yet', fn: () => {} }], { escape: 2 }); }
+const _awCreate = charCreate;
+charCreate = function (opts) {   // S11-EDIT(§CHARACTER charCreate): Resonant can be chosen; it awakens at once
+  if (opts?.cls !== 'resonant') return _awCreate(opts); const r = _awCreate({ ...opts, cls: 'soldier' }); if (r) return r; awAwaken(opts.side || 'quiet'); return r;
+};
+const _awPerk = charHasPerk;
+charHasPerk = function (id, ch = charOf()) { if (id === 'jetpack' && ch && (ch.cls === 'ironclad' || ch.perk === 'jetpack')) return true; return _awPerk(id, ch); };   // S11-EDIT(§CHARACTER charHasPerk): the Ironclad's jetpack survives a later awakening
+const _awAbility = ofAbility;
+ofAbility = function () {   // S11-EDIT(§ONFOOT.CLASS ofAbility): wrist rockets
+  const me = OF.me; const ch = charOf(); if (ch?.cls !== 'ironclad') return _awAbility(); OF.abilityCd = OF.abilityCd || 0; if (OF.t < OF.abilityCd) return sbxToast(`Rockets reloading — ${Math.ceil(OF.abilityCd - OF.t)} s.`);
+  const from = _fv[0].copy(me.pos).add(_fv[1].set(0, 1.4, 0)); for (let i = 0; i < 4; i++) { const dir = _fv[2].subVectors(OF.aim, from).normalize(); dir.x += rand(-0.05, 0.05); dir.y += rand(-0.03, 0.05); dir.z += rand(-0.05, 0.05); dir.normalize(); ofBolt(from, dir, OF_WEAPONS.launcher, me, me.team, 0xffa040, 1.1); }
+  OF.abilityCd = OF.t + 16; audio.missile?.(); sbxToast('Wrist rockets away.');
+};
+
+// §AWAKEN.SIDES — what each allegiance and each Resonance path gives you
+const SIDE_PERKS = {
+  authority: { name: 'The Concordance', lines: ['Prices 15% lower in every settlement', 'Deflector +20 on foot', 'Wanted levels fade twice as fast'], price: 0.85, defl: 20, law: 2 },
+  combine: { name: 'The Free Reach', lines: ['Health regenerates on foot (3 per second)', 'Your shots hit 12% harder', 'Prices 8% lower in every settlement'], regen: 3, dmgOut: 1.12, price: 0.92 },
+  guild: { name: 'The Wardens', lines: ['You take 15% less damage', 'Resonance refills 50% faster', 'Prices 10% lower in every settlement'], dmgIn: 0.85, resK: 1.5, price: 0.9 },
+  syndicate: { name: 'The Syndicates', lines: ['Bounty and contract pay +30%', 'Wanted levels fade twice as fast', 'Your shots hit 8% harder'], pay: 1.3, law: 2, dmgOut: 1.08 },
+  quiet: { name: 'The Quiet', lines: ['Every parry heals 6 health', 'Resonance refills 40% faster', 'You take 10% less damage'], parryHeal: 6, resK: 1.4, dmgIn: 0.9 },
+  ember: { name: 'The Ember', lines: ['Blade strikes deal 30% more damage', 'Every kill restores 12 health', 'Every parry restores 8 Resonance'], blade: 1.3, killHeal: 12, parryRes: 8 },
+  ironclad: { name: 'Ironclad clan', lines: ['Jetpack: hold jump in the air', 'Wrist rockets (class ability)', 'Bounty pay +25%'], pay: 1.25 },
+};
+/** The perk sets that apply to you now: your pledged faction, your Resonance path, your clan. */
+function awSides() { const out = []; const A = allegOf?.(); if (A?.fac && SIDE_PERKS[A.fac]) out.push(SIDE_PERKS[A.fac]); const ch = charOf();
+  if (ch?.cls === 'resonant' || ch?.res?.known?.length) out.push(SIDE_PERKS[(ch.align || 0) > 0 ? 'ember' : 'quiet']); if (ch?.cls === 'ironclad') out.push(SIDE_PERKS.ironclad); return out; }
+const awK = (key, base = 1) => awSides().reduce((k, s) => s[key] != null ? k * s[key] : k, base);
+const _awPrice = setlPriceMul;
+setlPriceMul = function (fac) { return _awPrice(fac) * awK('price'); };   // S11-EDIT(§SETTLEMENT setlPriceMul): your side's discount
+const _awSgPrice = sgPriceK;
+sgPriceK = function (planet, i) { return _awSgPrice(planet, i) * awK('price'); };   // S11-EDIT(§SIEGE sgPriceK): your side's discount in cities
+const _awLaw = lawDecay;
+lawDecay = function (dt) { return _awLaw(dt * awK('law')); };   // S11-EDIT(§LAW lawDecay): some sides shake a warrant faster
+const _awDamage = ofDamage;
+ofDamage = function (v, dmg, from, o = {}) {   // S11-EDIT(§ONFOOT ofDamage): side benefits in a fight
+  if (dmg > 0 && v === OF.me) dmg *= awK('dmgIn');
+  if (dmg > 0 && from && (from === OF.me || from.owner === OF.me) && v !== OF.me) { dmg *= awK('dmgOut'); if (o.kind === 'melee') dmg *= awK('blade'); }
+  const was = v?.alive; const r = _awDamage(v, dmg, from, o);
+  if (was && v && !v.alive && from === OF.me && OF.me?.alive) { const h = awSides().reduce((a, s) => a + (s.killHeal || 0), 0); if (h) OF.me.hp = Math.min(OF.me.hpMax, OF.me.hp + h); }
+  return r;
+};
+/** Bounty and contract pay: credits that arrive while a bounty/contract toast is up are scaled by your side. */
+const _awToast = sbxToast;
+sbxToast = function (msg, ...rest) { const k = awK('pay'); if (k !== 1 && /bounty|contract pay|contract complete/i.test(String(msg)) && SBX.profile && AW.lastIsk != null && SBX.profile.isk > AW.lastIsk) { const gain = SBX.profile.isk - AW.lastIsk; const extra = Math.round(gain * (k - 1)); SBX.profile.isk += extra; msg = `${msg} (+${fmtIsk(extra)} cr — your side's cut)`; } return _awToast(msg, ...rest); };
+(function awIskTrack() { AW.lastIsk = SBX.profile?.isk ?? null; requestAnimationFrame(awIskTrack); })();   // S11-EDIT(§SBXUI sbxToast): side bonus on bounty pay
+function awStep(dt) {
+  const me = OF.me; if (!me?.alive) return; const ch = charOf();
+  // regeneration out of combat; the Resonance refills faster for some sides; parries pay
+  const regen = awSides().reduce((a, s) => a + (s.regen || 0), 0); if (regen && me.hp < me.hpMax && !(OF.t - (me.lastHitT ?? -99) < 4)) me.hp = Math.min(me.hpMax, me.hp + regen * dt);
+  const rk = awK('resK'); if (rk > 1 && ch?.res) ch.res.pool = Math.min(resMax(ch), (ch.res.pool || 0) + (ch.cls === 'resonant' ? 9 : 6) * (rk - 1) * dt);
+  const par = PR?.stats?.parried || 0; if (par > AW.healPar) { const n = par - AW.healPar; const hh = awSides().reduce((a, s) => a + (s.parryHeal || 0), 0) * n; if (hh) me.hp = Math.min(me.hpMax, me.hp + hh); const rr = awSides().reduce((a, s) => a + (s.parryRes || 0), 0) * n; if (rr && ch?.res) ch.res.pool = Math.min(resMax(ch), ch.res.pool + rr); } AW.healPar = par;
+  // the jetpack: hold jump in the air; fuel burns, refills on the ground
+  if (charHasPerk('jetpack') && MM.mode === 'ON_FOOT') { const hold = input.keys.has('Space');
+    AW.holdT = hold ? (AW.holdT || 0) + dt : 0;
+    if (hold && (me.air || AW.holdT > 0.18) && AW.jet > 0.02) { if (!me.air) { me.air = true; me.pos.y += 0.3; me.vel.y = Math.max(me.vel.y, 3); } me.vel.y = Math.min(me.vel.y + 30 * dt, 9); AW.jet = Math.max(0, AW.jet - dt / 3.2); me.leapT = 0.6; AW.jetting = true; if (Math.random() < 0.5) world.sparks(_fv[3].copy(me.pos).add(_fv[4].set(0, 0.9, 0)), 2, 0xffa040); }
+    else { AW.jetting = false; if (!me.air) AW.jet = Math.min(1, AW.jet + dt / 4); }
+    if (!AW.el) { AW.el = document.createElement('div'); AW.el.id = 'aw-jet'; document.body.appendChild(AW.el); const css = document.createElement('style'); css.textContent = `#aw-jet { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); width: 140px; height: 6px; border: 1px solid var(--rule, rgba(255,255,255,.3)); border-radius: 3px; z-index: 11; pointer-events: none; background: linear-gradient(90deg, #ffa040 var(--f, 100%), transparent var(--f, 100%)); }`; document.head.appendChild(css); }
+    AW.el.style.display = AW.jet < 0.999 || AW.jetting ? 'block' : 'none'; AW.el.style.setProperty('--f', Math.round(AW.jet * 100) + '%'); } else if (AW.el) AW.el.style.display = 'none';
+}
+const _awOFEnter = OF.enter;
+OF.enter = function (prev, o) { const r = _awOFEnter(prev, o); const me = OF.me; const d = awSides().reduce((a, s) => a + (s.defl || 0), 0); if (me && d) { me.deflMax += d; me.defl = Math.min(me.deflMax, me.defl + d); } return r; };   // S11-EDIT(§ONFOOT OF.enter): the Concordance's issue deflector
+const _awHurt = ofDamage;
+ofDamage = function (v, dmg, from, o) { if (v === OF.me && dmg > 0) v.lastHitT = OF.t; return _awHurt(v, dmg, from, o); };   // S11-EDIT(§ONFOOT ofDamage): regeneration waits for a lull
+(function awUI() {
+  const pause = document.querySelector('#s-paused .card'); if (!pause) return;
+  const b = document.createElement('button'); b.textContent = 'Awaken the Resonance'; b.id = 'btn-awaken'; b.onclick = () => awAsk(); pause.appendChild(b);
+  const d = document.createElement('div'); d.id = 'aw-sides'; d.className = 'small'; d.style.cssText = 'text-align:left;margin-top:8px;line-height:1.5'; pause.appendChild(d);
+  const upd = () => { const S = awSides(); d.innerHTML = S.length ? S.map(s => `<b>${s.name}</b>: ${s.lines.join(' · ')}`).join('<br>') : 'Pledge to a faction (allegiance) or awaken the Resonance to gain a side\'s benefits.'; const ch = charOf(); b.style.display = ch && ch.cls !== 'resonant' ? '' : 'none'; };
+  setInterval(() => { if ($('s-paused')?.classList.contains('on') || getComputedStyle($('s-paused')).display !== 'none') upd(); }, 700);
+})();
+
+// =====================================================================================
+// §TITANWALK — every inhabited system keeps a flagship in space; land in its bay and walk aboard
+//  Each system with stations has its owner's flagship holding station, beside the ones the war
+//  already put there. Land on any friendly titan's pad and walk aboard (E; on your own titan, T):
+//  a crewed capital interior — bridge, spine, engineering and fourteen side rooms — with the crew
+//  at their posts. The captain talks war and contracts; the medbay patches you up; the armoury
+//  refills charges; the mess and quarters let you rest. Walk back to the airlock to fly again.
+// =====================================================================================
+const TW = { aboard: null, squads: [], stats: { walks: 0 } };
+const _twRoster = titanSystemRoster;
+titanSystemRoster = function (sysIdx) {   // S11-EDIT(§TITAN titanSystemRoster): a flagship in every settled system
+  const out = _twRoster(sysIdx); const sys = SBX.systems?.[sysIdx]; if (!sys?.stations?.length) return out; const S = gsState?.(); const own = S?.owners?.[sysIdx] || sys.stations[0].faction || 'authority';
+  if (own !== 'player' && !out.some(r => r.faction === own)) out.push({ faction: own, name: `${gsShort(own)} flagship ${sys.name} Sentinel`, at: [-5400, 700, -4400] }); return out;
+};
+const _twLand = titanLand;
+titanLand = function (t, pad) { const r = _twLand(t, pad); setTimeout(() => sbxToast(`${t.owner === 'player' ? 'T' : 'E'} — walk aboard the ${t.name}.`), 900); return r; };   // S11-EDIT(§TITAN titanLand): the walk-aboard prompt
+const _twInteract = titanPlayerInteract;
+titanPlayerInteract = function (dt) {   // S11-EDIT(§TITAN titanPlayerInteract): from the pad, on foot into the ship
+  const L = TITAN.landed; if (L && L.titan.alive && MM.mode === 'SPACE' && !TW.aboard) { const own = L.titan.owner === 'player'; if (input.pressed.has(own ? 'KeyT' : 'KeyE')) { input.pressed.delete(own ? 'KeyT' : 'KeyE'); twBoard(L.titan); return; } }
+  return _twInteract(dt);
+};
+function twBoard(t) {
+  if (!charOf()) return sbxToast('Create your character first.'); if (BD.active) return; bdLayout('cruiser');
+  HS.host = t; HS.boardKind = 'board_cruiser'; TW.aboard = t; TW.stats.walks++; mmSet('ON_FOOT_ABOARD', { from: 'airlock', why: 'titan walk' }); if (MM.mode !== 'ON_FOOT_ABOARD') { twEnd(); return; }
+  const L = HS.built.L; const fac = t.owner === 'player' ? (allegFac?.() || 'authority') : t.faction; const posts = ['bridge', 'engineering', 'medbay', 'armoury', 'mess', 'hangar_control', 'barracks'];
+  TW.squads = posts.map((k, i) => { if (!L.rooms[k]) return null; const [x, z] = bdRoomCentre(L, k); const at = hsW(x + (i % 2 ? 1.2 : -1.2), z); at.y = HS.anchor.y; const S = aiSpawnSquad(FACTION_LOOK[fac] ? fac : 'authority', k === 'barracks' ? 3 : 2, at, { team: 'neutral', label: 'crew', roles: k === 'bridge' ? ['officer', 'trooper'] : ['trooper', 'trooper', 'trooper'] }); S.fixedPatrol = true; S.patrolR = 1.6; for (const u of S.units) { u.pos.y = HS.anchor.y; u.crewPost = k; u.name = k === 'bridge' && u.role === 'officer' ? 'Captain' : 'Crew'; } return S; }).filter(Boolean);
+  if (typeof squadSpawnAll === 'function') { squadSpawnAll(); for (const u of SQ.units) u.pos.y = HS.anchor.y; } bdNav(true);
+  sbxToast(`Aboard the ${t.name}. The captain is on the bridge; the medbay, armoury and mess are down the spine. Walk back to the airlock to fly again.`);
+}
+function twEnd() { if (!TW.aboard) return; TW.aboard = null; TW.squads = []; if (HS.host && !BD.active) { HS.host = null; HS.boardKind = null; } }
+const _twExit = hsExit;
+hsExit = function (next, o) { const r = _twExit(next, o); twEnd(); return r; };   // S11-EDIT(§HOMESHIP hsExit): stepping off a titan
+function twTarget() {
+  if (!TW.aboard || MM.mode !== 'ON_FOOT_ABOARD' || !HS.built) return null; const me = OF.me; if (!me?.alive) return null; const L = HS.built.L; const l = hsL(me.pos.x, me.pos.z);
+  const E = L.emp.airlock_01; if (E && Math.hypot(l.x - E[0], l.z - E[1]) < 2.4) return { kind: 'leave', label: 'airlock — back to your ship' };
+  const room = hsRoomOf(l.x, l.z); const near = (k) => { const c = bdRoomCentre(L, k); return c && Math.hypot(l.x - c[0], l.z - c[1]) < 3.2; };
+  if (room === 'bridge' && near('bridge')) return { kind: 'captain', label: 'talk to the captain' };
+  if (room === 'medbay') return { kind: 'heal', label: 'medbay — get patched up' };
+  if (room === 'armoury') return { kind: 'arm', label: 'armoury — refill charges and kit' };
+  if (room === 'mess' || room === 'quarters' || room === 'galley') return { kind: 'rest', label: 'rest a while' };
+  return null;
+}
+function twAct(t) {
+  const me = OF.me; const ship = TW.aboard; if (!t) return false;
+  if (t.kind === 'leave') { mmSet('SPACE', { why: 'back to the pad' }); return true; }
+  if (t.kind === 'heal' || t.kind === 'rest') { me.hp = me.hpMax; me.defl = me.deflMax; me.stam = me.stamMax; for (const u of SQ?.units || []) if (u.alive) { u.hp = u.hpMax; u.downed = false; } sbxToast(t.kind === 'heal' ? 'The medic seals you up. Good as new.' : 'An hour in a bunk, a hot meal. Ready.'); return true; }
+  if (t.kind === 'arm') { OF.grenadeCharges = (charClass().grenades || 2) + 1; AW.jet = 1; sbxToast('Charges racked, cells swapped, jet fuel topped.'); return true; }
+  if (t.kind === 'captain') { const S = gsState?.(); const fac = ship.faction; const wars = (S?.wars || []).filter(w => w.phase !== 'over' && (w.a === fac || w.d === fac)).slice(0, 3);
+    if (typeof pathDialog === 'function') pathDialog(`${ship.name} — the bridge`, [`"Welcome aboard. ${ship.owner === 'player' ? 'She\'s yours, captain.' : `You fly under ${gsShort(fac)} colours here.`}"`, wars.length ? `"${wars.map(w => `${gsShort(w.a)} against ${gsShort(w.d)}`).join('; ')}. Every pilot counts."` : '"Quiet sector. Enjoy it while it lasts."'],
+      [{ t: allegFac?.() ? 'Allegiance and contracts' : `Swear to ${gsShort(fac)}`, fn: () => { if (!allegFac?.() && fac && fac !== 'player') { const r = allegPledge(fac); if (r) sbxToast(r); } else allegOpen(true); }, cls: 'amber' }, { t: 'Carry on', fn: () => {} }], { escape: 1 });
+    return true; }
+  return false;
+}
+
+// =====================================================================================
+// §INTERIORS — every city building opens: homes, shops, bars, clinics, workplaces, shrines
+//  Every building in a city or metropolis has a door. What waits inside depends on the building:
+//  homes rent you a flat and a bed; shops sell weapons, armour and charges; bars pour drinks, sell
+//  rumours and have people looking for work; clinics heal; factories, refineries and warehouses pay
+//  for a shift; arcades take bets; market halls buy your cargo; offices clear warrants; barracks
+//  take recruits; and the old quarter's ruins hold shrines where the Resonance can be awakened.
+// =====================================================================================
+Object.assign(SG_CELLS, { home: { cell: 'int_quarters', name: 'Apartment', light: 0xffd8a8 }, shop: { cell: 'int_shop', name: 'Shop', light: 0xfff0d0 }, bar: { cell: 'int_bar', name: 'Bar', light: 0xffb070 },
+  clinic: { cell: 'int_office', name: 'Clinic', light: 0xe8f8ff }, work: { cell: 'int_office', name: 'Workplace', light: 0xd8e0e8 }, arcade: { cell: 'int_bar', name: 'Arcade', light: 0x9a6aff },
+  market: { cell: 'int_shop', name: 'Market hall', light: 0xffe8b8 }, admin: { cell: 'int_office', name: 'Administration', light: 0xe0e8ff }, garrison: { cell: 'int_office', name: 'Garrison', light: 0xd0d8e0 }, shrine: { cell: 'int_quarters', name: 'Shrine', light: 0x9fd8ff } });
+const IN_KIND = [[/housing|courtyard|terrace|crooked|dwelling/, 'home'], [/shopfronts|_shop_/, 'shop'], [/arcade/, 'arcade'], [/market_hall/, 'market'], [/clinic/, 'clinic'], [/factory|refinery|warehouse|cooling|storehouse/, 'work'], [/admin/, 'admin'], [/garrison/, 'garrison'], [/ruined_temple|stairway_ruins/, 'shrine']];
+const IN_DIST = { 0: 'work', 1: 'shop', 2: 'home', 3: 'work', 4: 'admin', 5: 'bar' };
+function inKindOf(b, i) { for (const [re, k] of IN_KIND) if (re.test(b.id)) return k; if (b.kit === 'metro' && b.tag === 'tower') return i % 5 === 0 ? 'bar' : i % 7 === 0 ? 'clinic' : i % 11 === 0 ? 'arcade' : IN_DIST[b.dist] || 'home'; return null; }
+/** Doors for every building the Stage 11 layout left without one. */
+function inDoors(C) {
+  if (!C?.sg || C.inDoors) return; C.inDoors = true; const have = new Set(C.doors.map(d => d.b)); let n = 0;
+  C.blds.forEach((b, i) => { if (have.has(i) || b.ruin || b.walk || /pad|gantry|arch|landing/.test(b.id)) return; const kind = inKindOf(b, i); if (!kind) return; let x, z;
+    const f = SG_FOOT[b.id]; if (f && f.length > 5) { const e = setlRot(f[5], f[6], b.yaw); x = b.ox + e.x; z = b.oz + e.z; } else { const e = setlRot(0, b.d / 2 + 0.8, b.yaw); x = b.x + e.x; z = b.z + e.z; }
+    if (kind === 'bar' && i % 3) return; C.doors.push({ kind, x, z, yaw: b.yaw, b: i, level: C.c.tier === 'metro' ? 1 : undefined, y: C.c.tier === 'metro' ? C.H0 : undefined }); n++; });
+  C.inCount = n;
+}
+const _inBuild = worldCityBuild;
+worldCityBuild = function () { const r = _inBuild(); inDoors(WORLD.city); return r; };   // S11-EDIT(§WORLDS.CITY worldCityBuild): every building gets its door
+const _inPanel = sgPanelRender;
+sgPanelRender = function () {   // S11-EDIT(§CITY sgPanelRender): what each kind of building offers
+  const Pn = SG.panel; const K = Pn && IN_RENDER[Pn.kind]; if (!K) return _inPanel(); const pl = SRF.planet, i = SRF.site.i; const p = SBX.profile; const k = sgPriceK(pl, i); const pr = (n) => Math.round(n * k);
+  const btn = (act, label, ok = true, cls = '') => `<button data-sg="${act}" class="${cls}" ${ok ? '' : 'disabled'}>${label}</button>`;
+  $('sg-title').textContent = SG_CELLS[Pn.kind]?.name || Pn.kind; $('sg-body').innerHTML = `<p class="small">${WORLD.city?.c.name || pl.name} · wallet ${fmtIsk(p.isk)} cr${k > 1.001 ? ` · prices ×${k.toFixed(2)}` : k < 0.999 ? ` · your side's discount ×${k.toFixed(2)}` : ''}</p>` + K(btn, pr, p) + (Pn.msg ? `<p class="small">${Pn.msg}</p>` : '');
+};
+const IN_RENDER = {
+  home: (btn, pr, p) => { const key = SRF.planet.key + ':' + SRF.site.i; const own = p.inFlats?.[key]; return `<p class="small">${own ? 'Your flat: a bed, a locker, a window over the street.' : 'A flat to rent: a bed, a locker, a key.'}</p><div class="actions">${own ? btn('in-rest', 'Sleep (full health)') : btn('in-rent', `Rent · ${pr(600)} cr`, p.isk >= pr(600), 'amber')}${btn('in-talk', 'Talk to the neighbours')}</div>`; },
+  shop: (btn, pr, p) => { const kit = setlKit(); let h = '<h3>Weapons</h3>'; for (const [id, W] of Object.entries(SETL_WEAPONS)) h += `<div class="fitslot"><b>${OF_WEAPONS[id]?.name || id}</b><i class="small">${W.slot ? 'sidearm' : 'primary'}</i>${btn('in-buy:' + id, `${fmtIsk(pr(W.price))} cr`, p.isk >= pr(W.price))}</div>`;
+    h += '<h3>Armour</h3>'; SETL_ARMOUR.forEach((A, t) => { if (A) h += `<div class="fitslot"><b>${A.name}</b><i class="small">+${A.hp} health</i>${btn('in-arm:' + t, kit.armour >= t ? 'owned' : `${fmtIsk(pr(A.price))} cr`, kit.armour < t && p.isk >= pr(A.price))}</div>`; });
+    SETL_DEFL.forEach((D, t) => { if (D) h += `<div class="fitslot"><b>${D.name}</b><i class="small">+${D.defl} deflector</i>${btn('in-defl:' + t, kit.defl >= t ? 'owned' : `${fmtIsk(pr(D.price))} cr`, kit.defl < t && p.isk >= pr(D.price))}</div>`; });
+    return h + `<div class="actions">${btn('in-charges', `Refill charges · ${pr(300)} cr`, p.isk >= pr(300))}</div>`; },
+  bar: (btn, pr, p) => { const T = { seed: (WORLD.city?.c.seed || 1) ^ (SG.cell?.sg?.b || 0) }; const hires = setlHires(T); return `<p class="small">Low light, loud talk. Everyone here knows something, and some of them want work.</p><div class="actions">${btn('in-drink', `A drink and the talk · ${pr(40)} cr`, p.isk >= pr(40))}</div>` + hires.map(c => `<div class="fitslot"><b>${c.name}</b><i class="small">${c.cls || ''} · looking for a crew</i>${btn('in-hire:' + c.name, `Hire · ${fmtIsk(setlHireFee(c))} cr`, p.isk >= setlHireFee(c))}</div>`).join(''); },
+  clinic: (btn, pr, p) => `<p class="small">Clean, quiet, expensive.</p><div class="actions">${btn('in-heal', `Full treatment · ${pr(250)} cr`, p.isk >= pr(250), 'amber')}</div>`,
+  work: (btn, pr, p) => `<p class="small">The foreman looks you over. "Shift's open if you want it. Pay's by the hour."</p><div class="actions">${btn('in-shift', 'Work a shift', true, 'amber')}</div>`,
+  arcade: (btn, pr, p) => `<p class="small">Lights, noise, and a dealer who never blinks.</p><div class="actions">${[100, 1000, 10000].map(n => btn('in-bet:' + n, `Bet ${fmtIsk(n)} cr`, p.isk >= n)).join('')}</div>`,
+  market: (btn, pr, p) => { const ship = SBX.ship(); const cargo = Object.entries(ship?.cargo || {}).filter(([, n]) => n > 0); return cargo.length ? '<h3>Sell from your hold</h3>' + cargo.map(([id, n]) => `<div class="fitslot"><b>${ITEMS[id]?.name || id}</b><i class="small">×${n}</i>${btn('in-sell:' + id, `Sell · ${fmtIsk(Math.round((ITEMS[id]?.base || 10) * 0.9 * n))} cr`)}</div>`).join('') : '<p class="small">Your hold is empty — bring cargo to sell.</p>'; },
+  admin: (btn, pr, p) => { const facs = Object.keys(p.law || {}).filter(f => lawWanted(f) > 0 || (p.law[f].heat || 0) > 0); return facs.length ? facs.map(f => `<div class="fitslot"><b>${gsShort(f)} warrant</b><i class="small">${'★'.repeat(lawWanted(f))}</i>${btn('in-fine:' + f, `Pay fine · ${fmtIsk(lawFine(f))} cr`, p.isk >= lawFine(f))}</div>`).join('') : '<p class="small">"Your record is clean. Next."</p>'; },
+  garrison: (btn, pr, p) => `<p class="small">Recruiting posters, a sergeant with a clipboard.</p><div class="actions">${btn('in-alleg', 'Allegiance and contracts', true, 'amber')}</div>`,
+  shrine: (btn, pr, p) => { const ch = charOf(); return `<p class="small">Old stone, older silence. Something here is listening.</p><div class="actions">${ch?.cls === 'resonant' ? btn('in-meditate', 'Meditate (refill the Resonance)') : btn('in-awaken', 'Awaken the Resonance', true, 'amber')}</div>`; },
+};
+const _inAct = sgPanelAct;
+sgPanelAct = function (a) {   // S11-EDIT(§CITY sgPanelAct): the building actions
+  const [act, x] = a.split(':'); if (!act.startsWith('in-')) return _inAct(a); const p = SBX.profile; const k = sgPriceK(SRF.planet, SRF.site.i); const me = OF.me; const kit = setlKit();
+  const pay = (n) => { n = Math.round(n); if (p.isk < n) { sbxToast('Not enough credits.'); return false; } p.isk -= n; SBX.dirty = true; return true; }; const say = (m) => { SG.panel.msg = m; };
+  if (act === 'in-rent') { if (!pay(600 * k)) return; p.inFlats = p.inFlats || {}; p.inFlats[SRF.planet.key + ':' + SRF.site.i] = true; say('The key is yours.'); }
+  else if (act === 'in-rest' || act === 'in-heal') { if (act === 'in-heal' && !pay(250 * k)) return; if (me) { me.hp = me.hpMax; me.defl = me.deflMax; me.stam = me.stamMax; } for (const u of SQ?.units || []) if (u.alive) { u.hp = u.hpMax; u.downed = false; } say(act === 'in-heal' ? 'Patched, scanned, sent on your way.' : 'You sleep like the dead. Fully rested.'); }
+  else if (act === 'in-talk' || act === 'in-drink') { if (act === 'in-drink' && !pay(40 * k)) return; const L = SG_SAY[sgMood()]; say(`"${L[Math.floor(Math.random() * L.length)]}"`); }
+  else if (act === 'in-buy') { const W = SETL_WEAPONS[x]; if (!W || !pay(W.price * k)) return; if (W.slot) kit.sidearm = x; else kit.primary = x; if (me) { me.weapons[W.slot] = x; if (me.wi === W.slot) { me.weapon = x; ofArm(me); } } say(`${OF_WEAPONS[x]?.name || x} is yours.`); }
+  else if (act === 'in-arm') { const t = +x; if (!pay(SETL_ARMOUR[t].price * k)) return; kit.armour = t; say(`${SETL_ARMOUR[t].name} fitted.`); }
+  else if (act === 'in-defl') { const t = +x; if (!pay(SETL_DEFL[t].price * k)) return; kit.defl = t; say(`${SETL_DEFL[t].name} fitted.`); }
+  else if (act === 'in-charges') { if (!pay(300 * k)) return; OF.grenadeCharges = (charClass().grenades || 2) + (kit.pouch || 0); say('Charges racked.'); }
+  else if (act === 'in-hire') { const c = SQ_CAST.find(z => z.name === x); if (!c || !pay(setlHireFee(c))) return; squadRecruit(c, 'recruited'); say(`${c.name} joins you.`); }
+  else if (act === 'in-shift') { const A = allegOf?.(); const pay2 = Math.round((900 + Math.random() * 1600) * (1 + (A?.rank || 0) * 0.15)); p.isk += pay2; SBX.dirty = true; if (me) me.stam = Math.max(0, me.stam - 40); say(`Eight hours hauling, welding and swearing. ${fmtIsk(pay2)} cr in your pocket.`); }
+  else if (act === 'in-bet') { const n = +x; if (!pay(n)) return; if (Math.random() < 0.46) { p.isk += n * 2; say(`You win ${fmtIsk(n * 2)} cr. The dealer does not smile.`); } else say('The house wins. It always does, eventually.'); }
+  else if (act === 'in-sell') { const ship = SBX.ship(); const n = ship.cargo[x] || 0; if (!n) return; const v = Math.round((ITEMS[x]?.base || 10) * 0.9 * n); SBX.removeCargo(ship, x, n); p.isk += v; SBX.dirty = true; say(`Sold ${n} ${ITEMS[x]?.name || x} for ${fmtIsk(v)} cr.`); }
+  else if (act === 'in-fine') { const c = lawFine(x); if (!pay(c)) return; lawClear(x); say(`Fine paid. ${gsShort(x)} has no quarrel with you now.`); }
+  else if (act === 'in-alleg') { sgPanelClose(); allegOpen(true); return; }
+  else if (act === 'in-awaken') { sgPanelClose(); awAsk(); return; }
+  else if (act === 'in-meditate') { const ch = charOf(); if (ch?.res) ch.res.pool = resMax(ch); say('The silence fills you. Your Resonance is whole.'); }
+  audio.click(); sgPanelRender();
+};
+/** Inside one of these, the keeper opens the building's panel. */
+const _inTarget = sgTarget;
+sgTarget = function () { const t = _inTarget(); if (t?.kind === 'panel' && SG.cell && !t.p) t.p = SG.cell.sg?.kind; return t; };   // S11-EDIT(§CITY sgTarget): every building's keeper serves it
+const _twIntr = ofInteract;
+ofInteract = function () { const t = twTarget(); if (t && twAct(t)) return; return _twIntr(); };   // S11-EDIT(§ONFOOT ofInteract): titan rooms
+const _twDrops = ofDropsStep;
+ofDropsStep = function (dt) { _twDrops(dt); awStep(dt); if (OF.prompt || !OF.me?.alive) return; const t = twTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): titan prompts, side perks, the jetpack
+
+Object.assign(S9X, { AW, awAwaken, awAsk, awSides, SIDE_PERKS, TW, TITAN, titanSystemRosterNow: (i) => titanSystemRoster(i), bdRoomCentre, hsW, sgPanelOpen, twBoard, twTarget, twAct, inDoors, inKindOf, IN_RENDER, charCreateNow: (o) => charCreate(o), ofAbilityNow: () => ofAbility(), sgPanelActNow: (a) => sgPanelAct(a), setlPriceMulNow2: (f) => setlPriceMul(f) });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
