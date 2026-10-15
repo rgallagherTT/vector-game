@@ -338,6 +338,8 @@
     §ROAM                   the fleets at large: warships of every class and commercial haulers on their rounds
     §SHIPDRESS              ship interiors that look lived in: panels, light, pipes and the furniture of each room
     §HOLOHUD                a holographic flight and field display
+    §FLASHBACK              memories of the life and the Path, surfacing when they want to
+      §FLASHBACK.HUD          the display gets its instruments: a segmented, rotating, breathing reticle cluster
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -706,6 +708,11 @@
     §SBXCONTROL sbxKeys — E walks aboard a hailed ship or a friendly titan before the station keys take it
     §HOMESHIP hsBuildProcedural — boarded ships are dressed
     §PARTRT partRenderHook — the holographic display every frame
+    §PATH pathBecomeResonant — awakening brings the past up with it
+    §AWAKEN awSwitch — turning stirs memory
+    §INTERIORS sgPanelAct — meditation opens the past
+    §SBXUI sbxHandleEscape — Escape ends a flashback
+    §HOLOHUD hxDraw — instruments, the boot, warnings; memories on their clock
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -23550,6 +23557,82 @@ function hxDraw(dt) {
 const _hxRender = partRenderHook;
 partRenderHook = function (alpha, dt) { const r = _hxRender(alpha, dt); try { hxDraw(Math.min(0.1, dt || 1 / 60)); } catch (e) { if (!HX.err) { HX.err = true; console.warn('hud', e); } } return r; };   // S11-EDIT(§PARTRT partRenderHook): the holographic display every frame
 Object.assign(S9X, { SD, sdDress, HX, hxDraw });
+
+// =====================================================================================
+// §FLASHBACK — memories of the life and the Path, surfacing when they want to
+//  The world drains to sepia and slows its breath; a memory plays in a few lines and lets you go.
+//  They come when you awaken or turn, when you meditate at a shrine, when your life is nearly gone,
+//  and now and then in a quiet moment on foot. They are built from your own story: your origin and
+//  the person who raised or stood by you, the life your old class was, what the journal of your
+//  Path recorded (the awakening, the calling, the trials, the forging), your order and your deeds.
+//  Click, or press Escape, to come back early. "Remember" in the pause menu calls one up.
+// =====================================================================================
+const FBK = { el: null, on: false, t: 0, dur: 0, lines: [], next: 600 + Math.random() * 300, lowT: 0, seen: new Set(), stats: { shown: 0 } };
+function fbkMemories() {
+  const ch = charOf(); if (!ch) return []; const P = ch.path || {}; const O = ORIGINS[ch.origin]; const out = [];
+  if (O) { out.push({ title: 'Before everything', lines: [O.desc, O.bond ? `${O.bond.name} — ${O.bond.rel}, ${O.bond.about}` : 'No one waited for you then.'] }); }
+  const old = ch.formerClass || (ch.cls !== 'resonant' ? ch.cls : null); if (old && CLASSES[old]) out.push({ title: `The ${CLASSES[old].name.toLowerCase()}`, lines: [`You were a ${CLASSES[old].name.toLowerCase()} once: ${CLASSES[old].desc.toLowerCase()}`, ch.cls === 'resonant' ? 'Some nights your hands still reach for the old kit.' : 'It is what you know. It may not be all you are.'] });
+  for (const j of (P.journal || []).slice(0, 14)) out.push({ title: 'The Path', lines: [j.line] });
+  if (P.order && ORDERS[P.order]) out.push({ title: ORDERS[P.order].name, lines: [P.order === 'cinder' ? 'The first time the Ember answered, it was like being forgiven for wanting more.' : 'The first time the Quiet answered, the whole room went still and you could hear your own heart.', `${ORDERS[P.order].master?.name || 'Your master'}: "${(ORDERS[P.order].master?.intro || ['Carry it well.'])[0]}"`] });
+  if (ch.blade?.forgedAt) out.push({ title: 'The forging', lines: [`Your blade woke ${ch.blade.colorName || 'bright'} at ${ch.blade.where || 'a quiet place'}.`, 'The heartstone hummed against your palm, warm as a living thing.'] });
+  const d = ch.deeds || {}; if ((d.mercy || 0) + (d.cruelty || 0) > 0) out.push({ title: 'What you have done', lines: [d.mercy >= (d.cruelty || 0) ? `You have let ${d.mercy} go who could have died.` : `You have taken ${d.cruelty} you did not have to.`, 'The Resonance remembers. So do you.'] });
+  if (!out.length) out.push({ title: 'A memory', lines: ['A ship\'s hum. A voice you almost remember. Then it is gone.'] }); return out;
+}
+function fbkShow(mem, why) {
+  if (FBK.on) return; mem = mem || (() => { const M = fbkMemories(); const fresh = M.filter(m => !FBK.seen.has(m.lines[0])); const pick = (fresh.length ? fresh : M)[Math.floor(Math.random() * (fresh.length || M.length))]; return pick; })(); if (!mem) return;
+  FBK.seen.add(mem.lines[0]); if (FBK.seen.size > 40) FBK.seen.clear(); FBK.on = true; FBK.t = 0; FBK.dur = 3.2 + mem.lines.join(' ').length / 22; FBK.stats.shown++;
+  if (!FBK.el) { const d = document.createElement('div'); d.id = 'fbk'; d.innerHTML = '<div class="fbk-in"><small></small><h2></h2><div class="fbk-l"></div></div>'; document.body.appendChild(d); FBK.el = d; d.addEventListener('click', fbkEnd);
+    const css = document.createElement('style'); css.textContent = `#fbk { position: fixed; inset: 0; z-index: 9000; backdrop-filter: blur(3px) sepia(.6); display: none; align-items: center; justify-content: center; cursor: pointer; background: radial-gradient(ellipse at center, rgba(30,20,8,.72) 25%, rgba(12,7,2,.94) 100%); animation: fbkIn 1.2s ease; }
+      #fbk.on { display: flex; } #fbk .fbk-in { max-width: min(640px, 86vw); text-align: center; color: #f4e6c8; text-shadow: 0 2px 12px #000; } #fbk small { letter-spacing: .4em; text-transform: uppercase; opacity: .6; font-size: 11px; }
+      #fbk h2 { font: italic 400 30px Georgia, 'Times New Roman', serif; margin: 8px 0 18px; } #fbk .fbk-l p { font: italic 18px/1.6 Georgia, serif; opacity: 0; animation: fbkLine 1.4s ease forwards; } #fbk.out { animation: fbkOut .9s ease forwards; }
+      @keyframes fbkIn { from { opacity: 0; } to { opacity: 1; } } @keyframes fbkOut { to { opacity: 0; } } @keyframes fbkLine { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } to { opacity: .95; transform: none; filter: none; } }`; document.head.appendChild(css); }
+  FBK.el.querySelector('small').textContent = why || 'a memory'; FBK.el.querySelector('h2').textContent = mem.title; FBK.el.querySelector('.fbk-l').innerHTML = mem.lines.map((l, i) => `<p style="animation-delay:${0.6 + i * 1.3}s">${l}</p>`).join('');
+  FBK.el.classList.remove('out'); FBK.el.classList.add('on'); renderer.domElement.style.transition = 'filter 1.2s'; renderer.domElement.style.filter = 'sepia(.85) saturate(.55) brightness(.75) contrast(1.05) blur(1.2px)'; audio.click?.(true);
+}
+function fbkEnd() { if (!FBK.on) return; FBK.on = false; FBK.el.classList.add('out'); renderer.domElement.style.filter = ''; setTimeout(() => { if (!FBK.on) FBK.el.classList.remove('on', 'out'); }, 900); }
+function fbkStep(dt) {
+  if (FBK.on) { FBK.t += dt; if (FBK.t >= FBK.dur) fbkEnd(); return; } if (game.mode !== 'sandbox' || !charOf()) return; const me = OF.me;
+  if (MM.mode === 'ON_FOOT' && me?.alive) { const calm = !OF.units.some(u => u.alive && u.team === 'hostile' && u.pos.distanceTo(me.pos) < 70); FBK.next -= dt * (calm ? 1 : 0); if (FBK.next <= 0) { FBK.next = 540 + Math.random() * 420; fbkShow(null, 'a memory surfaces'); }
+    FBK.lowT -= dt; if (me.hp / me.hpMax < 0.15 && FBK.lowT <= 0) { FBK.lowT = 180; fbkShow(null, 'your life flashes past'); } }
+}
+const _fbkBecome = pathBecomeResonant;
+pathBecomeResonant = function () { const was = charOf()?.cls; const r = _fbkBecome(); if (was !== 'resonant' && charOf()?.cls === 'resonant') setTimeout(() => fbkShow(fbkMemories()[0], 'as the Resonance wakes, you remember'), 1600); return r; };   // S11-EDIT(§PATH pathBecomeResonant): awakening brings the past up with it
+const _fbkTurn = awSwitch;
+awSwitch = function (side) { const r = _fbkTurn(side); setTimeout(() => fbkShow(null, side === 'ember' ? 'the fire remembers for you' : 'in the stillness, you remember'), 1200); return r; };   // S11-EDIT(§AWAKEN awSwitch): turning stirs memory
+const _fbkAct = sgPanelAct;
+sgPanelAct = function (a) { const r = _fbkAct(a); if (a === 'in-meditate') { sgPanelClose(); setTimeout(() => fbkShow(null, 'in meditation'), 400); } return r; };   // S11-EDIT(§INTERIORS sgPanelAct): meditation opens the past
+const _fbkEsc = sbxHandleEscape;
+sbxHandleEscape = function () { if (FBK.on) { fbkEnd(); return true; } return _fbkEsc(); };   // S11-EDIT(§SBXUI sbxHandleEscape): Escape ends a flashback
+(function fbkUI() { const pause = document.querySelector('#s-paused .card'); if (!pause) return; const b = document.createElement('button'); b.textContent = 'Remember'; b.title = 'Call up a memory of your life and your Path'; b.onclick = () => { if (typeof screen !== 'undefined' && screen === SCREEN.PAUSED) setScreen(SCREEN.PLAYING); setTimeout(() => fbkShow(null, 'you let yourself remember'), 200); }; pause.appendChild(b); })();
+// "Touched" is no longer offered at creation (saves that have it keep it)
+if (ORIGIN_ORDER.includes('touched')) ORIGIN_ORDER.splice(ORIGIN_ORDER.indexOf('touched'), 1);
+
+// §FLASHBACK.HUD — the display gets its instruments: a segmented, rotating, breathing reticle cluster
+const HX2 = { boot: 0, mode: null };
+function hx2Draw(dt) {
+  const c = HX.cv; if (!c) return; const g = HX.g; const W = window.innerWidth, H = window.innerHeight; const mode = MM.mode;
+  const live = game.mode === 'sandbox' && SBX.active && !SBX.profile?.docked && ['SPACE', 'ON_FOOT', 'ON_FOOT_ABOARD', 'SURFACE_SHIP', 'SURFACE_ROVER'].includes(mode) && !FBK.on && !(typeof screen !== 'undefined' && screen === SCREEN.PAUSED); if (!live) return;
+  if (mode !== HX2.mode) { HX2.mode = mode; HX2.boot = 0; } HX2.boot = Math.min(1, HX2.boot + dt * 1.6);
+  const A = (a) => tk('--accent', a), AL = (a) => tk('--alert', a); const cx = W / 2, cy = H / 2; const R = Math.min(W, H) * 0.16; const T = HX.t; const b = HX2.boot; const e = 1 - Math.pow(1 - b, 3);
+  const foot = mode === 'ON_FOOT' || mode === 'ON_FOOT_ABOARD'; const pl = world.player; const me = OF.me; const low = foot ? (me && me.hp / me.hpMax < 0.3) : (pl && pl.maxHull && pl.hull / pl.maxHull < 0.3); const pulse = low ? 0.5 + 0.5 * Math.sin(T * 8) : 0;
+  // the outer ring: 48 segments, slowly turning, a brighter sweep riding it
+  const r0 = (R + 34) * e; g.lineWidth = 2; for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2 + T * 0.12; const sweep = (Math.cos(a - T * 1.3) + 1) / 2; if (i % 12 === 0) continue; g.strokeStyle = low ? AL(0.15 + 0.5 * pulse) : A(0.08 + 0.35 * Math.pow(sweep, 6)); g.beginPath(); g.arc(cx, cy, r0, a, a + Math.PI * 2 / 48 * 0.62); g.stroke(); }
+  // inner ring: counter-rotating dashes and four chevrons
+  g.setLineDash([3, 9]); g.lineDashOffset = -T * 20; g.strokeStyle = A(0.3); g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, R * 0.42 * e, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4 - T * 0.4; const x = cx + Math.cos(a) * R * 0.55 * e, y = cy + Math.sin(a) * R * 0.55 * e; g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); g.fillStyle = A(0.6); g.beginPath(); g.moveTo(0, -4); g.lineTo(4, 3); g.lineTo(-4, 3); g.closePath(); g.fill(); g.restore(); }
+  // segment ticks laid over the main arcs (makes them read as instruments, not lines)
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 2; for (const [a0, a1] of [[Math.PI * 0.62, Math.PI * 1.38], [-Math.PI * 0.38, Math.PI * 0.38]]) for (let i = 1; i < 20; i++) { const a = a0 + (a1 - a0) * i / 20; g.beginPath(); g.moveTo(cx + Math.cos(a) * (R - 4), cy + Math.sin(a) * (R - 4)); g.lineTo(cx + Math.cos(a) * (R + 4), cy + Math.sin(a) * (R + 4)); g.stroke(); }
+  // warning chevrons when the hull or your body is failing
+  if (low) { g.fillStyle = AL(0.4 + 0.5 * pulse); g.textAlign = 'center'; g.font = `700 13px ${getComputedStyle(document.body).getPropertyValue('--font-display') || 'system-ui'}`; g.fillText(foot ? '▲ VITALS CRITICAL ▲' : '▲ HULL CRITICAL ▲', cx, cy - R - 92); }
+  // the boot: rings expand from the centre when the display comes up
+  if (b < 1) { g.strokeStyle = A(0.6 * (1 - b)); g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R * 2.4 * e, 0, Math.PI * 2); g.stroke(); g.fillStyle = A(0.8 * (1 - b)); g.textAlign = 'center'; g.font = '600 11px monospace'; g.fillText(foot ? 'FIELD SYSTEMS ONLINE' : 'FLIGHT SYSTEMS ONLINE', cx, cy + R * 1.5); }
+  // telemetry ticker, bottom right of the reticle
+  g.textAlign = 'left'; g.font = '10px monospace'; g.fillStyle = A(0.45); const lines = foot && me ? [`POS ${me.pos.x.toFixed(0)} ${me.pos.z.toFixed(0)}`, `DEF ${Math.round(me.defl)}/${Math.round(me.deflMax)}`, `T+${(OF.t || 0).toFixed(1)}`] : pl ? [`SYS ${SBX.sys?.name || '--'}`, `VEL ${pl.vel.length().toFixed(0)}`, `CAP ${pl.sbx ? Math.round(pl.sbx.cap ?? 0) : '--'}`] : [];
+  lines.forEach((l, i) => g.fillText(l, cx + R + 46, cy + R * 0.55 + i * 13));
+}
+const _hx2 = hxDraw;
+hxDraw = function (dt) { _hx2(dt); try { hx2Draw(dt); } catch (e) { if (!HX2.err) { HX2.err = true; console.warn('hud2', e); } } fbkStep(dt); };   // S11-EDIT(§HOLOHUD hxDraw): instruments, the boot, warnings; memories on their clock
+Object.assign(S9X, { FBK, fbkShow, fbkEnd, fbkMemories, hx2Draw, ORIGIN_ORDER });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
