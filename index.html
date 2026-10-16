@@ -24556,7 +24556,7 @@ function icFlameStep(me, dt) {
   IC.flameOn = hold && IC.flame > 0.02; if (!IC.flameOn) { IC.flame = Math.min(1, IC.flame + dt / 5); return; }
   IC.flame = Math.max(0, IC.flame - dt / 7); me.yaw = OF.cam.yaw; me.act = 'fire'; me.actT = 0;
   const mz = ofMuzzle(me, _lkv[20] || (_lkv[20] = new THREE.Vector3()));
-  for (let i = 0; i < 2; i++) { const s = 9 + Math.random() * 7; world.particles.emit(mz, _lkv[21] = (_lkv[21] || new THREE.Vector3()).set(f.x * s + (Math.random() - 0.5) * 3, (Math.random() - 0.2) * 2 + Math.sin(OF.cam.pitch) * s, f.z * s + (Math.random() - 0.5) * 3), 0.5 + Math.random() * 0.3, 0.5 + Math.random() * 0.4, Math.random() < 0.5 ? 0xff7a1a : 0xffc040, 0.5); }
+  for (let i = 0; i < 0; i++) { const s = 9 + Math.random() * 7; world.particles.emit(mz, _lkv[21] = (_lkv[21] || new THREE.Vector3()).set(f.x * s + (Math.random() - 0.5) * 3, (Math.random() - 0.2) * 2 + Math.sin(OF.cam.pitch) * s, f.z * s + (Math.random() - 0.5) * 3), 0.5 + Math.random() * 0.3, 0.5 + Math.random() * 0.4, Math.random() < 0.5 ? 0xff7a1a : 0xffc040, 0.5); }
   for (const v of OF.units) { if (v === me || !v.alive || !ofHostile(me, v)) continue; const d = _lkv[22] = (_lkv[22] || new THREE.Vector3()).subVectors(v.pos, me.pos); const L = d.setY(0).length(); if (L > 10 || f.angleTo(d.normalize()) > 0.5) continue; ofDamage(v, 55 * dt, me, { kind: 'fire', dir: d }); v.burn = Math.max(v.burn || 0, 3); v.burnBy = me; if (v.ai && Math.random() < dt) v.flee = 2; }
   if (Math.random() < dt * 8) audio.blaster?.(70, 0.25);
 }
@@ -24636,7 +24636,7 @@ charAnimate = function (r, st, dt) {   // S11-EDIT(§CHARACTER.ANIM charAnimate)
     else if (a === 'melee_heavy') { B[CHB.rUpperArm].rotation.x = lerp(-2.9 * wind, -0.5, cut); B[CHB.lUpperArm].rotation.x = lerp(-2.7 * wind, -0.6, cut); B[CHB.chest].rotation.x = lerp(-0.3 * wind, 0.55, cut); B[CHB.spine].rotation.x += 0.25 * cut; B[0].position.y -= 0.08 * cut; }
     else { B[CHB.rUpperArm].rotation.x = lerp(-0.9 * wind, -1.55, cut); B[CHB.rForearm].rotation.x = lerp(-1.6 * wind, 0, cut); B[CHB.chest].rotation.y = lerp(-0.5 * wind, 0.3, cut); B[CHB.spine].rotation.x += 0.3 * cut; B[CHB.lThigh].rotation.x -= 0.5 * cut; B[CHB.rShin].rotation.x += 0.4 * cut; } }
   // ease the upper body toward its pose unless an action wants it snappy
-  const snappy = a === 'melee_light' || a === 'melee_heavy' || a === 'lunge' || a === 'parry' || a === 'clash' || a === 'fire'; const k = 1 - Math.exp(-(snappy ? 40 : 14) * dt);
+  const snappy = a === 'melee_light' || a === 'melee_heavy' || a === 'lunge' || a === 'parry' || a === 'clash' || a === 'fire'; const k = snappy ? 1 : 1 - Math.exp(-14 * dt);
   AN_UPPER.forEach((bi, i) => { const q = B[bi].quaternion; A.q[i].slerp(q, k); q.copy(A.q[i]); });
 };
 
@@ -24645,7 +24645,7 @@ const _lkRender = partRenderHook;
 partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): lock-on and the arsenal markers
   const r = _lkRender(alpha, dt); try { const C = lkStep(dt || 1 / 60); lkDraw(C); if (MM.mode === 'SPACE') lkSpaceHoming(dt || 1 / 60); if (LK.g && IC.seek) icSeekDraw(LK.g); } catch (e) { console.warn('[lockon]', e); } return r;
 };
-Object.assign(S9X, { LK, lkStep, lkCands, IC, icTrapThrow, hsOwner, hsGuard, AB_DIR });
+Object.assign(S9X, { LK, lkStep, lkCands, IC, icTrapThrow, hsOwner, hsGuard, AB_DIR, charAnimateBase: (...a) => _anAnim(...a) });
 
 
 // =====================================================================================
@@ -24847,7 +24847,7 @@ function afxFireTex() {
 const AFX = { flame: null, light: null, tex: null, missiles: [], trapLights: [] };
 function afxFlameInit() {
   if (AFX.flame) return; AFX.tex = afxFireTex(); const grp = new THREE.Group();
-  for (const [r, len, op, col] of [[1.7, 10, 0.12, 0xff6a10], [1.0, 9, 0.15, 0xff9a30], [0.4, 6.5, 0.18, 0xffd890]]) {
+  for (const [r, len, op, col] of [[1.7, 10, 0.22, 0xff6a10], [1.0, 9, 0.3, 0xff9a30], [0.4, 6.5, 0.38, 0xffd890]]) {
     const geo = new THREE.ConeGeometry(r, len, 18, 1, true).rotateX(-Math.PI / 2).translate(0, 0, len / 2); const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: AFX.tex.clone(), color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     m.material.map.wrapS = m.material.map.wrapT = THREE.RepeatWrapping; m.material.map.needsUpdate = true; m.userData.spd = 1.6 + r; grp.add(m); }
   AFX.light = new THREE.PointLight(0xff8a30, 0, 18, 1.6); grp.add(AFX.light); AFX.light.position.set(0, 0, 3); grp.visible = false; scene.add(grp); AFX.flame = grp;
@@ -24857,7 +24857,7 @@ function afxFlameStep(dt) {
   if (WPN_ASSETS.flamer && !F.userData.asset) { F.userData.asset = WPN_ASSETS.flamer.clone(true); F.add(F.userData.asset); }
   const mz = ofMuzzle(me, _afv[0]); F.position.copy(mz); F.rotation.set(0, 0, 0); F.lookAt(_afv[1].set(mz.x + Math.sin(OF.cam.yaw), mz.y + Math.sin(OF.cam.pitch) * 0.6, mz.z + Math.cos(OF.cam.yaw)));
   const t = performance.now() / 1000; F.children.forEach((m, i) => { if (!m.material?.map) return; m.material.map.offset.y = -t * m.userData.spd; m.scale.set(1 + Math.sin(t * 23 + i) * 0.08, 1 + Math.cos(t * 19 + i) * 0.08, 0.9 + Math.random() * 0.2); });
-  AFX.light.intensity = 1.2 + Math.random() * 0.8; if (Math.random() < 0.6) world.particles.emit(_afv[2].copy(mz).addScaledVector(_afv[3].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)), 6 + Math.random() * 3), _afv[4].set((Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2), 0.9, 0.8, 0x3a2a20, 0.5);
+  AFX.light.intensity = 2 + Math.random() * 1.2; if (Math.random() < 0.6) world.particles.emit(_afv[2].copy(mz).addScaledVector(_afv[3].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)), 6 + Math.random() * 3), _afv[4].set((Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2), 0.9, 0.8, 0x3a2a20, 0.5);
 }
 const _afv = Array.from({ length: 12 }, () => new THREE.Vector3());
 // the shock trap: a proper emitter instead of a disc
