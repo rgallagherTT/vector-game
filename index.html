@@ -358,6 +358,7 @@
     §OPS                    your side calls with work: raids, strikes, rescues, recoveries
     §DECKS                  the ship interiors are bigger: every boardable warship's deck plan is 1.6× the
     §DASH2                  the dashboard, again, louder: glowing animated frames that draw themselves in,
+    §ARSENALFX              the Ironclad's weapons look like weapons
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -773,6 +774,7 @@
     §CITY sgPanelAct — the new places
     §SYSTEM sbxSpawnNPC — no foreign raiders in a power's home space
     §WARSHIPS wsSpawn — ambient ships fly the home colours
+    §ROAM rmSpawnAll — names follow the colours they fly
     §SYSTEM sbxLoadSystem — the home guard meets you at the door
     §ONFOOT.BOLTS ofBolt — locked shots fly true
     §ONFOOT.BOLTS ofBoltStep — homing bolts steer onto their target
@@ -785,12 +787,17 @@
     §PARTRT partRenderHook — lock-on and the arsenal markers
     §COMMS commsTick — operations calls
     §TITANWALK twBoard — transports open their hangar deck
-    §MODES SPACE.update — the transport comes for you
+    §MODEMGR SPACE.pre — the space update chain finally runs
+    §MODES SPACE.post — the transport comes for you
     §ONFOOT.STEP OF.step — the drop squadron forms up
     §ONFOOT ofInteract — the hangar
     §ONFOOT ofDropsStep — hangar prompts
     §BOARDING bdLayout — bigger decks; transports carry a hangar
     §PARTRT partRenderHook — the status strip
+    §IRONCLAD2 icTrapThrow — the emitter model and its ground ring
+    §IRONCLAD2 icSeekStep — missiles with bodies and smoke
+    §ONFOOT.STEP OF.step — the arsenal's effects
+    §ONFOOT OF.exit — effects go with the world
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -24549,7 +24556,7 @@ function icFlameStep(me, dt) {
   IC.flameOn = hold && IC.flame > 0.02; if (!IC.flameOn) { IC.flame = Math.min(1, IC.flame + dt / 5); return; }
   IC.flame = Math.max(0, IC.flame - dt / 7); me.yaw = OF.cam.yaw; me.act = 'fire'; me.actT = 0;
   const mz = ofMuzzle(me, _lkv[20] || (_lkv[20] = new THREE.Vector3()));
-  for (let i = 0; i < 6; i++) { const s = 9 + Math.random() * 7; world.particles.emit(mz, _lkv[21] = (_lkv[21] || new THREE.Vector3()).set(f.x * s + (Math.random() - 0.5) * 3, (Math.random() - 0.2) * 2 + Math.sin(OF.cam.pitch) * s, f.z * s + (Math.random() - 0.5) * 3), 0.55 + Math.random() * 0.3, 1.2 + Math.random(), Math.random() < 0.5 ? 0xff7a1a : 0xffc040, 1.6); }
+  for (let i = 0; i < 2; i++) { const s = 9 + Math.random() * 7; world.particles.emit(mz, _lkv[21] = (_lkv[21] || new THREE.Vector3()).set(f.x * s + (Math.random() - 0.5) * 3, (Math.random() - 0.2) * 2 + Math.sin(OF.cam.pitch) * s, f.z * s + (Math.random() - 0.5) * 3), 0.5 + Math.random() * 0.3, 0.5 + Math.random() * 0.4, Math.random() < 0.5 ? 0xff7a1a : 0xffc040, 0.5); }
   for (const v of OF.units) { if (v === me || !v.alive || !ofHostile(me, v)) continue; const d = _lkv[22] = (_lkv[22] || new THREE.Vector3()).subVectors(v.pos, me.pos); const L = d.setY(0).length(); if (L > 10 || f.angleTo(d.normalize()) > 0.5) continue; ofDamage(v, 55 * dt, me, { kind: 'fire', dir: d }); v.burn = Math.max(v.burn || 0, 3); v.burnBy = me; if (v.ai && Math.random() < dt) v.flee = 2; }
   if (Math.random() < dt * 8) audio.blaster?.(70, 0.25);
 }
@@ -24567,7 +24574,7 @@ function icTrapStep(dt) {
     const p = T.arc.geometry.attributes.position; for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, r = 0.3 + Math.random() * 0.9; p.setXYZ(i * 2, 0, 0.12, 0); p.setXYZ(i * 2 + 1, Math.cos(a) * r, 0.12 + Math.random() * 0.5, Math.sin(a) * r); } p.needsUpdate = true;
     if (T.armed > 0 || T.cd > 0) continue; const hit = OF.units.filter(v => v.alive && v !== OF.me && OF.me && ofHostile(OF.me, v) && v.kind !== 'vehicle' && Math.hypot(v.pos.x - T.pos.x, v.pos.z - T.pos.z) < 3.5);
     if (hit.length) { T.cd = 2.5; const chain = OF.units.filter(v => v.alive && v !== OF.me && ofHostile(OF.me, v) && v.kind !== 'vehicle' && Math.hypot(v.pos.x - T.pos.x, v.pos.z - T.pos.z) < 7);
-      for (const v of chain) { v.stun = Math.max(v.stun || 0, 4); ofDamage(v, 30, OF.me, { kind: 'power', pierce: true }); world.sparks(ofChest(v, _lkv[24] || (_lkv[24] = new THREE.Vector3())), 14, 0x9fd8ff); IC_FX.bolt(T.pos, v); } shake.add(0.08); } }
+      for (const v of chain) { v.stun = Math.max(v.stun || 0, 4); ofDamage(v, 30, OF.me, { kind: 'power', pierce: true }); world.sparks(ofChest(v, _lkv[24] || (_lkv[24] = new THREE.Vector3())), 6, 0x9fd8ff); IC_FX.bolt(T.pos, v); } shake.add(0.08); } }
 }
 const IC_FX = { list: [], bolt(from, v) { const pts = []; const a = new THREE.Vector3(from.x, from.y + 0.3, from.z), b = ofChest(v, new THREE.Vector3()); for (let i = 0; i <= 8; i++) { const p = a.clone().lerp(b, i / 8); if (i && i < 8) p.add(new THREE.Vector3((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8)); pts.push(p); }
   const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xbfe8ff, toneMapped: false, transparent: true })); l.frustumCulled = false; scene.add(l); this.list.push({ l, t: 0.25 }); },
@@ -24819,6 +24826,75 @@ partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): 
   return r;
 };
 Object.assign(S9X, { OPS, OPS_JOBS, OPS_ASSETS, opsDraft, opsQuest, opsSpawnTransport, opsHangar, opsLaunch, opsHangarTarget, DK_SCALE, commsRingNow: (...a) => commsRing(...a), twBoardNow: (t) => twBoard(t) });
+
+
+// =====================================================================================
+// §ARSENALFX — the Ironclad's weapons look like weapons
+//  Flamethrower: a roaring cone of layered additive fire with a hot core, a flickering light
+//  on everything it touches and scorch embers. Shock trap: a three-legged emitter with a live
+//  coil and a pulsing ground ring; when it fires, forked lightning and a blue flash. Seeker
+//  volley: real micro-missiles (body, fins, burning motor) that climb, turn and dive on their
+//  marks, each with a smoke trail. Every model can be replaced by a supplied asset:
+//  WPN_ASSETS.flamer / .trap / .seeker (a THREE.Object3D) — wpnAssetLoad(name, url) loads a GLB.
+// =====================================================================================
+const WPN_ASSETS = { flamer: null, trap: null, seeker: null };
+function wpnAssetLoad(name, url) { return new Promise((res, rej) => new GLTFLoader().load(url, (g) => { WPN_ASSETS[name] = g.scene; res(g.scene); }, undefined, rej)); }
+function afxFireTex() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+  for (let i = 0; i < 260; i++) { const y = Math.random() * 256, x = 32 + (Math.random() - 0.5) * (8 + y * 0.18), r = 4 + Math.random() * (6 + y * 0.05); const gr = g.createRadialGradient(x, y, 0, x, y, r); const h = y / 256; gr.addColorStop(0, `rgba(255,${Math.round(240 - h * 160)},${Math.round(160 - h * 150)},${0.5 - h * 0.25})`); gr.addColorStop(1, 'rgba(255,80,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const AFX = { flame: null, light: null, tex: null, missiles: [], trapLights: [] };
+function afxFlameInit() {
+  if (AFX.flame) return; AFX.tex = afxFireTex(); const grp = new THREE.Group();
+  for (const [r, len, op, col] of [[1.7, 10, 0.12, 0xff6a10], [1.0, 9, 0.15, 0xff9a30], [0.4, 6.5, 0.18, 0xffd890]]) {
+    const geo = new THREE.ConeGeometry(r, len, 18, 1, true).rotateX(-Math.PI / 2).translate(0, 0, len / 2); const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: AFX.tex.clone(), color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.material.map.wrapS = m.material.map.wrapT = THREE.RepeatWrapping; m.material.map.needsUpdate = true; m.userData.spd = 1.6 + r; grp.add(m); }
+  AFX.light = new THREE.PointLight(0xff8a30, 0, 18, 1.6); grp.add(AFX.light); AFX.light.position.set(0, 0, 3); grp.visible = false; scene.add(grp); AFX.flame = grp;
+}
+function afxFlameStep(dt) {
+  const me = OF.me; const on = typeof IC !== 'undefined' && IC.flameOn && me?.alive && MM.mode === 'ON_FOOT'; if (!on && !AFX.flame) return; afxFlameInit(); const F = AFX.flame; F.visible = !!on; if (!on) { AFX.light.intensity = 0; return; }
+  if (WPN_ASSETS.flamer && !F.userData.asset) { F.userData.asset = WPN_ASSETS.flamer.clone(true); F.add(F.userData.asset); }
+  const mz = ofMuzzle(me, _afv[0]); F.position.copy(mz); F.rotation.set(0, 0, 0); F.lookAt(_afv[1].set(mz.x + Math.sin(OF.cam.yaw), mz.y + Math.sin(OF.cam.pitch) * 0.6, mz.z + Math.cos(OF.cam.yaw)));
+  const t = performance.now() / 1000; F.children.forEach((m, i) => { if (!m.material?.map) return; m.material.map.offset.y = -t * m.userData.spd; m.scale.set(1 + Math.sin(t * 23 + i) * 0.08, 1 + Math.cos(t * 19 + i) * 0.08, 0.9 + Math.random() * 0.2); });
+  AFX.light.intensity = 1.2 + Math.random() * 0.8; if (Math.random() < 0.6) world.particles.emit(_afv[2].copy(mz).addScaledVector(_afv[3].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)), 6 + Math.random() * 3), _afv[4].set((Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2), 0.9, 0.8, 0x3a2a20, 0.5);
+}
+const _afv = Array.from({ length: 12 }, () => new THREE.Vector3());
+// the shock trap: a proper emitter instead of a disc
+const _afTrap = icTrapThrow;
+icTrapThrow = function (me) {   // S11-EDIT(§IRONCLAD2 icTrapThrow): the emitter model and its ground ring
+  const n0 = IC.traps.length; const r = _afTrap(me); const T = IC.traps[IC.traps.length - 1]; if (IC.traps.length === n0 && n0 < 3 || !T || T.dressed) return r; T.dressed = true;
+  const G = T.grp; G.children[0].visible = false; if (WPN_ASSETS.trap) { G.add(WPN_ASSETS.trap.clone(true)); } else {
+    const metal = new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.8, roughness: 0.35 }), glow = new THREE.MeshBasicMaterial({ color: 0x4f98c8 });
+    for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.75, 6), metal); leg.position.set(Math.cos(a) * 0.28, 0.3, Math.sin(a) * 0.28); leg.rotation.set(Math.sin(a) * 0.45, 0, -Math.cos(a) * 0.45); G.add(leg); }
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.32, 10), metal); body.position.y = 0.62; G.add(body);
+    T.coil = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.045, 8, 20), glow); T.coil.position.y = 0.86; T.coil.rotation.x = Math.PI / 2; G.add(T.coil);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), glow); tip.position.y = 1.0; G.add(tip); T.tip = tip; }
+  T.ring = new THREE.Mesh(new THREE.RingGeometry(3.3, 3.45, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3f88b8, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })); T.ring.position.y = 0.05; G.add(T.ring);
+  T.light = new THREE.PointLight(0x7fd0ff, 0.8, 9, 2); T.light.position.y = 1; G.add(T.light); T.arc.position.y = 0.75; return r;
+};
+function afxTrapStep(dt) { const t = performance.now() / 1000; for (const T of IC.traps) { if (!T.dressed) continue; if (T.coil) T.coil.rotation.z += dt * 6; const fired = T.cd > 2.2; if (T.ring) { T.ring.material.opacity = fired ? 0.45 : 0.15 + 0.1 * Math.sin(t * 4); T.ring.scale.setScalar(fired ? 1 + (2.5 - T.cd) * 0.6 : 1); } if (T.light) T.light.intensity = fired ? 2.2 : 0.3 + 0.2 * Math.sin(t * 9); } }
+// seeker darts: a missile body rides each homing bolt, trailing smoke
+function afxMissileMesh() {
+  if (WPN_ASSETS.seeker) return WPN_ASSETS.seeker.clone(true); const g = new THREE.Group(); const body = new THREE.MeshStandardMaterial({ color: 0xc8c0b0, metalness: 0.6, roughness: 0.4 }), red = new THREE.MeshStandardMaterial({ color: 0xb03020, metalness: 0.3, roughness: 0.5 });
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8).rotateX(Math.PI / 2), body)); const nose = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 8).rotateX(Math.PI / 2), red); nose.position.z = 0.45; g.add(nose);
+  for (let k = 0; k < 4; k++) { const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.14), red); fin.position.set(Math.cos(k * Math.PI / 2) * 0.09, Math.sin(k * Math.PI / 2) * 0.09, -0.28); fin.rotation.z = k * Math.PI / 2; g.add(fin); }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.35, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffb050, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending })); flame.position.z = -0.52; g.add(flame); return g;
+}
+const _afSeekStep = icSeekStep;
+icSeekStep = function (me, dt) {   // S11-EDIT(§IRONCLAD2 icSeekStep): missiles with bodies and smoke
+  const before = new Set(OF.bolts); _afSeekStep(me, dt);
+  for (const b of OF.bolts) if (!before.has(b) && b.homing && b.rocket) { const m = afxMissileMesh(); scene.add(m); AFX.missiles.push({ b, m, t: 0 }); }
+};
+function afxMissileStep(dt) {
+  for (let i = AFX.missiles.length - 1; i >= 0; i--) { const M = AFX.missiles[i]; M.t += dt; const b = M.b; if (!b.on || M.t > 4) { if (b.pos) world.explode?.(b.pos, 0.35, 0xffa040); scene.remove(M.m); AFX.missiles.splice(i, 1); continue; }
+    M.m.position.copy(b.pos); M.m.lookAt(_afv[5].copy(b.pos).add(b.vel)); if (Math.random() < 0.5) world.particles.emit(b.pos, _afv[6].set((Math.random() - 0.5) * 0.6, 0.4, (Math.random() - 0.5) * 0.6), 0.7, 0.35, 0x3a3430, 0.3); }
+}
+const _afStep = OF.step;
+OF.step = function (dt) { _afStep(dt); try { afxFlameStep(dt); afxTrapStep(dt); afxMissileStep(dt); } catch (e) { console.warn('[arsenal fx]', e); } };   // S11-EDIT(§ONFOOT.STEP OF.step): the arsenal's effects
+const _afExit = OF.exit;
+OF.exit = function (next, o) { if (AFX.flame) AFX.flame.visible = false; for (const M of AFX.missiles) scene.remove(M.m); AFX.missiles.length = 0; return _afExit(next, o); };   // S11-EDIT(§ONFOOT OF.exit): effects go with the world
+Object.assign(S9X, { WPN_ASSETS, wpnAssetLoad, AFX, icTrapThrowNow: (m) => icTrapThrow(m), charAnimateNow: (...a) => charAnimate(...a) });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
