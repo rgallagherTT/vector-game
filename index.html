@@ -25242,6 +25242,12 @@ Object.assign(S9X, { PD, pdHit, pdBreak, VARN, varnLoad, varnModel, VG, vgSet, v
 //  knocks back), spear (a lunging thrust that runs through a line), and the cord (a 12 m lash
 //  that drags its target to you, stunned). Each shows its own Varn model and leaves a trail.
 // =====================================================================================
+// throws land within 14 m whatever the planet's gravity (low-g worlds sent bodies 50 m)
+const _vmThrow = ofThrow;
+ofThrow = function (u, vel) {   // S11-EDIT(§ONFOOT ofThrow): a throw lands within 14 m
+  const g = ofGrav(); const vy = Math.max(1, vel.y); const hv = Math.hypot(vel.x, vel.z); const air = 2 * vy / g; const d = hv * air * 0.85;
+  if (d > 14) { const k = 14 / d; vel = vel.clone(); vel.x *= k; vel.z *= k; } if (vy > 7) { vel = vel.clone(); vel.y = 7; } return _vmThrow(u, vel);
+};
 const VM = { list: ['varn_baton', 'varn_warblade', 'varn_glaive', 'varn_spear', 'varn_cord'], i: 0, cd: 0,
   def: { varn_baton: { name: 'Shock baton', dmg: 45, reach: 2.8, arc: 1.0, cd: 0.9, stun: 1.6, col: 0x9fd8ff, act: 'melee_heavy' },
     varn_warblade: { name: 'Warblade', dmg: 75, reach: 3.0, arc: 1.3, cd: 0.75, col: 0xffb070, act: 'melee_light' },
