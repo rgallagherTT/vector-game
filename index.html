@@ -369,6 +369,7 @@
     §WORLDSCALE             bigger cities, more villages, longer days, airports only
     §RAIL                   maglev lines between the settlements of a world
     §BASES                  military bases in the open country
+    §FREEWALK               the villages are walkable
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -834,12 +835,14 @@
     §ONFOOT.STEP OF.step — cycle the clan's melee pieces
     §RESONANCE resHud — the melee piece in the arsenal list
     §SURFACE touchdown — no landing clearance off the airports
+    §PLANETS srfMakeHeight — military bases sit on graded pads
     §SBXUI sbxOverviewEntries — bases and the station
     §SURFACE spawnSiteObjects — airfield, rail line, bases
     §SURFACE shutdownVisuals — they go with the site
     §SURFACE weather — trains and bases tick
     §ONFOOT ofInteract — the station
     §ONFOOT ofDropsStep — station prompt
+    §SETTLEMENT.BUILD setlBuild — collision traced from each house's own walls
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -18944,7 +18947,9 @@ const _setlHBase = srfMakeHeight;
 srfMakeHeight = function (site) {   // S10-EDIT(§PLANETS srfMakeHeight): settlements stand on graded ground
   const H = _setlHBase(site); const planet = SRF.planet || sbxPlanetOf(SBX.profile?.systemId); const T = planet ? setlOf(planet, site) : null; if (!T || rkvCraterOf(site)) return H;
   const B = BIOMES[site.biome]; let H0 = H(T.x, T.z); if (B?.water != null) H0 = Math.max(H0, B.water + 1.2); const R = T.R, G = SETL_CFG.grade;
-  return (x, z) => { const h = H(x, z); const d = Math.hypot(x - T.x, z - T.z); if (d >= R + G) return h; if (d <= R) return H0; return lerp(H0, h, smooth01((d - R) / G)); };
+  // S11-EDIT(§FREEWALK): beyond the disk the ground may rise or fall at most SETL_CFG.climb per metre, so every side can be walked
+  const K = SETL_CFG.climb || 9;
+  return (x, z) => { const h = H(x, z); const d = Math.hypot(x - T.x, z - T.z); if (d <= R) return H0; const v = d >= R + G ? h : lerp(H0, h, smooth01((d - R) / G)); const lim = K * (d - R); return H0 + clamp(v - H0, -lim, lim); };
 };
 
 // §SETTLEMENT.LAYOUT — plaza, streets, frontages; services first, then homes; dressing by owner
@@ -18977,7 +18982,7 @@ function setlLayout(T, owner, scars) {
         claim(cx - hx, cz - hz, cx + hx, cz + hz); const yaw = F.axis === 'x' ? (F.side > 0 ? Math.PI : 0) : (F.side > 0 ? -Math.PI / 2 : Math.PI / 2);
         const dr = setlDoorOf(id, svc !== 'home' && !SETL_SVC[svc]?.cell); const dp = setlRot(dr.p.x, dr.p.z, yaw); const df = setlRot(dr.f.x, dr.f.z, yaw);
         const lot = { i: L.lots.length, id, base, svc, x: cx, z: cz, yaw, w: fw, d: fd, h: fh, axis: F.axis, along, door: { x: cx + dp.x, z: cz + dp.z, fx: df.x, fz: df.z } };
-        L.lots.push(lot); const gap = [0.5, 1, 1, 4][Math.floor(rng() * 4)]; F.pos += fw + gap;
+        L.lots.push(lot); const gap = (SETL_CFG.alley || [0.5, 1, 1, 4])[Math.floor(rng() * 4)]; F.pos += fw + gap;
         if (gap >= 4) { const ga = F.dir * (F.pos - 2), go = F.side * (SW + WK + 2.2); const ax = F.axis === 'x' ? ga : go, az = F.axis === 'x' ? go : ga; const k = rng();
           item(setlPid(T, k < 0.4 ? 'set_crate_stack' : k < 0.7 ? 'set_barrel' : 'set_crate_large'), ax, az, rng() * 6.28, { r: 0.75, h: 1.5, scar: true }); }
         return lot; }
@@ -25153,7 +25158,7 @@ function pdStep(dt) {
 // what is broken stays broken while you are on this site
 const _pdBuild = ofBuildProps;
 ofBuildProps = function (cx, cz) {   // S11-EDIT(§ONFOOT.PROPS ofBuildProps): broken things stay broken
-  const r = _pdBuild(cx, cz); if (typeof MB !== 'undefined' && MB.list.length) for (let i = OF.props.length - 1; i >= 0; i--) { const p = OF.props[i]; if (p.kind !== 'wall' && p.im && MB.list.some(B => Math.hypot(p.x - B.x, p.z - B.z) < 56)) { p.im.getMatrixAt(p.ii, _pdM2); _pdM.makeScale(0.0001, 0.0001, 0.0001); _pdM.copyPosition(_pdM2); p.im.setMatrixAt(p.ii, _pdM); p.im.instanceMatrix.needsUpdate = true; OF.props.splice(i, 1); } } if (!PD.gone.size) return r; let ch = false;
+  const r = _pdBuild(cx, cz); if (typeof MB !== 'undefined' && MB.list.length) for (let i = OF.props.length - 1; i >= 0; i--) { const p = OF.props[i]; if (p.kind !== 'wall' && p.im && MB.list.some(B => Math.hypot(p.x - B.x, p.z - B.z) < 56)) { p.im.getMatrixAt(p.ii, _pdM2); _pdM.makeScale(0.0001, 0.0001, 0.0001); _pdM.copyPosition(_pdM2); p.im.setMatrixAt(p.ii, _pdM); p.im.instanceMatrix.needsUpdate = true; OF.props.splice(i, 1); OFP.hash.clear(); for (const q of OF.props) ofHashAdd(q); } } if (!PD.gone.size) return r; let ch = false;
   for (let i = OF.props.length - 1; i >= 0; i--) { const p = OF.props[i]; if (!PD.gone.has(pdKey(p))) continue; if (p.im) { _pdM.makeScale(0.0001, 0.0001, 0.0001); p.im.getMatrixAt(p.ii, _pdM2); _pdM.copyPosition(_pdM2); p.im.setMatrixAt(p.ii, _pdM); p.im.instanceMatrix.needsUpdate = true; } OF.props.splice(i, 1); ch = true; }
   if (ch) { OFP.hash.clear(); for (const q of OF.props) ofHashAdd(q); } return r;
 };
@@ -25483,6 +25488,53 @@ ofInteract = function () { const t = rlTarget(); if (t) { t.fn(); return; } retu
 const _rlDrops = ofDropsStep;
 ofDropsStep = function (dt) { _rlDrops(dt); if (OF.prompt) return; const t = rlTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): station prompt
 Object.assign(S9X, { AP, apAt, apBuild, RL, rlBuild, rlStep, rlOpen, rlRide, rlRoute, MB, mbBuild, mbStep, mbPlan, dnWarp });
+
+// =====================================================================================
+// §FREEWALK — the villages are walkable
+//  A house blocks only where its walls stand: each kit piece's collision is traced from its
+//  own mesh (everything between the shins and the head), its enclosed rooms filled solid,
+//  and only the outline carries circles — round domes are round, pods are pods, the gaps you
+//  can see between houses are gaps you can walk. Lots keep an alley between them (2 m or
+//  more), the graded town disk blends out over a wider band so its edges are slopes you can
+//  climb, and on-foot climbing tolerates steeper ground.
+// =====================================================================================
+SETL_CFG.alley = [2.2, 2.6, 3.2, 4]; SETL_CFG.grade = 120; SETL_CFG.climb = 0.55; OFC.maxSlope = 0.86;
+const FW = { masks: new Map(), cell: 1, lo: 0.15, hi: 2.0 };
+/** The piece's walkable-height footprint as outline points in piece space (cached). */
+function fwOutline(id) {
+  if (FW.masks.has(id)) return FW.masks.get(id); const parts = vkParts('settlement', id); if (!parts.length) { FW.masks.set(id, null); return null; }
+  const h = 0.5, v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], bb = new THREE.Box3(), tb = new THREE.Box3();
+  for (const pt of parts) { if (pt.blend) continue; if (!pt.geo.boundingBox) pt.geo.computeBoundingBox(); tb.copy(pt.geo.boundingBox).applyMatrix4(pt.local); bb.union(tb); }
+  if (bb.isEmpty()) { FW.masks.set(id, null); return null; }
+  const x0 = bb.min.x - 1, z0 = bb.min.z - 1, nx = Math.ceil((bb.max.x - x0 + 1) / h), nz = Math.ceil((bb.max.z - z0 + 1) / h); const m = new Uint8Array(nx * nz);
+  const mark = (x, z) => { const i = Math.floor((x - x0) / h), j = Math.floor((z - z0) / h); if (i >= 0 && j >= 0 && i < nx && j < nz) m[j * nx + i] = 1; };
+  for (const pt of parts) { if (pt.blend) continue; const P = pt.geo.attributes.position, I = pt.geo.index; const n = I ? I.count : P.count;
+    for (let t = 0; t + 2 < n; t += 3) { for (let k = 0; k < 3; k++) v[k].fromBufferAttribute(P, I ? I.getX(t + k) : t + k).applyMatrix4(pt.local);
+      const ylo = Math.min(v[0].y, v[1].y, v[2].y), yhi = Math.max(v[0].y, v[1].y, v[2].y); if (yhi < FW.lo || ylo > FW.hi) continue;
+      const L = Math.max(v[0].distanceTo(v[1]), v[1].distanceTo(v[2]), v[2].distanceTo(v[0])); const s = Math.max(1, Math.ceil(L / 0.3));
+      for (let a = 0; a <= s; a++) for (let b = 0; a + b <= s; b++) { const u = a / s, w = b / s, c = 1 - u - w; const y = v[0].y * c + v[1].y * u + v[2].y * w; if (y < FW.lo || y > FW.hi) continue; mark(v[0].x * c + v[1].x * u + v[2].x * w, v[0].z * c + v[1].z * u + v[2].z * w); } } }
+  // close door-sized slits (dilate, erode), flood the outside: what the flood cannot reach is the building
+  const grow = (src, want) => { const o = new Uint8Array(nx * nz); for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { let hit = !want; for (let dj = -2; dj <= 2 && hit !== want; dj++) for (let di = -2; di <= 2; di++) { const a = i + di, b = j + dj; const v = a >= 0 && b >= 0 && a < nx && b < nz ? src[b * nx + a] : 0; if (want ? v : !v) { hit = want; break; } } o[j * nx + i] = hit ? 1 : 0; } return o; };
+  const c = grow(grow(m, true), false); for (let k = 0; k < c.length; k++) c[k] |= m[k];
+  const out = new Uint8Array(nx * nz); const st = []; for (let i = 0; i < nx; i++) st.push(i, (nz - 1) * nx + i); for (let j = 0; j < nz; j++) st.push(j * nx, j * nx + nx - 1);
+  while (st.length) { const k = st.pop(); if (out[k] || c[k]) continue; out[k] = 1; const i = k % nx, j = (k / nx) | 0; if (i > 0) st.push(k - 1); if (i < nx - 1) st.push(k + 1); if (j > 0) st.push(k - nx); if (j < nz - 1) st.push(k + nx); }
+  const S = new Uint8Array(nx * nz); for (let k = 0; k < S.length; k++) S[k] = out[k] ? 0 : 1;
+  // coarsen to 1 m and keep the outline cells
+  const cx = Math.ceil(nx / 2), cz = Math.ceil(nz / 2); const C = new Uint8Array(cx * cz); for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) if (S[j * nx + i]) C[(j >> 1) * cx + (i >> 1)] = 1;
+  const pts = []; const at = (i, j) => i >= 0 && j >= 0 && i < cx && j < cz && C[j * cx + i];
+  for (let j = 0; j < cz; j++) for (let i = 0; i < cx; i++) { if (!C[j * cx + i]) continue; const edge = !at(i - 1, j) || !at(i + 1, j) || !at(i, j - 1) || !at(i, j + 1); const ctr = (i % 4 === 2 && j % 4 === 2); if (edge || ctr) pts.push({ x: x0 + (i + 0.5) * 2 * h, z: z0 + (j + 0.5) * 2 * h, edge }); }
+  const R = { pts, h: bb.max.y, area: C.reduce((a, b) => a + b, 0) }; FW.masks.set(id, R); return R;
+}
+const _fwBuild = setlBuild;
+setlBuild = function () {   // S11-EDIT(§SETTLEMENT.BUILD setlBuild): collision traced from each house's own walls
+  const B = _fwBuild.apply(this, arguments); if (!B || !B.kit) return B; let swapped = 0;
+  const lots = new Map(); for (const lot of B.L.lots) { if (!setlHas(lot.id)) continue; const o = fwOutline(lot.id); if (o && o.pts.length) lots.set(lot.i, o); }
+  if (!lots.size) return B;
+  B.circles = B.circles.filter(c => !(c.kind === 'building' && lots.has(c.lot)));
+  for (const lot of B.L.lots) { const o = lots.get(lot.i); if (!o) continue; for (const p of o.pts) { const r = setlRot(p.x, p.z, lot.yaw); B.circles.push({ lx: lot.x + r.x, lz: lot.z + r.z, r: p.edge ? 0.72 : 1.2, h: lot.h, kind: 'building', lot: lot.i }); swapped++; } }
+  B.fwSwapped = swapped; if (OF.active && OF.propsAt) ofBuildProps(OF.propsAt.x, OF.propsAt.z); return B;
+};
+Object.assign(S9X, { FW, fwOutline, setlBuildNow: () => setlBuild(), setlPathNow: (...a) => setlPath(...a) });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
