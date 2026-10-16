@@ -24857,7 +24857,10 @@ function afxFlameStep(dt) {
   if (WPN_ASSETS.flamer && !F.userData.asset) { F.userData.asset = WPN_ASSETS.flamer.clone(true); F.add(F.userData.asset); }
   const mz = ofMuzzle(me, _afv[0]); F.position.copy(mz); F.rotation.set(0, 0, 0); F.lookAt(_afv[1].set(mz.x + Math.sin(OF.cam.yaw), mz.y + Math.sin(OF.cam.pitch) * 0.6, mz.z + Math.cos(OF.cam.yaw)));
   const t = performance.now() / 1000; F.children.forEach((m, i) => { if (!m.material?.map) return; m.material.map.offset.y = -t * m.userData.spd; m.scale.set(1 + Math.sin(t * 23 + i) * 0.08, 1 + Math.cos(t * 19 + i) * 0.08, 0.9 + Math.random() * 0.2); });
-  AFX.light.intensity = 2 + Math.random() * 1.2; if (Math.random() < 0.6) world.particles.emit(_afv[2].copy(mz).addScaledVector(_afv[3].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)), 6 + Math.random() * 3), _afv[4].set((Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2), 0.9, 0.8, 0x3a2a20, 0.5);
+  AFX.light.intensity = 2 + Math.random() * 1.2;
+  // tongues of fire along the stream (never at the muzzle, so nothing piles up in front of the camera)
+  const fd = _afv[7].set(Math.sin(OF.cam.yaw), Math.sin(OF.cam.pitch) * 0.6, Math.cos(OF.cam.yaw)).normalize();
+  for (let i = 0; i < 2; i++) { const d = 2.5 + Math.random() * 6.5; world.particles.emit(_afv[8].copy(mz).addScaledVector(fd, d).add(_afv[9].set((Math.random() - 0.5) * d * 0.25, (Math.random() - 0.3) * d * 0.2, (Math.random() - 0.5) * d * 0.25)), _afv[10].copy(fd).multiplyScalar(6).setY(1.5), 0.22 + d * 0.03, 0.28, Math.random() < 0.5 ? 0xff6a10 : 0xffa030, 0.55); } if (Math.random() < 0.6) world.particles.emit(_afv[2].copy(mz).addScaledVector(_afv[3].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)), 6 + Math.random() * 3), _afv[4].set((Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2), 0.9, 0.8, 0x3a2a20, 0.5);
 }
 const _afv = Array.from({ length: 12 }, () => new THREE.Vector3());
 // the shock trap: a proper emitter instead of a disc
