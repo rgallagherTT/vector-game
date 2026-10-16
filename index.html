@@ -365,6 +365,7 @@
     §ICGUNS                 the Ironclad holds what it fires
     §WRECK                  the world breaks: crates, boulders, trees, rocks, crystals and spires on the ground
     §VARN                   the Varn arsenal (./s11/varn_arsenal_all.glb): thirteen clan weapons, pristine and worn
+    §VARNMELEE              the clan's melee pieces: 9 cycles, F strikes
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -825,6 +826,9 @@
     §BLADE bladeStrike — the sabre cuts crates and trees
     §IRONCLAD2 icFlameStep — flame burns wood
     §PUNCH puLanceStep — the lance bores through cover
+    §VARN vgBaton — F swings the chosen melee piece
+    §ONFOOT.STEP OF.step — cycle the clan's melee pieces
+    §RESONANCE resHud — the melee piece in the arsenal list
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -25230,6 +25234,50 @@ const _vnLance = puLanceStep;
 puLanceStep = function (me, dt) { const was = PU.lance?.charge || 0; const r = _vnLance(me, dt); if (was >= 0.8 && !(PU.lance?.charge > 0)) { const from = ofMuzzle(me, _pdv[2]); const dir = _pdv[3].set(Math.sin(OF.cam.yaw) * Math.cos(OF.cam.pitch), Math.sin(OF.cam.pitch), Math.cos(OF.cam.yaw) * Math.cos(OF.cam.pitch)).normalize(); for (const p of ofPropsNear(from.x + dir.x * 35, from.z + dir.z * 35, 40, [])) { const t = _pdv[4].set(p.x - from.x, 0, p.z - from.z).dot(_pdv[0].set(dir.x, 0, dir.z).normalize()); if (t < 0 || t > 70) continue; const perp = Math.hypot(from.x + _pdv[0].x * t - p.x, from.z + _pdv[0].z * t - p.z); if (perp < p.r + 0.6) pdHit(p, 400, me, _pdv[1].set(p.x, me.pos.y + 1, p.z)); } } return r; };   // S11-EDIT(§PUNCH puLanceStep): the lance bores through cover
 varnLoad();
 Object.assign(S9X, { PD, pdHit, pdBreak, VARN, varnLoad, varnModel, VG, vgSet, vgBaton, bloomPassRef: bloomPass });
+
+
+// =====================================================================================
+// §VARNMELEE — the clan's melee pieces: 9 cycles, F strikes
+//  Shock baton (stuns), warblade (heavy cleave through the arc), glaive (a wide sweep that
+//  knocks back), spear (a lunging thrust that runs through a line), and the cord (a 12 m lash
+//  that drags its target to you, stunned). Each shows its own Varn model and leaves a trail.
+// =====================================================================================
+const VM = { list: ['varn_baton', 'varn_warblade', 'varn_glaive', 'varn_spear', 'varn_cord'], i: 0, cd: 0,
+  def: { varn_baton: { name: 'Shock baton', dmg: 45, reach: 2.8, arc: 1.0, cd: 0.9, stun: 1.6, col: 0x9fd8ff, act: 'melee_heavy' },
+    varn_warblade: { name: 'Warblade', dmg: 75, reach: 3.0, arc: 1.3, cd: 0.75, col: 0xffb070, act: 'melee_light' },
+    varn_glaive: { name: 'Glaive', dmg: 60, reach: 4.2, arc: 2.6, cd: 1.1, knock: 6, col: 0xffd890, act: 'melee_light' },
+    varn_spear: { name: 'Spear', dmg: 90, reach: 5.2, arc: 0.35, cd: 1.0, lunge: 9, col: 0xd8e8ff, act: 'lunge' },
+    varn_cord: { name: 'Cord', dmg: 20, reach: 12, arc: 0.45, cd: 1.5, pull: true, stun: 0.9, col: 0xff8a50, act: 'throw' } } };
+MM_BIND.ON_FOOT.meleeCycle = 'Digit9'; MM.allowed = null;
+function vmSel() { const ch = charOf(); if (ch && ch.varnMelee && VM.list.includes(ch.varnMelee)) VM.i = VM.list.indexOf(ch.varnMelee); return VM.list[VM.i]; }
+function vmStrike(me) {
+  const id = vmSel(); const D = VM.def[id]; if (OF.t < VM.cd) return; VM.cd = OF.t + D.cd; VG.until = OF.t + 0.6; VG.untilId = id; me.act = D.act; me.actT = 0; audio.bladeSwing?.(D.dmg > 60);
+  const f = _pdv[5].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)); me.yaw = OF.cam.yaw; if (D.lunge) { me.vel.x += f.x * D.lunge; me.vel.z += f.z * D.lunge; }
+  let hits = 0; const targets = OF.units.filter(v => v !== me && v.alive && v.kind !== 'vehicle' && v.team !== 'player' && !(SQ?.units || []).includes(v)).map(v => { const d = _pdv[0].subVectors(v.pos, me.pos).setY(0); return { v, L: d.length(), a: f.angleTo(d.normalize()) }; }).filter(o => o.L < D.reach && o.a < D.arc / 2 + (o.L < 1.5 ? 0.6 : 0)).sort((a, b) => a.L - b.L);
+  for (const { v } of D.pull ? targets.slice(0, 1) : targets) {
+    const dir = _pdv[1].subVectors(v.pos, me.pos).setY(0).normalize(); ofDamage(v, D.dmg, me, { kind: 'melee', dir: D.pull ? dir.clone().negate() : dir.clone(), force: D.knock || D.pull ? 0 : 3 }); if (D.stun) v.stun = Math.max(v.stun || 0, D.stun);
+    if (D.knock && v.alive) { v.vmShove = { dir: dir.clone(), left: D.knock }; v.stun = Math.max(v.stun || 0, 0.8); } if (D.pull && v.alive) v.vmPull = { by: me, t: 0.9 };
+    if (v.team === 'neutral' && v.alive) { v.team = 'hostile'; v.flee = 6; } world.sparks(ofChest(v, _pdv[2]), 8, D.col); hits++; }
+  for (const p of ofPropsNear(me.pos.x, me.pos.z, D.reach + 2, [])) { const d = _pdv[3].set(p.x - me.pos.x, 0, p.z - me.pos.z); if (d.length() - p.r < D.reach && f.angleTo(d.normalize()) < D.arc / 2 + 0.2) pdHit(p, D.dmg * 1.2, me, _pdv[4].set(p.x, me.pos.y + 1, p.z)); }
+  // the trail: an arc for blades and sweeps, a straight streak for the spear and the cord
+  const R = Math.min(D.reach, 6); const geo = D.arc < 0.6 ? new THREE.PlaneGeometry(0.25, R).rotateX(-Math.PI / 2).translate(0, 0, R / 2) : new THREE.RingGeometry(0.6, R, 28, 1, -D.arc / 2, D.arc).rotateX(-Math.PI / 2).rotateY(Math.PI / 2);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: D.col, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.set(me.pos.x, me.pos.y + 1.15, me.pos.z); m.rotation.y = me.yaw; scene.add(m);
+  BX.fx.push({ m, t: 0, life: 0.25, delay: 0.05, u: me }); if (hits) shake.add(0.05 + hits * 0.02);
+}
+// F swings the chosen piece (the baton by default); 9 changes it
+vgBaton = function (me) { vmStrike(me); };   // S11-EDIT(§VARN vgBaton): F swings the chosen melee piece
+const _vmStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): cycle the clan's melee pieces
+  _vmStep(dt);
+  // the cord drags its catch to your feet; the glaive's sweep shoves a few metres
+  for (const v of OF.units) { if (v.vmPull) { const P = v.vmPull; P.t -= dt; const to = _pdv[0].subVectors(P.by.pos, v.pos).setY(0); const L = to.length(); if (P.t <= 0 || L < 1.6 || !v.alive) { v.vmPull = null; continue; } const s = Math.min(L - 1.5, 26 * dt); v.pos.addScaledVector(to.normalize(), s); v.pos.y = ofG(v.pos.x, v.pos.z); v.vel.set(0, 0, 0); }
+    if (v.vmShove) { const S = v.vmShove; const s = Math.min(S.left, 18 * dt); S.left -= s; v.pos.addScaledVector(S.dir, s); v.pos.y = Math.max(v.pos.y, ofG(v.pos.x, v.pos.z)); if (S.left <= 0.01 || !v.alive) v.vmShove = null; } }
+  const me = typeof icMe === 'function' ? icMe() : null; if (!me) return;
+  if (mmHit('meleeCycle')) { VM.i = (vmSel() ? VM.list.indexOf(vmSel()) + 1 : 0) % VM.list.length; const ch = charOf(); ch.varnMelee = VM.list[VM.i]; sbxToast(`Melee: ${VM.def[ch.varnMelee].name} — F to strike.`); VG.until = OF.t + 0.8; VG.untilId = ch.varnMelee; }
+};
+const _vmHud = resHud;
+resHud = function (g, dt) { _vmHud(g, dt); if (charOf()?.cls !== 'ironclad') return; const el = $('of-powers'); if (!el) return; let L = $('vm-melee'); if (!L) { el.insertAdjacentHTML('beforeend', '<div class="small" id="vm-melee"></div>'); L = $('vm-melee'); } const D = VM.def[vmSel()]; L.textContent = `F ${D.name} · 9 to change`; };   // S11-EDIT(§RESONANCE resHud): the melee piece in the arsenal list
+Object.assign(S9X, { VM, vmStrike, vmSel });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
