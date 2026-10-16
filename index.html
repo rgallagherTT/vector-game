@@ -24447,6 +24447,11 @@ wsSpawn = function (cls, fac, pos, extra = {}) {   // S11-EDIT(§WARSHIPS wsSpaw
   if (extra?.kind === 'roam' || extra?.homeGuard) { const own = hsOwner(); if (own && fac !== own) fac = own; }
   return _hsWs(cls, fac, pos, extra);
 };
+const _hsRm = rmSpawnAll;
+rmSpawnAll = function (sysIdx) {   // S11-EDIT(§ROAM rmSpawnAll): names follow the colours they fly
+  const r = _hsRm(sysIdx); const own = hsOwner(sysIdx); if (!own || typeof RM === 'undefined') return r; const shorts = ['authority', 'combine', 'guild', 'syndicate'].map(f => gsShort(f));
+  for (const e of RM.list) { if (!e.name) continue; for (const s of shorts) if (e.name.startsWith(s + ' ') && s !== gsShort(own)) { e.name = gsShort(own) + e.name.slice(s.length); break; } } return r;
+};
 const HSG = { sys: -1 };
 function hsGuard(sysIdx) {
   const own = hsOwner(sysIdx); if (!own || !gsPlayerHostileTo(own) || game.humansOnly) return; const pl = world.player; const n = 3 + Math.floor(Math.random() * 3);
@@ -24786,7 +24791,9 @@ bdLayout = function (cls) {   // S11-EDIT(§BOARDING bdLayout): bigger decks; tr
   @keyframes d2sweep { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   @keyframes d2low { 0%, 100% { filter: none; } 50% { filter: brightness(1.8) saturate(1.4); } }
   @keyframes d2rail { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
-  body.sandbox #hud .panel, body.sandbox #p-overview, body.sandbox #of-hud .panel, body.sandbox #of-stats, body.sandbox #of-wpnbox { animation: d2in .7s cubic-bezier(.2,.8,.2,1) both, d2glow 4s ease-in-out infinite; border-color: color-mix(in srgb, var(--accent, #46f2ff) 45%, transparent) !important;
+  body.sandbox #p-overview { animation: d2glow 4s ease-in-out infinite; border-color: color-mix(in srgb, var(--accent, #46f2ff) 45%, transparent) !important; }
+  body.sandbox #hud.visible { top: 28px; } body.sandbox #p-overview { margin-top: 28px; }
+  body.sandbox #hud .panel, body.sandbox #of-hud .panel, body.sandbox #of-stats, body.sandbox #of-wpnbox { animation: d2in .7s cubic-bezier(.2,.8,.2,1) both, d2glow 4s ease-in-out infinite; border-color: color-mix(in srgb, var(--accent, #46f2ff) 45%, transparent) !important;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #46f2ff) 7%, transparent), transparent 40%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpath d='M14 0 L28 8 L28 24 L14 32 L0 24 L0 8 Z M14 32 L14 48' fill='none' stroke='%2346f2ff' stroke-opacity='.07'/%3E%3C/svg%3E"), var(--panel-bg) !important; }
   body.sandbox #hud .panel > .label, body.sandbox #hud .panel h3 { letter-spacing: .28em; text-shadow: 0 0 8px color-mix(in srgb, var(--accent, #46f2ff) 60%, transparent); }
   body.sandbox .bar { height: 7px !important; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--fg) 8%, transparent) 0 6px, transparent 6px 8px) !important; }
