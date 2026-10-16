@@ -359,6 +359,9 @@
     §DECKS                  the ship interiors are bigger: every boardable warship's deck plan is 1.6× the
     §DASH2                  the dashboard, again, louder: glowing animated frames that draw themselves in,
     §ARSENALFX              the Ironclad's weapons look like weapons
+    §PUNCH                  every shot lands with weight
+    §ANIM3                  more life in the bodies
+    §VISOR                  the dashboard as the inside of a helmet visor
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -798,6 +801,13 @@
     §IRONCLAD2 icSeekStep — missiles with bodies and smoke
     §ONFOOT.STEP OF.step — the arsenal's effects
     §ONFOOT OF.exit — effects go with the world
+    §ONFOOT.BOLTS ofBolt — muzzle flash and recoil for your shots
+    §ONFOOT.DAMAGE ofDamage — hit markers and damage numbers for your hits
+    §ONFOOT ofKill — the kill confirm
+    §ONFOOT.STEP OF.step — muzzle flash fade, the lance, burning ground
+    §RESONANCE resHud — the lance in the arsenal list
+    §CHARACTER.ANIM charAnimate — idle shifts, recoil, flinch, jump tuck, jet hang
+    §PARTRT partRenderHook — hit feedback, the visor
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -24141,7 +24151,7 @@ function wlStep(dt) {
 }
 // hooks: per-frame (both in the ship near the ground and on foot), E, the prompt line, the overview
 const _wlWeather = SRF.weather;
-SRF.weather = function (dt) { const r = _wlWeather.call(this, dt); try { GC.step(dt); wlStep(dt); } catch (e) { console.warn('[wilds]', e); } return r; };   // S11-EDIT(§SURFACE weather): ground cover and the wilds tick with the weather
+SRF.weather = function (dt) { const r = _wlWeather.call(this, dt); try { const wm = TERRA.weatherPts?.material; if (wm) { const ty = this.wx?.type; wm.size = ty === 'rain' ? 1.2 : ty === 'blizzard' ? 1.0 : 0.7; wm.opacity = ty === 'dust' || ty === 'ash' ? 0.3 : 0.45; } GC.step(dt); wlStep(dt); } catch (e) { console.warn('[wilds]', e); } return r; };   // S11-EDIT(§SURFACE weather): ground cover and the wilds tick with the weather
 const _wlInteract = ofInteract;
 ofInteract = function () { const t = wlTarget(); if (t) { t.fn(); return; } return _wlInteract(); };   // S11-EDIT(§ONFOOT ofInteract): forage, outcrops and landmarks
 const _wlDrops = ofDropsStep;
@@ -24898,6 +24908,124 @@ OF.step = function (dt) { _afStep(dt); try { afxFlameStep(dt); afxTrapStep(dt); 
 const _afExit = OF.exit;
 OF.exit = function (next, o) { if (AFX.flame) AFX.flame.visible = false; for (const M of AFX.missiles) scene.remove(M.m); AFX.missiles.length = 0; return _afExit(next, o); };   // S11-EDIT(§ONFOOT OF.exit): effects go with the world
 Object.assign(S9X, { WPN_ASSETS, wpnAssetLoad, AFX, icTrapThrowNow: (m) => icTrapThrow(m), charAnimateNow: (...a) => charAnimate(...a) });
+
+
+// =====================================================================================
+// §PUNCH — every shot lands with weight
+//  Your shots on foot flash at the muzzle (a light and a star), kick the camera, throw sparks
+//  where they hit, pop a hit marker and a floating damage number, and a kill stamps ELIMINATED
+//  across the reticle. The Ironclad adds a charged rail lance (hold 8, release): a beam that
+//  punches through every hostile in a 70 m line; the flamethrower leaves the ground burning.
+// =====================================================================================
+const PU = { cv: null, g: null, nums: [], mark: 0, kill: 0, killName: '', flash: null, flashT: 0, lance: null, fires: [] };
+function puCanvas() { if (PU.cv) return; PU.cv = document.createElement('canvas'); PU.cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:7'; document.body.appendChild(PU.cv); PU.g = PU.cv.getContext('2d'); }
+const _puBolt = ofBolt;
+ofBolt = function (from, dir, W, owner, team, color, dmgMul) {   // S11-EDIT(§ONFOOT.BOLTS ofBolt): muzzle flash and recoil for your shots
+  const b = _puBolt(from, dir, W, owner, team, color, dmgMul); if (b && owner && owner === OF.me && MM.mode === 'ON_FOOT') {
+    if (!PU.flash) { PU.flash = new THREE.PointLight(0x9fe8ff, 0, 9, 2); scene.add(PU.flash); PU.star = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.particle, color: 0xbff4ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); scene.add(PU.star); }
+    PU.flash.position.copy(from); PU.flash.color.setHex(color || 0x9fe8ff); PU.flash.intensity = W.rocket ? 5 : 2.5; PU.star.position.copy(from); PU.star.material.color.setHex(color || 0xbff4ff); PU.star.scale.setScalar(W.rocket ? 1.4 : 0.7); PU.star.visible = true; PU.flashT = 0.05;
+    OF.cam.pitch = Math.min(0.6, OF.cam.pitch + (W.rocket ? 0.03 : 0.006 + (W.dmg || 10) * 0.0003)); owner._recoil = 0.12; }
+  return b;
+};
+const _puDmg = ofDamage;
+ofDamage = function (u, dmg, from, o = {}) {   // S11-EDIT(§ONFOOT.DAMAGE ofDamage): hit markers and damage numbers for your hits
+  const hp0 = u?.hp ?? 0; const r = _puDmg(u, dmg, from, o); if (from && (from === OF.me || from === OF.me?.mounted?.unit) && u && u !== OF.me && u.kind !== 'vehicle') { const d = Math.max(0, hp0 - (u.hp ?? hp0)); if (d > 0.5) { const p = ofChest(u, new THREE.Vector3()); p.y += 0.4; PU.nums.push({ p, v: Math.round(d), t: 0, crit: d >= 50 }); PU.mark = 0.2; if (o.kind !== 'fire' || Math.random() < 0.2) world.sparks(ofChest(u, _puv[0]), 5, o.kind === 'fire' ? 0xff7a1a : 0xfff0c0); } }
+  return r;
+};
+const _puv = Array.from({ length: 8 }, () => new THREE.Vector3());
+const _puKill = ofKill;
+ofKill = function (u, from, o) { const was = u?.alive; const r = _puKill(u, from, o); if (was && !u.alive && u !== OF.me && (from === OF.me || from?.owner === OF.me || u.lastHitBy === OF.me)) { PU.kill = 1.1; PU.killName = u.name || 'hostile'; } return r; };   // S11-EDIT(§ONFOOT ofKill): the kill confirm
+function puDraw(dt) {
+  puCanvas(); const cv = PU.cv, g = PU.g, dpr = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(innerWidth * dpr)) { cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight); if (!['ON_FOOT', 'GROUND_VEHICLE'].includes(MM.mode)) { PU.nums.length = 0; return; } const cx = innerWidth / 2, cy = innerHeight / 2; const sc = {};
+  for (let i = PU.nums.length - 1; i >= 0; i--) { const N = PU.nums[i]; N.t += dt; if (N.t > 0.9) { PU.nums.splice(i, 1); continue; } N.p.y += dt * 1.2; toScreen(N.p, sc); if (!sc.onScreen) continue; const a = 1 - N.t / 0.9;
+    g.font = tkFont(N.crit ? '800 20px' : '700 14px'); g.lineWidth = 3; g.strokeStyle = `rgba(0,0,0,${0.6 * a})`; g.strokeText(N.v, sc.x - 8, sc.y); g.fillStyle = N.crit ? `rgba(255,200,60,${a})` : `rgba(255,255,255,${a})`; g.fillText(N.v, sc.x - 8, sc.y); }
+  if (PU.mark > 0) { PU.mark -= dt; const k = PU.mark / 0.2; g.strokeStyle = `rgba(255,255,255,${k})`; g.lineWidth = 2; g.beginPath(); for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { g.moveTo(cx + sx * 6, cy + sy * 6); g.lineTo(cx + sx * 13, cy + sy * 13); } g.stroke(); }
+  if (PU.kill > 0) { PU.kill -= dt; const k = Math.min(1, PU.kill / 0.4); const s = 1 + Math.max(0, PU.kill - 0.9) * 2; g.save(); g.translate(cx, cy - 46); g.scale(s, s); g.font = tkFont('800 15px'); g.textAlign = 'center'; g.fillStyle = `rgba(255,70,60,${k})`; g.shadowColor = 'rgba(255,40,40,.8)'; g.shadowBlur = 12; g.fillText('ELIMINATED', 0, 0); g.font = tkFont('600 10px'); g.fillStyle = `rgba(255,200,190,${k * 0.8})`; g.fillText(PU.killName.toUpperCase(), 0, 14); g.restore();
+    g.strokeStyle = `rgba(255,70,60,${k})`; g.lineWidth = 3; g.beginPath(); g.moveTo(cx - 12, cy - 12); g.lineTo(cx + 12, cy + 12); g.moveTo(cx + 12, cy - 12); g.lineTo(cx - 12, cy + 12); g.stroke(); }
+  if (PU.lance?.charge > 0) { const f = Math.min(1, PU.lance.charge / 0.8); g.strokeStyle = f >= 1 ? 'rgba(160,230,255,.95)' : 'rgba(160,230,255,.6)'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, 26, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); g.stroke(); if (f >= 1) { g.font = tkFont('700 11px'); g.fillStyle = 'rgba(160,230,255,.95)'; g.fillText('LANCE READY', cx - 38, cy + 44); } }
+}
+// the rail lance (Ironclad, key 8): hold to charge, release to fire
+const IC_LANCE = { dmg: 170, range: 70, cd: 6 };
+function puLanceStep(me, dt) {
+  const L = PU.lance || (PU.lance = { charge: 0, cd: 0, beams: [] }); L.cd = Math.max(0, L.cd - dt); const hold = input.keys.has('Digit8');
+  if (hold && L.cd <= 0) { L.charge += dt; if (Math.random() < dt * 30) world.sparks(ofMuzzle(me, _puv[1]), 1, 0x9fe8ff); return; }
+  if (L.charge >= 0.8 && !hold) { const from = ofMuzzle(me, _puv[2]); const dir = _puv[3].set(Math.sin(OF.cam.yaw) * Math.cos(OF.cam.pitch), Math.sin(OF.cam.pitch), Math.cos(OF.cam.yaw) * Math.cos(OF.cam.pitch)).normalize(); if (LK?.lock?.alive && LK.lock.pos && OF.units.includes(LK.lock)) dir.subVectors(ofChest(LK.lock, _puv[4]), from).normalize();
+    let hits = 0; for (const v of OF.units) { if (v === me || !v.alive || !ofHostile(me, v)) continue; const c = ofChest(v, _puv[5]); const t = _puv[6].subVectors(c, from).dot(dir); if (t < 0 || t > IC_LANCE.range) continue; const perp = _puv[7].copy(from).addScaledVector(dir, t).distanceTo(c); if (perp > 1.2 + t * 0.04) continue; ofDamage(v, IC_LANCE.dmg, me, { kind: 'power', pierce: true, dir: dir.clone(), force: 9 }); if (v.alive) ofThrow(v, dir.clone().multiplyScalar(10).setY(3)); hits++; }
+    const end = from.clone().addScaledVector(dir, IC_LANCE.range); const geo = new THREE.CylinderGeometry(0.09, 0.09, IC_LANCE.range, 6, 1, true).translate(0, IC_LANCE.range / 2, 0).rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.position.copy(from); m.lookAt(end); scene.add(m); const halo = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, IC_LANCE.range, 8, 1, true).translate(0, IC_LANCE.range / 2, 0).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4fa8ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); halo.position.copy(from); halo.lookAt(end); scene.add(halo);
+    L.beams.push({ m, halo, t: 0.35 }); L.cd = IC_LANCE.cd; shake.add(0.25); OF.cam.pitch = Math.min(0.6, OF.cam.pitch + 0.06); audio.blaster?.(60, 1); sbxToast(hits ? `Rail lance: ${hits} hit.` : 'Rail lance — clean miss.'); }
+  L.charge = 0;
+}
+function puLanceFx(dt) { const L = PU.lance; if (!L) return; for (let i = L.beams.length - 1; i >= 0; i--) { const B = L.beams[i]; B.t -= dt; const k = Math.max(0, B.t / 0.35); B.m.material.opacity = 0.95 * k; B.halo.material.opacity = 0.35 * k; B.halo.scale.set(1 + (1 - k) * 2, 1 + (1 - k) * 2, 1); if (B.t <= 0) { for (const o of [B.m, B.halo]) { scene.remove(o); o.geometry.dispose(); o.material.dispose(); } L.beams.splice(i, 1); } } }
+// the flamethrower sets the ground alight: patches that burn whoever stands in them
+function puFireGround(me, dt) {
+  if (IC.flameOn && Math.random() < dt * 5) { const d = 4 + Math.random() * 5; const p = me.pos.clone().add(_puv[0].set(Math.sin(OF.cam.yaw) * d, 0, Math.cos(OF.cam.yaw) * d)); p.y = ofG(p.x, p.z); PU.fires.push({ p, t: 6 }); if (PU.fires.length > 14) PU.fires.shift(); }
+  for (let i = PU.fires.length - 1; i >= 0; i--) { const F = PU.fires[i]; F.t -= dt; if (F.t <= 0) { PU.fires.splice(i, 1); continue; } if (Math.random() < dt * 9) world.particles.emit(_puv[1].set(F.p.x + (Math.random() - 0.5) * 1.6, F.p.y + 0.2, F.p.z + (Math.random() - 0.5) * 1.6), _puv[2].set(0, 1.6, 0), 0.35, 0.5, Math.random() < 0.5 ? 0xff6a10 : 0xffa030, 0.5);
+    for (const v of OF.units) if (v !== me && v.alive && ofHostile(me, v) && Math.hypot(v.pos.x - F.p.x, v.pos.z - F.p.z) < 1.6) { ofDamage(v, 14 * dt, me, { kind: 'fire' }); v.burn = Math.max(v.burn || 0, 1.5); v.burnBy = me; } }
+}
+IC_W.seeker.dmg = 90;
+const _puStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): muzzle flash fade, the lance, burning ground
+  _puStep(dt); if (PU.flash) { PU.flashT -= dt; PU.flash.intensity = PU.flashT > 0 ? PU.flash.intensity : 0; PU.star.visible = PU.flashT > 0; }
+  puLanceFx(dt); const me = typeof icMe === 'function' ? icMe() : null; if (me && !me.mounted) { puLanceStep(me, dt); puFireGround(me, dt); }
+  if (OF.me?._recoil > 0) OF.me._recoil = Math.max(0, OF.me._recoil - dt);
+};
+// the arsenal list shows the lance
+const _puHud = resHud;
+resHud = function (g, dt) { _puHud(g, dt); const el = $('of-powers'); if (charOf()?.cls !== 'ironclad' || !el || el.dataset.lance === String(Math.ceil(PU.lance?.cd || 0))) return; if (!/Rail lance/.test(el.innerHTML)) el.insertAdjacentHTML('beforeend', `<div class="small" id="pu-lance">8 Rail lance (hold)</div>`); const L = $('pu-lance'); if (L) L.textContent = `8 Rail lance ${PU.lance?.cd > 0 ? Math.ceil(PU.lance.cd) + 's' : '(hold)'}`; };   // S11-EDIT(§RESONANCE resHud): the lance in the arsenal list
+
+// =====================================================================================
+// §ANIM3 — more life in the bodies
+//  At rest the weight shifts from foot to foot and the head glances around; each shot kicks
+//  the shoulders back; hits flinch the body away from where they came from; a jump crouches
+//  before it leaves the ground and tucks in the air; a running jetpack burn hangs the legs.
+// =====================================================================================
+const _a3Anim = charAnimate;
+charAnimate = function (r, st, dt) {   // S11-EDIT(§CHARACTER.ANIM charAnimate): idle shifts, recoil, flinch, jump tuck, jet hang
+  _a3Anim(r, st, dt); if (r.ragdoll || r.mixer || r.tier !== 0 || !r.bones || st.dead || !(dt > 0)) return; const B = r.bones; const A = r._an; if (!A) return; const t = A.t;
+  const still = clamp(1 - (st.speed || 0) / 1.2, 0, 1);
+  if (still > 0 && !st.act && !st.aim) { const w = Math.sin(t * 0.45) * still; B[0].position.x += w * 0.035; B[0].rotation.z += w * 0.04; B[CHB.lThigh].rotation.z += w * 0.05; B[CHB.rThigh].rotation.z += w * 0.05; const look = Math.sin(t * 0.23) * Math.sin(t * 0.61); B[CHB.head].rotation.y += look * 0.45 * still; B[CHB.neck].rotation.y += look * 0.15 * still; }
+  if (st.act === 'fire') { const f = clamp(st.actT / 0.12, 0, 1); const k = Math.sin(f * Math.PI); B[CHB.chest].rotation.x -= 0.09 * k; B[CHB.rUpperArm].rotation.x -= 0.12 * k; B[CHB.lUpperArm].rotation.x -= 0.08 * k; B[CHB.head].rotation.x -= 0.04 * k; }
+  if (st.act === 'hit') { const f = clamp(st.actT / 0.25, 0, 1); const k = Math.sin(f * Math.PI); B[CHB.spine].rotation.x -= 0.25 * k; B[CHB.chest].rotation.z += (A.hitSide || 1) * 0.3 * k; B[CHB.head].rotation.z += (A.hitSide || 1) * 0.25 * k; B[CHB.lUpperArm].rotation.z += 0.4 * k; B[CHB.rUpperArm].rotation.z -= 0.4 * k; }
+  else A.hitSide = Math.random() < 0.5 ? -1 : 1;
+  if (st.air) { A.airT = (A.airT || 0) + dt; const tuck = Math.min(1, A.airT / 0.25); B[CHB.lThigh].rotation.x -= 0.35 * tuck; B[CHB.rThigh].rotation.x -= 0.2 * tuck; B[CHB.lShin].rotation.x += 0.5 * tuck; B[CHB.rShin].rotation.x += 0.35 * tuck; B[CHB.spine].rotation.x += 0.1 * tuck;
+    if (typeof AW !== 'undefined' && AW.jetting && r === OF.me?.rig) { B[CHB.lThigh].rotation.x = 0.1; B[CHB.rThigh].rotation.x = -0.05; B[CHB.lShin].rotation.x = 0.35; B[CHB.rShin].rotation.x = 0.25; B[CHB.lUpperArm].rotation.z = 0.35; B[CHB.rUpperArm].rotation.z = -0.35; } }
+  else A.airT = 0;
+};
+
+// =====================================================================================
+// §VISOR — the dashboard as the inside of a helmet visor
+//  The side panels turn toward you as if they float on curved glass (left and right banks angle
+//  in), the screen edge carries a thin visor rim with corner glints, hits paint a red arc on
+//  the side they came from, and low health bleeds red in from the edges.
+// =====================================================================================
+(function visorCss() { const s = document.createElement('style'); s.textContent = `
+  body.sandbox #hud.visible, body.sandbox #of-hud { perspective: 1100px; }
+  .vz-l { transform-origin: left center !important; transform: rotateY(9deg) !important; } .vz-r { transform-origin: right center !important; transform: rotateY(-9deg) !important; }
+  #vz-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 5; } body.cine #vz-canvas, .wt-full #vz-canvas { display: none; }`; document.head.appendChild(s); })();
+const VZ = { cv: null, g: null, t: 0, tagT: 0 };
+function vzTag() {   // which panels bank left or right: by where they sit on screen
+  const W = innerWidth; for (const el of document.querySelectorAll('#hud .panel, #p-overview, #of-hud .panel, #of-stats, #of-wpnbox')) { if (!el.offsetParent && el.id !== 'p-overview') continue; if (el.id === 'hintbar' || el.id === 'p-warn') continue; const r = el.getBoundingClientRect(); if (!r.width) continue; const c = (r.left + r.right) / 2;
+    el.classList.toggle('vz-l', c < W * 0.33 && r.width < W * 0.4); el.classList.toggle('vz-r', c > W * 0.67 && r.width < W * 0.4); }
+}
+function vzDraw(dt) {
+  if (!VZ.cv) { VZ.cv = document.createElement('canvas'); VZ.cv.id = 'vz-canvas'; document.body.appendChild(VZ.cv); VZ.g = VZ.cv.getContext('2d'); }
+  const cv = VZ.cv, g = VZ.g, W = innerWidth, H = innerHeight; if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; } g.clearRect(0, 0, W, H); if (game.mode !== 'sandbox') return; VZ.t += dt;
+  const acc = tk('--accent', 0.22); g.strokeStyle = acc; g.lineWidth = 1.5;
+  // the visor rim: soft curves at top and bottom, glints in the corners
+  g.beginPath(); g.moveTo(W * 0.12, 4); g.quadraticCurveTo(W / 2, 22, W * 0.88, 4); g.stroke(); g.beginPath(); g.moveTo(W * 0.1, H - 4); g.quadraticCurveTo(W / 2, H - 26, W * 0.9, H - 4); g.stroke();
+  const gl = 0.25 + 0.2 * Math.sin(VZ.t * 1.3); g.strokeStyle = tk('--accent', gl); g.lineWidth = 2; for (const [x, y, sx, sy] of [[14, 14, 1, 1], [W - 14, 14, -1, 1], [14, H - 14, 1, -1], [W - 14, H - 14, -1, -1]]) { g.beginPath(); g.arc(x + sx * 40, y + sy * 40, 40, sx > 0 ? (sy > 0 ? Math.PI : Math.PI / 2) : (sy > 0 ? Math.PI * 1.5 : 0), (sx > 0 ? (sy > 0 ? Math.PI : Math.PI / 2) : (sy > 0 ? Math.PI * 1.5 : 0)) + Math.PI / 2); g.stroke(); }
+  // where the hit came from
+  const me = OF.me; if (OF.active && me && OF.dmgT > 0 && OF.dmgDir) { const ang = Math.atan2(OF.dmgDir.x, OF.dmgDir.z) - OF.cam.yaw + Math.PI; const R = Math.min(W, H) * 0.32; g.strokeStyle = `rgba(255,50,40,${OF.dmgT * 0.9})`; g.lineWidth = 6; g.beginPath(); g.arc(W / 2, H / 2, R, -Math.PI / 2 - ang - 0.35, -Math.PI / 2 - ang + 0.35); g.stroke(); }
+  // low health bleeds in
+  const hp = me && OF.active ? me.hp / me.hpMax : 1; if (hp < 0.35) { const k = (0.35 - hp) / 0.35 * (0.6 + 0.4 * Math.sin(VZ.t * 6)); const gr = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.7); gr.addColorStop(0, 'rgba(255,0,0,0)'); gr.addColorStop(1, `rgba(200,0,0,${0.45 * k})`); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+}
+const _puRender = partRenderHook;
+partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): hit feedback, the visor
+  const r = _puRender(alpha, dt); try { const d = dt || 1 / 60; puDraw(d); vzDraw(d); VZ.tagT -= d; if (VZ.tagT <= 0) { VZ.tagT = 1; vzTag(); } } catch (e) { console.warn('[punch/visor]', e); } return r;
+};
+Object.assign(S9X, { PU, IC_LANCE, puLanceStep, puDraw, VZ, vzTag, vzDraw });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
