@@ -350,6 +350,11 @@
     §BLADEFIX               the sabre lands, and you see it
     §EMBERFIX               a Cinder's powers are the Ember's
     §CITYPLACES             more kinds of place behind the doors
+    §HOMESPACE              a faction's home systems are its own
+    §LOCKON                 boxes on hostiles, a red ring that closes as you hold your aim, then LOCKED
+    §ARROWBLADE             the sabre answers the arrow keys
+    §IRONCLAD2              the clan's arsenal: 4 flamethrower (hold), 5 shock trap, 6 seeker volley
+    §ANIM2                  bodies that move like bodies
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -755,6 +760,7 @@
     §RESONANCE resEnter — your Path's set first
     §AWAKEN awAwaken — powers of the Path you chose
     §AWAKEN awSwitch — powers follow the turn
+    §RESONANCE resInput — a new Path or order brings its own set
     §INTERIORS inKindOf — more kinds of place
     §CHARACTER charMaxHp — subdermal plating
     §CHARACTER charMaxDefl — deflector lattice
@@ -762,6 +768,18 @@
     §VEHICLES vehSpawn — garage upgrades
     §ONFOOT.STEP OF.step — augments and training
     §CITY sgPanelAct — the new places
+    §SYSTEM sbxSpawnNPC — no foreign raiders in a power's home space
+    §WARSHIPS wsSpawn — ambient ships fly the home colours
+    §SYSTEM sbxLoadSystem — the home guard meets you at the door
+    §ONFOOT.BOLTS ofBolt — locked shots fly true
+    §ONFOOT.BOLTS ofBoltStep — homing bolts steer onto their target
+    §WORLD spawnProjectile — locked guns in space
+    §BLADE bladeInput — arrow keys choose the cut
+    §ONFOOT.STEP OF.step — the Ironclad's arsenal
+    §ONFOOT.DAMAGE ofDamage — clan-forged guns
+    §RESONANCE resHud — the Ironclad's arsenal in the power list
+    §CHARACTER.ANIM charAnimate — secondary motion and eased transitions
+    §PARTRT partRenderHook — lock-on and the arsenal markers
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -23270,8 +23288,8 @@ function awStep(dt) {
   // the jetpack: hold jump in the air; fuel burns, refills on the ground
   if (charHasPerk('jetpack') && MM.mode === 'ON_FOOT') { const hold = input.keys.has('Space');
     AW.holdT = hold ? (AW.holdT || 0) + dt : 0;
-    if (hold && (me.air || AW.holdT > 0.18) && AW.jet > 0.02) { if (!me.air) { me.air = true; me.pos.y += 0.3; me.vel.y = Math.max(me.vel.y, 3); } me.vel.y = Math.min(me.vel.y + 30 * dt, 9); AW.jet = Math.max(0, AW.jet - dt / 3.2); me.leapT = 0.6; AW.jetting = true; if (Math.random() < 0.5) world.sparks(_fv[3].copy(me.pos).add(_fv[4].set(0, 0.9, 0)), 2, 0xffa040); }
-    else { AW.jetting = false; if (!me.air) AW.jet = Math.min(1, AW.jet + dt / 4); }
+    if (hold && (me.air || AW.holdT > 0.18) && AW.jet > 0.02) { if (!me.air) { me.air = true; me.pos.y += 0.3; me.vel.y = Math.max(me.vel.y, 3); } me.vel.y = Math.min(me.vel.y + 30 * dt, 9); AW.jet = Math.max(0, AW.jet - dt / (charOf()?.cls === 'ironclad' ? 16 : 3.2)); me.leapT = 0.6; AW.jetting = true; if (Math.random() < 0.5) world.sparks(_fv[3].copy(me.pos).add(_fv[4].set(0, 0.9, 0)), 2, 0xffa040); }
+    else { AW.jetting = false; if (!me.air || charOf()?.cls === 'ironclad') AW.jet = Math.min(1, AW.jet + dt / (me.air ? 12 : 3)); }
     if (!AW.el) { AW.el = document.createElement('div'); AW.el.id = 'aw-jet'; document.body.appendChild(AW.el); const css = document.createElement('style'); css.textContent = `#aw-jet { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); width: 140px; height: 6px; border: 1px solid var(--rule, rgba(255,255,255,.3)); border-radius: 3px; z-index: 11; pointer-events: none; background: linear-gradient(90deg, #ffa040 var(--f, 100%), transparent var(--f, 100%)); }`; document.head.appendChild(css); }
     AW.el.style.display = AW.jet < 0.999 || AW.jetting ? 'block' : 'none'; AW.el.style.setProperty('--f', Math.round(AW.jet * 100) + '%'); } else if (AW.el) AW.el.style.display = 'none';
 }
@@ -24400,6 +24418,211 @@ sgPanelAct = function (a) {   // S11-EDIT(§CITY sgPanelAct): the new places
   audio.click(); sgPanelRender();
 };
 Object.assign(S9X, { BX, efSet, cpAug, cpMods, cpBank, cpSpd, CP_SPLIT, bladeStrikeNow: (...a) => bladeStrike(...a), sgPanelOpenNow: (k) => sgPanelOpen(k) });
+
+
+// =====================================================================================
+// §HOMESPACE — a faction's home systems are its own
+//  In a system a power holds, every ambient ship flies its colours: no Syndicate raiders in
+//  Concordance space, no foreign patrols or traders. If that power is hostile to you, its home
+//  guard is waiting at the edge of the system: you fight your way in.
+// =====================================================================================
+function hsOwner(sysIdx = SBX.profile?.systemId) { const S = gsState?.(); const o = S?.owners?.[sysIdx]; if (o && o !== 'player') return o; const sys = SBX.systems?.[sysIdx]; return sys?.stations?.[0]?.faction || null; }
+const _hsNpc = sbxSpawnNPC;
+sbxSpawnNPC = function (kind, type, pos, opts) {   // S11-EDIT(§SYSTEM sbxSpawnNPC): no foreign raiders in a power's home space
+  const own = hsOwner(); if (kind === 'pirate' && own && own !== 'syndicate') return null; const e = _hsNpc(kind, type, pos, opts); if (e?.npc && own && kind !== 'pirate' && e.npc.faction !== own) e.npc.faction = own; return e;
+};
+const _hsWs = wsSpawn;
+wsSpawn = function (cls, fac, pos, extra = {}) {   // S11-EDIT(§WARSHIPS wsSpawn): ambient ships fly the home colours
+  if (extra?.kind === 'roam' || extra?.homeGuard) { const own = hsOwner(); if (own && fac !== own) fac = own; }
+  return _hsWs(cls, fac, pos, extra);
+};
+const HSG = { sys: -1 };
+function hsGuard(sysIdx) {
+  const own = hsOwner(sysIdx); if (!own || !gsPlayerHostileTo(own) || game.humansOnly) return; const pl = world.player; const n = 3 + Math.floor(Math.random() * 3);
+  for (let k = 0; k < n; k++) { const cls = k === 0 ? 'frigate' : k === 1 ? 'corvette' : 'heavy'; const at = pl.pos.clone().add(_v[1].set(Math.random() - 0.5, (Math.random() - 0.5) * 0.3, Math.random() - 0.5).normalize().multiplyScalar(1800 + Math.random() * 1200));
+    const e = wsSpawn(cls, own, at, { kind: 'roam', homeGuard: true }); if (!e) continue; e.name = `${gsShort(own)} home guard ${SHIP_CLASSES[cls]?.name?.toLowerCase() || cls}`; e.rm = true; e.speedMul = 0.9; if (typeof RM !== 'undefined') { RM.list.push(e); } }
+  sbxToast(`${gsShort(own)} home space. Their home guard is moving to intercept — fight your way in.`);
+}
+const _hsLoad = sbxLoadSystem;
+sbxLoadSystem = function (sysIdx, entryPos) { const r = _hsLoad(sysIdx, entryPos); if (!SRF.active) { try { hsGuard(sysIdx); } catch (e) { console.warn('[homespace]', e); } } return r; };   // S11-EDIT(§SYSTEM sbxLoadSystem): the home guard meets you at the door
+
+// =====================================================================================
+// §LOCKON — boxes on hostiles, a red ring that closes as you hold your aim, then LOCKED
+//  On foot and in space, every hostile in view wears a bracket box. Keep one under the
+//  crosshair and a red ring draws itself around it; when it closes it reads LOCKED and every
+//  shot you fire flies to it (bolts on the ground, guns in space). The lock holds until the
+//  target dies, gets far away or stays out of sight.
+// =====================================================================================
+const _lkv = Array.from({ length: 32 }, () => new THREE.Vector3());
+const LK = { t: 0, cand: null, lock: null, lostT: 0, cv: null, g: null, lockTime: 0.9, flash: 0 };
+const lkHostileShip = (e) => e && e.alive && e !== world.player && ((e.team === 'enemy' && (!e.npc || e.npc.kind === 'pirate')) || (e.npc?.faction && !e.npc.commercial && gsPlayerHostileTo(e.npc.faction)));
+function lkCands() {
+  const out = []; if (MM.mode === 'ON_FOOT' || MM.mode === 'GROUND_VEHICLE') { const me = OF.me; if (!me) return out; for (const u of OF.units) if (u !== me && u.alive && !u.mounted && ofHostile(me, u) && u.pos.distanceTo(me.pos) < 160) out.push({ u, p: ofChest(u, new THREE.Vector3()), h: u.h || 1.8, ground: true }); }
+  else if (MM.mode === 'SPACE') world.enemies.forEachActive(e => { if (lkHostileShip(e) && e.pos.distanceTo(world.player.pos) < 6000) out.push({ u: e, p: e.pos.clone(), h: (e.radius || 20) * 2, ground: false }); });
+  return out;
+}
+function lkStep(dt) {
+  const C = lkCands(); const sc = { }; const W = innerWidth, H = innerHeight; const cx = W / 2, cy = H / 2;
+  let best = null, bd = Math.max(70, W * 0.06); for (const c of C) { toScreen(c.p, sc); c.sx = sc.x; c.sy = sc.y; c.on = sc.onScreen; if (!sc.onScreen) continue; const d = Math.hypot(sc.x - cx, sc.y - cy); if (d < bd) { bd = d; best = c; } }
+  if (MM.mode === 'ON_FOOT' && OF.aimHit && C.some(c => c.u === OF.aimHit)) best = C.find(c => c.u === OF.aimHit);
+  // the lock holds while its target lives, stays in range, and is not out of sight for long
+  if (LK.lock) { const L = C.find(c => c.u === LK.lock); if (!L) LK.lock = null; else { LK.lostT = L.on ? 0 : LK.lostT + dt; if (LK.lostT > 3) LK.lock = null; } }
+  if (best && best.u !== LK.lock) { if (LK.cand !== best.u) { LK.cand = best.u; LK.t = 0; } LK.t += dt; if (LK.t >= LK.lockTime) { LK.lock = best.u; LK.t = 0; LK.cand = null; LK.flash = 0.6; audio.click?.(true); } }
+  else if (!best) LK.t = Math.max(0, LK.t - dt * 2);
+  LK.flash = Math.max(0, LK.flash - dt); return C;
+}
+function lkDraw(C) {
+  if (!LK.cv) { LK.cv = document.createElement('canvas'); LK.cv.id = 'lk-canvas'; LK.cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6'; document.body.appendChild(LK.cv); LK.g = LK.cv.getContext('2d'); }
+  const cv = LK.cv, g = LK.g, dpr = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(innerWidth * dpr)) { cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight); const on = ['ON_FOOT', 'GROUND_VEHICLE', 'SPACE'].includes(MM.mode) && !(typeof FBK !== 'undefined' && FBK.on); if (!on) return;
+  const t = performance.now() / 1000; const sc = {};
+  for (const c of C) { if (!c.on) continue; const d = c.ground ? c.u.pos.distanceTo(camera.position) : c.p.distanceTo(camera.position);
+    toScreen(_fv[0].copy(c.p).add(_fv[1].set(0, c.h * 0.55, 0)), sc); const top = sc.y; const hh = Math.max(14, Math.abs(c.sy - top) * 2); const ww = c.ground ? hh * 0.55 : hh; const x = c.sx - ww / 2, y = c.sy - hh / 2; const k = Math.min(ww, hh) * 0.28;
+    const isLock = c.u === LK.lock; g.strokeStyle = isLock ? 'rgba(255,60,60,.95)' : 'rgba(255,90,70,.7)'; g.lineWidth = isLock ? 2 : 1.3; g.beginPath();
+    for (const [px, py, sx2, sy2] of [[x, y, 1, 1], [x + ww, y, -1, 1], [x, y + hh, 1, -1], [x + ww, y + hh, -1, -1]]) { g.moveTo(px, py + sy2 * k); g.lineTo(px, py); g.lineTo(px + sx2 * k, py); } g.stroke();
+    g.font = tkFont('10px'); g.fillStyle = 'rgba(255,120,100,.8)'; g.fillText(`${Math.round(d)} m`, x + ww + 4, y + 9);
+    const hp = c.u.hp != null && c.u.hpMax ? c.u.hp / c.u.hpMax : (c.u.hull != null && c.u.maxHull ? c.u.hull / c.u.maxHull : null); if (hp != null) { g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(x, y - 6, ww, 3); g.fillStyle = 'rgba(255,80,60,.9)'; g.fillRect(x, y - 6, ww * clamp(hp, 0, 1), 3); }
+    if (c.u === LK.cand && LK.t > 0) { const R = Math.max(ww, hh) * 0.62 + 6; const f = LK.t / LK.lockTime; g.strokeStyle = 'rgba(255,40,40,.95)'; g.lineWidth = 2.5; g.beginPath(); g.arc(c.sx, c.sy, R, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); g.stroke();
+      g.lineWidth = 1; g.strokeStyle = 'rgba(255,40,40,.35)'; g.beginPath(); g.arc(c.sx, c.sy, R, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,90,80,.85)'; g.font = tkFont('600 10px'); g.fillText(`LOCKING ${Math.round(f * 100)}%`, c.sx - 30, c.sy + R + 14); }
+    if (isLock) { const R = Math.max(ww, hh) * 0.62 + 6 + LK.flash * 30; g.strokeStyle = 'rgba(255,40,40,.95)'; g.lineWidth = 2.5; g.beginPath(); g.arc(c.sx, c.sy, R, 0, Math.PI * 2); g.stroke();
+      g.save(); g.translate(c.sx, c.sy); g.rotate(t * 2); g.beginPath(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; g.moveTo(Math.cos(a) * (R + 3), Math.sin(a) * (R + 3)); g.lineTo(Math.cos(a) * (R + 11), Math.sin(a) * (R + 11)); } g.stroke(); g.restore();
+      g.fillStyle = 'rgba(255,50,50,.95)'; g.font = tkFont('700 12px'); g.fillText('LOCKED', c.sx - 24, c.sy - R - 8); }
+  }
+}
+// on foot: a locked target draws every bolt you fire, and bolts bend to it in flight
+const _lkBolt = ofBolt;
+ofBolt = function (from, dir, W, owner, team, color, dmgMul) {   // S11-EDIT(§ONFOOT.BOLTS ofBolt): locked shots fly true
+  const L = LK.lock; if (owner && owner === OF.me && L && L.alive && L.pos && OF.units.includes(L)) { const to = ofChest(L, _lkv[16] || (_lkv[16] = new THREE.Vector3())); dir = _lkv[17] = (_lkv[17] || new THREE.Vector3()).subVectors(to, from).normalize(); const b = _lkBolt(from, dir, W, owner, team, color, dmgMul); if (b) b.homing = L; return b; }
+  return _lkBolt(from, dir, W, owner, team, color, dmgMul);
+};
+const _lkBoltStep = ofBoltStep;
+ofBoltStep = function (dt) {   // S11-EDIT(§ONFOOT.BOLTS ofBoltStep): homing bolts steer onto their target
+  for (const b of OF.bolts) { const T = b.homing; if (!T) continue; if (!T.alive) { b.homing = null; continue; } const to = ofChest(T, _lkv[18] || (_lkv[18] = new THREE.Vector3())); const sp = b.vel.length(); const want = to.sub(b.pos); const d = want.length(); if (d < sp * dt * 1.2) { b.pos.copy(ofChest(T, want)).addScaledVector(b.vel, -dt * 0.5 / Math.max(1, sp) ); } b.vel.lerp(want.normalize().multiplyScalar(sp), Math.min(1, dt * 18)); }
+  return _lkBoltStep(dt);
+};
+// in space: the player's guns lead the locked ship and their rounds home on it
+const _lkSpawnProjP = World.prototype.spawnProjectile; const _lkSpawnProj = (...a) => _lkSpawnProjP.apply(world, a);
+World.prototype.spawnProjectile = function (pos, vel, team, damage, life, radius, owner) {   // S11-EDIT(§WORLD spawnProjectile): locked guns in space
+  const L = LK.lock; if (team === 'player' && L && L.alive && L.pos && MM.mode === 'SPACE') { const sp = vel.length(); const out = _lkv[30]; const t = solveLead(pos, _lkv[31].set(0, 0, 0), L.pos, L.vel || _lkv[31], sp, 0, out); const aim = (t > 0 ? out : L.pos).clone().sub(pos).normalize().multiplyScalar(sp); const p = _lkSpawnProj(pos, aim, team, damage, life * 1.5, radius, owner); if (p) p.homing = L; return p; }
+  return _lkSpawnProj(pos, vel, team, damage, life, radius, owner);
+};
+function lkSpaceHoming(dt) { for (const p of world.projectiles.items) { if (!p.active || !p.homing) continue; const T = p.homing; if (!T.alive) { p.homing = null; continue; } const sp = p.vel.length(); const want = _v[3].subVectors(T.pos, p.pos); p.vel.lerp(want.normalize().multiplyScalar(sp), Math.min(1, dt * 10)); } }
+
+// =====================================================================================
+// §ARROWBLADE — the sabre answers the arrow keys
+//  ← slash from the right, → slash from the left, ↑ overhead heavy cut, ↓ lunging thrust.
+//  The mouse still swings; the arrows let you choose the line of every cut.
+// =====================================================================================
+Object.assign(MM_BIND.ON_FOOT, { cutLeft: 'ArrowLeft', cutRight: 'ArrowRight', cutHigh: 'ArrowUp', cutThrust: 'ArrowDown' }); MM.allowed = null;
+const AB_DIR = { ArrowLeft: ['light', 0, 'left'], ArrowRight: ['light', 1, 'right'], ArrowUp: ['heavy', 0, 'up'], ArrowDown: ['lunge', 0, 'thrust'] };
+const _abInput = bladeInput;
+bladeInput = function (me, dt) {   // S11-EDIT(§BLADE bladeInput): arrow keys choose the cut
+  const b = me?.blade; if (b?.lit && !b.lock && !(b.broken > 0) && !(me.stun > 0)) for (const [code, [kind, combo, dir]] of Object.entries(AB_DIR)) if (input.pressed.has(code)) { input.pressed.delete(code); b.blocking = false; b.auto = false; if (bladeSwing(me, kind)) { if (kind === 'light') { b.combo = combo; me.combo = combo; } b.dir = dir; } break; }
+  return _abInput(me, dt);
+};
+
+// =====================================================================================
+// §IRONCLAD2 — the clan's arsenal: 4 flamethrower (hold), 5 shock trap, 6 seeker volley
+//  (hold to lock up to four, release to fire), 7 wrist rockets; and a jetpack that lasts.
+// =====================================================================================
+const IC = { flame: 1, flameOn: false, traps: [], trapCd: 0, seek: null, seekCd: 0, fx: null };
+const icMe = () => { const me = OF.me; return me?.alive && charOf()?.cls === 'ironclad' && MM.mode === 'ON_FOOT' ? me : null; };
+const IC_W = { seeker: { name: 'Seeker dart', dmg: 70, rate: 0, speed: 70, heat: 0, cool: 1, bloom0: 0, bloomAdd: 0, bloomMax: 0, recov: 1, len: 1.4, pitch: 300, splash: 3, rocket: true, size: 1.4 } };
+function icFlameStep(me, dt) {
+  const hold = input.keys.has('Digit4'); const f = _lkv[19] || (_lkv[19] = new THREE.Vector3()); f.set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw));
+  IC.flameOn = hold && IC.flame > 0.02; if (!IC.flameOn) { IC.flame = Math.min(1, IC.flame + dt / 5); return; }
+  IC.flame = Math.max(0, IC.flame - dt / 7); me.yaw = OF.cam.yaw; me.act = 'fire'; me.actT = 0;
+  const mz = ofMuzzle(me, _lkv[20] || (_lkv[20] = new THREE.Vector3()));
+  for (let i = 0; i < 6; i++) { const s = 9 + Math.random() * 7; world.particles.emit(mz, _lkv[21] = (_lkv[21] || new THREE.Vector3()).set(f.x * s + (Math.random() - 0.5) * 3, (Math.random() - 0.2) * 2 + Math.sin(OF.cam.pitch) * s, f.z * s + (Math.random() - 0.5) * 3), 0.55 + Math.random() * 0.3, 1.2 + Math.random(), Math.random() < 0.5 ? 0xff7a1a : 0xffc040, 1.6); }
+  for (const v of OF.units) { if (v === me || !v.alive || !ofHostile(me, v)) continue; const d = _lkv[22] = (_lkv[22] || new THREE.Vector3()).subVectors(v.pos, me.pos); const L = d.setY(0).length(); if (L > 10 || f.angleTo(d.normalize()) > 0.5) continue; ofDamage(v, 55 * dt, me, { kind: 'fire', dir: d }); v.burn = Math.max(v.burn || 0, 3); v.burnBy = me; if (v.ai && Math.random() < dt) v.flee = 2; }
+  if (Math.random() < dt * 8) audio.blaster?.(70, 0.25);
+}
+function icTrapThrow(me) {
+  if (OF.t < IC.trapCd) return sbxToast(`Shock trap recharging — ${Math.ceil(IC.trapCd - OF.t)} s.`); const f = _lkv[23] = (_lkv[23] || new THREE.Vector3()).set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw));
+  const at = (OF.aim && OF.aim.lengthSq() > 0 && OF.aim.distanceTo(me.pos) < 22 ? OF.aim.clone() : me.pos.clone().addScaledVector(f, 8)); at.y = ofG(at.x, at.z) + 0.1;
+  const grp = new THREE.Group(); const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.18, 10), new THREE.MeshStandardMaterial({ color: 0x2a3038, metalness: 0.7, roughness: 0.4, emissive: 0x2050ff, emissiveIntensity: 0.6 })); grp.add(disc);
+  const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 24), 3)); const arc = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x9fd8ff, toneMapped: false, transparent: true, opacity: 0.9 })); arc.frustumCulled = false; grp.add(arc);
+  grp.position.copy(at); scene.add(grp); IC.traps.push({ grp, arc, pos: at, t: 60, armed: 0.6, cd: 0 }); if (IC.traps.length > 3) icTrapDrop(IC.traps[0]);
+  IC.trapCd = OF.t + 5; audio.click?.(true); sbxToast('Shock trap set. Anything hostile that walks over it gets the current.');
+}
+function icTrapDrop(T) { scene.remove(T.grp); T.grp.traverse(o => { o.geometry?.dispose?.(); }); IC.traps.splice(IC.traps.indexOf(T), 1); }
+function icTrapStep(dt) {
+  for (const T of [...IC.traps]) { T.t -= dt; T.armed -= dt; T.cd -= dt; if (T.t <= 0 || !OF.active) { icTrapDrop(T); continue; }
+    const p = T.arc.geometry.attributes.position; for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, r = 0.3 + Math.random() * 0.9; p.setXYZ(i * 2, 0, 0.12, 0); p.setXYZ(i * 2 + 1, Math.cos(a) * r, 0.12 + Math.random() * 0.5, Math.sin(a) * r); } p.needsUpdate = true;
+    if (T.armed > 0 || T.cd > 0) continue; const hit = OF.units.filter(v => v.alive && v !== OF.me && OF.me && ofHostile(OF.me, v) && v.kind !== 'vehicle' && Math.hypot(v.pos.x - T.pos.x, v.pos.z - T.pos.z) < 3.5);
+    if (hit.length) { T.cd = 2.5; const chain = OF.units.filter(v => v.alive && v !== OF.me && ofHostile(OF.me, v) && v.kind !== 'vehicle' && Math.hypot(v.pos.x - T.pos.x, v.pos.z - T.pos.z) < 7);
+      for (const v of chain) { v.stun = Math.max(v.stun || 0, 4); ofDamage(v, 30, OF.me, { kind: 'power', pierce: true }); world.sparks(ofChest(v, _lkv[24] || (_lkv[24] = new THREE.Vector3())), 14, 0x9fd8ff); IC_FX.bolt(T.pos, v); } shake.add(0.08); } }
+}
+const IC_FX = { list: [], bolt(from, v) { const pts = []; const a = new THREE.Vector3(from.x, from.y + 0.3, from.z), b = ofChest(v, new THREE.Vector3()); for (let i = 0; i <= 8; i++) { const p = a.clone().lerp(b, i / 8); if (i && i < 8) p.add(new THREE.Vector3((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8)); pts.push(p); }
+  const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xbfe8ff, toneMapped: false, transparent: true })); l.frustumCulled = false; scene.add(l); this.list.push({ l, t: 0.25 }); },
+  step(dt) { for (let i = this.list.length - 1; i >= 0; i--) { const F = this.list[i]; F.t -= dt; F.l.material.opacity = Math.max(0, F.t * 4); if (F.t <= 0) { scene.remove(F.l); F.l.geometry.dispose(); F.l.material.dispose(); this.list.splice(i, 1); } } } };
+function icSeekStep(me, dt) {
+  const hold = input.keys.has('Digit6');
+  if (hold && OF.t >= IC.seekCd) { if (!IC.seek) { IC.seek = { t: 0, locks: [] }; sbxToast('Seeker volley: sweep the crosshair over up to four targets, release 6 to fire.'); } const S = IC.seek; S.t += dt;
+    if (S.locks.length < 4 && S.t > 0.3) { const c = lkCands().filter(c => !S.locks.includes(c.u)).map(c => { const sc = toScreen(c.p, {}); return { u: c.u, d: sc.onScreen ? Math.hypot(sc.x - innerWidth / 2, sc.y - innerHeight / 2) : 1e9 }; }).sort((a, b) => a.d - b.d)[0]; if (c && c.d < innerWidth * 0.18) { S.locks.push(c.u); S.t = 0; audio.click?.(); } } }
+  else if (IC.seek) { const S = IC.seek; IC.seek = null; if (!S.locks.length) return; const mz = ofMuzzle(me, _lkv[25] || (_lkv[25] = new THREE.Vector3()));
+    S.locks.forEach((u, i) => { const d = _lkv[26] = (_lkv[26] || new THREE.Vector3()).set((Math.random() - 0.5) * 0.6, 1 + Math.random() * 0.4, (Math.random() - 0.5) * 0.6).normalize(); const b = _lkBolt(mz.clone().add(_lkv[27] = (_lkv[27] || new THREE.Vector3()).set(0, 0.2 * i, 0)), d, IC_W.seeker, me, me.team, 0xffa040, 1); if (b) { b.homing = u; b.life = 3.5; } });
+    IC.seekCd = OF.t + 7; shake.add(0.1); sbxToast(`Seeker volley away — ${S.locks.length} target${S.locks.length > 1 ? 's' : ''}.`); }
+}
+function icSeekDraw(g) { const S = IC.seek; if (!S) return; for (const u of S.locks) { if (!u.alive) continue; const sc = toScreen(ofChest(u, new THREE.Vector3()), {}); if (!sc.onScreen) continue; g.strokeStyle = 'rgba(255,170,60,.95)'; g.lineWidth = 2; g.beginPath(); g.moveTo(sc.x, sc.y - 16); g.lineTo(sc.x + 16, sc.y); g.lineTo(sc.x, sc.y + 16); g.lineTo(sc.x - 16, sc.y); g.closePath(); g.stroke(); }
+  g.fillStyle = 'rgba(255,170,60,.95)'; g.font = tkFont('700 12px'); g.fillText(`SEEKERS ${S.locks.length}/4`, innerWidth / 2 - 40, innerHeight / 2 + 60); }
+const _icStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): the Ironclad's arsenal
+  _icStep(dt); icTrapStep(dt); IC_FX.step(dt); const me = icMe(); if (!me || me.mounted) { IC.flameOn = false; return; }
+  icFlameStep(me, dt); icSeekStep(me, dt);
+  if (input.pressed.has('Digit5')) { input.pressed.delete('Digit5'); icTrapThrow(me); }
+  if (input.pressed.has('Digit7')) { input.pressed.delete('Digit7'); ofAbility(); }
+};
+// the Ironclad's own guns hit harder (clan-forged)
+const _icDmg = ofDamage;
+ofDamage = function (u, dmg, from, o = {}) { if (from && from === OF.me && o.kind === 'bolt' && charOf()?.cls === 'ironclad') dmg *= 1.3; return _icDmg(u, dmg, from, o); };   // S11-EDIT(§ONFOOT.DAMAGE ofDamage): clan-forged guns
+// the HUD lists the arsenal where a Resonant sees powers
+const _icHud = resHud;
+resHud = function (g, dt) {   // S11-EDIT(§RESONANCE resHud): the Ironclad's arsenal in the power list
+  _icHud(g, dt); const ch = charOf(); if (ch?.cls !== 'ironclad') return; const el = $('of-powers'); if (!el || OF.t - (IC.hudT || 0) < 0.25) return; IC.hudT = OF.t;
+  const cd = (t) => Math.max(0, t - OF.t); el.innerHTML = `<div class="small" style="margin-top:4px">Clan arsenal</div><div class="small">4 Flamethrower ${Math.round(IC.flame * 100)}%</div><div class="small">5 Shock trap ${cd(IC.trapCd) ? Math.ceil(cd(IC.trapCd)) + 's' : `(${IC.traps.length}/3 set)`}</div><div class="small">6 Seeker volley ${cd(IC.seekCd) ? Math.ceil(cd(IC.seekCd)) + 's' : 'ready'}</div><div class="small">7 Wrist rockets</div><div class="small">Jetpack ${Math.round((AW.jet || 0) * 100)}%</div>`;
+};
+
+// =====================================================================================
+// §ANIM2 — bodies that move like bodies
+//  A layer over the procedural animation: the upper body eases between poses instead of
+//  snapping, breathes at rest, the chest counter-turns the hips, the body leans into turns and
+//  into acceleration, the head steadies and looks where you aim, landings dip the knees, runs
+//  pump the arms, and sabre cuts follow the line you chose (wind-up, cut, follow-through).
+// =====================================================================================
+const AN_UPPER = ['spine', 'chest', 'neck', 'head', 'lUpperArm', 'lForearm', 'rUpperArm', 'rForearm'].map(n => CHB[n]);
+const _anAnim = charAnimate;
+charAnimate = function (r, st, dt) {   // S11-EDIT(§CHARACTER.ANIM charAnimate): secondary motion and eased transitions
+  _anAnim(r, st, dt); if (r.ragdoll || r.mixer || r.tier !== 0 || !r.bones || st.dead || !(dt > 0)) return;
+  const B = r.bones; const A = r._an || (r._an = { q: AN_UPPER.map(i => B[i].quaternion.clone()), yaw: st.yaw, yr: 0, sp: 0, acc: 0, air: false, land: 0, t: Math.random() * 10 }); A.t += dt;
+  const sp = st.speed || 0; const yr = ((st.yaw - A.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; A.yaw = st.yaw; A.yr = lerp(A.yr, yr / dt, 1 - Math.exp(-8 * dt)); A.acc = lerp(A.acc, (sp - A.sp) / dt, 1 - Math.exp(-6 * dt)); A.sp = sp;
+  if (A.air && !st.air) A.land = 0.28; A.air = !!st.air; A.land = Math.max(0, A.land - dt);
+  const run = clamp((sp - 3) / 4, 0, 1), still = clamp(1 - sp / 1.2, 0, 1);
+  // lean into turns and into acceleration
+  B[0].rotation.z += clamp(-A.yr * 0.05 * clamp(sp / 5, 0, 1), -0.22, 0.22); B[CHB.spine].rotation.x += clamp(A.acc * 0.012, -0.12, 0.16) + run * 0.08;
+  // chest counter-turns the hips; the head steadies against both
+  B[CHB.chest].rotation.y -= B[0].rotation.y * 1.1; B[CHB.head].rotation.y -= B[0].rotation.y * 0.4 + B[CHB.chest].rotation.y * 0.35; B[CHB.head].rotation.z -= B[0].rotation.z * 0.6;
+  // breathing at rest
+  const br = Math.sin(A.t * 1.7); B[CHB.chest].rotation.x += br * 0.022 * (0.4 + still); B[CHB.lUpperArm].rotation.z += br * 0.015 * still; B[CHB.rUpperArm].rotation.z -= br * 0.015 * still; B[CHB.head].rotation.x += Math.sin(A.t * 0.9) * 0.02 * still;
+  // a run pumps the arms; landing dips the knees
+  if (!st.blade && !st.aim && !st.act) { B[CHB.lForearm].rotation.x += run * 0.5; B[CHB.rForearm].rotation.x += run * 0.5; }
+  if (A.land > 0) { const k = Math.sin(A.land / 0.28 * Math.PI); B[0].position.y -= 0.12 * k; B[CHB.lThigh].rotation.x -= 0.35 * k; B[CHB.rThigh].rotation.x -= 0.35 * k; B[CHB.lShin].rotation.x += 0.6 * k; B[CHB.rShin].rotation.x += 0.6 * k; B[CHB.spine].rotation.x += 0.2 * k; }
+  // sabre cuts along the chosen line: wind-up, cut, follow-through
+  const a = st.act; if (st.blade && (a === 'melee_light' || a === 'lunge' || a === 'melee_heavy')) { const f = clamp(st.actT / (CH_ACT[a] || 0.4), 0, 1); const wind = f < 0.22 ? f / 0.22 : 1, cut = f < 0.22 ? 0 : smooth01((f - 0.22) / 0.35), fol = f > 0.6 ? (f - 0.6) / 0.4 : 0;
+    if (a === 'melee_light') { const s = st.combo % 2 ? -1 : 1; B[CHB.chest].rotation.y = s * lerp(-1.05 * wind, 0.95, cut) - s * 0.15 * fol; B[CHB.rUpperArm].rotation.x = -1.7 + Math.sin(cut * Math.PI) * 0.4; B[CHB.rUpperArm].rotation.z = s * lerp(1.0 * wind, -0.85, cut); B[CHB.rForearm].rotation.x = lerp(-1.1, -0.25, cut); B[0].rotation.y += s * 0.25 * (cut - 0.5); }
+    else if (a === 'melee_heavy') { B[CHB.rUpperArm].rotation.x = lerp(-2.9 * wind, -0.5, cut); B[CHB.lUpperArm].rotation.x = lerp(-2.7 * wind, -0.6, cut); B[CHB.chest].rotation.x = lerp(-0.3 * wind, 0.55, cut); B[CHB.spine].rotation.x += 0.25 * cut; B[0].position.y -= 0.08 * cut; }
+    else { B[CHB.rUpperArm].rotation.x = lerp(-0.9 * wind, -1.55, cut); B[CHB.rForearm].rotation.x = lerp(-1.6 * wind, 0, cut); B[CHB.chest].rotation.y = lerp(-0.5 * wind, 0.3, cut); B[CHB.spine].rotation.x += 0.3 * cut; B[CHB.lThigh].rotation.x -= 0.5 * cut; B[CHB.rShin].rotation.x += 0.4 * cut; } }
+  // ease the upper body toward its pose unless an action wants it snappy
+  const snappy = a === 'melee_light' || a === 'melee_heavy' || a === 'lunge' || a === 'parry' || a === 'clash' || a === 'fire'; const k = 1 - Math.exp(-(snappy ? 40 : 14) * dt);
+  AN_UPPER.forEach((bi, i) => { const q = B[bi].quaternion; A.q[i].slerp(q, k); q.copy(A.q[i]); });
+};
+
+// per frame: the lock-on, its drawing, homing in space, the seeker markers
+const _lkRender = partRenderHook;
+partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): lock-on and the arsenal markers
+  const r = _lkRender(alpha, dt); try { const C = lkStep(dt || 1 / 60); lkDraw(C); if (MM.mode === 'SPACE') lkSpaceHoming(dt || 1 / 60); if (LK.g && IC.seek) icSeekDraw(LK.g); } catch (e) { console.warn('[lockon]', e); } return r;
+};
+Object.assign(S9X, { LK, lkStep, lkCands, IC, icTrapThrow, hsOwner, hsGuard, AB_DIR });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
