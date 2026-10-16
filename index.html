@@ -362,6 +362,9 @@
     §PUNCH                  every shot lands with weight
     §ANIM3                  more life in the bodies
     §VISOR                  the dashboard as the inside of a helmet visor
+    §ICGUNS                 the Ironclad holds what it fires
+    §WRECK                  the world breaks: crates, boulders, trees, rocks, crystals and spires on the ground
+    §VARN                   the Varn arsenal (./s11/varn_arsenal_all.glb): thirteen clan weapons, pristine and worn
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -808,6 +811,20 @@
     §RESONANCE resHud — the lance in the arsenal list
     §CHARACTER.ANIM charAnimate — idle shifts, recoil, flinch, jump tuck, jet hang
     §PARTRT partRenderHook — hit feedback, the visor
+    §ONFOOT.STEP OF.step — the Ironclad's hand follows the weapon in use
+    §ONFOOT.PROPS ofSegHitProp — remember what a bolt struck
+    §ONFOOT.BOLTS ofImpact — bolts chip what they hit
+    §ONFOOT ofBlast — blasts break what stands near them
+    §ONFOOT.PROPS ofBuildProps — broken things stay broken
+    §SURFACE spawnSiteObjects — a new site starts whole
+    §ONFOOT ofGunMesh — Varn models
+    §ONFOOT.FIRE ofFire — pellets
+    §ONFOOT.STEP OF.step — Varn gadgets in hand, cell glow, the baton, broken things
+    §IRONCLAD2 icTrapThrow — fired from the net launcher
+    §IRONCLAD2 icSeekStep — out of the launcher tubes
+    §BLADE bladeStrike — the sabre cuts crates and trees
+    §IRONCLAD2 icFlameStep — flame burns wood
+    §PUNCH puLanceStep — the lance bores through cover
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -15320,7 +15337,7 @@ function ofBuildProps(cx, cz) {
   // the biome's scattered props near the player are real cover too
   const KR = { rock: [1.0, 1.4], spire: [0.75, 4.5], shard: [0.5, 5], crystal: [1.1, 2.6], blob: [1.2, 2.2], tree: [0.42, 3.2] };
   for (const [k, m] of Object.entries(TERRA.props)) { if (!m.count) continue; for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, _cm); _fv[0].setFromMatrixPosition(_cm); const s = _fv[1].setFromMatrixScale(_cm).y; if (s < 0.01 || Math.hypot(_fv[0].x - cx, _fv[0].z - cz) > R) continue;
-    OF.props.push({ x: _fv[0].x, z: _fv[0].z, y: _fv[0].y - 0.2, r: KR[k][0] * s, h: KR[k][1] * s, kind: k }); } }
+    OF.props.push({ x: _fv[0].x, z: _fv[0].z, y: _fv[0].y - 0.2, r: KR[k][0] * s, h: KR[k][1] * s, kind: k, im: m, ii: i }); } }
   // generated boulders, crates and ruin stones in 40 m cells
   const C = 40; let nb = 0, nc = 0; const rockC = new THREE.Color(0x7d7468).lerp(new THREE.Color(B.fog[0]), 0.25);
   for (let gx = Math.floor((cx - R) / C); gx <= Math.floor((cx + R) / C); gx++) for (let gz = Math.floor((cz - R) / C); gz <= Math.floor((cz + R) / C); gz++) {
@@ -15332,9 +15349,9 @@ function ofBuildProps(cx, cz) {
       if (world.player && Math.hypot(x - world.player.pos.x, z - world.player.pos.z) < 16) continue;   // never inside the ship
       const crate = B.civ && rng() < 0.35;
       if (crate && nc < 120) { const s = 1.1 + rng() * 0.5; const h = s * (rng() < 0.4 ? 2 : 1); dummy.position.set(x, y + h / 2 - 0.05, z); dummy.rotation.set(0, rng() * 6.3, 0); dummy.scale.set(s, h, s); dummy.updateMatrix(); OFP.crates.setMatrixAt(nc, dummy.matrix); OFP.crates.setColorAt(nc, _c.setHex([0x6a5a3a, 0x4a5a5e, 0x5e4a3a][nc % 3])); nc++;
-        OF.props.push({ x, z, y: y - 0.05, r: s * 0.68, h, kind: 'crate' }); }
+        OF.props.push({ x, z, y: y - 0.05, r: s * 0.68, h, kind: 'crate', im: OFP.crates, ii: nc - 1 }); }
       else if (nb < OF_PROP_MAX) { const rr = 0.9 + rng() * 1.1; const hh = rr * (0.95 + rng() * 0.6); dummy.position.set(x, y + hh * 0.42 - 0.2, z); dummy.rotation.set(rng() * 0.4, rng() * 6.3, rng() * 0.4); dummy.scale.set(rr, hh * 0.62, rr * (0.85 + rng() * 0.3)); dummy.updateMatrix(); OFP.mesh.setMatrixAt(nb, dummy.matrix); OFP.mesh.setColorAt(nb, _c.copy(rockC).offsetHSL(0, 0, (rng() - 0.5) * 0.1)); nb++;
-        OF.props.push({ x, z, y: y - 0.2, r: rr * 0.92, h: hh * 0.95, kind: 'boulder' }); }
+        OF.props.push({ x, z, y: y - 0.2, r: rr * 0.92, h: hh * 0.95, kind: 'boulder', im: OFP.mesh, ii: nb - 1 }); }
     }
   }
   OFP.mesh.count = nb; OFP.crates.count = nc; OFP.mesh.instanceMatrix.needsUpdate = true; OFP.crates.instanceMatrix.needsUpdate = true; if (OFP.mesh.instanceColor) OFP.mesh.instanceColor.needsUpdate = true; if (OFP.crates.instanceColor) OFP.crates.instanceColor.needsUpdate = true;
@@ -24504,13 +24521,30 @@ function lkStep(dt) {
   else if (!best) LK.t = Math.max(0, LK.t - dt * 2);
   LK.flash = Math.max(0, LK.flash - dt); return C;
 }
+// the box fits the target's rendered model: its mesh bounds (sprites and glows left out), kept
+// relative to the target and re-measured a few times a second, projected corner by corner
+const _lkB = new THREE.Box3(), _lkB2 = new THREE.Box3(), _lkC = Array.from({ length: 8 }, () => new THREE.Vector3());
+function lkObj(u) { return u.rig?.root || u.veh?.obj || u.mesh || null; }
+function lkMeasure(u) {
+  const o = lkObj(u); const now = performance.now(); if (u._lkBox && now - u._lkBoxT < 250) return u._lkBox; u._lkBoxT = now;
+  if (!o) return (u._lkBox = null); o.updateMatrixWorld(true); _lkB.makeEmpty();
+  o.traverse(m => { if (!m.visible || m.isSprite || m.isPoints || m.isLine || !m.geometry || (m.material && m.material.blending === THREE.AdditiveBlending)) return; const g = m.geometry; if (!g.boundingBox) g.computeBoundingBox(); _lkB2.copy(g.boundingBox).applyMatrix4(m.matrixWorld); _lkB.union(_lkB2); });
+  if (_lkB.isEmpty()) return (u._lkBox = null); const p = u.pos; return (u._lkBox = { min: _lkB.min.clone().sub(p), max: _lkB.max.clone().sub(p) });
+}
+function lkScreenBox(c) {
+  const u = c.u; const B = lkMeasure(u); const p = u.pos; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, n = 0; const sc = {};
+  const mn = B ? B.min : _lkC[7].set(-0.4, 0, -0.4), mx = B ? B.max : _lkC[6].set(0.4, c.ground ? (u.h || 1.8) : (u.radius || 20), 0.4);
+  if (!B && !c.ground) { mn.set(-(u.radius || 20), -(u.radius || 20), -(u.radius || 20)); mx.set(u.radius || 20, u.radius || 20, u.radius || 20); }
+  for (let i = 0; i < 8; i++) { _lkC[i].set(p.x + (i & 1 ? mx.x : mn.x), p.y + (i & 2 ? mx.y : mn.y), p.z + (i & 4 ? mx.z : mn.z)); toScreen(_lkC[i], sc); if (sc.behind) continue; n++; x0 = Math.min(x0, sc.x); x1 = Math.max(x1, sc.x); y0 = Math.min(y0, sc.y); y1 = Math.max(y1, sc.y); }
+  if (!n) return null; const pad = 4; return { x: x0 - pad, y: y0 - pad, w: x1 - x0 + pad * 2, h: y1 - y0 + pad * 2, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
 function lkDraw(C) {
   if (!LK.cv) { LK.cv = document.createElement('canvas'); LK.cv.id = 'lk-canvas'; LK.cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6'; document.body.appendChild(LK.cv); LK.g = LK.cv.getContext('2d'); }
   const cv = LK.cv, g = LK.g, dpr = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(innerWidth * dpr)) { cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); }
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight); const on = ['ON_FOOT', 'GROUND_VEHICLE', 'SPACE'].includes(MM.mode) && !(typeof FBK !== 'undefined' && FBK.on); if (!on) return;
   const t = performance.now() / 1000; const sc = {};
   for (const c of C) { if (!c.on) continue; const d = c.ground ? c.u.pos.distanceTo(camera.position) : c.p.distanceTo(camera.position);
-    toScreen(_fv[0].copy(c.p).add(_fv[1].set(0, c.h * 0.55, 0)), sc); const top = sc.y; const hh = Math.max(14, Math.abs(c.sy - top) * 2); const ww = c.ground ? hh * 0.55 : hh; const x = c.sx - ww / 2, y = c.sy - hh / 2; const k = Math.min(ww, hh) * 0.28;
+    const bx = lkScreenBox(c); if (!bx) continue; const ww = Math.max(12, bx.w), hh = Math.max(14, bx.h); const x = bx.cx - ww / 2, y = bx.cy - hh / 2; c.sx = bx.cx; c.sy = bx.cy; const k = Math.min(ww, hh) * 0.28;
     const isLock = c.u === LK.lock; g.strokeStyle = isLock ? 'rgba(255,60,60,.95)' : 'rgba(255,90,70,.7)'; g.lineWidth = isLock ? 2 : 1.3; g.beginPath();
     for (const [px, py, sx2, sy2] of [[x, y, 1, 1], [x + ww, y, -1, 1], [x, y + hh, 1, -1], [x + ww, y + hh, -1, -1]]) { g.moveTo(px, py + sy2 * k); g.lineTo(px, py); g.lineTo(px + sx2 * k, py); } g.stroke();
     g.font = tkFont('10px'); g.fillStyle = 'rgba(255,120,100,.8)'; g.fillText(`${Math.round(d)} m`, x + ww + 4, y + 9);
@@ -24655,7 +24689,7 @@ const _lkRender = partRenderHook;
 partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): lock-on and the arsenal markers
   const r = _lkRender(alpha, dt); try { const C = lkStep(dt || 1 / 60); lkDraw(C); if (MM.mode === 'SPACE') lkSpaceHoming(dt || 1 / 60); if (LK.g && IC.seek) icSeekDraw(LK.g); } catch (e) { console.warn('[lockon]', e); } return r;
 };
-Object.assign(S9X, { LK, lkStep, lkCands, IC, icTrapThrow, hsOwner, hsGuard, AB_DIR, charAnimateBase: (...a) => _anAnim(...a) });
+Object.assign(S9X, { LK, lkStep, lkCands, IC, icTrapThrow, hsOwner, hsGuard, AB_DIR, lkScreenBoxNow: (c) => lkScreenBox(c), charAnimateBase: (...a) => _anAnim(...a) });
 
 
 // =====================================================================================
@@ -25026,6 +25060,176 @@ partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): 
   const r = _puRender(alpha, dt); try { const d = dt || 1 / 60; puDraw(d); vzDraw(d); VZ.tagT -= d; if (VZ.tagT <= 0) { VZ.tagT = 1; vzTag(); } } catch (e) { console.warn('[punch/visor]', e); } return r;
 };
 Object.assign(S9X, { PU, IC_LANCE, puLanceStep, puDraw, VZ, vzTag, vzDraw });
+
+
+// =====================================================================================
+// §ICGUNS — the Ironclad holds what it fires
+//  The hand swaps to a flamethrower (fuel tanks, igniter, a pilot flame) while 4 is held, to
+//  the rail lance (a long coil rifle whose coils glow as it charges) while 8 charges, and back
+//  to the blaster after. WPN_ASSETS.flamerGun / .lanceGun replace these models when supplied.
+// =====================================================================================
+const ICG = { cur: null, meshes: {} };
+function icgMesh(kind) {
+  if (ICG.meshes[kind]) return ICG.meshes[kind]; const sup = WPN_ASSETS[kind + 'Gun']; if (sup) return (ICG.meshes[kind] = sup.clone(true));
+  const g = new THREE.Group(); const metal = new THREE.MeshStandardMaterial({ color: 0x3a3f46, metalness: 0.75, roughness: 0.4 }), brass = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, metalness: 0.8, roughness: 0.35 });
+  if (kind === 'flamer') { const body = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.11, 0.42), metal); body.position.z = 0.12; g.add(body); const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.32, 8).rotateX(Math.PI / 2), brass); noz.position.z = 0.48; g.add(noz);
+    for (const s of [-1, 1]) { const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.3, 10).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7a2a1a, metalness: 0.5, roughness: 0.5 })); tank.position.set(s * 0.075, -0.06, 0.08); g.add(tank); }
+    const pilot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshBasicMaterial({ color: 0x6ab8ff })); pilot.position.z = 0.66; g.add(pilot); g.userData.pilot = pilot; }
+  else { const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.95, 8).rotateX(Math.PI / 2), metal); barrel.position.z = 0.42; g.add(barrel); const stock = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.12, 0.3), metal); stock.position.z = -0.12; g.add(stock);
+    g.userData.coils = []; for (let k = 0; k < 4; k++) { const c = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.016, 6, 14), new THREE.MeshStandardMaterial({ color: 0x2a3a48, emissive: 0x4fb8ff, emissiveIntensity: 0, metalness: 0.6, roughness: 0.3 })); c.position.z = 0.18 + k * 0.16; g.add(c); g.userData.coils.push(c); } }
+  return (ICG.meshes[kind] = g);
+}
+function icgSet(me, kind) {
+  if (ICG.cur === kind) return; ICG.cur = kind; const grip = me.rig?.grip; if (!grip) return;
+  if (!kind) { ofArm(me); return; } for (const c of [...grip.children]) grip.remove(c); grip.add(icgMesh(kind));
+}
+const _icgStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): the Ironclad's hand follows the weapon in use
+  _icgStep(dt); const me = typeof icMe === 'function' ? icMe() : null; if (!me) { ICG.cur = null; return; }
+  const charging = PU.lance?.charge > 0; const kind = IC.flameOn || input.keys.has('Digit4') ? 'flamer' : charging || (PU.lance?.beams?.length) ? 'lance' : null; icgSet(me, kind);
+  const L = ICG.meshes.lance; if (L?.userData.coils) { const f = Math.min(1, (PU.lance?.charge || 0) / 0.8); L.userData.coils.forEach((c, i) => { c.material.emissiveIntensity = f > i / 4 ? 1.6 * f : 0; }); }
+  const F = ICG.meshes.flamer; if (F?.userData.pilot) F.userData.pilot.scale.setScalar(0.8 + Math.random() * 0.5);
+};
+Object.assign(S9X, { ICG, icgMesh, icgSet });
+
+
+// =====================================================================================
+// §WRECK — the world breaks: crates, boulders, trees, rocks, crystals and spires on the ground
+//  take damage from bolts, blasts, blades, the flamethrower and the rail lance. Broken, they
+//  burst into chunks (trees topple), drop out of collision and stay broken for the visit;
+//  crates sometimes hold something worth taking.
+// =====================================================================================
+const PD = { last: null, lastT: -1, gone: new Set(), chunks: [], fall: [], hp: { crate: 45, boulder: 220, rock: 160, tree: 70, crystal: 90, spire: 260, shard: 60, blob: 50 }, col: { crate: 0x6a5238, boulder: 0x7d7468, rock: 0x7d7468, tree: 0x4a3622, crystal: 0x9fe0c8, spire: 0x5c4a3c, shard: 0xcfe6f2, blob: 0x6d7a4a } };
+const pdKey = (p) => `${p.kind}:${p.x.toFixed(1)}:${p.z.toFixed(1)}`;
+const _pdv = Array.from({ length: 6 }, () => new THREE.Vector3()); const _pdM = new THREE.Matrix4(), _pdQ = new THREE.Quaternion(), _pdS = new THREE.Vector3();
+const _pdSeg = ofSegHitProp;
+ofSegHitProp = function (a, b, out) { const p = _pdSeg(a, b, out); PD.last = p; PD.lastT = OF.t; return p; };   // S11-EDIT(§ONFOOT.PROPS ofSegHitProp): remember what a bolt struck
+const _pdImpact = ofImpact;
+ofImpact = function (b, at, color, ward) {   // S11-EDIT(§ONFOOT.BOLTS ofImpact): bolts chip what they hit
+  if (color === 0xffc080 && PD.last && PD.lastT === OF.t && !ward) pdHit(PD.last, (b.dmg || 10) * (b.rocket ? 2.5 : 1), b.owner, at);
+  return _pdImpact(b, at, color, ward);
+};
+const _pdBlast = ofBlast;
+ofBlast = function (at, radius, dmg, owner, visual = true) {   // S11-EDIT(§ONFOOT ofBlast): blasts break what stands near them
+  const r = _pdBlast(at, radius, dmg, owner, visual); for (const p of ofPropsNear(at.x, at.z, radius + 2, [])) { const d = Math.hypot(p.x - at.x, p.z - at.z) - p.r; if (d < radius) pdHit(p, dmg * 1.8 * (1 - Math.max(0, d) / radius), owner, at); } return r;
+};
+function pdHit(p, dmg, from, at) {
+  if (!p || !p.im || p.dead) return; if (p.hp == null) p.hp = (PD.hp[p.kind] || 120) * Math.max(0.6, p.r); p.hp -= dmg;
+  if (at) world.sparks(at, 3, PD.col[p.kind] || 0xc0a080); if (p.hp <= 0) pdBreak(p, from, at);
+}
+function pdBreak(p, from, at) {
+  p.dead = true; PD.gone.add(pdKey(p)); const i = OF.props.indexOf(p); if (i >= 0) OF.props.splice(i, 1); OFP.hash.clear(); for (const q of OF.props) ofHashAdd(q);
+  const m = p.im; m.getMatrixAt(p.ii, _pdM); _pdM.decompose(_pdv[0], _pdQ, _pdS); const tree = p.kind === 'tree';
+  if (tree) { const t = new THREE.Mesh(m.geometry, m.material); t.position.copy(_pdv[0]); t.quaternion.copy(_pdQ); t.scale.copy(_pdS); scene.add(t); const away = at ? Math.atan2(p.x - at.x, p.z - at.z) : Math.random() * 6.28; PD.fall.push({ t, ang: 0, axis: new THREE.Vector3(Math.cos(away), 0, -Math.sin(away)), life: 3 }); }
+  _pdM.makeScale(0.0001, 0.0001, 0.0001); _pdM.setPosition(_pdv[0]); m.setMatrixAt(p.ii, _pdM); m.instanceMatrix.needsUpdate = true;
+  const col = PD.col[p.kind] || 0x8a8070; const n = tree ? 5 : 9; const geo = p.kind === 'crate' ? new THREE.BoxGeometry(0.35, 0.12, 0.35) : new THREE.IcosahedronGeometry(0.28, 0); const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.85, flatShading: true });
+  for (let k = 0; k < n; k++) { const c = new THREE.Mesh(geo, mat); c.position.set(p.x + (Math.random() - 0.5) * p.r, p.y + Math.random() * Math.max(0.8, p.h * 0.6), p.z + (Math.random() - 0.5) * p.r); c.scale.setScalar(0.6 + Math.random() * p.r * 0.8); scene.add(c);
+    PD.chunks.push({ c, v: new THREE.Vector3((Math.random() - 0.5) * 9, 3 + Math.random() * 6, (Math.random() - 0.5) * 9), s: new THREE.Vector3(Math.random() * 8, Math.random() * 8, 0), life: 2.4 + Math.random() }); }
+  world.sparks(_pdv[1].set(p.x, p.y + 0.8, p.z), 10, col); world.particles.emit(_pdv[2].set(p.x, p.y + 0.6, p.z), _pdv[3].set(0, 1.5, 0), 2.2, 1.2, 0x8a8070, 0.35); audio.explosion?.(p.kind === 'crate' ? 0.15 : 0.25); shake.add(0.03);
+  if (p.kind === 'crate' && from === OF.me && Math.random() < 0.4) { const v = 80 + Math.floor(Math.random() * 400); SBX.profile.isk += v; SBX.dirty = true; sbxToast(`The crate splits — ${v} cr in salvage.`); }
+}
+function pdStep(dt) {
+  for (let i = PD.chunks.length - 1; i >= 0; i--) { const C = PD.chunks[i]; C.life -= dt; C.v.y -= 14 * dt; C.c.position.addScaledVector(C.v, dt); C.c.rotation.x += C.s.x * dt; C.c.rotation.y += C.s.y * dt; const g = ofG(C.c.position.x, C.c.position.z) + 0.1; if (C.c.position.y < g) { C.c.position.y = g; C.v.multiplyScalar(0.3); C.v.y = Math.abs(C.v.y) * 0.3; C.s.multiplyScalar(0.5); }
+    if (C.life < 0.6) C.c.scale.multiplyScalar(1 - dt * 3); if (C.life <= 0) { scene.remove(C.c); PD.chunks.splice(i, 1); } }
+  for (let i = PD.fall.length - 1; i >= 0; i--) { const F = PD.fall[i]; F.life -= dt; if (F.ang < Math.PI / 2.1) { const d = Math.min(Math.PI / 2.1 - F.ang, (0.4 + F.ang * 3) * dt); F.ang += d; F.t.rotateOnWorldAxis(F.axis, d); if (F.ang >= Math.PI / 2.1 - 0.01) { world.particles.emit(F.t.position, _pdv[4].set(0, 1, 0), 3, 1, 0x8a7a60, 0.35); shake.add(0.02); } }
+    if (F.life < 0.8) F.t.scale.multiplyScalar(1 - dt * 2.2); if (F.life <= 0) { scene.remove(F.t); PD.fall.splice(i, 1); } }
+}
+// what is broken stays broken while you are on this site
+const _pdBuild = ofBuildProps;
+ofBuildProps = function (cx, cz) {   // S11-EDIT(§ONFOOT.PROPS ofBuildProps): broken things stay broken
+  const r = _pdBuild(cx, cz); if (!PD.gone.size) return r; let ch = false;
+  for (let i = OF.props.length - 1; i >= 0; i--) { const p = OF.props[i]; if (!PD.gone.has(pdKey(p))) continue; if (p.im) { _pdM.makeScale(0.0001, 0.0001, 0.0001); p.im.getMatrixAt(p.ii, _pdM2); _pdM.copyPosition(_pdM2); p.im.setMatrixAt(p.ii, _pdM); p.im.instanceMatrix.needsUpdate = true; } OF.props.splice(i, 1); ch = true; }
+  if (ch) { OFP.hash.clear(); for (const q of OF.props) ofHashAdd(q); } return r;
+};
+const _pdM2 = new THREE.Matrix4();
+const _pdSite = SRF.spawnSiteObjects;
+SRF.spawnSiteObjects = function () { PD.gone.clear(); return _pdSite.call(this); };   // S11-EDIT(§SURFACE spawnSiteObjects): a new site starts whole
+
+// =====================================================================================
+// §VARN — the Varn arsenal (./s11/varn_arsenal_all.glb): thirteen clan weapons, pristine and worn
+//  Gun models replace the boxy blasters wherever a varn_ weapon is held (gripped at grip_main,
+//  muzzle-forward), their charge cells glow with heat and charge, and their idle glow breathes.
+//  The Ironclad carries the Varn rifle and pistol; the flamethrower, net launcher (shock traps),
+//  seeker launcher and rail lance are held as their own Varn weapons while in use; F swings the
+//  shock baton. Carbine, shotgun, crossbow and launcher are on sale in the towns' gunsmiths.
+// =====================================================================================
+const VARN = { url: './s11/varn_arsenal_all.glb', status: 'idle', root: {}, worn: {}, cache: {} };
+Object.assign(OF_WEAPONS, {
+  varn_rifle: { name: 'Varn rifle', dmg: 34, rate: 0.3, speed: 260, heat: 0.085, cool: 0.45, bloom0: 0.25, bloomAdd: 1.2, bloomMax: 4, recov: 6, len: 2.0, pitch: 520 },
+  varn_pistol: { name: 'Varn pistol', dmg: 24, rate: 0.28, speed: 200, heat: 0.08, cool: 0.6, bloom0: 0.5, bloomAdd: 0.9, bloomMax: 4, recov: 8, len: 1.2, pitch: 860 },
+  varn_carbine: { name: 'Varn carbine', dmg: 15, rate: 0.085, speed: 210, heat: 0.04, cool: 0.38, bloom0: 0.7, bloomAdd: 0.35, bloomMax: 5, recov: 5, len: 1.5, pitch: 700 },
+  varn_shotgun: { name: 'Varn scattergun', dmg: 12, rate: 0.8, speed: 170, heat: 0.18, cool: 0.5, bloom0: 0.4, bloomAdd: 2, bloomMax: 5, recov: 4, len: 1.0, pitch: 300, pellets: 8, spread: 6 },
+  varn_crossbow: { name: 'Varn shock crossbow', dmg: 58, rate: 0.95, speed: 140, heat: 0.2, cool: 0.4, bloom0: 0.15, bloomAdd: 2.5, bloomMax: 5, recov: 3, len: 2.2, pitch: 260, stun: true },
+  varn_launcher: { name: 'Varn launcher', dmg: 75, rate: 1.6, speed: 52, heat: 0.45, cool: 0.32, bloom0: 0.3, bloomAdd: 1.5, bloomMax: 4, recov: 3, len: 1.0, pitch: 200, splash: 6, rocket: true },
+});
+Object.assign(SETL_WEAPONS, { varn_carbine: { tier: 2, price: 11000, slot: 0 }, varn_shotgun: { tier: 2, price: 13000, slot: 0 }, varn_crossbow: { tier: 3, price: 21000, slot: 0 }, varn_launcher: { tier: 3, price: 34000, slot: 0 }, varn_pistol: { tier: 2, price: 7000, slot: 1 } });
+CLASSES.ironclad.weapons = ['varn_rifle', 'varn_pistol'];
+function varnLoad() {
+  if (VARN.status !== 'idle') return; VARN.status = 'loading';
+  new GLTFLoader().load(VARN.url, (g) => { g.scene.updateMatrixWorld(true); g.scene.traverse(o => { const w = o.userData?.weapon; if (!w) return; (/_worn$/.test(o.name) ? VARN.worn : VARN.root)[w] = o; }); VARN.status = 'ready'; console.info('[varn] arsenal loaded:', Object.keys(VARN.root).join(', ')); if (OF.me) ofArm(OF.me); },
+    undefined, () => { VARN.status = 'missing'; console.info('[varn] arsenal unavailable — boxed blasters'); });
+}
+// the loader makes node names unique across the file (grip_main, grip_main_1, …): find a part by its base name
+function vfind(root, n) { let f = null; const re = new RegExp('^' + n + '(_\\d+)?$'); root.traverse(o => { if (!f && o !== root && re.test(o.name)) f = o; }); return f; }
+/** A held Varn weapon: gripped at grip_main, its −Z forward turned down the hand to match the blasters. */
+function varnModel(id, worn = false) {
+  const src = (worn && VARN.worn[id]) || VARN.root[id]; if (!src) return null; const key = id + (worn ? ':w' : ''); if (!VARN.cache[key]) VARN.cache[key] = [];
+  const m = src.clone(true); m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1); m.updateMatrixWorld(true);
+  const grip = vfind(m, 'grip_main'); const gp = grip ? grip.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(); m.position.copy(gp).negate();
+  const outer = new THREE.Group(); outer.add(m); outer.rotation.x = -Math.PI / 2; outer.position.set(0, -0.02, 0); outer.userData.varn = { id, charges: ['charge_01', 'charge_02', 'charge_03'].map(n => vfind(m, n)).filter(Boolean), idle: vfind(m, 'glow_idle'), muzzle: vfind(m, 'muzzle'), flame: vfind(m, 'flame_origin') };
+  m.traverse(o => { if (o.isMesh) { o.frustumCulled = false; if (o.material?.emissive) { o.material = o.material.clone(); o.material.emissiveIntensity = (o.material.emissiveIntensity ?? 1) * 0.35; o.userData.e0 = o.material.emissiveIntensity; } } }); return outer;
+}
+const _vnGun = ofGunMesh;
+ofGunMesh = function (id) { if (/^varn_/.test(id) && VARN.status === 'ready') { const m = varnModel(id); if (m) return m; } if (!OF_WEAPONS[id]) return _vnGun('rifle'); return _vnGun(id); };   // S11-EDIT(§ONFOOT ofGunMesh): Varn models
+// the scattergun fires a spread; the crossbow's bolt stuns
+const _vnFire = ofFire;
+ofFire = function (u, aimPt, W, aiming) {   // S11-EDIT(§ONFOOT.FIRE ofFire): pellets
+  const ok = _vnFire(u, aimPt, W, aiming); if (!ok || !W.pellets) return ok; const mz = ofMuzzle(u, _pdv[0]); const base = _pdv[1].subVectors(aimPt, mz).normalize();
+  for (let k = 1; k < W.pellets; k++) { const d = _pdv[2].copy(base).add(_pdv[3].set((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(W.spread / 57)).normalize(); ofBolt(mz, d, W, u, u.team, ofBoltColor(u), u.buff > 0 ? 1.2 : 1); } return ok;
+};
+// held gadgets: what the Ironclad holds while a gadget is in use
+const VG = { cur: null, held: {}, until: 0 };
+function vgHeld(id) { if (!VG.held[id]) VG.held[id] = varnModel(id); return VG.held[id]; }
+function vgSet(me, id) {
+  if (VG.cur === id) return; VG.cur = id; const grip = me.rig?.grip; if (!grip) return; if (!id) { ofArm(me); return; }
+  const m = vgHeld(id); if (!m) { VG.cur = null; return; } for (const c of [...grip.children]) grip.remove(c); grip.add(m);
+}
+function vgGlow(m, f, t) { const V = m?.userData.varn; if (!V) return; V.charges.forEach((c, i) => c.traverse(o => { if (o.material?.emissive) o.material.emissiveIntensity = (o.userData.e0 || 1) * (f > (i + 0.5) / 3 ? 1.6 : 0.08); })); V.idle?.traverse(o => { if (o.material?.emissive) o.material.emissiveIntensity = (o.userData.e0 || 1) * (0.6 + 0.4 * Math.sin(t * 2.4)); }); }
+const _vnStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): Varn gadgets in hand, cell glow, the baton, broken things
+  _vnStep(dt); try { pdStep(dt); } catch (e) { console.warn('[wreck]', e); }
+  const me = OF.me; if (!me?.alive || VARN.status !== 'ready') return; const t = OF.t;
+  // the weapon in hand glows with its heat
+  const g = me.rig?.grip?.children[0]; if (g?.userData.varn) vgGlow(g, VG.cur === 'varn_rifle' && PU.lance?.charge > 0 ? Math.min(1, PU.lance.charge / 0.8) : (me.heat || 0), t);
+  const ic = typeof icMe === 'function' ? icMe() : null; if (!ic || me.mounted) { if (VG.cur) vgSet(me, null); return; }
+  const want = (IC.flameOn || input.keys.has('Digit4')) ? 'varn_flamer' : (PU.lance?.charge > 0) ? 'varn_rifle' : (IC.seek || input.keys.has('Digit6')) ? 'varn_launcher' : (t < VG.until) ? VG.untilId : null; vgSet(me, want);
+  if (input.pressed.has('KeyF') && !me.blade?.lit) { input.pressed.delete('KeyF'); vgBaton(me); }
+  // flames leave from the flamer's own nozzle
+  if (want === 'varn_flamer' && AFX.flame?.visible) { const fo = vgHeld('varn_flamer').userData.varn.flame; if (fo) { fo.getWorldPosition(_pdv[4]); AFX.flame.position.copy(_pdv[4]); } }
+};
+// the net launcher throws the shock trap
+const _vnTrap = icTrapThrow;
+icTrapThrow = function (me) { const n0 = IC.traps.length; const r = _vnTrap(me); if (IC.traps.length !== n0 || IC.traps[IC.traps.length - 1]?.t > 59.9) { VG.until = OF.t + 0.7; VG.untilId = 'varn_netlauncher'; } return r; };   // S11-EDIT(§IRONCLAD2 icTrapThrow): fired from the net launcher
+// F: the shock baton
+function vgBaton(me) {
+  if (OF.t < (VG.batonCd || 0)) return; VG.batonCd = OF.t + 0.9; VG.until = OF.t + 0.55; VG.untilId = 'varn_baton'; me.act = 'melee_heavy'; me.actT = 0; audio.bladeSwing?.(true);
+  const f = _pdv[5].set(Math.sin(me.yaw), 0, Math.cos(me.yaw)); let hit = 0;
+  for (const v of OF.units) { if (v === me || !v.alive || v.kind === 'vehicle' || v.team === 'player') continue; const d = _pdv[0].subVectors(v.pos, me.pos).setY(0); const L = d.length(); if (L > 2.8 || f.angleTo(d.normalize()) > 1.0) continue; ofDamage(v, 45, me, { kind: 'melee', dir: d.clone(), force: 5 }); v.stun = Math.max(v.stun || 0, 1.6); world.sparks(ofChest(v, _pdv[1]), 12, 0x9fd8ff); hit++; }
+  for (const p of ofPropsNear(me.pos.x, me.pos.z, 3.2, [])) pdHit(p, 60, me, _pdv[2].set(p.x, me.pos.y + 1, p.z));
+  if (hit) shake.add(0.06);
+}
+// the seeker volley leaves from the launcher's tubes
+const _vnSeek = icSeekStep;
+icSeekStep = function (me, dt) { const before = OF.bolts.length; const r = _vnSeek(me, dt); if (OF.bolts.length > before) { const L = vgHeld('varn_launcher')?.userData.varn; const m = L && (vgHeld('varn_launcher').children[0]); if (m) { const l = vfind(m, 'muzzle_L'), rr = vfind(m, 'muzzle_R'); OF.bolts.slice(before).forEach((b, i) => { const o = i % 2 ? rr : l; if (o) o.getWorldPosition(b.pos); }); } } return r; };   // S11-EDIT(§IRONCLAD2 icSeekStep): out of the launcher tubes
+// blades and flame break things too
+const _vnBlade = bladeStrike;
+bladeStrike = function (u, kind, extra) { const r = _vnBlade(u, kind, extra); if (u === OF.me) { const f = _pdv[5].set(Math.sin(u.yaw), 0, Math.cos(u.yaw)); for (const p of ofPropsNear(u.pos.x, u.pos.z, BLADE.reach + 2, [])) { const d = _pdv[0].set(p.x - u.pos.x, 0, p.z - u.pos.z); if (d.length() - p.r < BLADE.reach + 0.4 && f.angleTo(d.normalize()) < 1.1) pdHit(p, kind === 'heavy' ? 90 : 45, u, _pdv[1].set(p.x, u.pos.y + 1.1, p.z)); } } return r; };   // S11-EDIT(§BLADE bladeStrike): the sabre cuts crates and trees
+const _vnFlame = icFlameStep;
+icFlameStep = function (me, dt) { const r = _vnFlame(me, dt); if (IC.flameOn) { const f = _pdv[5].set(Math.sin(OF.cam.yaw), 0, Math.cos(OF.cam.yaw)); for (const p of ofPropsNear(me.pos.x, me.pos.z, 11, [])) { if (p.kind !== 'tree' && p.kind !== 'crate' && p.kind !== 'blob') continue; const d = _pdv[0].set(p.x - me.pos.x, 0, p.z - me.pos.z); if (d.length() < 10 && f.angleTo(d.normalize()) < 0.5) pdHit(p, 40 * dt, me, null); } } return r; };   // S11-EDIT(§IRONCLAD2 icFlameStep): flame burns wood
+const _vnLance = puLanceStep;
+puLanceStep = function (me, dt) { const was = PU.lance?.charge || 0; const r = _vnLance(me, dt); if (was >= 0.8 && !(PU.lance?.charge > 0)) { const from = ofMuzzle(me, _pdv[2]); const dir = _pdv[3].set(Math.sin(OF.cam.yaw) * Math.cos(OF.cam.pitch), Math.sin(OF.cam.pitch), Math.cos(OF.cam.yaw) * Math.cos(OF.cam.pitch)).normalize(); for (const p of ofPropsNear(from.x + dir.x * 35, from.z + dir.z * 35, 40, [])) { const t = _pdv[4].set(p.x - from.x, 0, p.z - from.z).dot(_pdv[0].set(dir.x, 0, dir.z).normalize()); if (t < 0 || t > 70) continue; const perp = Math.hypot(from.x + _pdv[0].x * t - p.x, from.z + _pdv[0].z * t - p.z); if (perp < p.r + 0.6) pdHit(p, 400, me, _pdv[1].set(p.x, me.pos.y + 1, p.z)); } } return r; };   // S11-EDIT(§PUNCH puLanceStep): the lance bores through cover
+varnLoad();
+Object.assign(S9X, { PD, pdHit, pdBreak, VARN, varnLoad, varnModel, VG, vgSet, vgBaton, bloomPassRef: bloomPass });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
