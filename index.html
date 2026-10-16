@@ -366,6 +366,9 @@
     §WRECK                  the world breaks: crates, boulders, trees, rocks, crystals and spires on the ground
     §VARN                   the Varn arsenal (./s11/varn_arsenal_all.glb): thirteen clan weapons, pristine and worn
     §VARNMELEE              the clan's melee pieces: 9 cycles, F strikes
+    §WORLDSCALE             bigger cities, more villages, longer days, airports only
+    §RAIL                   maglev lines between the settlements of a world
+    §BASES                  military bases in the open country
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -826,9 +829,17 @@
     §BLADE bladeStrike — the sabre cuts crates and trees
     §IRONCLAD2 icFlameStep — flame burns wood
     §PUNCH puLanceStep — the lance bores through cover
+    §ONFOOT ofThrow — a throw lands within 14 m
     §VARN vgBaton — F swings the chosen melee piece
     §ONFOOT.STEP OF.step — cycle the clan's melee pieces
     §RESONANCE resHud — the melee piece in the arsenal list
+    §SURFACE touchdown — no landing clearance off the airports
+    §SBXUI sbxOverviewEntries — bases and the station
+    §SURFACE spawnSiteObjects — airfield, rail line, bases
+    §SURFACE shutdownVisuals — they go with the site
+    §SURFACE weather — trains and bases tick
+    §ONFOOT ofInteract — the station
+    §ONFOOT ofDropsStep — station prompt
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -7752,7 +7763,7 @@ const SRF = {
 
   // ---------------- day / night, weather ----------------
   dayNight(dt) {
-    const f = ((Date.now() / 1000 + (this.siteSt.wx % 1000)) / CONFIG.srf.dayLength) % 1;
+    const f = dnWarp(((Date.now() / 1000 + (this.siteSt.wx % 1000)) / CONFIG.srf.dayLength) % 1);   // three-quarters daylight (§WORLDSCALE)
     const el = Math.sin(f * Math.PI * 2); this.sunEl = el;
     const az = f * Math.PI * 2 + 1.1;
     const k = clamp(el, 0.02, 1);
@@ -24032,6 +24043,7 @@ const GC = { meshes: {}, tiles: new Map(), free: [], uTime: { value: 0 }, site: 
     const B = SRF.B; if ((B.water != null && y < B.water + 0.3) || (B.lava != null && y < B.lava + 0.6)) return true;
     const C = WORLD.city?.c; if (C && Math.hypot(x - C.x, z - C.z) < C.R + 12) return true;
     const T = SETL.town; if (T && Math.hypot(x - T.x, z - T.z) < T.R + 6) return true;
+    if (typeof MB !== 'undefined') for (const B of MB.list) if (Math.hypot(x - B.x, z - B.z) < 56) return true;
     return Math.hypot(x, z) < 34 || Math.hypot(x - 60, z + 80) < 34;
   },
   buildTile(tx, tz) {
@@ -25141,7 +25153,7 @@ function pdStep(dt) {
 // what is broken stays broken while you are on this site
 const _pdBuild = ofBuildProps;
 ofBuildProps = function (cx, cz) {   // S11-EDIT(§ONFOOT.PROPS ofBuildProps): broken things stay broken
-  const r = _pdBuild(cx, cz); if (!PD.gone.size) return r; let ch = false;
+  const r = _pdBuild(cx, cz); if (typeof MB !== 'undefined' && MB.list.length) for (let i = OF.props.length - 1; i >= 0; i--) { const p = OF.props[i]; if (p.kind !== 'wall' && p.im && MB.list.some(B => Math.hypot(p.x - B.x, p.z - B.z) < 56)) { p.im.getMatrixAt(p.ii, _pdM2); _pdM.makeScale(0.0001, 0.0001, 0.0001); _pdM.copyPosition(_pdM2); p.im.setMatrixAt(p.ii, _pdM); p.im.instanceMatrix.needsUpdate = true; OF.props.splice(i, 1); } } if (!PD.gone.size) return r; let ch = false;
   for (let i = OF.props.length - 1; i >= 0; i--) { const p = OF.props[i]; if (!PD.gone.has(pdKey(p))) continue; if (p.im) { _pdM.makeScale(0.0001, 0.0001, 0.0001); p.im.getMatrixAt(p.ii, _pdM2); _pdM.copyPosition(_pdM2); p.im.setMatrixAt(p.ii, _pdM); p.im.instanceMatrix.needsUpdate = true; } OF.props.splice(i, 1); ch = true; }
   if (ch) { OFP.hash.clear(); for (const q of OF.props) ofHashAdd(q); } return r;
 };
@@ -25284,6 +25296,193 @@ OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): cycle the clan's
 const _vmHud = resHud;
 resHud = function (g, dt) { _vmHud(g, dt); if (charOf()?.cls !== 'ironclad') return; const el = $('of-powers'); if (!el) return; let L = $('vm-melee'); if (!L) { el.insertAdjacentHTML('beforeend', '<div class="small" id="vm-melee"></div>'); L = $('vm-melee'); } const D = VM.def[vmSel()]; L.textContent = `F ${D.name} · 9 to change`; };   // S11-EDIT(§RESONANCE resHud): the melee piece in the arsenal list
 Object.assign(S9X, { VM, vmStrike, vmSel });
+
+
+// =====================================================================================
+// §WORLDSCALE — bigger cities, more villages, longer days, airports only
+//  Cities and metropolises grow half again in radius (about twice the buildings); every
+//  planet carries twelve settlements (so nine or ten villages); a local day is three-quarters
+//  daylight. Ships set down only at airports: the landing zone's port (a spaceport at a city,
+//  an airfield at a village) or a town's own pad — anywhere else the gear will not lock.
+// =====================================================================================
+SG_CFG.cityR = [780, 1050]; SG_CFG.metroR = 1150; SG_CFG.minSites = 12; SG_CFG.crowd.city = 240; SG_CFG.crowd.metro = 360; SG_CFG.npcs.city = 32; SG_CFG.npcs.metro = 42;
+const AP = { mesh: null, r: 140, warnT: 0 };
+/** Is (x, z) an airport: the landing-zone port, a town's pad, or a friendly base's pad? */
+function apAt(x, z) {
+  if (Math.hypot(x, z) < AP.r) return true; const T = SETL.town; if (T && typeof setlWorld === 'function') { const pad = (SETL.built?.L?.items || []).find(i => /landing_pad/.test(i.id)); if (pad) { const w = setlWorld(T, pad.x, pad.z); if (Math.hypot(x - w.x, z - w.z) < 40) return true; } else if (Math.hypot(x - T.x, z - T.z) < (T.R || 60) + 30) return true; }
+  for (const B of MB.list) if (!B.hostile && Math.hypot(x - B.pad.x, z - B.pad.z) < 30) return true; return false;
+}
+const _apTouch = SRF.touchdown;
+SRF.touchdown = function (pl, gy, ny) {   // S11-EDIT(§SURFACE touchdown): no landing clearance off the airports
+  if (apAt(pl.pos.x, pl.pos.z)) return _apTouch.call(this, pl, gy, ny);
+  pl.pos.y = gy + 3.5; pl.vel.y = Math.max(pl.vel.y, 4); this.vspd = Math.max(this.vspd || 0, 2);
+  if (performance.now() > AP.warnT) { AP.warnT = performance.now() + 4000; const d = Math.round(Math.hypot(pl.pos.x, pl.pos.z)); sbxToast(`No landing clearance here. Set down at an airport — the port is ${d} m away (bearing on your overview), or a town's pad.`); }
+};
+// a village landing zone gets an airfield (cities already have their spaceport)
+function apBuild() {
+  apClear(); if (WORLD.city?.c) return; const y = SRF.H(0, 0); const g = new THREE.Group(); g.name = 'airfield';
+  const conc = new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.75, metalness: 0.2 }), metal = new THREE.MeshStandardMaterial({ color: 0x6a7480, roughness: 0.5, metalness: 0.6 }), lamp = new THREE.MeshBasicMaterial({ color: 0xffd27a });
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(44, 47, 1.4, 36), conc); pad.position.set(0, y + 0.3, 0); g.add(pad);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(34, 37, 40), new THREE.MeshBasicMaterial({ color: 0xffb347, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(0, y + 1.05, 0); g.add(ring);
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(18, 0.8, 140), conc); strip.position.set(0, y + 0.2, -92); g.add(strip);
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(5, 18, 5).translate(0, 9, 0), metal); tower.position.set(58, SRF.H(58, 22), 22); g.add(tower);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 8), new THREE.MeshStandardMaterial({ color: 0x1c2a36, emissive: 0x3a5a7a, emissiveIntensity: 0.5 })); cab.position.set(58, tower.position.y + 20, 22); g.add(cab);
+  for (const s of [-1, 1]) { const hg = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, 30, 16, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateY(Math.PI / 2), metal); hg.position.set(s * 70, SRF.H(s * 70, -40), -40); g.add(hg); }
+  for (let k = 0; k < 14; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.6), lamp); l.position.set((k % 2 ? 9.5 : -9.5), y + 0.8, -30 - Math.floor(k / 2) * 18); g.add(l); }
+  scene.add(g); AP.mesh = g;
+}
+function apClear() { if (AP.mesh) { AP.mesh.parent?.remove(AP.mesh); AP.mesh.traverse(o => o.geometry?.dispose?.()); AP.mesh = null; } }
+// three-quarters of each local day is daylight
+(function dayLonger() { /* see §SURFACE dayNight: the cycle is remapped below through dnWarp */ })();
+const dnWarp = (f0) => f0 < 0.75 ? f0 / 0.75 * 0.5 : 0.5 + (f0 - 0.75) / 0.25 * 0.5;
+
+// =====================================================================================
+// §RAIL — maglev lines between the settlements of a world
+//  Every settlement has a station, and a line runs out of it toward the next settlement round
+//  the planet on raised pylons over the land; trains of six cars glide through, stopping at the
+//  station. At the platform, E opens the timetable: ride to any settlement on the world (your
+//  ship is flown round to the destination's port by the port authority).
+// =====================================================================================
+const RL = { group: null, track: [], trains: [], station: null, t: 0, ride: null };
+function rlRoute(pl) { const plan = sgPlan(pl); if (!plan) return []; return plan.tiers.map((t, i) => ({ i, t, s: srfSiteDef(pl, i) })).sort((a, b) => a.s.lon - b.s.lon); }
+function rlBuild() {
+  rlClear(); const pl = SRF.planet, site = SRF.site; if (!pl || !site) return; const C = WORLD.city?.c, T = SETL.town || setlOf(pl, site); const ctr = C ? { x: C.x, z: C.z, R: C.R } : T ? { x: T.x, z: T.z, R: T.R || 60 } : null; if (!ctr) return;
+  const route = rlRoute(pl); const k = route.findIndex(r => r.i === site.i); const next = route[(k + 1) % route.length], prev = route[(k - 1 + route.length) % route.length];
+  const bearing = (o) => { let d = ((o.s.lon - site.lon + 540) % 360) - 180; return d * Math.PI / 180 + (o.s.lat - site.lat) * 0.004; };
+  const dir = new THREE.Vector3(Math.sin(bearing(next) + 0.6), 0, Math.cos(bearing(next) + 0.6)).normalize(); const side = new THREE.Vector3(dir.z, 0, -dir.x);
+  // the station sits just outside the settlement, the line passes it end to end across the site
+  const st = new THREE.Vector3(ctr.x, 0, ctr.z).addScaledVector(side, ctr.R + 70); RL.station = { x: st.x, z: st.z, dir, next, prev, y: 0 };
+  const pts = []; const L = 3800; for (let s = -L; s <= L; s += 25) { const x = st.x + dir.x * s, z = st.z + dir.z * s; if (Math.abs(x) > 4000 || Math.abs(z) > 4000) continue; pts.push({ s, x, z, g: SRF.H(x, z) }); }
+  // a smooth deck: ten metres over the highest ground nearby, eased along the line
+  for (let i = 0; i < pts.length; i++) { let m = -1e9; for (let j = Math.max(0, i - 4); j <= Math.min(pts.length - 1, i + 4); j++) m = Math.max(m, pts[j].g); pts[i].y = m + 10; }
+  for (let it = 0; it < 6; it++) for (let i = 1; i < pts.length - 1; i++) pts[i].y = Math.max(pts[i].g + 8, (pts[i - 1].y + pts[i].y * 2 + pts[i + 1].y) / 4);
+  const ws = pts.find(p => Math.abs(p.s) < 13) || pts[Math.floor(pts.length / 2)]; RL.station.y = ws.y; RL.track = pts;
+  const deck = [], pyl = [], rail = []; const yaw = Math.atan2(dir.x, dir.z);
+  for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1]; const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, my = (a.y + b.y) / 2; const len = Math.hypot(b.x - a.x, b.z - a.z, b.y - a.y); const pitch = Math.atan2(b.y - a.y, Math.hypot(b.x - a.x, b.z - a.z));
+    const m4 = new THREE.Matrix4().compose(new THREE.Vector3(mx, my, mz), new THREE.Quaternion().setFromEuler(new THREE.Euler(-pitch, yaw, 0, 'YXZ')), new THREE.Vector3(1, 1, 1));
+    deck.push(new THREE.BoxGeometry(5, 0.8, len + 0.2).applyMatrix4(m4)); for (const s of [-1, 1]) rail.push(new THREE.BoxGeometry(0.3, 0.35, len + 0.2).translate(s * 1.4, 0.55, 0).applyMatrix4(m4));
+    if (i % 2 === 0) { const h = a.y - a.g + 1; pyl.push(new THREE.CylinderGeometry(0.9, 1.3, h, 8).translate(a.x, a.g + h / 2 - 1, a.z)); } }
+  const g = new THREE.Group(); g.name = 'rail';
+  const merge = (arr, mat) => { if (!arr.length) return; const m = new THREE.Mesh(mergeGeometries(arr.map(x => x.index ? x.toNonIndexed() : x), false), mat); m.frustumCulled = false; g.add(m); };
+  merge(deck, new THREE.MeshStandardMaterial({ color: 0x5a6068, roughness: 0.6, metalness: 0.4 })); merge(pyl, new THREE.MeshStandardMaterial({ color: 0x6a6e72, roughness: 0.8, metalness: 0.2 })); merge(rail, new THREE.MeshStandardMaterial({ color: 0x9fb8c8, roughness: 0.3, metalness: 0.8, emissive: 0x1a3a5a, emissiveIntensity: 0.6 }));
+  // the station: a platform, a canopy, stairs down, a lit sign
+  const plat = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 70), new THREE.MeshStandardMaterial({ color: 0x7a7c80, roughness: 0.7 })); plat.position.set(st.x + side.x * 6, ws.y + 0.2, st.z + side.z * 6); plat.rotation.y = yaw; g.add(plat);
+  const can = new THREE.Mesh(new THREE.BoxGeometry(12, 0.4, 60), new THREE.MeshStandardMaterial({ color: 0x2a3a4a, metalness: 0.5, roughness: 0.4, emissive: 0x203040, emissiveIntensity: 0.4 })); can.position.copy(plat.position).add(new THREE.Vector3(0, 6, 0)); can.rotation.y = yaw; g.add(can);
+  for (const s of [-1, 1]) { const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 6, 6), new THREE.MeshStandardMaterial({ color: 0x4a5058, metalness: 0.6 })); col.position.copy(plat.position).add(new THREE.Vector3(dir.x * 25 * s + side.x * 5, 3, dir.z * 25 * s + side.z * 5)); g.add(col); }
+  const gy = SRF.H(plat.position.x + side.x * 9, plat.position.z + side.z * 9); const stair = new THREE.Mesh(new THREE.BoxGeometry(4, Math.max(1, ws.y - gy), 14), new THREE.MeshStandardMaterial({ color: 0x6a6c70 })); stair.position.set(plat.position.x + side.x * 8, (ws.y + gy) / 2, plat.position.z + side.z * 8); stair.rotation.y = yaw; g.add(stair);
+  RL.foot = { x: plat.position.x + side.x * 12, z: plat.position.z + side.z * 12, top: { x: plat.position.x, z: plat.position.z, y: ws.y + 0.5 } };
+  // the trains: six-car sets, sleek, lit windows
+  const body = new THREE.MeshStandardMaterial({ color: 0xd8dde2, metalness: 0.5, roughness: 0.35 }), win = new THREE.MeshBasicMaterial({ color: 0x9fd8ff }); const carG = mergeGeometries([new THREE.BoxGeometry(3.4, 3.2, 22).translate(0, 2.2, 0), new THREE.CylinderGeometry(1.7, 1.7, 22, 10, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateY(Math.PI / 2).translate(0, 3.8, 0)].map(x => x.toNonIndexed()), false);
+  const winG = new THREE.BoxGeometry(3.5, 0.8, 18).translate(0, 3, 0);
+  for (let n = 0; n < 2; n++) { const cars = new THREE.InstancedMesh(carG, body, 6), wins = new THREE.InstancedMesh(winG, win, 6); cars.frustumCulled = wins.frustumCulled = false; g.add(cars, wins); RL.trains.push({ cars, wins, s: n ? 2600 : -2600, v: n ? -42 : 42, wait: 0, stopped: false }); }
+  scene.add(g); RL.group = g;
+}
+function rlClear() { if (RL.group) { RL.group.parent?.remove(RL.group); RL.group.traverse(o => o.geometry?.dispose?.()); } RL.group = null; RL.trains = []; RL.track = []; RL.station = null; RL.foot = null; }
+function rlAt(s) { const P = RL.track; if (!P.length) return null; const s0 = P[0].s, step = 25; const f = (s - s0) / step; const i = Math.max(0, Math.min(P.length - 2, Math.floor(f))); const t = clamp(f - i, 0, 1); const a = P[i], b = P[i + 1]; return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t), z: lerp(a.z, b.z, t), pitch: Math.atan2(b.y - a.y, 25) }; }
+const _rlM = new THREE.Matrix4(), _rlQ = new THREE.Quaternion(), _rlE = new THREE.Euler();
+function rlStep(dt) {
+  if (!RL.group || !RL.track.length) return; const D = RL.station.dir; const yaw = Math.atan2(D.x, D.z); const sMin = RL.track[0].s, sMax = RL.track[RL.track.length - 1].s;
+  for (const T of RL.trains) {
+    if (T.wait > 0) { T.wait -= dt; if (T.wait <= 0) T.stopped = false; } else { const before = T.s; T.s += T.v * dt; if (!T.stopped && Math.sign(before) !== Math.sign(T.s) && Math.abs(T.v) > 1) { T.s = 0; T.wait = 9; T.stopped = true; } if (T.s > sMax + 300 || T.s < sMin - 300) T.s = T.v > 0 ? sMin - 250 : sMax + 250; }
+    for (let k = 0; k < 6; k++) { const s = T.s - Math.sign(T.v) * k * 23.5; const p = rlAt(clamp(s, sMin, sMax)); const out = s < sMin || s > sMax; _rlE.set(-p.pitch, yaw, 0, 'YXZ'); _rlQ.setFromEuler(_rlE); _rlM.compose(_rlv.set(p.x, p.y + 0.6, p.z), _rlQ, out ? _rlS0 : _rlS1); T.cars.setMatrixAt(k, _rlM); T.wins.setMatrixAt(k, _rlM); }
+    T.cars.instanceMatrix.needsUpdate = true; T.wins.instanceMatrix.needsUpdate = true; }
+}
+const _rlv = new THREE.Vector3(), _rlS0 = new THREE.Vector3(0.0001, 0.0001, 0.0001), _rlS1 = new THREE.Vector3(1, 1, 1);
+function rlTarget() { const me = OF.me; if (!RL.foot || !me?.alive || me.mounted) return null; const d1 = Math.hypot(me.pos.x - RL.foot.x, me.pos.z - RL.foot.z), d2 = Math.hypot(me.pos.x - RL.foot.top.x, me.pos.z - RL.foot.top.z); return d1 < 6 || d2 < 14 ? { label: 'station — board a train (timetable)', fn: rlOpen } : null; }
+function rlOpen() {
+  const pl = SRF.planet; const here = SRF.site; const route = rlRoute(pl); const k = route.findIndex(r => r.i === here.i);
+  const opts = route.filter(r => r.i !== here.i).map(r => { const hops = Math.min(Math.abs(route.indexOf(r) - k), route.length - Math.abs(route.indexOf(r) - k)); return { r, hops, fare: 120 + hops * 90 }; }).sort((a, b) => a.hops - b.hops);
+  if (typeof pathDialog === 'function') pathDialog(`${pl.name} rail — departures`, ['Maglev, every few minutes. Your ship is flown round to the destination port.'], [...opts.slice(0, 7).map(o => ({ t: `${sgName(pl, o.r.s)} (${o.r.t}) — ${o.hops} stop${o.hops > 1 ? 's' : ''} · ${o.fare} cr`, fn: () => rlRide(o) })), { t: 'Not now', fn: () => {} }], { escape: 0 });
+}
+function rlRide(o) {
+  const p = SBX.profile; if (p.isk < o.fare) return sbxToast('Not enough credits for the fare.'); p.isk -= o.fare; SBX.dirty = true; const pl = SRF.planet; const site = o.r.s; RL.ride = { to: site.i, t: 0 };
+  const ov = document.getElementById('rl-ride') || (() => { const d = document.createElement('div'); d.id = 'rl-ride'; d.style.cssText = 'position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;flex-direction:column;background:linear-gradient(180deg,#0b1220,#1a2a3a);color:#d8e8f8;font:600 14px/1.6 var(--font-num,sans-serif);letter-spacing:.3em;text-transform:uppercase;pointer-events:none'; document.body.appendChild(d); return d; })();
+  ov.innerHTML = `<div style="opacity:.6;font-size:11px">${pl.name} maglev</div><div style="font-size:22px;margin:8px 0">→ ${sgName(pl, site)}</div><div class="rl-bar" style="width:320px;height:3px;background:#20364a;position:relative;overflow:hidden"><i style="position:absolute;inset:0;background:#9fd8ff;transform-origin:left;animation:rlbar 2.6s linear forwards"></i></div>`;
+  if (!document.getElementById('rl-css')) { const s = document.createElement('style'); s.id = 'rl-css'; s.textContent = '@keyframes rlbar { from { transform: scaleX(0); } to { transform: scaleX(1); } }'; document.head.appendChild(s); }
+  ov.style.display = 'flex'; setTimeout(() => rlArrive(pl, site), 2700);
+}
+function rlArrive(pl, site) {
+  const ov = document.getElementById('rl-ride'); try { mmSet('SPACE', { via: () => { SRF_LEGACY.abort.call(SRF); }, why: 'maglev' }); SRF.resume(pl, site, [0, 0, 0]); RL.arrive = true; } catch (e) { console.warn('[rail]', e); }
+  setTimeout(() => { if (ov) ov.style.display = 'none'; }, 400);
+}
+
+// =====================================================================================
+// §BASES — military bases in the open country
+//  Each site holds two walled bases away from the settlements: corner towers, a command
+//  bunker, barracks, a comms mast, a pad, gun emplacements and a garrison. A base of a power
+//  hostile to you opens fire when you come near; a friendly one lets you land on its pad.
+// =====================================================================================
+const MB = { list: [], group: null };
+// bases stand on levelled ground: inside 70 m the ground is the base's own floor, blending out by 120 m
+const MB_PLANS = new Map();
+const _mbHeight = srfMakeHeight;
+srfMakeHeight = function (site) {   // S11-EDIT(§PLANETS srfMakeHeight): military bases sit on graded pads
+  const H0 = _mbHeight(site); const pl = SRF.planet && SRF.site?.seed === site.seed ? SRF.planet : null; if (!pl) return H0;
+  const plan = mbPlan(pl, site, H0); MB_PLANS.set(site.seed, plan); const pads = plan.map(P => ({ x: P.x, z: P.z, y: H0(P.x, P.z) }));
+  const H = (x, z) => { let h = H0(x, z); for (const P of pads) { const d = Math.hypot(x - P.x, z - P.z); if (d < 120) h = d < 70 ? P.y : lerp(P.y, h, smooth01((d - 70) / 50)); } return h; };
+  H.raw = H0.raw || H0; return H;
+};
+function mbPlan(pl, site, Hin) {
+  const rng = makeRng((site.seed ^ 0xba5e) >>> 0); const out = []; const C = worldCityOf(pl, site), T = setlOf(pl, site); const own = sgOwner(pl, site.i) || pl.faction; const rivals = ['authority', 'combine', 'syndicate', 'guild'].filter(f => f !== own);
+  for (let n = 0; n < 2; n++) { let x = 0, z = 0, ok = false; for (let k = 0; k < 40 && !ok; k++) { const a = rng() * Math.PI * 2, r = 1300 + rng() * 2000; x = Math.cos(a) * r; z = Math.sin(a) * r; const Bm = BIOMES[site.biome], Hh = Hin || MB_PLANS.get(site.seed)?._H || srfHeightOf(site); const dry = (xx, zz) => { const y = Hh(xx, zz); return !((Bm.water != null && y < Bm.water + 3) || (Bm.lava != null && y < Bm.lava + 4)); }; const flat = Math.abs(Hh(x + 50, z) - Hh(x - 50, z)) + Math.abs(Hh(x, z + 50) - Hh(x, z - 50)) < 30;
+      ok = flat && dry(x, z) && dry(x + 40, z + 40) && dry(x - 40, z - 40) && dry(x + 40, z - 40) && dry(x - 40, z + 40) && (!C || Math.hypot(x - C.x, z - C.z) > C.R + 250) && (!T || Math.hypot(x - T.x, z - T.z) > (T.R || 60) + 250) && out.every(o => Math.hypot(o.x - x, o.z - z) > 900); }
+    if (!ok) continue;
+    out.push({ i: n, x, z, yaw: rng() * Math.PI * 2, fac: n === 0 ? own : rivals[Math.floor(rng() * rivals.length)] }); }
+  return out;
+}
+function mbBuild() {
+  mbClear(); const pl = SRF.planet, site = SRF.site; if (!pl || !site) return; const g = new THREE.Group(); g.name = 'bases'; MB.group = g;
+  const wallM = new THREE.MeshStandardMaterial({ color: 0x5a5e58, roughness: 0.85, metalness: 0.1 }), darkM = new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.6, metalness: 0.5 });
+  for (const P of (MB_PLANS.get(site.seed) || mbPlan(pl, site))) {
+    const y0 = SRF.H(P.x, P.z); const B = { ...P, y: y0, hostile: gsPlayerHostileTo(P.fac), active: false, squads: [], turrets: [], props: [] }; const col = new THREE.Color(FACTION_LOOK[P.fac]?.armour ?? 0x6a7a6a);
+    const fm = new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, metalness: 0.4 }); const c = Math.cos(P.yaw), s = Math.sin(P.yaw); const W = (lx, lz) => ({ x: P.x + lx * c + lz * s, z: P.z - lx * s + lz * c });
+    const add = (geo, m, lx, lz, h, ry = 0) => { const w = W(lx, lz); const mesh = new THREE.Mesh(geo, m); mesh.position.set(w.x, SRF.H(w.x, w.z) + h, w.z); mesh.rotation.y = P.yaw + ry; g.add(mesh); return mesh; };
+    const H = 36; for (const [ax, az, len, ry] of [[0, -H, H * 2, 0], [0, H, H * 2, 0], [-H, 0, H * 2, Math.PI / 2], [H, 0, H * 2, Math.PI / 2]]) for (let k = -len / 2 + 4; k < len / 2; k += 8) { const lx = ax + (ry ? 0 : k), lz = az + (ry ? k : 0); if (Math.abs(lz - H) < 6 && Math.abs(lx) < 8) continue; add(new THREE.BoxGeometry(8.2, 3.2, 1.2), wallM, lx, lz, 1.4, ry); const w = W(lx, lz); B.props.push({ x: w.x, z: w.z, y: SRF.H(w.x, w.z), r: 4.2, h: 3.2, kind: 'wall' }); }
+    for (const [lx, lz] of [[-H, -H], [H, -H], [-H, H], [H, H]]) { add(new THREE.BoxGeometry(5, 11, 5).translate(0, 5.5, 0), darkM, lx, lz, 0); add(new THREE.BoxGeometry(6.5, 1.6, 6.5), fm, lx, lz, 11.5); const w = W(lx, lz); B.props.push({ x: w.x, z: w.z, y: SRF.H(w.x, w.z), r: 3.4, h: 12, kind: 'wall' }); }
+    add(new THREE.BoxGeometry(18, 5, 12).translate(0, 2.5, 0), fm, 0, -8, 0); add(new THREE.BoxGeometry(14, 3.6, 8).translate(0, 1.8, 0), wallM, -18, 14, 0); add(new THREE.BoxGeometry(14, 3.6, 8).translate(0, 1.8, 0), wallM, 18, 14, 0);
+    for (const [lx, lz, r] of [[0, -8, 9], [-18, 14, 7], [18, 14, 7]]) { const w = W(lx, lz); B.props.push({ x: w.x, z: w.z, y: SRF.H(w.x, w.z), r, h: 5, kind: 'wall' }); }
+    add(new THREE.CylinderGeometry(0.3, 0.5, 22, 6).translate(0, 11, 0), darkM, 24, -24, 0); const beacon = add(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshBasicMaterial({ color: B.hostile ? 0xff3030 : 0x40ff80 }), 24, -24, 22.5);
+    const pw = W(0, 22); B.pad = { x: pw.x, z: pw.z }; add(new THREE.CylinderGeometry(10, 10.5, 0.6, 24), new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.7 }), 0, 22, 0.2);
+    B.beacon = beacon; B.gunAt = [W(-H + 6, -H + 6), W(H - 6, -H + 6), W(0, H - 6)]; MB.list.push(B);
+    const Mx = new THREE.Matrix4(), Pv = new THREE.Vector3(); for (const m of Object.values(TERRA.props)) { let ch = false; for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, Mx); Pv.setFromMatrixPosition(Mx); if (Math.hypot(Pv.x - B.x, Pv.z - B.z) < 60) { Mx.makeScale(0.0001, 0.0001, 0.0001); Mx.setPosition(Pv); m.setMatrixAt(i, Mx); ch = true; } } if (ch) m.instanceMatrix.needsUpdate = true; }
+  }
+  scene.add(g);
+}
+function mbClear() { for (const B of MB.list) mbStandDown(B); if (MB.group) { MB.group.parent?.remove(MB.group); MB.group.traverse(o => o.geometry?.dispose?.()); } MB.group = null; MB.list = []; }
+function mbStandDown(B) { for (const S of B.squads) for (const u of S.units || []) { const i = OF.units.indexOf(u); if (i >= 0) OF.units.splice(i, 1); if (u.rig) { charRigRelease(u.rig); u.rig = null; } } for (const v of B.turrets) if (typeof vehRemove === 'function') vehRemove(v); B.squads = []; B.turrets = []; B.active = false; }
+function mbStep(dt) {
+  if (!MB.list.length) return; const me = OF.active && OF.me ? OF.me.pos : (SRF.active ? world.player.pos : null); if (!me) return; const t = performance.now() / 1000;
+  for (const B of MB.list) { if (B.beacon) B.beacon.visible = (t % 1.4) < 0.6; const d = Math.hypot(me.x - B.x, me.z - B.z);
+    // walls and towers are cover on foot
+    if (OF.active && d < 260 && !B.propsIn) { for (const p of B.props) { OF.props.push(p); ofHashAdd(p); } B.propsIn = true; } else if ((!OF.active || d > 320) && B.propsIn) { B.propsIn = false; }
+    if (!OF.active || !OF.me) continue;
+    if (d < 420 && !B.active) { B.active = true; const team = B.hostile ? 'hostile' : 'neutral';
+      for (let k = 0; k < 3; k++) { const at = new THREE.Vector3(B.x + (k - 1) * 12, 0, B.z + (k % 2 ? 10 : -10)); at.y = ofG(at.x, at.z); const S = aiSpawnSquad(B.fac, 4, at, { team, label: `${gsShort(B.fac)} garrison`, patrol: at.clone() }); B.squads.push(S); }
+      if (typeof vehSpawn === 'function') B.gunAt.forEach((w, k) => { const v = vehSpawn(k === 2 ? 'turret_av' : 'turret_ai', B.fac, team, new THREE.Vector3(w.x, 0, w.z), B.yaw + k, { ai: true }); if (v) { v.label = `${gsShort(B.fac)} base gun`; B.turrets.push(v); } });
+      sbxToast(B.hostile ? `${gsShort(B.fac)} military base — hostile. Their guns are tracking you.` : `${gsShort(B.fac)} military base. The garrison waves you through; their pad is open to you.`); }
+    else if (d > 650 && B.active) mbStandDown(B); }
+}
+// the overview lists the bases and the rail station
+const _mbEntries = sbxOverviewEntries;
+sbxOverviewEntries = function () {   // S11-EDIT(§SBXUI sbxOverviewEntries): bases and the station
+  const out = _mbEntries(); if (!SRF.active) return out; const me = MM.mode === 'ON_FOOT' && OF.me ? OF.me.pos : world.player.pos;
+  for (const B of MB.list) { const pos = new THREE.Vector3(B.x, B.y, B.z); out.push({ kind: B.hostile ? 'hostile' : 'point', name: `${gsShort(B.fac)} military base${B.hostile ? ' — hostile' : ''}`, pos, ref: pos, dist: Math.hypot(B.x - me.x, B.z - me.z) }); }
+  if (RL.foot) { const pos = new THREE.Vector3(RL.foot.x, 0, RL.foot.z); out.push({ kind: 'door', name: 'Maglev station', pos, ref: pos, dist: Math.hypot(RL.foot.x - me.x, RL.foot.z - me.z) }); }
+  const ap = new THREE.Vector3(0, 0, 0); out.push({ kind: 'ship', name: WORLD.city?.c ? 'Spaceport (airport)' : 'Airfield (airport)', pos: ap, ref: ap, dist: Math.hypot(me.x, me.z) });
+  return out.sort((a, b) => a.dist - b.dist);
+};
+// the site lifecycle: build on arrival, tick with the weather, tear down on leaving
+const _wsSite = SRF.spawnSiteObjects;
+SRF.spawnSiteObjects = function () { const r = _wsSite.call(this); try { apBuild(); rlBuild(); mbBuild(); } catch (e) { console.warn('[worldscale]', e); } return r; };   // S11-EDIT(§SURFACE spawnSiteObjects): airfield, rail line, bases
+const _wsShut = SRF.shutdownVisuals;
+SRF.shutdownVisuals = function (...a) { apClear(); rlClear(); mbClear(); return _wsShut.apply(this, a); };   // S11-EDIT(§SURFACE shutdownVisuals): they go with the site
+const _wsWeather = SRF.weather;
+SRF.weather = function (dt) { const r = _wsWeather.call(this, dt); try { rlStep(dt); mbStep(dt); if (RL.arrive && MM.mode === 'SURFACE_SHIP' && SRF.landed) { RL.arrive = false; ofDisembark(); RL.place = true; } if (RL.place && MM.mode === 'ON_FOOT' && OF.me && RL.foot) { RL.place = false; OF.me.pos.set(RL.foot.x, ofG(RL.foot.x, RL.foot.z), RL.foot.z); sbxToast(`The maglev hisses away from the platform. Your ship is at the port, ${Math.round(Math.hypot(RL.foot.x, RL.foot.z))} m off.`); } } catch (e) { console.warn('[rail/bases]', e); } return r; };   // S11-EDIT(§SURFACE weather): trains and bases tick
+const _rlInteract = ofInteract;
+ofInteract = function () { const t = rlTarget(); if (t) { t.fn(); return; } return _rlInteract(); };   // S11-EDIT(§ONFOOT ofInteract): the station
+const _rlDrops = ofDropsStep;
+ofDropsStep = function (dt) { _rlDrops(dt); if (OF.prompt) return; const t = rlTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): station prompt
+Object.assign(S9X, { AP, apAt, apBuild, RL, rlBuild, rlStep, rlOpen, rlRide, rlRoute, MB, mbBuild, mbStep, mbPlan, dnWarp });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
