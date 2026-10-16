@@ -355,6 +355,9 @@
     §ARROWBLADE             the sabre answers the arrow keys
     §IRONCLAD2              the clan's arsenal: 4 flamethrower (hold), 5 shock trap, 6 seeker volley
     §ANIM2                  bodies that move like bodies
+    §OPS                    your side calls with work: raids, strikes, rescues, recoveries
+    §DECKS                  the ship interiors are bigger: every boardable warship's deck plan is 1.6× the
+    §DASH2                  the dashboard, again, louder: glowing animated frames that draw themselves in,
     §SBXCONTROL             sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
     §BOOT                   mission runner, hangar, screen state machine, main loop, boot, test exports
 
@@ -780,6 +783,14 @@
     §RESONANCE resHud — the Ironclad's arsenal in the power list
     §CHARACTER.ANIM charAnimate — secondary motion and eased transitions
     §PARTRT partRenderHook — lock-on and the arsenal markers
+    §COMMS commsTick — operations calls
+    §TITANWALK twBoard — transports open their hangar deck
+    §MODES SPACE.update — the transport comes for you
+    §ONFOOT.STEP OF.step — the drop squadron forms up
+    §ONFOOT ofInteract — the hangar
+    §ONFOOT ofDropsStep — hangar prompts
+    §BOARDING bdLayout — bigger decks; transports carry a hangar
+    §PARTRT partRenderHook — the status strip
 
   STAGE 9 RENAMES (in-game text only; internal ids unchanged for save compatibility)
     factions: The Concordance · The Free Reach · The Wardens · The Syndicates (ids authority / combine / guild / syndicate) · the Cinder Court is non-territorial
@@ -21584,7 +21595,7 @@ partDetonate = function (ps, i) {   // S11-EDIT(§PARTRT partDetonate): warship 
 /** A direct hit near a part: that part takes it (the reactor goes when a torpedo lands beside it). */
 function partHitNpcPart(e, i, dmg) { if (e.ps?.hp) partDamage(e.ps, i, dmg); }
 // the player's bomber: secondary fire launches a torpedo at the locked target instead of a missile
-const _wsSpaceUpdate = MM_DEFS.SPACE.update;
+const _wsSpaceUpdate = MM_DEFS.SPACE.update || function () {};   // SPACE is a vehicle mode: this chain is run from SPACE.pre (§OPS)
 MM_DEFS.SPACE.update = function (dt) {   // S11-EDIT(§MODEMGR SPACE update): torpedo release from a bomber
   const pl = world.player; const cls = game.mode === 'sandbox' ? wsHullClass() : 'fighter';
   if (cls === 'bomber' && (input.pressed.has('Mouse2') || input.pressed.has('KeyF'))) { input.pressed.delete('Mouse2'); input.pressed.delete('KeyF'); input.fireSecondary = false; wsPlayerTorpedo(); }
@@ -24623,6 +24634,184 @@ partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): 
   const r = _lkRender(alpha, dt); try { const C = lkStep(dt || 1 / 60); lkDraw(C); if (MM.mode === 'SPACE') lkSpaceHoming(dt || 1 / 60); if (LK.g && IC.seek) icSeekDraw(LK.g); } catch (e) { console.warn('[lockon]', e); } return r;
 };
 Object.assign(S9X, { LK, lkStep, lkCands, IC, icTrapThrow, hsOwner, hsGuard, AB_DIR });
+
+
+// =====================================================================================
+// §OPS — your side calls with work: raids, strikes, rescues, recoveries
+//  With an allegiance, your power's operations officer calls every so often (the holo-call,
+//  answer or ignore). The job is concrete: raid an enemy village, strike a depot, pull out
+//  prisoners, recover something. Go alone, or deploy with a squadron: a transport of your side
+//  comes for you, you walk aboard, each squad member has their own fighter in the hangar,
+//  and launching from your own drops you and the squad on the target.
+// =====================================================================================
+const OPS = { pending: null, transport: null, launchT: 0, hangar: [], wing: [] };
+const OPS_JOBS = [
+  { tpl: 'sabotage', town: true, verb: 'Raid', what: (n) => `Raid ${n}`, brief: (n, e) => `"${gsShort(e)} troops hold ${n}. Hit the village, burn their supply depot, get out."`, thing: 'the village supply depot' },
+  { tpl: 'sabotage', town: false, verb: 'Strike', what: (n) => `Strike the depot at ${n}`, brief: (n, e) => `"A ${gsShort(e)} fuel depot at ${n} is feeding their front. End it."`, thing: 'a fuel depot pump' },
+  { tpl: 'rescue', town: false, verb: 'Rescue', what: (n) => `Rescue our people at ${n}`, brief: (n, e) => `"${gsShort(e)} took a crew of ours. They are held at ${n}. Bring them home."`, thing: 'a captured crew' },
+  { tpl: 'retrieval', town: false, verb: 'Recover', what: (n) => `Recover the data core at ${n}`, brief: (n, e) => `"One of our couriers went down at ${n}. ${gsShort(e)} scavengers are already there. Get the core."`, thing: 'a data core' },
+];
+function opsEnemy(fac) { const S = gsState(); const w = S && typeof gsWarsOf === 'function' ? gsWarsOf(S, fac)[0] : null; if (w) return w.a === fac ? w.d : w.a; const all = ['authority', 'combine', 'syndicate', 'guild'].filter(f => f !== fac); return all[Math.floor(galaxyNow() / 1200000) % all.length]; }
+function opsDraft(fac) {
+  const enemy = opsEnemy(fac); const slot = Math.floor(galaxyNow() / 1200000); const rng = makeRng((slot * 7919 + fac.length) >>> 0); const job = OPS_JOBS[Math.floor(rng() * OPS_JOBS.length)];
+  const tgt = questPickTarget(SBX.profile.systemId, rng, job.town); if (!tgt) return null; const name = questSiteName(tgt.sys, tgt.site);
+  return { fac, enemy, job: OPS_JOBS.indexOf(job), tgt, name, slot, pay: (QUEST_TPL[job.tpl]?.pay || 6000) + 3000 + (allegOf()?.rank || 0) * 1500 };
+}
+COMMS_CALLERS.ops = {
+  want() { const A = allegOf?.(); if (!A?.fac || questsOf().active.some(q => q.ops)) return null; const d = opsDraft(A.fac); return d ? { key: `ops:${A.fac}:${d.slot}`, ...d } : null; },
+  who(c) { const names = { authority: 'Lieutenant Sera Quill', combine: 'Ops chief Dagny Roe', syndicate: 'Fixer Marro', guild: 'Factor Iven Dade' }; return { name: names[c.fac] || 'Operations', title: `${gsFacName(c.fac)} operations`, spec: { faction: c.fac, role: 'officer' }, sys: SBX.profile.systemId }; },
+  ring(c) { return [`"${gsShort(c.fac)} operations. I have a job with your name on it."`]; },
+  graph: 'call_ops',
+  ignore(c) { const p = SBX.profile; p.standings[c.fac] = clamp((p.standings[c.fac] || 0) - 0.3, -10, 10); return `${gsShort(c.fac)} operations moved on without you. Standing −0.3.`; },
+};
+dlgDefine('call_ops', { who: (c) => c.call.who.name, start: 'o', nodes: {
+  o: { lines: (c) => { const J = OPS_JOBS[c.call.job]; return [J.brief(c.call.name, c.call.enemy), `"${J.what(c.call.name)}. Pay is ${fmtIsk(c.call.pay)} credits."`]; },
+    choices: [
+      { t: 'Deploy me with a squadron.', eff: { fn: 'opsSquad' }, to: 'squad' },
+      { t: 'I will handle it alone.', eff: { fn: 'opsSolo' }, to: 'solo' },
+      { t: 'Not now.', to: 'end' } ] },
+  squad: { lines: ['"A transport is on its way to you. Your squad\'s fighters are in its hangar. Board her, then launch from your own bird."'], choices: [{ t: 'On my way.', to: 'end' }] },
+  solo: { lines: ['"Coordinates are on your board. Make it count."'], choices: [{ t: 'End transmission.', to: 'end' }] },
+} });
+function opsQuest(c) {
+  const J = OPS_JOBS[c.job]; const q = questBuild({ tpl: J.tpl, title: `${gsShort(c.fac)} orders: ${J.what(c.name)}`, thing: J.thing, enemy: c.enemy, sys: c.tgt.sys, site: c.tgt.site, jumps: c.tgt.jumps, giverFac: c.fac, giver: c.who.name, report: false, pay: c.pay });
+  q.ops = true; questStart(q, {}); newsPlayer(`Took ${gsShort(c.fac)} orders: ${J.what(c.name)}.`); return q;
+}
+DLG.fx.opsSolo = (a, ctx) => { opsQuest(ctx.call); };
+DLG.fx.opsSquad = (a, ctx) => { const q = opsQuest(ctx.call); OPS.pending = { q: q.id, fac: ctx.call.fac, sys: ctx.call.tgt.sys, site: ctx.call.tgt.site }; OPS.launchT = 4; sbxToast('Transport inbound. It meets you in space — undock or lift off if you are down.'); };
+// the ops caller takes its turn with the others
+const _opsTick = commsTick;
+commsTick = function (dt) {   // S11-EDIT(§COMMS commsTick): operations calls
+  _opsTick(dt); if (COMMS.cur || COMMS.gapT > 0 || !charOf() || game.mode !== 'sandbox' || PATH.dlg || DLG.cur) return; if (typeof OF !== 'undefined' && OF.active && (OF.units || []).some(u => u.alive && u.team === 'hostile' && OF.me && u.pos.distanceTo(OF.me.pos) < 40)) return;
+  OPS.chk = (OPS.chk || 0) - dt; if (OPS.chk > 0) return; OPS.chk = 8; const c = COMMS_CALLERS.ops.want(); if (!c || (commsOf().next[c.key] || 0) > galaxyNow()) return; commsRing('ops', c);
+};
+// the transport: a big ship of your side; walk aboard; the hangar holds a fighter for each of you
+function opsFighterMesh(col) {
+  if (OPS_ASSETS.fighter) { const m = OPS_ASSETS.fighter.clone(true); m.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color?.lerp(new THREE.Color(col), 0.3); } }); return m; }
+  const g = new THREE.Group(); const hull = new THREE.MeshStandardMaterial({ color: col, metalness: 0.55, roughness: 0.45 }), dark = new THREE.MeshStandardMaterial({ color: 0x23262b, metalness: 0.6, roughness: 0.5 }), glass = new THREE.MeshStandardMaterial({ color: 0x0b1a24, metalness: 0.2, roughness: 0.1, emissive: 0x0a2a3a });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.9, 6, 8).rotateX(Math.PI / 2), hull); g.add(body); const nose = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.2, 8).rotateX(Math.PI / 2).translate(0, 0, 4.1), hull); g.add(nose);
+  const cock = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.8, 1.8).translate(0, 0.45, 1.2), glass); g.add(cock);
+  for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.14, 2.2).translate(s * 2.1, 0, -0.8), hull); w.rotation.z = s * 0.06; g.add(w); const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 6).rotateX(Math.PI / 2).translate(s * 3.6, 0, 0.3), dark); g.add(gun); const fin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 1.4).translate(s * 0.7, 0.7, -2.4), dark); g.add(fin); }
+  const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 10).rotateX(Math.PI / 2).translate(0, 0, -3.1), new THREE.MeshBasicMaterial({ color: 0x7fd8ff, toneMapped: false })); g.add(eng);
+  for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12).translate(s * 1.2, -0.75, 0), dark); g.add(leg); } g.position.y = 1.2; const w = new THREE.Group(); w.add(g); return w;
+}
+const OPS_ASSETS = { fighter: null };
+function opsSpawnTransport() {
+  const P = OPS.pending; const pl = world.player; const f = _v[0].set(0, 0, 1).applyQuaternion(pl.quat || pl.quaternion || _q[0].identity());
+  const at = pl.pos.clone().addScaledVector(f, 900).add(_v[1].set(0, 120, 0)); const e = wsSpawn('cruiser', P.fac, at, {}); if (!e) return null;
+  e.name = `${gsShort(P.fac)} transport ${['Long Haul', 'Iron Mother', 'Dawn Tide', 'Wide Berth', 'Steady Hand'][Math.floor(Math.random() * 5)]}`; e.opsTransport = P.q; e.boardCls = 'transport'; e.speedMul = 0.25; OPS.transport = e;
+  sbxToast(`${e.name} has you on scope. Get within 1.5 km and press E to board.`); return e;
+}
+const _opsBoard = twBoard;
+twBoard = function (t) {   // S11-EDIT(§TITANWALK twBoard): transports open their hangar deck
+  if (!t?.boardCls) return _opsBoard(t); const w = t.war; t.war = { ...(w || {}), cls: t.boardCls, fac: w?.fac || OPS.pending?.fac }; try { _opsBoard(t); } finally { t.war = w; }
+  if (MM.mode === 'ON_FOOT_ABOARD' && t.opsTransport) opsHangar(t);
+};
+function opsHangar(t) {
+  const L = HS.built?.L; const hg = L?.rooms.hangar; if (!hg) return; for (const m of OPS.hangar) m.parent?.remove(m); OPS.hangar = [];
+  const R = squadOf().roster.filter(m => m.status === 'ok' || m.status === 'active' || !m.status); OPS.wing = R.length ? R.slice(0, 5).map(m => m.name) : ['Kade', 'Orrin', 'Vesh'].map(n => `${n} (${gsShort(OPS.pending?.fac || 'authority')})`);
+  const names = [charOf()?.name || 'You', ...OPS.wing]; const cols = [0x9fb4c8, 0x8a6a4a, 0x5a7a5a, 0x7a5a6a, 0x5a6a8a, 0x8a8a5a];
+  names.forEach((n, i) => { const m = opsFighterMesh(cols[i % cols.length]); const row = i % 3, col = Math.floor(i / 3); const x = hg.x0 + 5 + row * ((hg.x1 - hg.x0 - 10) / 2), z = hg.z0 + 7 + col * 12; m.position.set(x, 0, z); m.rotation.y = i % 2 ? 0.35 : -0.35; HS.built.group.add(m); m.userData = { pilot: n, me: i === 0, lx: x, lz: z }; OPS.hangar.push(m); });
+  // ships your side issues to you by rank: parked along the far side, the locked ones marked
+  const fac = OPS.pending?.fac || allegOf()?.fac; const A = allegOf(); OPS.issue = null;
+  const issued = fac ? sgYardHulls(fac, false).filter(hh => ['heavy', 'bomber', 'corvette'].includes(SBX_HULLS[hh].wsClass)).sort((x, y) => (SBX_HULLS[x].rank || 0) - (SBX_HULLS[y].rank || 0)) : [];
+  issued.forEach((hh, j) => { const H = SBX_HULLS[hh]; const ok = A?.fac === fac && (A.rank || 0) >= (H.rank || 0); const big = { heavy: 1.1, bomber: 1.3, corvette: 1.9, frigate: 2.6 }[H.wsClass] || 1;
+    const m = opsFighterMesh(ok ? 0xc8b070 : 0x4a4a4a); m.scale.setScalar(big); const x = hg.x1 - 6 - (j % 2) * 9, z = hg.z0 + 8 + Math.floor(j / 2) * 14 * Math.min(1.6, big); m.position.set(x, 0, z); m.rotation.y = -Math.PI / 2; HS.built.group.add(m);
+    m.userData = { hull: hh, ok, lx: x, lz: z, r: 4 + big * 2 }; OPS.hangar.push(m); });
+  sbxToast(`The hangar holds ${names.length} fighters — yours and your squad's (${OPS.wing.join(', ')}).${issued.length ? ` Along the far side: ${issued.length} ${gsShort(fac)} ships issued by rank — take one if your rank allows.` : ''} Walk to your own fighter and press E to launch.`);
+}
+function opsHangarTarget() {
+  if (!OPS.hangar.length || MM.mode !== 'ON_FOOT_ABOARD' || !OF.me?.alive) return null; const l = hsL(OF.me.pos.x, OF.me.pos.z);
+  for (const m of OPS.hangar) { const U = m.userData; if (!U.hull) continue; const d = Math.hypot(l.x - U.lx, l.z - U.lz); if (d > U.r) continue; const H = SBX_HULLS[U.hull];
+    if (!U.ok) return { label: `${H.name} — requires rank ${H.rank} with ${gsShort(H.wsFac)}`, fn: () => sbxToast(sgRankOk(U.hull) || 'Not yours to take.') };
+    return OPS.issue === U.hull ? { label: `${H.name} — yours for this op: launch in it`, fn: opsLaunch } : { label: `take the ${H.name} (${H.cls}, issued at rank ${H.rank || 0})`, fn: () => { OPS.issue = U.hull; sbxToast(`The deck chief signs the ${H.name} over to you. Press E again here to launch in it — or walk to your fighter.`); } }; }
+  for (const m of OPS.hangar) { if (m.userData.hull) continue; const d = Math.hypot(l.x - m.userData.lx, l.z - m.userData.lz); if (d < 5) return m.userData.me ? { label: 'climb into your fighter — launch for the drop', fn: opsLaunch } : { label: `${m.userData.pilot}'s fighter — "See you on the ground."`, fn: () => sbxToast(`${m.userData.pilot} gives you a thumbs-up from the cockpit.`) }; }
+  return null;
+}
+function opsLaunch() {
+  const P = OPS.pending; if (!P) return; for (const m of OPS.hangar) m.parent?.remove(m); OPS.hangar = []; const pl = SBX.systems[P.sys] ? sbxPlanetOf(P.sys) : null; if (!pl) { sbxToast('The drop zone has no ground to land on.'); return; }
+  if (OPS.issue) { const p = SBX.profile; const own = SBX.ship(); const st = SBX.systems[p.systemId]?.stations?.[0]; if (own) own.location = 'station:' + (st?.id || p.home);
+    const s = sbxNewShip(OPS.issue, null); s.issued = { fac: SBX_HULLS[OPS.issue].wsFac, t: galaxyNow() }; s.name = `${SBX_HULLS[OPS.issue].name} (issued)`; p.activeShip = s.uid; sbxBoardVisual(); sbxApplyFit(); OPS.issue = null;
+    sbxToast(`You launch in the ${s.name}. Your ${own?.name || 'ship'} waits at ${st?.name || 'the station'}.`); }
+  const site = srfSiteDef(pl, P.site); OPS.dropping = { ...P, wing: OPS.wing.slice() }; OPS.pending = null; if (OPS.transport?.alive) OPS.transport.speedMul = 1; OPS.transport = null;
+  mmSet('SPACE', { via: () => { if (SBX.profile.systemId !== P.sys) sbxLoadSystem(P.sys, null); }, why: 'transport drop' }); SRF.descend(pl, site);
+  sbxToast(`Launch! The squadron falls in behind you — ${OPS.dropping.wing.join(', ')} — dropping on ${site.name}.`);
+}
+// in space: bring the transport, let E board it from far out
+// SPACE is a vehicle mode, so mmTick never calls its update: run the update chain (torpedoes, crew,
+// boarding, roaming traffic) from pre, every space frame
+const _opsSpacePre = MM_DEFS.SPACE.pre;
+MM_DEFS.SPACE.pre = function (dt) { _opsSpacePre?.call(this, dt); if (OPS.pending && OPS.transport?.alive && input.pressed.has('KeyE') && OPS.transport.pos.distanceTo(world.player.pos) < 1500) { input.pressed.delete('KeyE'); twBoard(OPS.transport); return; } MM_DEFS.SPACE.update?.call(this, dt); };   // S11-EDIT(§MODEMGR SPACE.pre): the space update chain finally runs
+const _opsSpace = MM_DEFS.SPACE.post;
+MM_DEFS.SPACE.post = function (dt) {   // S11-EDIT(§MODES SPACE.post): the transport comes for you
+  const r = _opsSpace?.call(this, dt); if (OPS.pending && !SBX.profile.docked && !SRF.active) { if (!OPS.transport || !OPS.transport.alive) { OPS.launchT -= dt; if (OPS.launchT <= 0) { OPS.launchT = 30; opsSpawnTransport(); } }
+    else if (input.pressed.has('KeyE') && OPS.transport.pos.distanceTo(world.player.pos) < 1500) { input.pressed.delete('KeyE'); twBoard(OPS.transport); } } return r;
+};
+// on landing from a drop, the wing that is not your roster deploys with you as friendly troops
+const _opsOFStep = OF.step;
+OF.step = function (dt) {   // S11-EDIT(§ONFOOT.STEP OF.step): the drop squadron forms up
+  _opsOFStep(dt); const D = OPS.dropping; if (!D || MM.mode !== 'ON_FOOT' || !OF.me || !SRF.active) return; if (SRF.planet?.sys !== D.sys || SRF.site?.i !== D.site) return; OPS.dropping = null;
+  const extra = D.wing.filter(n => n.includes('(')); if (extra.length) { const at = OF.me.pos.clone().add(_v[0].set(4, 0, 4)); const S = aiSpawnSquad(D.fac, extra.length, at, { team: 'player', label: 'your squadron' }); S.units.forEach((u, i) => { u.team = 'player'; u.name = extra[i].replace(/ \(.*/, ''); u.pos.y = ofG(u.pos.x, u.pos.z); }); }
+  sbxToast(`The squadron is down with you: ${D.wing.join(', ')}. Objective on your board.`);
+};
+const _opsInteract = ofInteract;
+ofInteract = function () { const t = opsHangarTarget(); if (t) { t.fn(); return; } return _opsInteract(); };   // S11-EDIT(§ONFOOT ofInteract): the hangar
+const _opsDrops = ofDropsStep;
+ofDropsStep = function (dt) { _opsDrops(dt); if (OF.prompt) return; const t = opsHangarTarget(); if (t) OF.prompt = `${mmKey('interact')} ${t.label}`; };   // S11-EDIT(§ONFOOT ofDropsStep): hangar prompts
+
+// =====================================================================================
+// §DECKS — the ship interiors are bigger: every boardable warship's deck plan is 1.6× the
+//  floor (wider rooms, a longer spine, more of them on cruisers), and a transport carries a
+//  full hangar deck aft of engineering.
+// =====================================================================================
+const DK_SCALE = 1.6;
+const _dkLayout = bdLayout;
+bdLayout = function (cls) {   // S11-EDIT(§BOARDING bdLayout): bigger decks; transports carry a hangar
+  const id = 'board_' + cls; if (HS_LAYOUTS[id]?._dk) return HS_LAYOUTS[id]; const L = _dkLayout(cls); if (L._dk) return L;
+  if (cls === 'transport') { const e = L.rooms.engineering; const z0 = e.z1, z1 = z0 + 30; L.rooms.hangar = { x0: -13, x1: 13, z0, z1, name: 'Hangar' }; L.doors.push({ id: 'door_hangar', a: 'engineering', b: 'hangar', x: 0, z: z0, axis: 'z', w: 4 }); L.spots.hangar = [[0, (z0 + z1) / 2]]; L.z1 = z1 - 0.3; L.bx = 13.2; }
+  const s = DK_SCALE; for (const r of Object.values(L.rooms)) { r.x0 *= s; r.x1 *= s; r.z0 *= s; r.z1 *= s; } for (const d of L.doors) { d.x *= s; d.z *= s; d.w = Math.min(d.w * 1.25, 5); }
+  for (const k of Object.keys(L.emp)) { const v = L.emp[k]; if (Array.isArray(v)) { v[0] *= s; v[1] *= s; } } for (const k of Object.keys(L.spots)) L.spots[k] = L.spots[k].map(([x, z]) => [x * s, z * s]);
+  L.bx *= s; L.z0 *= s; L.z1 *= s; L._dk = true; return L;
+};
+
+// =====================================================================================
+// §DASH2 — the dashboard, again, louder: glowing animated frames that draw themselves in,
+//  segmented energy bars that pulse when low, a status strip across the top (system, credits,
+//  side, wanted, lock), data rails down the screen edges and a hex lattice behind it all.
+// =====================================================================================
+(function dash2Css() {
+  const s = document.createElement('style'); s.textContent = `
+  @keyframes d2in { 0% { clip-path: inset(0 100% 0 0); opacity: .2; } 100% { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes d2glow { 0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #46f2ff) 25%, transparent), 0 0 18px color-mix(in srgb, var(--accent, #46f2ff) 10%, transparent), inset 0 0 22px color-mix(in srgb, var(--accent, #46f2ff) 6%, transparent); } 50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #46f2ff) 45%, transparent), 0 0 26px color-mix(in srgb, var(--accent, #46f2ff) 18%, transparent), inset 0 0 26px color-mix(in srgb, var(--accent, #46f2ff) 10%, transparent); } }
+  @keyframes d2sweep { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes d2low { 0%, 100% { filter: none; } 50% { filter: brightness(1.8) saturate(1.4); } }
+  @keyframes d2rail { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+  body.sandbox #hud .panel, body.sandbox #p-overview, body.sandbox #of-hud .panel, body.sandbox #of-stats, body.sandbox #of-wpnbox { animation: d2in .7s cubic-bezier(.2,.8,.2,1) both, d2glow 4s ease-in-out infinite; border-color: color-mix(in srgb, var(--accent, #46f2ff) 45%, transparent) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #46f2ff) 7%, transparent), transparent 40%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpath d='M14 0 L28 8 L28 24 L14 32 L0 24 L0 8 Z M14 32 L14 48' fill='none' stroke='%2346f2ff' stroke-opacity='.07'/%3E%3C/svg%3E"), var(--panel-bg) !important; }
+  body.sandbox #hud .panel > .label, body.sandbox #hud .panel h3 { letter-spacing: .28em; text-shadow: 0 0 8px color-mix(in srgb, var(--accent, #46f2ff) 60%, transparent); }
+  body.sandbox .bar { height: 7px !important; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--fg) 8%, transparent) 0 6px, transparent 6px 8px) !important; }
+  body.sandbox .bar > i { -webkit-mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); box-shadow: 0 0 10px currentColor; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent, #46f2ff) 70%, transparent)); }
+  body.sandbox .bar > i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); background-size: 50% 100%; background-repeat: no-repeat; animation: d2sweep 2.6s linear infinite; }
+  body.sandbox .bar.red > i, body.sandbox .bar.low > i { animation: d2low .8s ease-in-out infinite; }
+  #d2-strip { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 8; display: none; gap: 2px; pointer-events: none; font: 600 10px/1 var(--font-num, monospace); letter-spacing: .18em; text-transform: uppercase; }
+  body.sandbox #d2-strip { display: flex; } #d2-strip > span { padding: 5px 12px; color: var(--fg); background: color-mix(in srgb, var(--panel-bg, #0b1016) 80%, transparent); border: 1px solid color-mix(in srgb, var(--accent, #46f2ff) 35%, transparent); clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); text-shadow: 0 0 6px color-mix(in srgb, var(--accent, #46f2ff) 60%, transparent); }
+  #d2-strip > span b { color: var(--accent, #46f2ff); font-weight: 700; margin-left: 6px; } #d2-strip > span.alert b { color: var(--alert, #ff5a5a); }
+  .d2-rail { position: fixed; top: 0; bottom: 0; width: 2px; z-index: 5; pointer-events: none; overflow: hidden; display: none; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent, #46f2ff) 18%, transparent), transparent); }
+  body.sandbox .d2-rail { display: block; } .d2-rail.l { left: 6px; } .d2-rail.r { right: 6px; } .d2-rail::after { content: ''; position: absolute; left: 0; width: 2px; height: 22vh; background: linear-gradient(180deg, transparent, var(--accent, #46f2ff), transparent); animation: d2rail 3.2s linear infinite; } .d2-rail.r::after { animation-delay: -1.6s; }
+  .wt-full #d2-strip, body.cine #d2-strip, .wt-full .d2-rail, body.cine .d2-rail { display: none !important; }`;
+  document.head.appendChild(s);
+  const strip = document.createElement('div'); strip.id = 'd2-strip'; document.body.appendChild(strip); for (const c of ['l', 'r']) { const r = document.createElement('div'); r.className = 'd2-rail ' + c; document.body.appendChild(r); }
+})();
+const D2 = { t: 0 };
+const _d2Render = partRenderHook;
+partRenderHook = function (alpha, dt) {   // S11-EDIT(§PARTRT partRenderHook): the status strip
+  const r = _d2Render(alpha, dt); D2.t -= dt || 0.016; if (D2.t > 0) return r; D2.t = 0.25; const el = $('d2-strip'); const p = SBX.profile; if (!el || !p || game.mode !== 'sandbox') return r;
+  const A = allegOf?.(); const sys = SBX.systems?.[p.systemId]; const own = typeof hsOwner === 'function' ? hsOwner(p.systemId) : null; const wanted = Object.keys(p.law || {}).some(f => lawWanted(f) > 0);
+  const lk = typeof LK !== 'undefined' && LK.lock ? (LK.lock.name || 'target') : null; const where = SRF.active ? `${SRF.site?.name || ''}` : sys?.name || '';
+  el.innerHTML = `<span>${MM_LABEL[MM.mode] || MM.mode}<b>${where}</b></span><span>Space<b>${own ? gsShort(own) : '—'}</b></span><span>Credits<b>${fmtIsk(p.isk)}</b></span><span>Side<b>${A?.fac ? gsShort(A.fac) + ' · R' + (A.rank || 0) : 'Independent'}</b></span>${wanted ? '<span class="alert">Status<b>WANTED</b></span>' : ''}${lk ? `<span class="alert">Lock<b>${lk}</b></span>` : ''}`;
+  return r;
+};
+Object.assign(S9X, { OPS, OPS_JOBS, OPS_ASSETS, opsDraft, opsQuest, opsSpawnTransport, opsHangar, opsLaunch, opsHangarTarget, DK_SCALE, commsRingNow: (...a) => commsRing(...a), twBoardNow: (t) => twBoard(t) });
 
 // §SBXCONTROL — sandbox controller: enter / exit, docking, the per-tick step, keys, DOM bindings
 // =====================================================================================
