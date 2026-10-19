@@ -95,6 +95,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line);background
 #title h1{font-size:76px;letter-spacing:.32em;font-weight:300;margin:0 0 4px;padding-left:.32em}
 #title .sub{font-family:var(--mono);color:var(--ink-dim);letter-spacing:.3em;font-size:12px;margin-bottom:40px;text-transform:uppercase}
 #title .menu{display:flex;flex-direction:column;gap:10px;width:260px}
+#profiles{width:min(440px,92vw);margin-top:18px;display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}#profiles .pr{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(10,11,13,.6)}#profiles .pr .who{flex:1;min-width:0}#profiles .pr .who b{display:block;letter-spacing:.06em}#profiles .pr .who small{font-family:var(--mono);color:var(--ink-dim);font-size:11px}#profiles .pr button{padding:6px 10px}#profiles .empty{font-size:12px;color:var(--ink-dim);text-align:center}
 #title .foot{position:absolute;bottom:18px;font-size:11px;color:var(--ink-faint);font-family:var(--mono)}
 #creator{pointer-events:none}
 #creator .left{pointer-events:auto;width:400px;background:rgba(12,13,15,.9);border-right:1px solid var(--line);display:flex;flex-direction:column}
@@ -207,9 +208,11 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line);background
   <div class="menu">
     <button class="primary" id="t-new">New Hero</button>
     <button id="t-cont">Continue</button>
+    <button id="t-prof">Profiles</button>
     <button id="t-import">Import Save</button>
     <button id="t-help">Controls</button>
   </div>
+  <div id="profiles" class="hidden"></div>
   <div class="foot">Click the view to capture the mouse · Esc to release</div>
 </div>
 <div id="creator" class="screen hidden">
@@ -372,7 +375,7 @@ const CONFIG = {
   },
   traversal: {
     flight: { hover: 9, cruise: 26, boost: 62, accel: 30, boostDrain: 22, boostRegen: 14, diveAccel: 48, diveMax: 95, slamMinSpeed: 32, ascend: 14 },
-    tether: { range: 90, minAnchorHeight: 10, gravityMul: 1.25, pump: 18, maxSpeed: 70, releaseBoost: 9, releaseUp: 7, zipSpeed: 70, zipRange: 75, ropeMin: 10, ropeMax: 55 },
+    tether: { range: 100, minAnchorHeight: 10, gravityMul: 1.05, pump: 26, autoPump: 0.6, maxSpeed: 72, releaseBoost: 11, releaseUp: 8, zipSpeed: 70, zipRange: 75, ropeMin: 8, ropeMax: 55, reel: 17, reelMin: 2.5, skyFwd: 18, skyUp: 26 },
     velocity: { speed: 30, top: 58, accel: 22, drainPerSec: 12, regen: 18, wallRunMin: 20, waterMin: 24, phaseMin: 40, turnRate: 4.5 },
     blink: { dist: 24, charges: 3, recharge: 0.9, hang: 0.45, strikeWindow: 0.9 },
     leap: { minJump: 16, maxJump: 52, chargeTime: 0.9, staminaCost: 18, climbCost: 9, climbSpeed: 6.5, landRadius: 7, regen: 22, airSteer: 22 },
@@ -456,11 +459,23 @@ window.addEventListener('unhandledrejection', e => reportError(e.reason));
 
 // §SAVE --------------------------------------------------------------------------------
 // localStorage with try/catch and in-memory fallback; JSON export/import; versioned schema.
+// Profiles: up to PROFILE_MAX heroes, one save each. Slot 0 keeps the original key so older saves stay where they were.
+const PROFILE_MAX = 6;
 const SaveStore = {
-  mem: null, ok: true,
-  read() { try { const s = localStorage.getItem(SAVE_KEY); if (s) return JSON.parse(s); } catch (e) { this.ok = false; } return this.mem ? JSON.parse(this.mem) : null; },
-  write(obj) { const s = JSON.stringify(obj); this.mem = s; try { localStorage.setItem(SAVE_KEY, s); } catch (e) { this.ok = false; } },
-  has() { return !!this.read(); },
+  mem: {}, ok: true, slot: 0,
+  key(slot) { return slot ? SAVE_KEY + '.' + slot : SAVE_KEY; },
+  read(slot = this.slot) { try { const s = localStorage.getItem(this.key(slot)); if (s) return JSON.parse(s); } catch (e) { this.ok = false; } return this.mem[slot] ? JSON.parse(this.mem[slot]) : null; },
+  write(obj, slot = this.slot) { const s = JSON.stringify(obj); this.mem[slot] = s; try { localStorage.setItem(this.key(slot), s); localStorage.setItem(SAVE_KEY + '.last', String(slot)); } catch (e) { this.ok = false; } },
+  has(slot = this.slot) { return !!this.read(slot); },
+  remove(slot) { delete this.mem[slot]; try { localStorage.removeItem(this.key(slot)); } catch (e) { this.ok = false; } },
+  list() {
+    const out = [];
+    for (let slot = 0; slot < PROFILE_MAX; slot++) { let d = null; try { d = this.read(slot); } catch (e) { d = null; } if (!d) continue;
+      const h = d.hero || {}; out.push({ slot, name: h.heroName || 'Unnamed', origin: h.origin || '', set: h.primary || '', level: (d.prog && d.prog.level) || 1, day: (d.world && d.world.day) || 1, renown: Math.round(d.renown || 0), savedAt: d.savedAt || '', version: d.version || 1 }); }
+    return out.sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+  },
+  last() { let s = -1; try { const v = localStorage.getItem(SAVE_KEY + '.last'); if (v !== null) s = +v; } catch (e) { s = -1; } if (s >= 0 && this.has(s)) return s; const l = this.list(); return l.length ? l[0].slot : -1; },
+  free() { for (let slot = 0; slot < PROFILE_MAX; slot++) if (!this.has(slot)) return slot; return -1; },
 };
 // Schema migrations: each entry upgrades from version k to k+1. Stage 1 = version 1.
 const MIGRATIONS = {
@@ -1900,7 +1915,7 @@ const ORIGINS = {
 };
 const TRAVERSAL_SETS = {
   flight: { name: 'Flight', feel: 'Hover, cruise, boost; dive from altitude into a ground slam.', meter: 'BOOST', icon: '⤒' },
-  tether: { name: 'Tether Swing', feel: 'Fire a tether at buildings, swing in arcs, release for momentum, zip to ledges.', meter: 'TETHER', icon: '⌒' },
+  tether: { name: 'Tether Swing', feel: 'Swing from buildings or the open sky, climb the line onto rooftops, release for momentum, zip to ledges.', meter: 'TETHER', icon: '⌒' },
   velocity: { name: 'Velocity', feel: 'Run up walls, across water, leave a slipstream, phase through thin barriers.', meter: 'SPEED', icon: '≫' },
   blink: { name: 'Blink', feel: 'Short-range teleports chained together, with a lingering afterimage.', meter: 'CHARGES', icon: '⋰' },
   leap: { name: 'Leap', feel: 'Building-clearing jumps, ground-cracking landings, punch handholds to climb.', meter: 'STAMINA', icon: '⩘' },
@@ -3121,12 +3136,16 @@ class TetherTrav extends Traversal {
     const mat = kind === 'energy' ? new T.MeshBasicMaterial({ color: ch.powerColor.clone().multiplyScalar(3) }) : kind === 'chain' ? new T.MeshStandardMaterial({ color: 0x9a9080, metalness: 0.9, roughness: 0.3, emissive: ch.powerColor.clone(), emissiveIntensity: 0.4 }) : new T.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 });
     this.rope = new T.Mesh(new T.CylinderGeometry(kind === 'chain' ? 0.05 : 0.025, kind === 'chain' ? 0.05 : 0.025, 1, 5), mat); this.rope.visible = false; Render.scene.add(this.rope); this.ropeKind = kind;
   }
+  aimFlat(I) {
+    const ch = this.ch, vflat = _v4.set(ch.vel.x, 0, ch.vel.z); const hs = vflat.length();
+    const aim = V3(I.lookDir.x, 0, I.lookDir.z).normalize(); if (hs > 8) aim.multiplyScalar(0.65).addScaledVector(vflat.normalize(), 0.35).normalize();
+    return aim;
+  }
   findAnchor(I) {
     const ch = this.ch, P = this.p, from = ch.chestV(V3()); from.y += 0.6;
-    const vflat = _v4.set(ch.vel.x, 0, ch.vel.z); const hs = vflat.length();
-    const aim = V3(I.lookDir.x, 0, I.lookDir.z).normalize(); if (hs > 8) aim.multiplyScalar(0.65).addScaledVector(vflat.normalize(), 0.35).normalize();
+    const aim = this.aimFlat(I);
     let best = null, bs = -1e9;
-    for (const yo of [-38, -22, -10, 0, 10, 22, 38]) for (const pitch of [38, 52, 66, 78]) {
+    for (const yo of [-40, -24, -10, 0, 10, 24, 40]) for (const pitch of [30, 44, 58, 72, 84]) {
       const yaw = Math.atan2(aim.x, aim.z) + yo * Math.PI / 180, pr = pitch * Math.PI / 180;
       const d = V3(Math.sin(yaw) * Math.cos(pr), Math.sin(pr), Math.cos(yaw) * Math.cos(pr));
       const hit = World.raycast(from, d, P.range * this.speedMul, { ignoreThin: true, noGround: true });
@@ -3135,45 +3154,77 @@ class TetherTrav extends Traversal {
       const s = flat.dot(aim) * 2.2 + clamp((hit.point.y - from.y) / 30, 0, 1) - Math.abs(hit.dist - 34) / 45;
       if (s > bs) { bs = s; best = hit; }
     }
-    return best;
+    return best || this.skyAnchor(I, from, aim);
+  }
+  // no building in reach: the tether bites the sky itself, a little ahead and well overhead
+  skyAnchor(I, from, aim) {
+    const P = this.p; if (Modes.name === MODE.HQ || Offworld.loc === 'shipint' || Offworld.loc === 'boarding') return null;
+    const a = from.clone().addScaledVector(aim, P.skyFwd); a.y = Math.max(from.y + P.skyUp, World.groundAt(a.x, a.z) + 30);
+    const d = _v1.subVectors(a, from), L = d.length(); d.divideScalar(L);
+    const hit = World.raycast(from, d, L, { ignoreThin: true, noGround: true });
+    if (hit && hit.box) return hit;     // something solid was in the way: that's the anchor
+    return { point: a, normal: d.clone().negate(), box: null, dist: L, sky: true };
   }
   attach(hit) {
-    const ch = this.ch; this.anchor = hit.point.clone().addScaledVector(hit.normal, 0.15);
+    const ch = this.ch; this.anchor = hit.point.clone().addScaledVector(hit.normal, 0.15); this.anchorN = hit.normal.clone(); this.anchorBox = hit.box || null; this.sky = !!hit.sky;
     const d = ch.chestV(_v1).distanceTo(this.anchor); this.L = clamp(d * 0.94, this.p.ropeMin, this.p.ropeMax);
-    this.mode = 'swing'; Sfx.tether(); VFX.sparks(this.anchor, '#' + ch.powerColor.getHexString(), 6);
+    this.mode = 'swing'; Sfx.tether(); VFX.sparks(this.anchor, '#' + ch.powerColor.getHexString(), this.sky ? 10 : 6);
     if (ch.vel.y < -5) ch.vel.y *= 0.6;
+    // a slow start gets a tug toward the anchor so the first arc has some life in it
+    if (ch.vel.length() < 12) { const n = _v2.subVectors(this.anchor, ch.chestV(_v3)).normalize(); ch.vel.addScaledVector(n, 7); }
   }
   release(boost = true) {
-    const ch = this.ch; if (!this.anchor) return; this.anchor = null; this.mode = 'air'; this.fireCd = 0.12;
+    const ch = this.ch; if (!this.anchor) return; this.anchor = null; this.mode = 'air'; this.fireCd = 0.1; this.reeling = false;
     if (boost) { const hv = _v1.set(ch.vel.x, 0, ch.vel.z); const L = hv.length(); if (L > 1) { hv.divideScalar(L); ch.vel.x += hv.x * this.p.releaseBoost; ch.vel.z += hv.z * this.p.releaseBoost; } ch.vel.y += this.p.releaseUp; Sfx.whiff(); }
+  }
+  // pull up over the edge of the building the tether is fixed to
+  mantle() {
+    const b = this.anchorBox, a = this.anchor, n = this.anchorN; if (!b) return false;
+    const top = n.y > 0.5 ? a.clone().setY(b.y1 + 0.05) : V3(a.x - n.x * 0.9, b.y1 + 0.05, a.z - n.z * 0.9);
+    this.release(false); this.zipTo = top; this.mode = 'zip'; this.zipT = 0; this.zipAnchor = top.clone(); this.ch.onGround = false; Sfx.zip(); return true;
   }
   step(I, dt) {
     const ch = this.ch, P = this.p, v = ch.vel; this.fireCd -= dt;
     if (I.zip) this.tryZip(I);
     if (this.mode === 'zip') {
-      ch.gravityMul = 0; const d = _v1.subVectors(this.zipTo, ch.pos); const L = d.length();
+      ch.gravityMul = 0; const d = _v1.subVectors(this.zipTo, ch.pos); const L = d.length(); this.zipT = (this.zipT || 0) + dt;
+      if (this.zipT > 2.5) { this.mode = 'air'; this.zipTo = null; ch.gravityMul = 1; return; }   // snagged on something: drop out rather than hang there
       if (L < 1.2 || (ch.hitWall && L < 4)) { ch.pos.copy(this.zipTo); v.set(d.x / (L || 1) * 5, 7, d.z / (L || 1) * 5); this.mode = 'air'; this.zipTo = null; Sfx.land(8); }
       else { v.copy(d.divideScalar(L)).multiplyScalar(Math.min(P.zipSpeed, L * 8 + 10)); ch.yaw = Math.atan2(v.x, v.z); }
       return;
     }
     if (this.mode === 'swing') {
       ch.gravityMul = P.gravityMul;
-      const n = _v1.subVectors(ch.chestV(_v2), this.anchor).normalize();
-      // pump: camera-forward component perpendicular to the rope
-      const f = _v3.set(I.lookDir.x, 0, I.lookDir.z).normalize(); f.addScaledVector(n, -f.dot(n)); if (f.lengthSq() > 0.001) f.normalize();
-      v.addScaledVector(f, P.pump * dt * Math.max(0, I.fwd));
-      const side = _v4.set(-I.lookDir.z, 0, I.lookDir.x).normalize(); v.addScaledVector(side, I.side * P.pump * 0.5 * dt);
+      const c = ch.chestV(_v2), toA = _v1.subVectors(this.anchor, c); const dA = toA.length(); toA.divideScalar(dA || 1);
+      // pump along the arc: steer with the move keys, or let the camera carry you when you just hold the tether
+      const steer = I.moveMag > 0.1 ? _v3.set(I.move.x, 0, I.move.z) : _v3.set(I.lookDir.x, 0, I.lookDir.z);
+      if (steer.lengthSq() > 1e-4) {
+        steer.normalize(); steer.addScaledVector(toA, -steer.dot(toA)); if (steer.lengthSq() > 1e-4) steer.normalize();
+        v.addScaledVector(steer, P.pump * dt * (I.moveMag > 0.1 ? Math.max(0.35, I.moveMag) : P.autoPump));
+      }
+      // climb: Space reels the line in (up a wall it keeps re-biting higher), X pays it out
+      this.reeling = I.jumpHeld;
+      if (I.jumpHeld) {
+        this.L = Math.max(P.reelMin, Math.min(this.L, dA) - P.reel * dt);
+        const vt = v.dot(toA); if (vt < P.reel) v.addScaledVector(toA, (P.reel - vt) * Math.min(1, 10 * dt));
+        if (dA < P.reelMin + 1.2 && this.anchorBox) {
+          const b = this.anchorBox, n = this.anchorN;
+          if (n.y > 0.5 || b.y1 - this.anchor.y < 2.5) { this.mantle(); return; }
+          // still a way to the roof: walk the anchor up the facade
+          this.anchor.y = Math.min(b.y1 - 0.3, this.anchor.y + 9); this.L = ch.chestV(_v2).distanceTo(this.anchor);
+          VFX.sparks(this.anchor, '#' + ch.powerColor.getHexString(), 4); Sfx.tether();
+        }
+      } else if (I.descend) this.L = Math.min(P.ropeMax, this.L + 12 * dt);
       const sp = v.length(); if (sp > P.maxSpeed * this.speedMul) v.multiplyScalar(P.maxSpeed * this.speedMul / sp);
       if (Math.hypot(v.x, v.z) > 1) ch.yaw = angleDamp(ch.yaw, Math.atan2(v.x, v.z), 8, dt);
       if (!I.travHeld) this.release(true);
-      else if (I.jump) { this.release(true); v.y += 6; Sfx.jump(); }
       return;
     }
     ch.gravityMul = 1;
     this.baseStep(I, dt);
     this.mode = ch.onGround ? 'ground' : 'air';
     if (I.travHeld && this.fireCd <= 0 && !ch.inWater) {
-      if (ch.onGround) { v.y = CONFIG.hero.jump * 0.9; ch.onGround = false; this.mode = 'air'; this.fireCd = 0.15; }
+      if (ch.onGround) { v.y = CONFIG.hero.jump * 0.9; ch.onGround = false; this.mode = 'air'; this.fireCd = 0.12; }
       else { const hit = this.findAnchor(I); if (hit) this.attach(hit); else { this.fireCd = 0.4; if (!this.whiffT || Game.time > this.whiffT) { this.whiffT = Game.time + 1; Sfx.whiff(); } } }
     }
     this.regen(dt, 30);
@@ -3186,7 +3237,7 @@ class TetherTrav extends Traversal {
     if (hit.normal.y > 0.5) target = hit.point.clone();
     else if (b.y1 - hit.point.y < 30) target = V3(hit.point.x - hit.normal.x * 0.9, b.y1 + 0.05, hit.point.z - hit.normal.z * 0.9);
     else target = hit.point.clone().addScaledVector(hit.normal, 0.6).setY(hit.point.y - 1);
-    this.release(false); this.zipTo = target; this.mode = 'zip'; this.anchor = null; this.zipAnchor = hit.point.clone(); Sfx.zip(); ch.onGround = false;
+    this.release(false); this.zipTo = target; this.mode = 'zip'; this.zipT = 0; this.anchor = null; this.zipAnchor = hit.point.clone(); Sfx.zip(); ch.onGround = false;
   }
   post(dt) {
     const ch = this.ch;
@@ -3194,7 +3245,7 @@ class TetherTrav extends Traversal {
       const c = ch.chestV(_v1), d = _v2.subVectors(c, this.anchor), L = d.length();
       if (L > this.L) { d.divideScalar(L); ch.pos.addScaledVector(d, this.L - L); const vn = ch.vel.dot(d); if (vn > 0) ch.vel.addScaledVector(d, -vn); }
       if (ch.onGround) { this.release(false); this.mode = 'ground'; }
-      else if (ch.hitWall) { const b = ch.hitWall.box; if (b && b.y1 - ch.pos.y < 9) { this.release(false); this.zipTo = V3(ch.pos.x - ch.hitWall.n.x * 0.9, b.y1 + 0.05, ch.pos.z - ch.hitWall.n.z * 0.9); this.mode = 'zip'; this.zipAnchor = this.zipTo.clone(); } else this.release(false); }
+      else if (ch.hitWall) { const b = ch.hitWall.box; if (b && b === this.anchorBox && this.reeling) { /* climbing the face it's fixed to */ } else if (b && b.y1 - ch.pos.y < 9) { this.release(false); this.zipTo = V3(ch.pos.x - ch.hitWall.n.x * 0.9, b.y1 + 0.05, ch.pos.z - ch.hitWall.n.z * 0.9); this.mode = 'zip'; this.zipT = 0; this.zipAnchor = this.zipTo.clone(); } else this.release(false); }
     }
   }
   frame() {
@@ -3216,7 +3267,7 @@ class TetherTrav extends Traversal {
     if ((this.mode === 'swing' || (this.mode === 'air' && this.ch.vel.length() > 16)) && kind === 'light') { const sp = this.ch.vel.length(); this.release(false); return this.chainDash('tr_swing_kick', 14, sp); }
     return false;
   }
-  meterText() { return this.mode === 'swing' ? 'LOCKED' : this.mode === 'zip' ? 'ZIP' : 'READY'; }
+  meterText() { return this.mode === 'swing' ? (this.reeling ? 'CLIMB' : this.sky ? 'SKY' : 'LOCKED') : this.mode === 'zip' ? 'ZIP' : 'READY'; }
   speedFx() { return clamp((this.ch.vel.length() - 20) / 40, 0, 0.8); }
   dispose() { Render.scene.remove(this.rope); }
 }
@@ -5357,7 +5408,7 @@ const ORIGIN_SCRIPTS = {
 };
 const TRAV_TUTORIAL = {
   flight: 'Jump, then press <kbd>Space</kbd> again (or <kbd>Shift</kbd>) to fly. Hold <kbd>Shift</kbd> to boost, <kbd>Space</kbd>/<kbd>X</kbd> to rise/fall. Boost while looking down to dive — hit the ground to slam.',
-  tether: 'Jump, then hold <kbd>Shift</kbd> to fire a tether at a building. Release to fling yourself forward. <kbd>V</kbd> zips to the ledge you are looking at.',
+  tether: 'Hold <kbd>Shift</kbd> to swing — it bites a building, or the open sky if there is none. Steer with <kbd>WASD</kbd>; let go of <kbd>Shift</kbd> to fling yourself forward. Hold <kbd>Space</kbd> while swinging to climb the line (it pulls you up onto the roof), <kbd>X</kbd> to let it out. <kbd>V</kbd> zips to the ledge you are looking at.',
   velocity: 'Hold <kbd>Shift</kbd> while moving to run at super speed. Hit a wall at speed to run up it. Fast enough and you can cross water and phase through fences.',
   blink: 'Press <kbd>Shift</kbd> to blink where you are heading or looking — up to three times in a row. Look up to blink onto ledges.',
   leap: 'Hold <kbd>Shift</kbd> to charge a leap and release to launch. Push into a wall in the air to climb it by punching handholds. <kbd>Space</kbd> kicks off.',
@@ -5426,17 +5477,41 @@ const Menus = {
     if (name === 'pause' || name === 'phone' || name === 'help' || name === 'dialog') { if (Modes.name !== MODE.MENU) this.resumeMode = Modes.name; Modes.set(MODE.MENU, { screen: name }); }
     if (name === 'phone') Phone.render(opts.tab || Phone.tab);
     if (name === 'help') Menus.renderHelp();
-    if (name === 'title') { $('t-cont').disabled = !SaveStore.has(); Modes.set(MODE.MENU, { screen: 'title' }); }
+    if (name === 'title') { this.refreshTitle(); Modes.set(MODE.MENU, { screen: 'title' }); }
     if (name === 'creator') { Modes.set(MODE.MENU, { screen: 'creator' }); Creator.open(); }
     $('hud').classList.toggle('hidden', name === 'title' || name === 'creator');
   },
   hide() { for (const s of this.screens) $(s).classList.add('hidden'); this.cur = null; $('hud').classList.remove('hidden'); if (Game.player) Modes.set(this.resumeMode && this.resumeMode !== MODE.MENU ? this.resumeMode : MODE.ON_FOOT); this.resumeMode = null; },
   back() { if (this.cur === 'help' && this.helpFrom) { const f = this.helpFrom; this.helpFrom = null; return this.show(f); } if (['phone', 'pause', 'help', 'dialog'].includes(this.cur) && Game.player) { if (this.cur === 'dialog') Dialog.cur = null; this.hide(); } },
+  refreshTitle() {
+    const l = SaveStore.list(), s = SaveStore.last(), cur = l.find(p => p.slot === s);
+    $('t-cont').disabled = !cur; $('t-cont').textContent = cur ? `Continue — ${cur.name}` : 'Continue';
+    $('t-prof').textContent = `Profiles (${l.length}/${PROFILE_MAX})`; $('t-prof').disabled = !l.length;
+    if (!$('profiles').classList.contains('hidden')) this.renderProfiles();
+  },
+  showProfiles(on) { $('profiles').classList.toggle('hidden', !on); if (on) this.renderProfiles(); },
+  renderProfiles() {
+    const box = $('profiles'), l = SaveStore.list(); box.innerHTML = '';
+    if (!l.length) { box.appendChild(el('div', 'empty', 'No heroes yet.')); return; }
+    for (const p of l) {
+      const when = p.savedAt ? new Date(p.savedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const set = POWER_SETS[p.set] ? POWER_SETS[p.set].name : '';
+      const row = el('div', 'pr', `<div class="who"><b>${esc(p.name)}</b><small>LV ${p.level} · DAY ${p.day} · RENOWN ${p.renown}${set ? ' · ' + esc(set.toUpperCase()) : ''}${when ? ' · ' + esc(when) : ''}</small></div>`);
+      const play = el('button', 'primary', 'Play'); play.onclick = () => { Sfx.init(); this.loadProfile(p.slot); };
+      const del = el('button', '', 'Delete'); del.onclick = () => { if (del.dataset.sure) { SaveStore.remove(p.slot); toast(`${esc(p.name)} deleted`); this.refreshTitle(); this.renderProfiles(); } else { del.dataset.sure = '1'; del.textContent = 'Sure?'; setTimeout(() => { if (del.isConnected) { delete del.dataset.sure; del.textContent = 'Delete'; } }, 2500); } };
+      row.appendChild(play); row.appendChild(del); box.appendChild(row);
+    }
+  },
+  loadProfile(slot) {
+    const d = SaveStore.read(slot); if (!d) return;
+    SaveStore.slot = slot; try { $('profiles').classList.add('hidden'); Game.start(migrateSave(d), false); } catch (e) { toast('Could not load save: ' + e.message, 'bad'); }
+  },
   init() {
     $('gtitle').textContent = GAME_TITLE.toUpperCase(); $('gsub').textContent = `${CITY_NAME} · Freelance`;
-    $('t-new').onclick = () => { Sfx.init(); this.show('creator'); };
-    $('t-cont').onclick = () => { Sfx.init(); const d = SaveStore.read(); if (d) { try { Game.start(migrateSave(d), false); } catch (e) { toast('Could not load save: ' + e.message, 'bad'); } } };
-    $('t-import').onclick = () => importSaveFile(d => Game.start(d, false));
+    $('t-new').onclick = () => { Sfx.init(); const f = SaveStore.free(); if (f < 0) { toast(`All ${PROFILE_MAX} profiles are in use — delete one first`, 'bad', 3000); this.showProfiles(true); return; } SaveStore.slot = f; this.show('creator'); };
+    $('t-cont').onclick = () => { Sfx.init(); const s = SaveStore.last(); if (s >= 0) this.loadProfile(s); };
+    $('t-prof').onclick = () => { Sfx.init(); this.showProfiles($('profiles').classList.contains('hidden')); };
+    $('t-import').onclick = () => { const f = SaveStore.free(); if (f < 0) { toast(`All ${PROFILE_MAX} profiles are in use — delete one first`, 'bad', 3000); this.showProfiles(true); return; } SaveStore.slot = f; importSaveFile(d => Game.start(d, false)); };
     $('t-help').onclick = () => { this.helpFrom = 'title'; $('title').classList.add('hidden'); $('help').classList.remove('hidden'); this.cur = 'help'; this.renderHelp(); };
     $('p-resume').onclick = () => this.hide();
     $('p-phone').onclick = () => this.show('phone');
@@ -11028,7 +11103,7 @@ function serializeGame() {
 
 // §BOOT --------------------------------------------------------------------------------
 Game.boot().catch(reportError);
-window.Meridian = { Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
+window.Meridian = { Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
 </script>
 </body>
 </html>
