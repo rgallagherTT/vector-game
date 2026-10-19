@@ -18,3 +18,9 @@ Play: https://rgallaghertt.github.io/vector-game/
 5v5 full-contact animal basketball (Three.js, single file + GLB characters).
 
 Play: https://rgallaghertt.github.io/vector-game/fangball/
+
+## Meridian
+
+Open-world superhero sandbox: your hero, the city of New Halcyon, a crew, a galaxy, and a living universe (Three.js, single file).
+
+Play: https://rgallaghertt.github.io/vector-game/meridian/
