@@ -401,7 +401,7 @@ const CONFIG = {
   combat: {
     hitstopLight: 0.035, hitstopHeavy: 0.085, hitstopMax: 0.14, parryWindow: 0.16, parryWindowPeak: 0.3,
     dodgeIFrames: 0.34, dodgeTime: 0.4, dodgeDist: 7.5, dodgeCooldown: 0.25, comboWindow: 2.4, lockRange: 45,
-    softLockRange: 7, softLockAngle: 70, ultMax: 100, styleDecay: 9, wallSplatSpeed: 11, fallDamageEnemy: 1.6,
+    softLockRange: 7, softLockAngle: 70, ultMax: 100, heroUltRate: 2.6, heroUltTrickle: 1.2, heroUltPower: 1.6, styleDecay: 9, wallSplatSpeed: 11, fallDamageEnemy: 1.6,
     aimFov: 48, carryThrowSpeed: 34, aimAssistDeg: 6,
   },
   ai: { meleeTokens: 2, rangedTokens: 2, tellTime: 0.6, tokenCooldown: 1.2, aggroRange: 32, leash: 90, thinkRate: 0.12 },
@@ -710,7 +710,7 @@ const Sfx = {
 const BINDINGS = {
   forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   jump: ['Space'], trav: ['ShiftLeft', 'ShiftRight'], descend: ['KeyX'], light: ['Mouse0'], heavy: ['KeyF'], aim: ['Mouse2'],
-  power1: ['Digit1'], power2: ['Digit2'], defence: ['Digit3'], ultimate: ['KeyR', 'Digit4'], gadget: ['KeyG', 'Digit5'], dodge: ['KeyC'], parry: ['KeyQ'],
+  power1: ['Digit1'], power2: ['Digit2'], power3: ['Digit3'], power4: ['Digit4'], defence: ['Digit5'], ultimate: ['KeyR'], gadget: ['KeyG'], dodge: ['KeyC'], parry: ['KeyQ'],
   interact: ['KeyE'], zip: ['KeyV'], lock: ['Tab'], cycle: ['KeyT'], phone: ['KeyP'], pause: ['Escape'], help: ['KeyH'], map: ['KeyM'],
   walk: ['KeyZ'], ctrlMode: ['KeyK'], relic: ['KeyJ'], relicCycle: ['KeyL'], switchChar: ['KeyN'], heroSel: ['Backquote'], crew1: ['Digit6'], crew2: ['Digit7'], crew3: ['Digit8'], callWheel: ['KeyB'], orderWheel: ['KeyY'],
 };
@@ -758,7 +758,7 @@ const TOUCH_BUTTONS = [
   // [label, code, class, right, bottom, hold, sub]
   ['HIT', 'Mouse0', 'big', 22, 26, true], ['JUMP', 'Space', 'md', 118, 18, true], ['HEAVY', 'KeyF', 'md', 30, 122, false], ['POWER', 'ShiftLeft', 'md', 118, 92, true, 'move'],
   ['DODGE', 'KeyC', 'md', 194, 22, false], ['PARRY', 'KeyQ', 'md', 104, 166, false], ['AIM', 'Mouse2', 'sm', 196, 96, true],
-  ['1', 'Digit1', 'sm', 24, 214, false], ['2', 'Digit2', 'sm', 76, 226, false], ['3', 'Digit3', 'sm', 128, 236, false], ['ULT', 'KeyR', 'sm', 180, 160, false],
+  ['1', 'Digit1', 'sm', 24, 214, false], ['2', 'Digit2', 'sm', 76, 226, false], ['3', 'Digit3', 'sm', 128, 236, false], ['4', 'Digit4', 'sm', 24, 266, false], ['DEF', 'Digit5', 'sm', 76, 278, false], ['ULT', 'KeyR', 'sm', 180, 160, false],
   ['E', 'KeyE', 'md', 196, 238, false, 'use'], ['ZIP', 'KeyV', 'sm', 248, 90, false], ['DOWN', 'KeyX', 'sm', 248, 30, true], ['LOCK', 'Tab', 'sm', 248, 150, false], ['G', 'KeyG', 'sm', 248, 210, false],
 ];
 const TOUCH_TOP = [['☰', 'Escape'], ['PHONE', 'KeyP'], ['MAP', 'KeyM'], ['I', 'KeyI'], ['T', 'KeyT']];
@@ -2159,7 +2159,15 @@ const POWER_SETS = {
 };
 const DEFENCES = ['def_barrier', 'def_deflect', 'def_phase', 'def_regen', 'def_harden'];
 // Resolve per-element ids
-function resolveAbilityId(id, hero) { return hero.primary === 'elemental' && /^el_/.test(id) && !ABILITIES[id] ? id + '_' + hero.element : id; }
+function resolveAbilityId(id, hero) { return /^el_/.test(id) && !ABILITIES[id] ? id + '_' + (hero.element || 'fire') : id; }
+// The hero carries four powers: all three of the primary set plus one borrowed from another set.
+function borrowedDefault(h) { const fits = ((ORIGINS[h.origin] || {}).fits || []).filter(f => POWER_SETS[f] && f !== h.primary); const set = fits[0] || (h.primary === 'might' ? 'radiance' : 'might'); return POWER_SETS[set].actives[0]; }
+function heroActives(h) {
+  const ps = POWER_SETS[h.primary], cur = h.actives || [], out = cur.filter(a => ps.actives.includes(a)).slice(0, 3);
+  for (const a of ps.actives) if (out.length < 3 && !out.includes(a)) out.push(a);
+  const extra = cur.find(a => !ps.actives.includes(a) && ABILITIES[resolveAbilityId(a, h)]); return [...out, extra || borrowedDefault(h)];
+}
+const BORROWABLE = () => Object.entries(POWER_SETS).flatMap(([k, ps]) => ps.actives.map(a => [k, a]));
 
 // §MOVES -------------------------------------------------------------------------------
 // Melee moves are data too, using the same effect primitives. Set modifiers scale them per primary power set.
@@ -3677,11 +3685,11 @@ class HumanController {
     I.lookDir.copy(Cam.dir); I.lookPitch = Cam.pitch; I.camDir.copy(Cam.dir);
     I.jump = Input.hit('jump'); I.jumpHeld = Input.is('jump'); I.trav = Input.hit('trav'); I.travHeld = Input.is('trav'); I.descend = Input.is('descend');
     I.aim = Input.is('aim'); I.light = Input.hit('light'); I.heavy = Input.hit('heavy');
-    I.power1 = Input.hit('power1'); I.power2 = Input.hit('power2'); I.defence = Input.hit('defence'); I.ultimate = Input.hit('ultimate'); I.gadget = Input.hit('gadget');
+    I.power1 = Input.hit('power1'); I.power2 = Input.hit('power2'); I.power3 = Input.hit('power3'); I.power4 = Input.hit('power4'); I.defence = Input.hit('defence'); I.ultimate = Input.hit('ultimate'); I.gadget = Input.hit('gadget');
     I.dodge = Input.hit('dodge'); I.parry = Input.hit('parry'); I.interact = Input.hit('interact'); I.zip = Input.hit('zip'); I.relic = Input.hit('relic'); I.relicCycle = Input.hit('relicCycle');
     I.lockToggle = Input.hit('lock'); I.cycle = Input.hit('cycle') || (Input.wheelTick && ch.lockTarget);
     Cam.computeAim(ch, I);
-    if (Wheel.open) { I.light = I.heavy = I.power1 = I.power2 = I.defence = I.ultimate = I.gadget = I.dodge = I.parry = I.interact = I.jump = false; }
+    if (Wheel.open) { I.light = I.heavy = I.power1 = I.power2 = I.power3 = I.power4 = I.defence = I.ultimate = I.gadget = I.dodge = I.parry = I.interact = I.jump = false; }
   }
 }
 class AIController {
@@ -3750,6 +3758,8 @@ const Actors = {
     if (I.interact && Interact.use(ch)) return;
     if (I.power1) Abilities.begin(ch, ch.kit.slots.power1);
     else if (I.power2) Abilities.begin(ch, ch.kit.slots.power2);
+    else if (I.power3 && ch.kit.slots.power3) Abilities.begin(ch, ch.kit.slots.power3);
+    else if (I.power4 && ch.kit.slots.power4) Abilities.begin(ch, ch.kit.slots.power4);
     else if (I.defence) Abilities.begin(ch, ch.kit.slots.defence);
     else if (I.gadget) { if (ch.kit.slots.gadget) Abilities.begin(ch, ch.kit.slots.gadget); else toast('No gadget equipped', '', 800); }
     else if (I.ultimate) { if (!Abilities.begin(ch, ch.kit.slots.ultimate) && ch.ult < CONFIG.combat.ultMax) toast('Ultimate not charged', '', 800); }
@@ -4743,7 +4753,7 @@ const Progress = {
     const P = Game.state.prog; P.xp += Math.round(n);
     while (P.xp >= this.xpFor(P.level)) { P.xp -= this.xpFor(P.level); P.level++; P.sp += 1; toast(`Level ${P.level} — +1 skill point`, 'gold', 2500); Sfx.good(); Bus.emit(EV.LEVEL, { level: P.level }); Game.rebuildHero(true); }
   },
-  ultGain(ch, n) { if (ch !== Game.player) return; ch.ult = Math.min(CONFIG.combat.ultMax, ch.ult + n * ch.st('ultGain')); },
+  ultGain(ch, n) { if (ch !== Game.player) return; ch.ult = Math.min(CONFIG.combat.ultMax, ch.ult + n * ch.st('ultGain') * (ch === Game.heroCh ? CONFIG.combat.heroUltRate : 1)); },
   gearSlotLevel(slot) { return Game.hero.origin === 'armoured' ? 1 : CONFIG.progression.gearUnlock[slot]; },
   slotOpen(slot) { return Game.state.prog.level >= this.gearSlotLevel(slot); },
   canBuy(node) { const P = Game.state.prog; if (P.skills[node.id]) return false; if (P.sp < node.cost) return false; if (node.req && !P.skills[node.req]) return false; return true; },
@@ -4793,7 +4803,8 @@ const HeroBuild = {
   },
   kit(st) {
     const h = st.hero, P = st.prog, ab = {}, unlocks = new Set();
-    const ids = [resolveAbilityId(h.actives[0], h), resolveAbilityId(h.actives[1], h), h.defence, resolveAbilityId(h.ultimate, h), 'power_shot', 'tr_dive_slam', 'tr_swing_kick', 'tr_slip_strike', 'tr_blink_strike', 'tr_meteor', 'tr_dropkick'];
+    const pw = (h.actives || []).slice(0, 4).map(a => resolveAbilityId(a, h)).filter(a => ABILITIES[a]);
+    const ids = [pw[0], pw[1], h.defence, resolveAbilityId(h.ultimate, h), 'power_shot', 'tr_dive_slam', 'tr_swing_kick', 'tr_slip_strike', 'tr_blink_strike', 'tr_meteor', 'tr_dropkick', ...pw.slice(2)];
     for (const id of ids) ab[id] = structuredClone(ABILITIES[id]);
     if (h.origin === 'peak') unlocks.add('light5');
     const trav = structuredClone(CONFIG.traversal[h.traversal]);
@@ -4812,7 +4823,16 @@ const HeroBuild = {
     const gi = st.gear && st.gear.equipped.gadget && st.gear.inv.find(g => g.id === st.gear.equipped.gadget); let gadget = null;
     if (gi && gi.gadget && (!st.hero.heroName || Progress.slotOpen('gadget'))) { gadget = gi.gadget; ab[gadget] = structuredClone(ABILITIES[gadget]); }
     for (const id in ab) ab[id].id = id;
-    return { ab, unlocks, set: h.primary, traversal: h.traversal, travParams: trav, slots: { power1: ids[0], power2: ids[1], defence: ids[2], ultimate: ids[3], basic: 'power_shot', gadget } };
+    const kit = { ab, unlocks, set: h.primary, traversal: h.traversal, travParams: trav, slots: { power1: pw[0], power2: pw[1], power3: pw[2] || null, power4: pw[3] || null, defence: ids[2], ultimate: ids[3], basic: 'power_shot', gadget } };
+    if (st === Game.state) this.heroTune(kit);
+    return kit;
+  },
+  // the player's hero: the four powers cost nothing and are ready again almost at once (things that leave turrets, mines
+  // or drones behind keep a short cooldown so the street does not fill up), and the ultimate hits 60% harder
+  heroTune(kit) {
+    const spawns = a => JSON.stringify(a.effects).includes('"spawn"');
+    for (const k of ['power1', 'power2', 'power3', 'power4']) { const a = kit.ab[kit.slots[k]]; if (!a) continue; a.cost = 0; a.cooldown = spawns(a) ? Math.max(2.5, a.cooldown * 0.3) : 0.3; }
+    const U = kit.ab[kit.slots.ultimate]; if (U) { const boost = list => { for (const e of list || []) { if (e.type === 'damage') e.amount *= CONFIG.combat.heroUltPower; if (e.type === 'spawn') { for (const f of ['damage', 'dps']) if (e[f]) e[f] *= CONFIG.combat.heroUltPower; } if (e.effects) boost(e.effects); if (e.hit) boost(e.hit); } }; boost(U.effects); boost(U.finale); }
   },
 };
 const SKILL_NODE_INDEX = {}; for (const nodes of Object.values(SKILL_TREES)) for (const n of nodes) SKILL_NODE_INDEX[n.id] = n;
@@ -5393,7 +5413,7 @@ const HUD = {
   slotEls: {}, markerPool: [], tellPool: [], speechPool: [], mm: null, mmBase: null, last: {},
   init() {
     const slots = $('slots');
-    for (const [k, key] of [['power1', '1'], ['power2', '2'], ['defence', '3'], ['ultimate', 'R'], ['gadget', 'G'], ['relic', 'J']]) {
+    for (const [k, key] of [['power1', '1'], ['power2', '2'], ['power3', '3'], ['power4', '4'], ['defence', '5'], ['ultimate', 'R'], ['gadget', 'G'], ['relic', 'J']]) {
       const s = el('div', 'slot' + (k === 'ultimate' ? ' ult' : ''), `<span class="k">${key}</span><span class="ic"></span><div class="cd"></div><span class="nm"></span>`); slots.appendChild(s); this.slotEls[k] = s;
     }
     this.mm = $('minimap').getContext('2d');
@@ -5401,7 +5421,8 @@ const HUD = {
   setKit(ch) {
     const icon = ab => ab.slot === 'defence' ? '⛨' : ab.slot === 'ultimate' ? '✹' : ab.slot === 'gadget' ? '◈' : ab.slot === 'relic' ? '✦' : (POWER_SETS[ch.kit.set] || {}).icon || '◆';
     this.slotEls.gadget.style.display = ch.kit.slots.gadget ? '' : 'none'; this.slotEls.relic.style.display = ch.kit.slots.relic ? '' : 'none';
-    for (const k of ['power1', 'power2', 'defence', 'ultimate', 'gadget', 'relic']) { if (!ch.kit.slots[k]) continue; const ab = getAb(ch, ch.kit.slots[k]); const s = this.slotEls[k]; s.querySelector('.ic').textContent = icon(ab); s.querySelector('.nm').textContent = ab.name; s.title = ab.name + (ab.desc ? ' — ' + ab.desc : ''); }
+    for (const k of ['power3', 'power4']) this.slotEls[k].style.display = ch.kit.slots[k] ? '' : 'none';
+    for (const k of ['power1', 'power2', 'power3', 'power4', 'defence', 'ultimate', 'gadget', 'relic']) { if (!ch.kit.slots[k]) continue; const ab = getAb(ch, ch.kit.slots[k]); const s = this.slotEls[k]; s.querySelector('.ic').textContent = icon(ab); s.querySelector('.nm').textContent = ab.name; s.title = ab.name + (ab.desc ? ' — ' + ab.desc : ''); }
     $('hname').textContent = ((ch === Game.heroCh ? Game.hero.heroName : ch.name) || 'Unnamed').toUpperCase();
     $('travlbl').textContent = ch.trav.label();
     this.buildMinimapBase();
@@ -5420,7 +5441,7 @@ const HUD = {
     this.set('b-trav', 'w', (ch.trav.meterVal() * 100).toFixed(1) + '%');
     this.set('travval', 't', String(ch.trav.meterText()));
     const st = Object.keys(ch.statuses); this.set('hstatus', 't', ch.lockTarget ? 'LOCKED' : st.length ? st.join(' · ').toUpperCase() : Game.inCombat ? 'COMBAT' : '');
-    for (const k of ['power1', 'power2', 'defence', 'ultimate', 'gadget', 'relic']) {
+    for (const k of ['power1', 'power2', 'power3', 'power4', 'defence', 'ultimate', 'gadget', 'relic']) {
       if (!ch.kit.slots[k]) continue; const ab = getAb(ch, ch.kit.slots[k]), s = this.slotEls[k], cd = ch.cd[ab.id] || 0;
       let p = 0; if (k === 'ultimate') p = 100 - ch.ult / CONFIG.combat.ultMax * 100; else if (cd > 0) p = cd / (ab.cooldown * ch.st('cdr')) * 100;
       s.querySelector('.cd').style.setProperty('--p', clamp(p, 0, 100).toFixed(1) + '%');
@@ -5681,7 +5702,7 @@ const Menus = {
   },
   renderHelp() {
     const rows = [['Move', 'W A S D'], ['Look', 'Mouse'], ['Jump', 'Space'], ['Traversal power', 'Shift (hold / tap — depends on set)'], ['Zip / grapple', 'V (Tether, Glide)'], ['Descend (Flight)', 'X'],
-      ['Light attack / combo', 'Left mouse'], ['Heavy · launcher · finisher', 'F · hold S + F · F on a stunned enemy'], ['Aim · shoot', 'Hold right mouse · left mouse'], ['Powers', '1 · 2'], ['Defence power', '3'], ['Ultimate', 'R (or 4)'],
+      ['Light attack / combo', 'Left mouse'], ['Heavy · launcher · finisher', 'F · hold S + F · F on a stunned enemy'], ['Aim · shoot', 'Hold right mouse · left mouse'], ['Powers (always ready)', '1 · 2 · 3 · 4'], ['Defence power', '5'], ['Ultimate', 'R'],
       ['Dodge (invulnerable)', 'C'], ['Parry (orange ! tells)', 'Q — red ⚠ tells cannot be parried: dodge'], ['Lock on · cycle', 'Tab · T / mouse wheel'], ['Pick up · throw · interact · drive', 'E (hold Z + E to drive if you can lift cars)'], ['Gadget', 'G'], ['Walk', 'Z (hold)'], ['Crew: control mode (Solo / Squad / Hybrid)', 'K'], ['Crew: switch / borrow character', 'N · 6 7 8 · ` back to hero'], ['Crew: call in a power (wheel)', 'hold B, move mouse or press 1-9'], ['Crew: orders (wheel)', 'hold Y'], ['Revive downed crew', 'E'], ['Relic power · cycle', 'J · L'], ['Ship: steer · throttle · boost', 'Mouse · W/S · Shift'], ['Ship: guns · missile · lock · power', 'LMB · RMB · Tab · 1/2/3 (4 reset)'], ['Ship: dock/orbit/board · step outside · walk inside · galaxy map', 'E · F · I · M'], ['Ship: cycle nav · cruise to it', 'T · hold V'], ['Phone (contracts, skills, gear, map)', 'P'], ['Enter any building · leave', 'E against a wall · E at the door'], ['Join a faction or team · ride to other cities', 'Phone → Faction · Travel'], ['Fly a car: take off · climb · descend', 'Shift · Space · X (while driving)'], ['Touch screens', 'Left thumb moves · right thumb looks · buttons on the right (Phone → System to switch)'], ['Map', 'M'], ['Pause', 'Esc'], ['Controls', 'H']];
     $('helpbox').innerHTML = `<h3 style="margin-top:0">Controls</h3><table>${rows.map(r => `<tr><td class="dim">${r[0]}</td><td class="mono">${r[1]}</td></tr>`).join('')}</table>
       <p class="dim" style="font-size:12px;margin-top:14px">Traversal chains into attacks: attack while swinging, boosting, speed-running, just after a blink, gliding, or mid-leap. Superheroes take no fall damage.</p><div style="text-align:right"><button id="h-close">Close</button></div>`;
@@ -5693,7 +5714,7 @@ const Menus = {
 const Creator = {
   tab: 'origin', cfg: null, scene: null, cam: null, rig: null, rot: 0.5, drag: false, dirty: true,
   defaultCfg() {
-    return { origin: 'awakened', traversal: 'flight', primary: 'might', element: 'fire', actives: ['might_shockwave', 'might_stomp'], defence: 'def_barrier', ultimate: 'ult_tectonic', powerColor: '#ffa64d',
+    return { origin: 'awakened', traversal: 'flight', primary: 'might', element: 'fire', actives: ['might_shockwave', 'might_stomp', 'might_rush', 'rad_bolt'], defence: 'def_barrier', ultimate: 'ult_tectonic', powerColor: '#ffa64d',
       body: defaultBody(), costume: defaultCostume(), emblem: randomEmblem(new RNG(7)), heroName: '', civName: '' };
   },
   initScene() {
@@ -5722,7 +5743,7 @@ const Creator = {
   },
   slider(container, label, val, min, max, step, on) { const r = el('div', 'row', `<label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}" value="${val}"><span class="v">${(+val).toFixed(2)}</span>`); const i = r.querySelector('input'); i.oninput = () => { r.querySelector('.v').textContent = (+i.value).toFixed(2); on(+i.value); this.dirty = true; }; container.appendChild(r); },
   color(container, label, val, on) { const r = el('div', 'row', `<label>${label}</label><input type="color" value="${val}">`); r.querySelector('input').oninput = e => { on(e.target.value); this.dirty = true; this.renderSummary(); }; container.appendChild(r); },
-  select(container, label, val, options, on) { const r = el('div', 'row', `<label>${label}</label><select>${options.map(o => `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`).join('')}</select>`); r.querySelector('select').onchange = e => { on(e.target.value); this.dirty = true; this.renderSummary(); }; container.appendChild(r); },
+  select(container, label, val, options, on) { const r = el('div', 'row', `<label>${label}</label><select>${options.map(o => { const [v, n] = Array.isArray(o) ? o : [o, o]; return `<option value="${v}" ${v === val ? 'selected' : ''}>${esc(n)}</option>`; }).join('')}</select>`); r.querySelector('select').onchange = e => { on(e.target.value); this.dirty = true; this.renderSummary(); }; container.appendChild(r); },
   h(container, t) { container.appendChild(el('h3', '', t)); },
   renderBody() {
     const b = $('cbody'), C = this.cfg; b.innerHTML = '';
@@ -5735,12 +5756,14 @@ const Creator = {
         break;
       case 'powers': {
         this.h(b, 'Traversal'); this.opt(b, Object.entries(TRAVERSAL_SETS).map(([k, t]) => [k, `${t.icon} ${t.name}`, t.feel]), C.traversal, k => { C.traversal = k; rerender(); });
-        this.h(b, 'Primary power'); this.opt(b, Object.entries(POWER_SETS).map(([k, s]) => [k, `${s.icon} ${s.name}`, s.core]), C.primary, k => { C.primary = k; const ps = POWER_SETS[k]; C.actives = ps.actives.slice(0, 2); C.ultimate = ps.ultimates[0]; if (C.powerColor === POWER_SETS[this._lastSet || 'might'].color) C.powerColor = ps.color; this._lastSet = k; rerender(); });
+        this.h(b, 'Primary power'); this.opt(b, Object.entries(POWER_SETS).map(([k, s]) => [k, `${s.icon} ${s.name}`, s.core]), C.primary, k => { C.primary = k; const ps = POWER_SETS[k]; C.actives = [...ps.actives, borrowedDefault(C)]; C.ultimate = ps.ultimates[0]; if (C.powerColor === POWER_SETS[this._lastSet || 'might'].color) C.powerColor = ps.color; this._lastSet = k; rerender(); });
         if (C.primary === 'elemental') { this.h(b, 'Element'); this.opt(b, Object.entries(ELEMENTS).map(([k, e]) => [k, e.name, `Status: ${e.status}`]), C.element, k => { C.element = k; C.powerColor = ELEMENTS[k].color; rerender(); }, 'opts c3'); }
         const ps = POWER_SETS[C.primary];
-        this.h(b, 'Active powers — choose two'); const wrap = el('div', 'opts');
-        for (const id of ps.actives) { const ab = ABILITIES[resolveAbilityId(id, C)]; const on = C.actives.includes(id); const o = el('div', 'opt' + (on ? ' on' : ''), `<b>${esc(ab.name)}</b><span>${esc(ab.desc || '')} · ${ab.cost} energy · ${ab.cooldown}s</span>`); o.onclick = () => { if (on) { if (C.actives.length > 1) C.actives = C.actives.filter(a => a !== id); } else { C.actives = [C.actives[C.actives.length - 1], id].slice(-2); } if (C.actives.length < 2) C.actives.push(ps.actives.find(a => !C.actives.includes(a))); rerender(); }; wrap.appendChild(o); }
+        C.actives = heroActives(C);
+        this.h(b, 'Your powers — keys 1, 2 and 3'); const wrap = el('div', 'opts');
+        for (const id of ps.actives) { const ab = ABILITIES[resolveAbilityId(id, C)]; wrap.appendChild(el('div', 'opt on', `<b>${esc(ab.name)}</b><span>${esc(ab.desc || '')} · always ready</span>`)); }
         b.appendChild(wrap);
+        this.h(b, 'Fourth power (key 4) — borrowed from another set'); this.select(b, 'Power 4', C.actives[3], BORROWABLE().filter(([k]) => k !== C.primary).map(([k, a]) => [a, `${POWER_SETS[k].icon} ${ABILITIES[resolveAbilityId(a, C)].name} (${POWER_SETS[k].name})`]), v => { C.actives = [...C.actives.slice(0, 3), v]; rerender(); });
         this.h(b, 'Defence'); this.opt(b, DEFENCES.map(id => [id, ABILITIES[id].name, ABILITIES[id].desc]), C.defence, k => { C.defence = k; rerender(); });
         this.h(b, 'Ultimate'); this.opt(b, ps.ultimates.map(id => { const ab = ABILITIES[resolveAbilityId(id, C)]; return [id, ab.name, ab.desc]; }), C.ultimate, k => { C.ultimate = k; rerender(); }, 'opts c3');
         this.h(b, 'Power colour'); this.color(b, 'Hue of effects', C.powerColor, v => { C.powerColor = v; });
@@ -5796,18 +5819,18 @@ const Creator = {
   renderSummary() {
     const C = this.cfg, ps = POWER_SETS[C.primary];
     const ab = id => ABILITIES[resolveAbilityId(id, C)];
-    const row = (a, k) => `<div class="ab"><b>${esc(a.name)}</b> <span class="t">${k} · ${a.slot === 'ultimate' ? 'ULT' : a.cost + ' EN'} · ${a.cooldown}s</span><p>${esc(a.desc || '')}</p></div>`;
+    const row = (a, k) => `<div class="ab"><b>${esc(a.name)}</b> <span class="t">${k} · ${a.slot === 'ultimate' ? 'ULT' : /^[1-4]$/.test(k) ? 'ALWAYS READY' : a.cost + ' EN · ' + a.cooldown + 's'}</span><p>${esc(a.desc || '')}</p></div>`;
     $('csum').innerHTML = `<h3 style="margin:0 0 4px;font-size:20px;letter-spacing:.04em">${esc(C.heroName || 'Unnamed hero')}</h3><div class="dim" style="font-size:12px;margin-bottom:12px">${esc(C.civName || 'Civilian identity unset')}</div>
       <div class="ab"><b>${ORIGINS[C.origin].icon} ${ORIGINS[C.origin].name}</b><p>${esc(ORIGINS[C.origin].passive)}</p></div>
       <div class="ab"><b>${TRAVERSAL_SETS[C.traversal].icon} ${TRAVERSAL_SETS[C.traversal].name}</b><p>${esc(TRAVERSAL_SETS[C.traversal].feel)}</p></div>
       <div class="ab"><b>${ps.icon} ${ps.name}${C.primary === 'elemental' ? ' — ' + ELEMENTS[C.element].name : ''}</b><p>${esc(ps.core)}</p></div>
-      ${row(ab(C.actives[0]), '1')}${row(ab(C.actives[1]), '2')}${row(ABILITIES[C.defence], '3')}${row(ab(C.ultimate), 'R')}
+      ${heroActives(C).map((a, i) => row(ab(a), String(i + 1))).join('')}${row(ABILITIES[C.defence], '5')}${row(ab(C.ultimate), 'R')}
       <div class="row"><label>Power colour</label><span style="display:inline-block;width:40px;height:14px;border-radius:3px;background:${C.powerColor}"></span></div>`;
   },
   randomise() {
     const C = this.cfg = this.defaultCfg();
     C.origin = R.pick(Object.keys(ORIGINS)); C.traversal = R.pick(Object.keys(TRAVERSAL_SETS)); C.primary = R.pick(Object.keys(POWER_SETS)); C.element = R.pick(Object.keys(ELEMENTS));
-    const ps = POWER_SETS[C.primary]; C.actives = R.shuffle(ps.actives.slice()).slice(0, 2); C.ultimate = R.pick(ps.ultimates); C.defence = R.pick(DEFENCES);
+    const ps = POWER_SETS[C.primary]; C.actives = [...ps.actives, R.pick(BORROWABLE().filter(([k]) => k !== C.primary))[1]]; C.ultimate = R.pick(ps.ultimates); C.defence = R.pick(DEFENCES);
     C.powerColor = C.primary === 'elemental' ? ELEMENTS[C.element].color : R.chance(0.5) ? ps.color : R.pick(['#ff5a5a', '#5ad1ff', '#b07aff', '#7affb0', '#ffd45a', '#ff8ad0']);
     Object.assign(C.body, { build: R.next(), height: R.range(0.92, 1.08), shoulders: R.next(), headW: R.next(), jaw: R.next(), eyeSpacing: R.next(), skin: R.pick(SKIN_TONES), hair: R.pick(HAIR), hairColor: R.pick(['#1a1410', '#3a2a1a', '#6a5030', '#c8a060', '#aaaaaa', '#8a2a2a']) });
     for (const [k, opts] of Object.entries(COSTUME_PARTS)) C.costume[k] = R.pick(opts);
@@ -5878,7 +5901,7 @@ const Phone = {
       <p>${esc(ORIGINS[h.origin].passive)}</p></div>
       <div class="card"><h5>Credits</h5><p>Bank ${fmtCr(S.econ.bank)} · Carried ${fmtCr(S.econ.carried)} (carried cash is at risk if you are knocked out — deposit at an ATM or clinic)</p><div class="meta">${S.econ.ledger.slice(-6).reverse().map(l => `${l.amount > 0 ? '+' : ''}${l.amount} ${esc(l.reason)}`).join(' · ')}</div></div>`;
     const act = el('div', 'card', `<h5>Loadout</h5>`);
-    for (const k of ['power1', 'power2', 'defence', 'ultimate']) { const a = getAb(ch, ch.kit.slots[k]); act.appendChild(el('div', 'ab', `<b>${esc(a.name)}</b> <span class="t">${a.slot === 'ultimate' ? 'ULT' : a.cost + ' EN'} · ${(+a.cooldown).toFixed(1)}s · ${a.tags.join(', ')}</span><p>${esc(a.desc || '')}</p>`)); }
+    for (const k of ['power1', 'power2', 'power3', 'power4', 'defence', 'ultimate']) { if (!ch.kit.slots[k]) continue; const a = getAb(ch, ch.kit.slots[k]); act.appendChild(el('div', 'ab', `<b>${esc(a.name)}</b> <span class="t">${a.slot === 'ultimate' ? 'ULT' : a.cost + ' EN'} · ${(+a.cooldown).toFixed(1)}s · ${a.tags.join(', ')}</span><p>${esc(a.desc || '')}</p>`)); }
     b.appendChild(act);
     b.appendChild(el('p', 'faint', '<span style="font-size:11.5px">Costume changes and power swaps happen at your HQ (arrives with the open city).</span>'));
   },
@@ -7065,8 +7088,9 @@ Object.assign(Phone, {
     const card = el('div', 'card', `<h5>Loadout — ${esc(ps.name)}</h5><p class="faint">Traversal and primary set are part of who you are; everything inside them can change here.</p>`);
     const row = (label, opts, cur, fn) => { const r = el('div', 'row', `<label>${label}</label><select>${opts.map(([v, n]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`); r.querySelector('select').onchange = e => { fn(e.target.value); this.render('loadout'); }; card.appendChild(r); };
     const nm = id => ABILITIES[resolveAbilityId(id, h)].name;
-    row('Power 1', ps.actives.filter(a => a !== h.actives[1]).map(a => [a, nm(a)]), h.actives[0], v => Loadout.set('active', [0, v]));
-    row('Power 2', ps.actives.filter(a => a !== h.actives[0]).map(a => [a, nm(a)]), h.actives[1], v => Loadout.set('active', [1, v]));
+    h.actives = heroActives(h);
+    for (let i = 0; i < 3; i++) row(`Power ${i + 1}`, ps.actives.map(a => [a, nm(a)]), h.actives[i], v => { const j = h.actives.indexOf(v); if (j >= 0 && j < 3) h.actives[j] = h.actives[i]; Loadout.set('active', [i, v]); });
+    row('Power 4 (borrowed)', BORROWABLE().filter(([k]) => k !== h.primary).map(([k, a]) => [a, `${nm(a)} — ${POWER_SETS[k].name}`]), h.actives[3], v => Loadout.set('active', [3, v]));
     row('Defence', DEFENCES.map(a => [a, ABILITIES[a].name]), h.defence, v => Loadout.set('defence', v));
     row('Ultimate', ps.ultimates.map(a => [a, nm(a)]), h.ultimate, v => Loadout.set('ultimate', v));
     if (h.primary === 'elemental') row('Element', Object.entries(ELEMENTS).map(([k, e]) => [k, e.name]), h.element, v => Loadout.set('element', v));
@@ -8659,7 +8683,7 @@ const ShipPilot = {
     const tgt = Space.lockTarget && Space.lockTarget.alive ? Space.lockTarget : null;
     if ((Input.is('light')) && S.fireT <= 0) { S.fireT = ABILITIES.sw_laser.cooldown / (0.85 + S.pips.wpn * 0.08); Ships.fire(ch, tgt || Space.aimTarget()); }
     if (Input.hit('aim') && S.missileT <= 0) { S.missileT = ABILITIES.sw_missile.cooldown; Ships.missile(ch, tgt || Space.aimTarget()); }
-    if (Input.hit('power1')) Space.routePower('eng'); if (Input.hit('power2')) Space.routePower('shd'); if (Input.hit('defence')) Space.routePower('wpn'); if (Input.hit('ultimate')) Space.routePower(null);
+    if (Input.hit('power1')) Space.routePower('eng'); if (Input.hit('power2')) Space.routePower('shd'); if (Input.hit('power3') || Input.hit('defence')) Space.routePower('wpn'); if (Input.hit('power4') || Input.hit('ultimate')) Space.routePower(null);
     if (Input.hit('lock')) Space.lockTarget = Space.lockTarget ? null : Space.aimTarget(Stations.lockRange());
     if (Input.hit('cycle')) Space.cycleNav();
   },
@@ -11110,7 +11134,7 @@ const Game = {
   },
   start(state, isNew) {
     if (this.started) this.teardown();
-    this.state = state; this.hero = state.hero; this.started = true; this.stats = Object.assign({ parries: 0, civHarmed: 0, property: 0 }, state.stats || {});
+    this.state = state; this.hero = state.hero; this.started = true; state.hero.actives = heroActives(state.hero); this.stats = Object.assign({ parries: 0, civHarmed: 0, property: 0 }, state.stats || {});
     Sky.hour = state.world.hour; Sky.day = state.world.day;
     CitySim.init(state); Crew.init(state); Galaxy.init(state); GContracts.restore(); Space.init(); Planet.init(); Living.init(state); Offworld.loc = 'earth'; Offworld.setZone(null);
     const C = this.hero;
@@ -11872,7 +11896,8 @@ const Worlds = {
   },
   // where the hero 'is' for distance checks — the street door while inside a building
   anchor() { return Interiors.cur ? Interiors.cur.exit.pos : Game.player.pos; },
-  step(dt) { Interiors.step(dt); if (Offworld.loc === 'town') Towns.step(dt); Guild.step(dt); const w = Transit.waypoint; if (w && Game.player && dist2D(w.pos, Game.player.pos) < 8) Transit.waypoint = null; },
+  step(dt) { const hp = Game.player; if (hp && hp === Game.heroCh && hp.alive) Progress.ultGain(hp, dt * CONFIG.combat.heroUltTrickle * (Game.inCombat ? 1 : 0.35));
+    Interiors.step(dt); if (Offworld.loc === 'town') Towns.step(dt); Guild.step(dt); const w = Transit.waypoint; if (w && Game.player && dist2D(w.pos, Game.player.pos) < 8) Transit.waypoint = null; },
   markers() { return [...Guild.markers(), ...Interiors.markers(), ...Transit.markers(), ...(Offworld.loc === 'town' ? Towns.markers() : [])]; },
   // a save made in a town or inside a building wakes you somewhere solid
   serialize(S) {
