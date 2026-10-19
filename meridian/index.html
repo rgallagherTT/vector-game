@@ -331,6 +331,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line);background
    // §PLAYERFACTION   The crew is a faction that holds ground: blocks protected long enough become yours; outposts and sta
    // §WARTABLE        The holo-table becomes the strategic view: every threat and its pressure points, both maps with terr
    // §LEGACY          The long game: crew veterans reach legendary levels with unique power mutations, long-serving crew r
+   // §WORLDPLUS       Join a faction or super-team and fight with them; walk into any building (fights follow you in); ride rail, coach, ferry and maglev to other cities.
    // §DEBUG           ?debug=1 shows an overlay (fps, active sector, faction tick time, threat stages). window.dbg drives 
    // §GAME            
    // §BOOT            
@@ -352,7 +353,7 @@ const HERO_PARTS_URL = "./hero/costume_kit.glb";
 const HERO_BODY_URL  = "./hero/body_base.glb";
 const CITY_KIT_URL   = "./city/city_kit.glb";
 const SAVE_KEY = 'meridian.save';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 // §CONFIG ------------------------------------------------------------------------------
 const CONFIG = {
@@ -512,7 +513,13 @@ const MIGRATIONS = {
     if (d.galaxy && !d.galaxy.asc) d.galaxy.asc = null;
     d.version = 5; d.migratedFrom = (d.migratedFrom || []).concat([4]);
     return d;
+  },  // v5 (Stage 5) → v6 (Stage 6: memberships, interiors, other cities). Nobody belongs to anything yet; you are in New Halcyon.
+  5: d => {
+    d.guild = null; d.travel = { at: 'halcyon', visits: {} }; d.towns = d.towns || {}; d.interiors = d.interiors || {};
+    d.version = 6; d.migratedFrom = (d.migratedFrom || []).concat([5]);
+    return d;
   },
+
 };
 function migrateSave(d) {
   if (!d || typeof d !== 'object') throw new Error('Not a save file');
@@ -1207,7 +1214,7 @@ const CityGen = {
   P: 0, S: 0, B: 0,
   blockRect(gx, gz) { const G = World.grid0; const x0 = G.x + (gx - GRID.GX0) * G.P + G.S / 2, z0 = G.z + (gz - GRID.GZ0) * G.P + G.S / 2; return { x0, z0, x1: x0 + CONFIG.world.blockSize, z1: z0 + CONFIG.world.blockSize }; },
   districtRect(D) { const a = this.blockRect(D.gx, D.gz), b = this.blockRect(D.gx + D.w - 1, D.gz + D.d - 1); const S = World.grid0.S; return { x0: a.x0 - S / 2, z0: a.z0 - S / 2, x1: b.x1 + S / 2, z1: b.z1 + S / 2 }; },
-  layout(D, seed) {
+  layout(D, seed, opts = {}) {
     const ST = DISTRICT_STYLES[D.style], L = { D, buildings: [], roof: { ac: [], tank: [], mast: [], stack: [] }, sidewalks: [], lamps: [], neon: [], thin: [], lots: [], pois: [], services: [], boxes: [], parks: [], lakes: [], decor: [], containers: [], escapes: [], stalls: [], blocks: [] };
     const pal = Object.assign({}, DEFAULT_PALETTE, ST.palette || {});
     const B = CONFIG.world.blockSize, base = ST.sunken ? PIT_DEPTH : 0;
@@ -1272,7 +1279,7 @@ const CityGen = {
       if (alley && brng.chance(0.45)) { const fx = bxMin + B / 2, fz = bzMin + brng.range(8, B - 8); L.thin.push([fx - alley / 2, fz, alley, 3.2, base]); box(fx - alley / 2, base, fz - 0.12, fx + alley / 2, base + 3.2, fz + 0.12, 'thin'); }
     }
     for (const l of L.lamps) box(l[0] - 0.15, l[3], l[1] - 0.15, l[0] + 0.15, l[3] + 7.5, l[1] + 0.15, 'thin');
-    this.pois(L, D, seed);
+    if (!opts.town) this.pois(L, D, seed);
     return L;
   },
   park(L, x, z, B, rng, base, lake) {
@@ -3687,7 +3694,7 @@ const NAMES_FIRST = ['Rafe', 'Corin', 'Dace', 'Mira', 'Tobin', 'Vesna', 'Hal', '
 const NAMES_LAST = ['Marlow', 'Quill', 'Strand', 'Varga', 'Keel', 'Holloway', 'Rusk', 'Penrose', 'Abernathy', 'Cole', 'Daley', 'Fisk', 'Gault', 'Harker', 'Ingram', 'Joss'];
 const Enemies = {
   spawn(type, pos, faction, group = null, opts = {}) {
-    const T_ = ENEMY_TYPES[type], look = FACTION_LOOKS[faction] || FACTION_LOOKS.tide, rng = R, lt = type === 'walker' ? 'brute' : type;
+    const T_ = ENEMY_TYPES[type], look = opts.look || FACTION_LOOKS[faction] || FACTION_LOOKS.tide, rng = R, lt = type === 'walker' ? 'brute' : type;
     const body = { build: lt === 'brute' ? 1 : rng.range(0.3, 0.8), height: rng.range(0.94, 1.06), skin: rng.pick(SKIN_TONES), hair: rng.pick(HAIR), hairColor: rng.pick(['#1a1410', '#3a2a1a', '#6a5030', '#aaaaaa']), headW: rng.next(), jaw: rng.next(), eyeSpacing: 0.5, shoulders: lt === 'brute' ? 1 : 0.5 };
     const costume = {
       head: lt === 'tech' ? 'visor' : lt === 'officer' ? 'helmet' : lt === 'brute' ? rng.pick(['open', 'mask']) : rng.pick(['open', 'open', 'mask']),
@@ -3810,6 +3817,7 @@ const Brain = {
   idle(ch, dt) {
     const ai = ch.ai, I = ch.intent;
     if (ai.passive) { if (ai.anchorPos) { const d = dist2D(ch.pos, ai.anchorPos); if (d > 1.5) { I.move.subVectors(ai.anchorPos, ch.pos).setY(0).normalize(); I.moveMag = 0.6; } } return; }
+    if (ai.follow && ai.follow.pos) { const d = dist2D(ch.pos, ai.follow.pos); if (d > 4) { I.move.subVectors(ai.follow.pos, ch.pos).setY(0).normalize(); I.moveMag = 1; I.speedMul = d > 10 ? 1.7 : 1.1; } return; }
     ai.patT -= dt;
     if (ai.patT <= 0) { ai.patT = R.range(2, 6); const a = R.next() * TAU; ai.wander = ai.home.clone().add(V3(Math.cos(a) * 5, 0, Math.sin(a) * 5)); }
     if (ai.wander && dist2D(ch.pos, ai.wander) > 1) { I.move.subVectors(ai.wander, ch.pos).setY(0).normalize(); I.moveMag = 0.35; }
@@ -3883,6 +3891,7 @@ const Factions = {
   playerHostile(f, ch) {
     if (ch && ch.data && ch.data.forceHostile) return true;
     const F = FACTIONS[f]; if (!F) return false;
+    const gm = Game.state && Game.state.guild && Game.state.guild.id; if (gm === f) return false; if (gm && Guild.hostileTo(f)) return true;
     if (f === 'nhpd' && Game.state.city && Heat.policeHostile()) return true;
     if (f === 'halvorsen' && Game.state.city && Heat.v >= 75) return true;
     return this.standing(f) < F.hostileBelow;
@@ -3894,7 +3903,8 @@ const Factions = {
     if (fa === 'player') return this.playerHostile(fb, b.isProxy ? b.owner : b) || (b.data && b.data.contractTarget);
     if (fb === 'player') return this.playerHostile(fa, a.isProxy ? a.owner : a) || (a.data && a.data.contractTarget);
     if (fa === 'wild' || fb === 'wild') return true;
-    const F = FACTIONS[fa]; return !!(F && F.enemies.includes(fb));
+    const F = FACTIONS[fa]; if (F && F.enemies.includes(fb)) return true;
+    const Fb = FACTIONS[fb]; return !!(Fb && Fb.type === 'squad' && Fb.enemies.includes(fa));
   },
 };
 
@@ -5099,7 +5109,7 @@ const Crimes = {
       }
       const done = c.phase !== 'flee' && c.enemies.every(e => !e.alive);
       if (done) { this.resolve(c); this.list.splice(i, 1); continue; }
-      if ((c.age > 150 && !engaged) || dist2D(c.pos(), Game.player.pos) > 420) { this.expire(c); this.list.splice(i, 1); }
+      if ((c.age > 150 && !engaged) || dist2D(c.pos(), Worlds.anchor()) > 420) { this.expire(c); this.list.splice(i, 1); }
     }
   },
   enemy(c, type, p, alert = false) { p.y = World.surfaceAt(p.x, p.z, p.y + 2); const e = Enemies.spawn(type, p, c.faction, c.id, { alert, hostile: true }); e.data.crime = c; return e; },
@@ -5201,7 +5211,7 @@ const Cam = {
     this.colD = want < this.colD ? want : damp(this.colD, want, 2.5, dt);
     const pos = this.cam.position.copy(piv).addScaledVector(back, this.colD);
     const gy = World.groundAt(pos.x, pos.z) + 0.35; if (pos.y < gy) pos.y = gy;
-    const ceilI = Offworld.loc === 'shipint' ? ShipInt.interior : Offworld.loc === 'boarding' ? { H: 4 } : null; if (ceilI) pos.y = Math.min(pos.y, Game.heroCh.pos.y + ceilI.H - 0.6);
+    const ceilI = Offworld.loc === 'shipint' ? ShipInt.interior : Offworld.loc === 'boarding' ? { H: 4 } : Interiors.cur && Interiors.cur.g ? { H: Interiors.cur.H } : null; if (ceilI) pos.y = Math.min(pos.y, Game.heroCh.pos.y + ceilI.H - 0.6);
     // shake
     if (this.shakeA > 0.001) { const s = this.shakeA * this.shakeA * 0.35; pos.x += (Math.random() - 0.5) * s; pos.y += (Math.random() - 0.5) * s; pos.z += (Math.random() - 0.5) * s; this.shakeA = Math.max(0, this.shakeA - dt * 2.2); }
     this.cam.lookAt(_v1.copy(piv).addScaledVector(this.dir, 10));
@@ -5270,7 +5280,8 @@ const HUD = {
       s.classList.toggle('ready', p <= 0); s.classList.toggle('nocost', k !== 'ultimate' && ch.energy < ab.cost);
     }
     this.set('clock', 't', Sky.label());
-    if (S.city && !Offworld.isEarth()) this.set('distline', 'h', `${esc(Offworld.label())}${GContracts.active ? ' · CONTRACT' : ''}${Living.hudTag()}`);
+    if (S.city && Interiors.cur) this.set('distline', 'h', `${esc(Interiors.cur.label)}${Living.hudTag()}`);
+    else if (S.city && !Offworld.isEarth()) this.set('distline', 'h', `${esc(Offworld.label())}${GContracts.active ? ' · CONTRACT' : ''}${Living.hudTag()}`);
     else if (S.city) { const D = City.curDistrict; const own = D ? Territory.districtOwner(D.id) : null; this.set('distline', 'h', `${D ? esc(D.name.toUpperCase()) : (Modes.name === MODE.HQ ? 'YOUR BASE' : 'NEW HALCYON')}${own && FACTIONS[own] ? ` · <span style="color:${FACTIONS[own].color}">${esc(FACTIONS[own].short)}</span>` : ''}${D ? ' · ' + Rep.title(Rep.district(D.id)) : ''}${S.city.heat >= 1 ? ` · <span style="color:var(--warn)">HEAT ${Math.round(S.city.heat)}</span>` : ''}${S.city.licence.held ? ' · LIC' : ''}${Living.hudTag()}`); }
     this.set('credits', 'h', `${fmtCr(S.econ.bank)}${S.econ.carried ? ` <small>+ ${fmtCr(S.econ.carried)} carried</small>` : ''}`);
     this.set('level', 't', `LV ${S.prog.level} · ${Math.round(S.prog.xp)}/${Progress.xpFor(S.prog.level)} XP · RENOWN ${Math.round(S.renown)}${S.prog.sp ? ` · ${S.prog.sp} SP` : ''}${Legacy.shownTitle() ? ' · ' + Legacy.shownTitle().toUpperCase() : ''}`);
@@ -5307,7 +5318,7 @@ const HUD = {
   worldUI(ch) {
     const o = {};
     // markers
-    const marks = [...Offworld.markers(), ...Contracts.markers(), ...Crimes.markers(), ...Incidents.markers(), ...(Modes.name === MODE.HQ || Offworld.loc === 'shipint' ? BaseLife.markers() : Offworld.isEarth() ? [...Base.markers(), ...Leads.markers()] : []), ...(Game.originStep ? OriginStory.markers() : []), ...Living.markers()];
+    const marks = [...Worlds.markers(), ...Offworld.markers(), ...Contracts.markers(), ...Crimes.markers(), ...Incidents.markers(), ...(Modes.name === MODE.HQ || Offworld.loc === 'shipint' ? BaseLife.markers() : Offworld.isEarth() ? [...Base.markers(), ...Leads.markers()] : []), ...(Game.originStep ? OriginStory.markers() : []), ...Living.markers()];
     for (const it of Loot.items) if (it.kind === 'bag') marks.push({ pos: it.pos, label: `Your loot · ${Math.ceil(it.ttl)}s`, kind: 'loot' });
     let i = 0;
     for (const m of marks) {
@@ -5524,7 +5535,7 @@ const Menus = {
   renderHelp() {
     const rows = [['Move', 'W A S D'], ['Look', 'Mouse'], ['Jump', 'Space'], ['Traversal power', 'Shift (hold / tap — depends on set)'], ['Zip / grapple', 'V (Tether, Glide)'], ['Descend (Flight)', 'X'],
       ['Light attack / combo', 'Left mouse'], ['Heavy · launcher · finisher', 'F · hold S + F · F on a stunned enemy'], ['Aim · shoot', 'Hold right mouse · left mouse'], ['Powers', '1 · 2'], ['Defence power', '3'], ['Ultimate', 'R (or 4)'],
-      ['Dodge (invulnerable)', 'C'], ['Parry (orange ! tells)', 'Q — red ⚠ tells cannot be parried: dodge'], ['Lock on · cycle', 'Tab · T / mouse wheel'], ['Pick up · throw · interact · drive', 'E (hold Z + E to drive if you can lift cars)'], ['Gadget', 'G'], ['Walk', 'Z (hold)'], ['Crew: control mode (Solo / Squad / Hybrid)', 'K'], ['Crew: switch / borrow character', 'N · 6 7 8 · ` back to hero'], ['Crew: call in a power (wheel)', 'hold B, move mouse or press 1-9'], ['Crew: orders (wheel)', 'hold Y'], ['Revive downed crew', 'E'], ['Relic power · cycle', 'J · L'], ['Ship: steer · throttle · boost', 'Mouse · W/S · Shift'], ['Ship: guns · missile · lock · power', 'LMB · RMB · Tab · 1/2/3 (4 reset)'], ['Ship: dock/orbit/board · step outside · walk inside · galaxy map', 'E · F · I · M'], ['Ship: cycle nav · cruise to it', 'T · hold V'], ['Phone (contracts, skills, gear, map)', 'P'], ['Map', 'M'], ['Pause', 'Esc'], ['Controls', 'H']];
+      ['Dodge (invulnerable)', 'C'], ['Parry (orange ! tells)', 'Q — red ⚠ tells cannot be parried: dodge'], ['Lock on · cycle', 'Tab · T / mouse wheel'], ['Pick up · throw · interact · drive', 'E (hold Z + E to drive if you can lift cars)'], ['Gadget', 'G'], ['Walk', 'Z (hold)'], ['Crew: control mode (Solo / Squad / Hybrid)', 'K'], ['Crew: switch / borrow character', 'N · 6 7 8 · ` back to hero'], ['Crew: call in a power (wheel)', 'hold B, move mouse or press 1-9'], ['Crew: orders (wheel)', 'hold Y'], ['Revive downed crew', 'E'], ['Relic power · cycle', 'J · L'], ['Ship: steer · throttle · boost', 'Mouse · W/S · Shift'], ['Ship: guns · missile · lock · power', 'LMB · RMB · Tab · 1/2/3 (4 reset)'], ['Ship: dock/orbit/board · step outside · walk inside · galaxy map', 'E · F · I · M'], ['Ship: cycle nav · cruise to it', 'T · hold V'], ['Phone (contracts, skills, gear, map)', 'P'], ['Enter any building · leave', 'E against a wall · E at the door'], ['Join a faction or team · ride to other cities', 'Phone → Faction · Travel'], ['Map', 'M'], ['Pause', 'Esc'], ['Controls', 'H']];
     $('helpbox').innerHTML = `<h3 style="margin-top:0">Controls</h3><table>${rows.map(r => `<tr><td class="dim">${r[0]}</td><td class="mono">${r[1]}</td></tr>`).join('')}</table>
       <p class="dim" style="font-size:12px;margin-top:14px">Traversal chains into attacks: attack while swinging, boosting, speed-running, just after a blink, gliding, or mid-leap. Superheroes take no fall damage.</p><div style="text-align:right"><button id="h-close">Close</button></div>`;
     $('h-close').onclick = () => this.back();
@@ -5704,6 +5715,7 @@ const Phone = {
   tab_standing(b) {
     b.appendChild(el('p', 'dim', `Renown: <b>${Math.round(Game.state.renown)}</b> · Contracts completed: ${Game.state.contractsDone} · Civilians hurt: ${Game.stats.civHarmed} · Property damage index: ${Math.round(Game.stats.property)}`));
     for (const [id, F] of Object.entries(FACTIONS)) {
+      if (F.type === 'civilian') continue;
       const v = Factions.standing(id); const hostile = Factions.playerHostile(id, null);
       const r = el('div', 'stand', `<div><b style="color:${F.color}">${esc(F.name)}</b><div class="faint" style="font-size:11px">${F.type}${hostile ? ' · hostile on sight' : ''} · enemies: ${F.enemies.map(e => FACTIONS[e].short).join(', ')}</div></div><div class="track"><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`};background:${v >= 0 ? 'var(--ok)' : 'var(--warn)'}"></i></div><div class="mono" style="text-align:right">${v > 0 ? '+' : ''}${Math.round(v)}</div>`);
       b.appendChild(r);
@@ -6800,7 +6812,7 @@ Object.assign(Phone, {
     b.appendChild(rp);
     b.appendChild(el('h4', '', 'Faction standing'));
     for (const [id, F] of Object.entries(FACTIONS)) {
-      if (['hazard', 'wild', 'rivals', 'player'].includes(id)) continue;
+      if (['hazard', 'wild', 'rivals', 'player'].includes(id) || F.type === 'civilian') continue;
       const v = Factions.standing(id); const hostile = Factions.playerHostile(id, null);
       b.appendChild(el('div', 'stand', `<div><b style="color:${F.color}">${esc(F.name)}</b><div class="faint" style="font-size:11px">${F.type}${hostile ? ' · <span style="color:var(--warn)">hostile on sight</span>' : ''}</div></div><div class="track"><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`};background:${v >= 0 ? 'var(--ok)' : 'var(--warn)'}"></i></div><div class="mono" style="text-align:right">${v > 0 ? '+' : ''}${Math.round(v)}</div>`));
     }
@@ -8330,7 +8342,7 @@ const Offworld = {
   // a pocket zone overrides ground, water and gravity queries
   setZone(z) { this.zone = z; World.zone = z; World.gravMul = z ? z.grav ?? 1 : 1; },
   sky() {
-    const L = this.loc; if (L === 'earth') { Render.sky.visible = true; Render.rain.visible = true; Render.sky.position.copy(Render.camera.position); if (this.stars) this.stars.visible = false; return; }
+    const L = this.loc; if (L === 'earth' || L === 'town') { Render.sky.visible = true; Render.rain.visible = true; Render.sky.position.copy(Render.camera.position); if (this.stars) this.stars.visible = false; return; }
     Render.sky.visible = false; Render.rain.visible = false; U.rain.value = 0; const sc = Render.scene;
     if (!this.stars) { const N = 2600, g = new T.BufferGeometry(), p = new Float32Array(N * 3), r = new RNG(5150); for (let i = 0; i < N; i++) { const v = V3(r.range(-1, 1), r.range(-1, 1), r.range(-1, 1)).normalize().multiplyScalar(2300); p.set([v.x, v.y, v.z], i * 3); } g.setAttribute('position', new T.BufferAttribute(p, 3)); this.stars = new T.Points(g, new T.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 })); this.stars.userData.offworld = true; this.stars.frustumCulled = false; sc.add(this.stars); }
     const space = L === 'space';
@@ -8696,6 +8708,8 @@ const Hangar = {
   // no hangar needed: the ship flies down to wherever you are on Earth and picks you up
   launchBlock() {
     if (!this.activeShip()) return 'You have no ship yet';
+    if (Offworld.loc === 'town') return 'Head back to New Halcyon first';
+    if (Interiors.cur) return 'Step outside first';
     if (Offworld.loc !== 'earth') return 'You are already off-world';
     if (Game.originStep) return 'Finish what you started first';
     if (Driving.car) return 'Get out of the car first';
@@ -11127,13 +11141,625 @@ function serializeGame() {
   const G = Game, S = G.state, p = G.heroCh || G.player;
   S.world = { hour: Sky.hour, day: Sky.day };
   if (p) S.player = { pos: p.pos.toArray().map(v => +v.toFixed(2)), hp: Math.max(1, p.hp), energy: p.energy, ult: p.ult, yaw: Cam.yaw };
+  Worlds.serialize(S);
   S.contracts = Contracts.serialize(); S.stats = G.stats; S.savedAt = new Date().toISOString(); S.version = SAVE_VERSION; S.game = 'meridian';
   return JSON.parse(JSON.stringify(S));
 }
 
+// §WORLDPLUS ---------------------------------------------------------------------------
+// Stage 6: sign on with a faction or a super-team and fight with them (Guild), walk into any building in the city
+// (Interiors — fights follow you in, and some doors open on a fight already happening), and ride public transit
+// to other cities on the coast (Transit + Towns). Towns are pocket zones built by the same generator as New Halcyon.
+Object.assign(FACTIONS, {
+  vanguard: { name: 'The Halcyon Vanguard', short: 'Vanguard', type: 'squad', color: '#ffd27a', enemies: ['tide', 'kings', 'choir', 'lantern', 'ember'], allies: ['nhpd', 'civic'], hostileBelow: -50, wants: 'A licensed super-team that keeps the peace — on camera' },
+  nightwatch: { name: 'Nightwatch', short: 'Nightwatch', type: 'squad', color: '#9ab0ff', enemies: ['tide', 'kings', 'choir', 'halvorsen'], allies: ['civic'], hostileBelow: -50, wants: 'Vigilantes: no badges, no sponsors, no mercy for the gangs' },
+  ember: { name: 'The Ember Collective', short: 'Ember', type: 'squad', color: '#ff7a4a', enemies: ['halvorsen', 'corvane', 'nhpd', 'vanguard'], allies: ['choir'], hostileBelow: -30, wants: 'Powered people who answer to nobody' },
+  townsfolk: { name: 'Residents', short: 'Residents', type: 'civilian', color: '#cfcac0', enemies: [], allies: [], hostileBelow: -101, wants: 'To get home in one piece' },
+});
+Object.assign(FACTION_LOOKS, {
+  vanguard: { primary: '#1d2a44', secondary: '#e8e0c8', accent: '#ffd27a', trim: '#ffb347' },
+  nightwatch: { primary: '#121620', secondary: '#2a3550', accent: '#9ab0ff', trim: '#cfd8ff' },
+  ember: { primary: '#2a1410', secondary: '#7a2a18', accent: '#ff7a4a', trim: '#ffc070' },
+  townsfolk: { primary: '#5a5a62', secondary: '#7a7468', accent: '#c0b8a8', trim: '#3a3a3a' },
+});
+Object.assign(FACTION_ROSTER, { vanguard: [['officer', 1]], nightwatch: [['gunner', 1]], ember: [['thug', 1]], townsfolk: [['civilian', 1]] });
+ENEMY_TYPES.civilian = { name: 'Resident', hp: 45, speed: 4.4, melee: ['thug_punch'], role: 'melee', xp: 0 };
+const CIV_LOOKS = [['#3a4a5a', '#8a8070', '#c0b8a8', '#2a2a2a'], ['#6a3a2a', '#c8b8a0', '#e0d0b0', '#3a2a20'], ['#2a4a3a', '#5a6a5a', '#d8d0c0', '#1a1a1a'], ['#5a2a4a', '#3a3a4a', '#d0b0c0', '#2a2a2a'], ['#4a4a4a', '#9a9a9a', '#e8e0d0', '#5a3a2a'], ['#7a6a40', '#4a3a2a', '#e0c890', '#2a2a2a']];
+const civLook = rng => { const p = rng.pick(CIV_LOOKS); return { primary: p[0], secondary: p[1], accent: p[2], trim: p[3] }; };
+
+// ---- Guild: membership, ranks, pay, backup on call, and operations fought alongside the faction ----
+const GUILD_RANKS = [{ name: 'Recruit', deeds: 0, pay: 400, backup: 2 }, { name: 'Member', deeds: 3, pay: 800, backup: 2 }, { name: 'Veteran', deeds: 8, pay: 1500, backup: 3 }, { name: 'Lieutenant', deeds: 15, pay: 2600, backup: 3 }, { name: 'Captain', deeds: 25, pay: 4000, backup: 4 }];
+const GUILD_TERMS = {
+  squad: { join: 20, renown: 15, pay: 1.3, verb: 'Join the team', pitch: 'A super-team: shared missions, shared glory, and someone to catch you when you fall.' },
+  police: { join: 25, pay: 1, verb: 'Sign on as an auxiliary', pitch: 'Ride with the department as a powered auxiliary. A badge, back-up on the radio and a weekly cheque.' },
+  corp: { join: 20, pay: 1.5, verb: 'Sign the contract', pitch: 'Become a contracted asset. They pay the best and ask the fewest questions.' },
+  gang: { join: 30, pay: 1.1, verb: 'Take the colours', pitch: 'Wear the colours. They have your back on the street, and you have theirs.' },
+  cult: { join: 35, pay: 0.8, verb: 'Join the Choir', pitch: 'They will tell you what is under the city — eventually.' },
+  civic: { join: 10, pay: 0.6, verb: 'Volunteer', pitch: 'Neighbourhood watch with superpowers. The pay is mostly gratitude.' },
+};
+const SQUAD_NAMES = {
+  vanguard: ['Captain Meridian Gold', 'Bulwark', 'Lumen', 'Kestrel', 'Overwatch', 'Paragon'],
+  nightwatch: ['Nocturne', 'Gallows', 'Hush', 'Blackthorn', 'Vesper', 'Tallow'],
+  ember: ['Cinder', 'Flare', 'Ashfall', 'Kindling', 'Pyre', 'Smolder'],
+};
+const OP_KINDS = {
+  raid: { name: 'Raid', desc: f => `Hit a ${f} position with the crew.`, pay: 700 },
+  defend: { name: 'Hold the line', desc: f => `${f} are moving on one of ours. Get there and stop them.`, pay: 650 },
+  callout: { name: 'Call-out', desc: f => `${f} are causing trouble nearby. Shut it down together.`, pay: 600 },
+  tryout: { name: 'Tryout', desc: f => `Prove yourself against ${f}, with two of them watching your back.`, pay: 0 },
+};
+const Guild = {
+  backup: [], op: null, cdT: 0, backT: 0,
+  get S() { const s = Game.state; if (!s.guild) s.guild = this.fresh(); return s.guild; },
+  fresh() { return { id: null, rank: 0, deeds: 0, joined: 0, lastPay: 0, ops: 0, left: {}, tried: {} }; },
+  cur() { const s = Game.state; return s && s.guild && s.guild.id; },
+  terms(f) { return FACTIONS[f] && GUILD_TERMS[FACTIONS[f].type]; },
+  joinable() { return Object.keys(FACTIONS).filter(f => this.terms(f)); },
+  rank() { return GUILD_RANKS[this.S.rank]; },
+  isMember(ch) { const m = this.cur(); return !!m && ch && ch.faction === m; },
+  // standing rules: your own side never turns on you; their sworn street enemies come for you on sight
+  hostileTo(f) { const m = this.cur(); if (!m || m === f || !FACTIONS[m] || !FACTIONS[f]) return null; if (FACTIONS[m].enemies.includes(f) && ['gang', 'cult', 'squad'].includes(FACTIONS[f].type)) return true; return null; },
+  why(f) {
+    const T_ = this.terms(f), S = this.S, why = []; if (!T_) return ['not hiring'];
+    if (S.id === f) return ['already a member'];
+    const st = Factions.standing(f); if (st < T_.join) why.push(`standing ${T_.join}+ (you have ${Math.round(st)})`);
+    if (T_.renown && Game.state.renown < T_.renown) why.push(`renown ${T_.renown}+`);
+    if (FACTIONS[f].type === 'police' && Game.state.city && Game.state.city.heat >= 25) why.push('heat under 25');
+    if (S.left[f] && Sky.day - S.left[f] < 7) why.push('they remember you walking out — give it a week');
+    return why;
+  },
+  canTryout(f) { const T_ = this.terms(f), S = this.S; if (!T_ || S.id === f || !this.why(f).length) return false; if (S.tried[f] === Sky.day) return false; if (T_.renown && Game.state.renown < T_.renown) return false; if (S.left[f] && Sky.day - S.left[f] < 7) return false; return Factions.standing(f) >= T_.join - 40 && !Factions.playerHostile(f, null); },
+  join(f) {
+    const why = this.why(f); if (why.length) { toast(`${esc(FACTIONS[f].short)} won't take you yet: ${esc(why.join(' · '))}`, 'bad', 3200); return false; }
+    if (this.S.id) this.leave(true);
+    const C = Game.state.city; Object.assign(this.S, { id: f, rank: 0, deeds: 0, joined: Sky.day, lastPay: C ? C.tick : 0, ops: 0 });
+    Factions.change(f, 10); for (const e of FACTIONS[f].enemies) if (FACTIONS[e]) Factions.change(e, FACTIONS[e].type === 'police' ? -10 : -15);
+    Sfx.good(); toast(`You joined <b>${esc(FACTIONS[f].name)}</b> as a ${GUILD_RANKS[0].name}. Phone → <b>Faction</b> to call backup or take an operation.`, 'gold', 6000);
+    CitySim.news(`The freelancer called ${Game.hero.heroName} has joined ${FACTIONS[f].name}.`, 'city'); Bus.emit('guild.joined', { faction: f }); Game.save(); return true;
+  },
+  leave(quiet = false) {
+    const f = this.S.id; if (!f) return; this.dismiss(); if (this.op) this.endOp(false, true);
+    this.S.left[f] = Sky.day; this.S.id = null; this.S.rank = 0; this.S.deeds = 0; Factions.change(f, -15);
+    if (!quiet) { toast(`You left ${esc(FACTIONS[f].name)}. They will not forget it quickly.`, 'bad', 3500); CitySim.news(`${Game.hero.heroName} walked out on ${FACTIONS[f].name}.`, 'city'); }
+  },
+  deed(n = 1) {
+    const S = this.S; if (!S.id) return; S.deeds += n;
+    const next = GUILD_RANKS[S.rank + 1]; if (next && S.deeds >= next.deeds) { S.rank++; Factions.change(S.id, 5); Sfx.good(); toast(`Promoted: <b>${next.name}</b> of ${esc(FACTIONS[S.id].short)} — more backup, better pay.`, 'gold', 4500); CitySim.news(`${Game.hero.heroName} made ${next.name} in ${FACTIONS[S.id].name}.`, 'city'); }
+  },
+  weeklyPay() { const S = this.S; return S.id ? Math.round(GUILD_RANKS[S.rank].pay * this.terms(S.id).pay) : 0; },
+  near(r0, r1) {
+    const p = Game.player.pos, a = R.next() * TAU, r = R.range(r0, r1); const out = p.clone().add(V3(Math.cos(a) * r, 0, Math.sin(a) * r));
+    if (Interiors.cur) { const I = Interiors.cur; out.x = clamp(out.x, I.O.x - I.W / 2 + 2, I.O.x + I.W / 2 - 2); out.z = clamp(out.z, I.O.z - I.D / 2 + 2, I.O.z + I.D / 2 - 2); }
+    out.y = World.surfaceAt(out.x, out.z, p.y + 3) + 0.1; return out;
+  },
+  spawnMember(f, pos, i, opts = {}) {
+    let e;
+    if (FACTIONS[f].type === 'squad') {
+      const def = PoweredGen.make(new RNG(hashStr(f + ':' + i + ':' + Sky.day)), { faction: f, level: clamp(Game.state.prog.level - 1 + this.S.rank, 2, 30) });
+      def.name = SQUAD_NAMES[f][i % SQUAD_NAMES[f].length]; e = PoweredGen.spawn(def, pos, f, { alert: true });
+    } else e = Enemies.spawn(R.weighted(FACTION_ROSTER[f] || FACTION_ROSTER.civic), pos, f, 'guild', { alert: true });
+    e.data.xp = 0; e.data.guild = true; if (opts.follow !== false) e.ai.follow = Game.player; return e;
+  },
+  callBackup() {
+    const S = this.S; if (!S.id) return false;
+    if (this.cdT > 0) { toast(`Backup is still on the way back — ${Math.ceil(this.cdT)}s`, 'bad'); return false; }
+    if (!Game.player || !(Offworld.isEarth() || Offworld.loc === 'town')) { toast('Nobody answers out here.', 'bad'); return false; }
+    if (Menus.cur) Menus.hide();
+    this.dismiss(); const n = GUILD_RANKS[S.rank].backup;
+    for (let i = 0; i < n; i++) { const e = this.spawnMember(S.id, this.near(5, 9), i); VFX.ring(e.pos, FACTIONS[S.id].color, 2, 0.4); this.backup.push(e); }
+    this.cdT = 150; this.backT = 200; Sfx.good(); toast(`${n} from ${esc(FACTIONS[S.id].short)} have your back.`, 'good', 2500); return true;
+  },
+  dismiss() { for (const e of this.backup) if (!e.removed) Game.removeChar(e); this.backup = []; },
+  // operations: a fight staged near you, with your side running alongside
+  enemyFor(f) {
+    const here = Offworld.loc === 'town' && Towns.cur ? Towns.def().gangs.map(g => g[0]) : null;
+    const pool = FACTIONS[f].enemies.filter(e => FACTIONS[e] && FACTION_ROSTER[e] && !['police'].includes(FACTIONS[e].type) && e !== 'townsfolk');
+    const pref = here ? pool.filter(e => here.includes(e)) : pool; const list = pref.length ? pref : pool.length ? pool : ['kings'];
+    return R.pick(list);
+  },
+  offers() {
+    const f = this.S.id; if (!f) return [];
+    const T_ = FACTIONS[f], out = [];
+    const foe = this.enemyFor(f);
+    if (T_.type === 'gang' || T_.type === 'cult' || T_.type === 'corp') out.push({ kind: 'raid', foe }, { kind: 'defend', foe: this.enemyFor(f) });
+    else out.push({ kind: 'callout', foe }, { kind: 'raid', foe: this.enemyFor(f) });
+    return out;
+  },
+  opSite(kind, f, foe) {
+    // in New Halcyon, raids hit a block the enemy holds and defences happen on one of yours
+    if (Offworld.isEarth() && !Interiors.cur && Game.state.city && Game.state.city.blocks) {
+      const p = Game.player.pos; let best = null, bd = 1e9;
+      for (const k of Territory.all()) { const o = Territory.owner(k); if (kind === 'raid' ? o !== foe : o !== f) continue; const i = City.blockMap[k]; if (i.park) continue; const d = Math.hypot(i.x - p.x, i.z - p.z); if (d > 80 && d < 650 && d < bd) { bd = d; best = k; } }
+      if (best) { const i = City.blockMap[best], r = CityGen.blockRect(i.gx, i.gz); const at = V3(r.x0 - 6, 0, (r.z0 + r.z1) / 2); at.y = World.surfaceAt(at.x, at.z, 5); return { at, k: best }; }
+    }
+    const p = Game.player.pos, a = Cam.yaw; const at = p.clone().add(V3(Math.sin(a) * 70, 0, Math.cos(a) * 70));
+    if (Offworld.loc === 'town' && Towns.zone) { at.x = clamp(at.x, Towns.zone.x0 + 420, Towns.zone.x1 - 420); at.z = clamp(at.z, Towns.zone.z0 + 420, Towns.zone.z1 - 420); }
+    at.y = World.surfaceAt(at.x, at.z, 5); return { at, k: null };
+  },
+  startOp(o, f = this.S.id) {
+    if (this.op) { toast('Finish the operation you are on first.', 'bad'); return false; }
+    if (!Game.player || !(Offworld.isEarth() || Offworld.loc === 'town')) { toast('That has to happen on Earth.', 'bad'); return false; }
+    if (Interiors.cur) { toast('Head outside first.', 'bad'); return false; }
+    if (Menus.cur) Menus.hide();
+    const foe = o.foe, site = this.opSite(o.kind, f, foe), lvl = this.S.id === f ? this.S.rank : 0;
+    const op = { kind: o.kind, f, foe, at: site.at, k: site.k, foes: [], allies: [], t: 0, woke: false };
+    const nFoes = o.kind === 'tryout' ? 5 : 5 + lvl + (o.kind === 'raid' ? 1 : 0);
+    for (let i = 0; i < nFoes; i++) {
+      const p = site.at.clone().add(V3(R.range(-9, 9), 0, R.range(-9, 9))); p.y = World.surfaceAt(p.x, p.z, site.at.y + 4) + 0.1;
+      const e = FACTIONS[foe].type === 'squad' ? (() => { const d = PoweredGen.make(new RNG(hashStr(foe + i + Game.time)), { faction: foe, level: clamp(Game.state.prog.level, 3, 30) }); d.name = SQUAD_NAMES[foe][i % 6]; return PoweredGen.spawn(d, p, foe, {}); })() : Enemies.spawn(R.weighted(FACTION_ROSTER[foe]), p, foe, 'op', { hostile: true });
+      e.data.forceHostile = true; e.data.op = true; if (e.ai) { e.ai.passive = true; e.ai.anchorPos = p.clone(); e.ai.home = p.clone(); }
+      op.foes.push(e);
+    }
+    const nAllies = o.kind === 'tryout' ? 2 : GUILD_RANKS[lvl].backup;
+    for (let i = 0; i < nAllies; i++) { const e = this.spawnMember(f, this.near(4, 8), i + 3); op.allies.push(e); }
+    this.op = op; Sfx.siren();
+    toast(`<b>${OP_KINDS[o.kind].name}:</b> ${esc(OP_KINDS[o.kind].desc(FACTIONS[foe].short))} The marker shows where.`, 'gold', 5000);
+    return true;
+  },
+  stepOp(dt) {
+    const op = this.op; if (!op) return; op.t += dt;
+    if (!op.woke && op.foes.some(e => e.alive && (dist2D(e.pos, Game.player.pos) < 32 || Game.time - (e.lastHitT || -9) < 0.5 || op.allies.some(a => a.alive && dist2D(a.pos, e.pos) < 20)))) { op.woke = true; for (const e of op.foes) if (e.ai) { e.ai.passive = false; e.ai.alert = true; } }
+    if (op.foes.every(e => !e.alive)) return this.endOp(true);
+    if (op.t > 420 || dist2D(op.at, Worlds.anchor()) > 900 || !(Offworld.isEarth() || Offworld.loc === 'town')) this.endOp(false);
+  },
+  endOp(won, quiet = false) {
+    const op = this.op; if (!op) return; this.op = null;
+    const allyLeft = op.allies.filter(a => !a.removed);
+    for (const e of op.foes) if (!e.removed && e.alive) Game.removeChar(e);
+    Timers.add(won ? 8 : 0.1, () => { for (const a of allyLeft) if (!a.removed) Game.removeChar(a); });
+    if (quiet) return;
+    const f = op.f, foe = op.foe, F = FACTIONS[f];
+    if (!won) { toast(`The ${OP_KINDS[op.kind].name.toLowerCase()} fell apart.`, 'bad', 2500); if (op.kind !== 'tryout') Factions.change(f, -3); return; }
+    Progress.addXp(op.kind === 'tryout' ? 80 : 120); Game.state.renown += 3; Factions.change(foe, -6);
+    const C = Game.state.city; if (C && C.f && C.f[foe]) C.f[foe].manpower = Math.max(0, (C.f[foe].manpower || 0) - op.foes.length);
+    if (op.kind === 'tryout') {
+      this.S.tried[f] = Sky.day; const need = this.terms(f).join - Factions.standing(f); Factions.change(f, Math.max(12, need + 2));
+      toast(`${esc(F.short)} liked what they saw.`, 'gold', 2500);
+      Timers.add(1.2, () => Dialog.open({ title: F.name, who: 'After the tryout', text: `<p>${esc(this.terms(f).pitch)}</p><p class="faint" style="font-size:11.5px">Pay starts at ${fmtCr(Math.round(GUILD_RANKS[0].pay * this.terms(f).pay))} a week. Joining sours things with ${esc(F.enemies.filter(e => FACTIONS[e]).map(e => FACTIONS[e].short).join(', '))}.</p>`, choices: [{ label: this.terms(f).verb, cls: 'primary', fn: () => this.join(f) }, { label: 'Not now', fn: () => {} }] }));
+      return;
+    }
+    const pay = Math.round(OP_KINDS[op.kind].pay * (1 + this.S.rank * 0.35) * this.terms(f).pay); Economy.earn(pay, `${F.short} operation`); this.S.ops++; Factions.change(f, 6); this.deed(2);
+    if (op.k && Territory.get(op.k) && SIM_FACTIONS.includes(f) && Territory.owner(op.k) === foe && op.kind === 'raid') Territory.flip(op.k, f, `with ${Game.hero.heroName}'s help`);
+    else if (op.k && Territory.get(op.k) && op.kind === 'defend') { const b = Territory.get(op.k); b.c = Math.min(100, b.c + 25); }
+    toast(`<b>${OP_KINDS[op.kind].name} won.</b> ${fmtCr(pay)} from ${esc(F.short)} · +3 renown`, 'good', 3500);
+    CitySim.news(`${F.short}, with ${Game.hero.heroName} in the front rank, beat ${FACTIONS[foe].short} in a street fight.`, 'territory');
+  },
+  step(dt) {
+    this.cdT -= dt; const S = Game.state.guild;
+    if (this.backup.length) { this.backT -= dt; if (this.backT <= 0 || this.backup.every(e => !e.alive)) { const live = this.backup.filter(e => e.alive && !e.removed); if (live.length && this.backT <= 0) toast('Your backup heads off.', '', 1500); this.dismiss(); } }
+    // followers that fall far behind catch up out of sight
+    const p = Game.player; if (p) for (const e of this.backup.concat(this.op ? this.op.allies : [])) { if (!e.alive || e.removed) continue; if (dist2D(e.pos, p.pos) > 45 && !(e.ai && e.ai.target && e.ai.target.alive && dist2D(e.ai.target.pos, e.pos) < 30)) { const q = this.near(4, 7); e.pos.copy(q); e.prev.copy(q); e.vel.set(0, 0, 0); } }
+    this.stepOp(dt);
+    if (S && S.id && Game.state.city) { const C = Game.state.city; if (C.tick - S.lastPay >= 168) { S.lastPay = C.tick; const amt = this.weeklyPay(); Economy.earn(amt, `${FACTIONS[S.id].short} weekly pay`); toast(`Payday: ${fmtCr(amt)} from ${esc(FACTIONS[S.id].short)}`, 'good', 3000); }
+      if (Factions.standing(S.id) < this.terms(S.id).join - 35) { const f = S.id; this.leave(true); toast(`${esc(FACTIONS[f].name)} threw you out.`, 'bad', 4000); CitySim.news(`${FACTIONS[f].name} expelled ${Game.hero.heroName}.`, 'city'); } }
+  },
+  markers() { const op = this.op; if (!op) return []; return [{ pos: op.at, label: `${OP_KINDS[op.kind].name} — ${FACTIONS[op.foe].short}`, kind: 'crime' }]; },
+  onTakedown(e) {
+    const S = Game.state.guild; if (!e || !e.tgt || e.src !== Game.player) return;
+    if (e.tgt.faction === 'townsfolk') { Game.state.renown = Math.max(0, Game.state.renown - 2); toast('You hurt a bystander. People saw.', 'bad', 2000); return; }
+    if (S && S.id && FACTIONS[S.id] && FACTIONS[S.id].enemies.includes(e.tgt.faction) && !e.tgt.data.op) { S.kos = (S.kos || 0) + 1; if (S.kos % 8 === 0) this.deed(1); }
+    if (S && S.id && e.tgt.faction === S.id) Factions.change(S.id, -6);
+  },
+  onCrime(e) { if (!e || !e.success) return; for (const f of ['vanguard', 'nightwatch']) Factions.change(f, 2); const S = Game.state.guild; if (S && S.id && ['police', 'civic', 'squad'].includes(FACTIONS[S.id].type) && S.id !== 'ember') { S.crimes = (S.crimes || 0) + 1; if (S.crimes % 3 === 0) this.deed(1); } },
+  clear() { this.dismiss(); if (this.op) this.endOp(false, true); this.op = null; this.cdT = 0; },
+};
+
+// ---- Interiors: any building can be walked into ----
+const INTERIOR_O = V3(12000, 0, -9000);
+const INTERIOR_KINDS = {
+  lobby: { name: 'Lobby', h: 6, floor: 0x5a5854, wall: 0x7a7670, names: ['{a} House', '{a} Tower lobby', 'The {b} Building'] },
+  office: { name: 'Offices', h: 5, floor: 0x4a4c50, wall: 0x6a6e74, names: ['{a} & {b} Offices', '{a} Holdings', '{b} Consulting'] },
+  shop: { name: 'Shop', h: 5, floor: 0x5a5048, wall: 0x7a6a58, names: ['{b} Corner Store', '{a} Pawn & Loan', 'Late-Night {b}'] },
+  bar: { name: 'Bar', h: 5, floor: 0x3a2a22, wall: 0x4a3028, names: ['The {b} Arms', '{a}\'s', 'The Drowned {b}'] },
+  warehouse: { name: 'Warehouse', h: 9, floor: 0x4a4a46, wall: 0x5a5852, names: ['{a} Freight', '{b} Cold Storage', 'Unit {n}'] },
+  apartment: { name: 'Apartments', h: 5, floor: 0x5a4a3e, wall: 0x7a6a5a, names: ['{a} Court', '{b} Mansions', 'No. {n} {b} Street'] },
+  lab: { name: 'Labs', h: 6, floor: 0x6a6e72, wall: 0xc8ccd0, names: ['{a} Research', 'Halvorsen Annex {n}', '{b} Biotech'] },
+  club: { name: 'Club', h: 7, floor: 0x1a1420, wall: 0x2a2030, names: ['Club {b}', 'The {b} Room', 'Velvet {b}'] },
+};
+const INTERIOR_BY_STYLE = {
+  downtown: [['lobby', 3], ['office', 4], ['shop', 1], ['bar', 1]], skyline: [['lobby', 3], ['office', 3], ['lab', 2]], neon: [['bar', 3], ['club', 3], ['shop', 2], ['apartment', 1]],
+  harbour: [['warehouse', 5], ['bar', 2], ['shop', 1]], ironworks: [['warehouse', 5], ['apartment', 1], ['bar', 1]], oldquarter: [['apartment', 4], ['shop', 3], ['bar', 2]],
+  greenbelt: [['shop', 2], ['lobby', 2], ['apartment', 2]], underline: [['apartment', 3], ['bar', 2], ['warehouse', 2], ['club', 1]],
+};
+const Interiors = {
+  cur: null, cache: new Map(),
+  get S() { const s = Game.state; if (!s.interiors) s.interiors = {}; return s.interiors; },
+  styleAt(x, z) { if (Offworld.loc === 'town') return Towns.styleAt(x, z); const D = City.districtAt(x, z); return D ? D.style : 'downtown'; },
+  ownerAt(x, z) { if (Offworld.loc === 'town') return Towns.ownerAt(x, z); const k = Territory.at(V3(x, 0, z)); return k ? Territory.owner(k) : null; },
+  info(b) {
+    let i = this.cache.get(b.id); if (i) return i;
+    const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, seed = hashStr(`${Math.round(b.x0)}:${Math.round(b.z0)}:${Offworld.loc === 'town' ? Towns.cur : 'nh'}`), rng = new RNG(seed);
+    const style = this.styleAt(cx, cz), kind = rng.weighted(INTERIOR_BY_STYLE[style] || INTERIOR_BY_STYLE.downtown), K = INTERIOR_KINDS[kind];
+    const name = rng.pick(K.names).replace('{a}', rng.pick(NAMES_LAST)).replace('{b}', rng.pick(STREETS)).replace('{n}', String(rng.int(2, 99)));
+    i = { seed, kind, name, cx, cz, w: b.x1 - b.x0, d: b.z1 - b.z0 }; this.cache.set(b.id, i); return i;
+  },
+  // a door is any ground-floor wall face of a real building you are standing against
+  doorAt(ch) {
+    if (this.cur || !ch.onGround || Modes.name !== MODE.ON_FOOT || ch.carrying || !(Offworld.isEarth() || Offworld.loc === 'town') || Base.interior) return null;
+    let best = null, bd = 1.7;
+    World.query(ch.pos.x - 2, ch.pos.z - 2, ch.pos.x + 2, ch.pos.z + 2, b => {
+      if (b.kind !== 'building' || b.removed || b.off || b.car) return; if (b.x1 - b.x0 < 7 || b.z1 - b.z0 < 7 || b.y1 - b.y0 < 4.5) return;
+      if (b.y0 > ch.pos.y + 0.6 || b.y0 < ch.pos.y - 1.5) return;
+      const dx = Math.max(b.x0 - ch.pos.x, 0, ch.pos.x - b.x1), dz = Math.max(b.z0 - ch.pos.z, 0, ch.pos.z - b.z1), d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = b; }
+    });
+    return best;
+  },
+  interactions(ch) {
+    const out = [];
+    if (this.cur) { const I = this.cur; if (I.door && ch.pos.distanceTo(I.door) < 3.2) out.push({ label: `Leave ${I.name}`, pri: 7, pos: I.door, act: () => this.exit() }); return out; }
+    const b = this.doorAt(ch); if (b) { const i = this.info(b); out.push({ label: `Enter ${i.name}`, pri: 3, pos: ch.pos.clone(), act: () => this.enter(b) }); }
+    return out;
+  },
+  enter(b) {
+    const i = this.info(b), p = Game.player, K = INTERIOR_KINDS[i.kind];
+    const followers = Game.chars.filter(c => c.alive && !c.removed && c !== p && c.ai && c.ai.target === p && Factions.hostile(c, p) && dist2D(c.pos, p.pos) < 30 && !c.boss && !c.immobile && !c.ship).slice(0, 5);
+    const owner = this.ownerAt(i.cx, i.cz);
+    // where you came in: step back out from the nearest face
+    const ex = clamp(p.pos.x, b.x0, b.x1), ez = clamp(p.pos.z, b.z0, b.z1); const out = V3(p.pos.x - ex, 0, p.pos.z - ez); if (out.lengthSq() < 1e-4) out.set(0, 0, 1); out.normalize();
+    const exitPos = V3(ex, p.pos.y, ez).addScaledVector(out, 1.6); exitPos.y = World.surfaceAt(exitPos.x, exitPos.z, p.pos.y + 1) + 0.1;
+    const W = clamp(i.w * 0.85, 18, 42), D = clamp(i.d * 0.8, 14, 30), H = K.h;
+    this.cur = { ...i, O: INTERIOR_O.clone(), W, D, H, owner, exit: { pos: exitPos, yaw: Math.atan2(out.x, out.z), loc: Offworld.loc }, foes: [], civs: [], t: 0, event: null, raidT: R.range(30, 70), label: `${i.name.toUpperCase()} · ${K.name.toUpperCase()}` };
+    $('fade').style.opacity = 1;
+    Timers.add(0.25, () => {
+      this.build(); const I = this.cur; if (!I) return;
+      Game.teleport(I.spawn.clone()); p.yaw = Math.PI; Cam.yaw = Math.PI; Cam.pitch = -0.1; p.vel.set(0, 0, 0);
+      for (const c of Crew.field.values()) if (c.alive) { const q = I.spawn.clone().add(V3(R.range(-3, 3), 0, R.range(-1.5, 0.5))); c.pos.copy(q); c.prev.copy(q); c.vel.set(0, 0, 0); }
+      for (const e of Guild.backup) if (e.alive && !e.removed) { const q = I.spawn.clone().add(V3(R.range(-3, 3), 0, -1)); e.pos.copy(q); e.prev.copy(q); }
+      this.populate(followers);
+      $('fade').style.opacity = 0; toast(`${esc(I.name)} — ${K.name}`, '', 1800);
+    });
+  },
+  build() {
+    this.destroyMeshes(); const I = this.cur, K = INTERIOR_KINDS[I.kind], O = I.O, W = I.W, D_ = I.D, H = I.H, rng = new RNG(I.seed), g = new T.Group(), boxes = [];
+    g.userData.offworld = true; Render.scene.add(g);
+    const wallM = new T.MeshStandardMaterial({ color: K.wall, roughness: 0.85 }), floorM = makeConcreteMaterial(K.floor);
+    const add = (x0, y0, z0, x1, y1, z1, mat, kind = 'building') => { const m = new T.Mesh(new T.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat); m.position.set(O.x + (x0 + x1) / 2, O.y + (y0 + y1) / 2, O.z + (z0 + z1) / 2); m.castShadow = m.receiveShadow = true; g.add(m); if (kind) boxes.push(World.addBox(O.x + x0, O.y + y0, O.z + z0, O.x + x1, O.y + y1, O.z + z1, kind)); return m; };
+    add(-W / 2 - 1, -1, -D_ / 2 - 1, W / 2 + 1, 0, D_ / 2 + 1, floorM);
+    add(-W / 2 - 1, H, -D_ / 2 - 1, W / 2 + 1, H + 1, D_ / 2 + 1, wallM);
+    add(-W / 2 - 1, 0, -D_ / 2 - 1, W / 2 + 1, H, -D_ / 2, wallM); add(-W / 2 - 1, 0, D_ / 2, W / 2 + 1, H, D_ / 2 + 1, wallM);
+    add(-W / 2 - 1, 0, -D_ / 2, -W / 2, H, D_ / 2, wallM); add(W / 2, 0, -D_ / 2, W / 2 + 1, H, D_ / 2, wallM);
+    const lampM = new T.MeshBasicMaterial({ color: I.kind === 'club' ? new T.Color(1.6, 0.4, 1.3) : new T.Color(1.25, 1.15, 1.0) });
+    for (let x = -W / 2 + 4; x < W / 2; x += 8) for (let z = -D_ / 2 + 4; z < D_ / 2; z += 7) add(x - 1.2, H - 0.12, z - 0.2, x + 1.2, H - 0.02, z + 0.2, lampM, null);
+    const L1 = new T.PointLight(I.kind === 'club' ? 0xff60c0 : 0xffe6c8, 70, 60, 1.4); L1.position.set(O.x, O.y + H - 1, O.z); g.add(L1);
+    const L2 = new T.PointLight(I.kind === 'club' ? 0x60a0ff : 0xc8dcff, 35, 45, 1.5); L2.position.set(O.x + W / 3, O.y + H - 1, O.z - D_ / 4); g.add(L2);
+    const mat = (c, e = 0) => new T.MeshStandardMaterial({ color: c, roughness: 0.65, metalness: 0.2, emissive: e ? new T.Color(e) : 0x000000, emissiveIntensity: e ? 1.4 : 1 });
+    const prop = (x, z, w, h, d, c, e = 0, kind = 'prop', y = 0) => { if (Math.abs(x) + w / 2 > W / 2 - 0.5 || Math.abs(z) + d / 2 > D_ / 2 - 0.5) return; if (Math.abs(x) < 3 && z > D_ / 2 - 5) return; add(x - w / 2, y, z - d / 2, x + w / 2, y + h, z + d / 2, mat(c, e), kind); };
+    // the door you came in by
+    const door = V3(O.x, O.y, O.z + D_ / 2 - 1.2); add(-1.6, 0, D_ / 2 - 0.25, 1.6, 3.2, D_ / 2, mat(0x3a2a20), null);
+    add(-1.9, 3.2, D_ / 2 - 0.3, 1.9, 3.6, D_ / 2, mat(0x222222, '#9be3a8'), null);
+    switch (I.kind) {
+      case 'lobby': prop(0, -D_ / 2 + 3, 8, 1.1, 1.6, 0x6a5a4a); for (const sx of [-1, 1]) for (const sz of [-1, 1]) prop(sx * W / 4, sz * D_ / 5, 1.2, H, 1.2, 0x8a8680, 0, 'building'); for (let k = 0; k < 4; k++) prop(rng.range(-W / 2 + 3, W / 2 - 3), rng.range(-D_ / 4, D_ / 4), 2.6, 0.5, 0.9, 0x3a3a40); break;
+      case 'office': for (let x = -W / 2 + 4; x < W / 2 - 3; x += 5) for (let z = -D_ / 2 + 4; z < D_ / 2 - 6; z += 4.5) { prop(x, z, 2.2, 0.8, 1.1, 0x8a7a68); prop(x, z - 0.9, 2.6, 1.5, 0.12, 0x9aa0a8, 0, 'thin'); if (rng.chance(0.5)) prop(x, z, 0.6, 0.4, 0.05, 0x101418, '#7fd0ff', 'thin', 0.8); } break;
+      case 'shop': prop(W / 2 - 4, D_ / 2 - 6, 4, 1.1, 1.2, 0x5a4a3a); for (let x = -W / 2 + 3; x < W / 2 - 6; x += 4) prop(x, -2, 0.9, 2.1, D_ - 12, rng.pick([0x8a3a2a, 0x2a5a8a, 0x3a7a4a, 0xb08a2a])); break;
+      case 'bar': prop(-W / 2 + 2, 0, 1.2, 1.1, D_ - 8, 0x4a2a1a); prop(-W / 2 + 0.6, 0, 0.5, 2.4, D_ - 8, 0x2a1a12, '#ffb347', 'thin'); for (let k = 0; k < 6; k++) prop(rng.range(-W / 2 + 6, W / 2 - 3), rng.range(-D_ / 2 + 3, D_ / 2 - 6), 1.4, 0.9, 1.4, 0x5a3a28); break;
+      case 'club': prop(0, -D_ / 2 + 2.5, W * 0.5, 0.8, 3, 0x2a1a30, '#ff60c0'); prop(W / 2 - 2, 0, 1.2, 1.1, D_ * 0.5, 0x3a2a40); for (let k = 0; k < 5; k++) prop(rng.range(-W / 2 + 3, W / 2 - 5), rng.range(-2, D_ / 2 - 6), 1.6, 0.8, 1.6, 0x2a2030); break;
+      case 'warehouse': for (let k = 0; k < 16; k++) { const s = rng.pick([1.6, 2, 2.4]), h = s * rng.int(1, 3); prop(rng.range(-W / 2 + 3, W / 2 - 3), rng.range(-D_ / 2 + 3, D_ / 2 - 6), s, h, s, rng.pick([0x7a5a3a, 0x6a4a2a, 0x3a5a6a, 0x8a3a2a])); } for (const x of [-W / 2 + 2, W / 2 - 2]) prop(x, -D_ / 6, 1.4, H - 2, D_ * 0.5, 0x4a4a4e, 0, 'building'); break;
+      case 'apartment': for (let x = -W / 2 + 7; x < W / 2 - 4; x += 7) { prop(x, -D_ / 4 - 2, 0.3, H, D_ / 2 - 2, K.wall, 0, 'building'); } for (let k = 0; k < 5; k++) prop(rng.range(-W / 2 + 3, W / 2 - 3), rng.range(-D_ / 2 + 2, D_ / 2 - 6), 2.4, 0.8, 1.1, rng.pick([0x5a3a3a, 0x3a4a5a, 0x6a5a3a])); break;
+      case 'lab': for (let x = -W / 2 + 4; x < W / 2 - 3; x += 6) prop(x, -D_ / 4, 1.4, 1, D_ / 3, 0xc8ccd0); for (let k = 0; k < 4; k++) prop(-W / 2 + 4 + k * 5, -D_ / 2 + 1.5, 1.4, 2.8, 1.4, 0x203040, '#7fd0ff'); break;
+    }
+    I.g = g; I.boxes = boxes; I.door = door; I.spawn = V3(O.x, O.y + 0.1, O.z + D_ / 2 - 3);
+  },
+  civ(pos, group, passive = true) { const e = Enemies.spawn('civilian', pos, 'townsfolk', group, { passive, look: civLook(R) }); e.ai.anchorPos = pos.clone(); e.data.civ = true; return e; },
+  spot(I, zMin = -0.45, zMax = 0.25) { const p = V3(I.O.x + R.range(-I.W / 2 + 2.5, I.W / 2 - 2.5), I.O.y, I.O.z + R.range(I.D * zMin, I.D * zMax)); p.y = World.surfaceAt(p.x, p.z, I.O.y + 3) + 0.05; return p; },
+  populate(followers) {
+    const I = this.cur, S = this.S, today = Sky.day, rec = S[I.seed];
+    const gang = I.owner && FACTIONS[I.owner] && ['gang', 'cult'].includes(FACTIONS[I.owner].type) ? I.owner : null;
+    const cleared = rec && rec.cleared != null && today - rec.cleared < 3;
+    let ev = 'calm';
+    if (!cleared && (Game.state.flags.originDone)) { const r = new RNG(I.seed ^ (today * 7919)).next(); if (gang && r < 0.35) ev = 'hideout'; else if (['shop', 'bar', 'lobby', 'club'].includes(I.kind) && r < 0.55) ev = 'robbery'; else if (!gang && I.kind === 'warehouse' && r < 0.4) ev = 'hideout'; }
+    I.event = ev; I.gang = gang || R.pick(['tide', 'kings', 'lantern']);
+    const nCiv = ev === 'hideout' ? 0 : ev === 'robbery' ? 3 : R.int(2, 5);
+    for (let k = 0; k < nCiv; k++) I.civs.push(this.civ(this.spot(I), 'indoor'));
+    if (ev === 'robbery') { for (let k = 0; k < R.int(3, 4); k++) this.foe(I, R.pick(['thug', 'gunner', 'gunner']), this.spot(I, -0.4, 0.1), true); Sfx.siren(); toast('<b>Armed robbery in progress!</b>', 'bad', 2600); }
+    if (ev === 'hideout') { const n = R.int(5, 8); for (let k = 0; k < n; k++) this.foe(I, R.weighted(FACTION_ROSTER[I.gang] || FACTION_ROSTER.kings), this.spot(I, -0.45, 0), false); toast(`<b>${esc(FACTIONS[I.gang].short)} hideout.</b> They were not expecting company.`, 'bad', 3000); }
+    // anyone who was chasing you comes through the door after you
+    if (followers.length) Timers.add(2.2, () => { if (this.cur !== I) return; for (const c of followers) { if (c.removed || !c.alive) continue; const q = I.door.clone().add(V3(R.range(-1.5, 1.5), 0.1, -1)); c.pos.copy(q); c.prev.copy(q); c.vel.set(0, 0, 0); if (c.ai) { c.ai.target = Game.player; c.ai.alert = true; c.ai.home = q.clone(); } I.foes.push(c); I.followed = true; } toast('They followed you in!', 'bad', 1800); Sfx.impact && Sfx.impact(1, true); });
+  },
+  foe(I, type, pos, alert) { const e = Enemies.spawn(type, pos, I.gang, 'indoor', { hostile: true, alert }); e.data.indoor = true; if (e.ai) e.ai.home = pos.clone(); I.foes.push(e); return e; },
+  step(dt) {
+    const I = this.cur; if (!I || !I.g) return; I.t += dt;
+    const p = Game.player; if (!p) return;
+    // knocked out, carried off, or teleported away: the room goes with you
+    if (p.pos.distanceTo(I.O) > 150) { this.destroy(); return; }
+    if (I.foes.length && I.foes.every(e => !e.alive) && !I.done) this.resolve();
+    // a quiet room on contested ground does not always stay quiet
+    if (I.event === 'calm' && !I.raided && I.owner && FACTIONS[I.owner] && !['gang', 'cult'].includes(FACTIONS[I.owner].type) && I.t > I.raidT) {
+      I.raided = true; if (new RNG(I.seed ^ Sky.day).next() < 0.3) { I.event = 'raid'; I.gang = R.pick(['tide', 'kings', 'lantern']); for (let k = 0; k < R.int(3, 5); k++) this.foe(I, R.weighted(FACTION_ROSTER[I.gang]), I.door.clone().add(V3(R.range(-2, 2), 0.1, -R.range(1, 3))), true); Sfx.siren(); toast(`The door bursts open — <b>${esc(FACTIONS[I.gang].short)}</b>!`, 'bad', 2600); }
+    }
+  },
+  resolve() {
+    const I = this.cur; I.done = true; const n = I.foes.length, big = I.event === 'hideout';
+    Progress.addXp(big ? 120 : 60); Game.state.renown += big ? 4 : 2; Factions.change(I.gang, big ? -5 : -3); Factions.change('civic', 2); if (Offworld.isEarth()) Factions.change('nhpd', 1);
+    const cash = Math.round((big ? 500 : 200) + n * R.range(40, 90)); Economy.earn(cash, 'Recovered cash');
+    if (R.chance(big ? 0.6 : 0.25)) Loot.spawnGear(Game.player.pos.clone().add(V3(0, 0.5, -1.5)), rollGear(R.pick(GEAR_SLOTS), 0, R, Game.state.prog.level));
+    this.S[I.seed] = { cleared: Sky.day };
+    const C = Game.state.city; if (C && C.f && C.f[I.gang]) C.f[I.gang].manpower = Math.max(0, (C.f[I.gang].manpower || 0) - n);
+    if (big && Offworld.isEarth()) { const k = Territory.at(V3(I.cx, 0, I.cz)); const b = k && Territory.get(k); if (b && b.o === I.gang) { b.c = Math.max(5, b.c - 35); CitySim.news(`Someone cleared out a ${FACTIONS[I.gang].short} hideout in ${(City.districtAt(I.cx, I.cz) || DISTRICTS[0]).name}.`, 'territory'); } }
+    if (big && Offworld.loc === 'town') Towns.weaken(I.cx, I.cz, I.gang);
+    for (const c of I.civs) if (c.alive && !c.removed && c.ai) { c.ai.passive = true; }
+    const S = Game.state.guild; if (S && S.id && FACTIONS[S.id].enemies.includes(I.gang)) Guild.deed(1);
+    Bus.emit(EV.CRIME_DONE, { crime: { kind: 'indoor', faction: I.gang }, success: true });
+    toast(`${big ? 'Hideout cleared' : 'Building secured'} — ${fmtCr(cash)} recovered · +${big ? 4 : 2} renown`, 'good', 3200);
+  },
+  exit() {
+    const I = this.cur; if (!I) return; const ex = I.exit;
+    $('fade').style.opacity = 1;
+    Timers.add(0.2, () => {
+      this.destroy();
+      Game.teleport(ex.pos.clone()); Game.player.yaw = ex.yaw; Cam.yaw = ex.yaw; Game.player.vel.set(0, 0, 0);
+      for (const c of Crew.field.values()) if (c.alive) { const q = ex.pos.clone().add(V3(R.range(-2, 2), 0, R.range(-2, 2))); q.y = World.surfaceAt(q.x, q.z, ex.pos.y + 2) + 0.1; c.pos.copy(q); c.prev.copy(q); }
+      for (const e of Guild.backup) if (e.alive && !e.removed) { const q = ex.pos.clone().add(V3(R.range(-2, 2), 0, R.range(-2, 2))); q.y = World.surfaceAt(q.x, q.z, ex.pos.y + 2) + 0.1; e.pos.copy(q); e.prev.copy(q); }
+      $('fade').style.opacity = 0;
+    });
+  },
+  destroyMeshes() { const I = this.cur; if (!I || !I.g) return; Render.scene.remove(I.g); I.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); for (const b of I.boxes) World.removeBox(b); I.g = null; I.boxes = []; },
+  destroy() {
+    const I = this.cur; if (!I) return; this.destroyMeshes();
+    for (const c of I.civs.concat(I.foes)) if (!c.removed) Game.removeChar(c);
+    this.cur = null;
+  },
+  markers() { const I = this.cur; if (!I || !I.door) return []; return [{ pos: I.door, label: 'Exit', kind: 'clinic' }]; },
+};
+
+// ---- Towns: other cities on the coast, reached by rail, coach, ferry and maglev ----
+const TOWN_O = V3(7000, 0, 6000);
+const TOWNS = {
+  portsable: { name: 'Port Sable', blurb: 'A rain-soaked port of cranes and canneries. The Tide Syndicate owns the docks.', seed: 101, d: 5, districts: [{ name: 'Cannery Row', style: 'harbour', w: 2 }, { name: 'Saltmarket', style: 'oldquarter', w: 2 }, { name: 'The Gaslight', style: 'neon', w: 2 }], gangs: [['tide', 6], ['kings', 2], ['civic', 2]], modes: ['rail', 'ferry'] },
+  ashgrove: { name: 'Ashgrove', blurb: 'A mill town gone to rust. The Ninth Street Kings recruit here.', seed: 202, d: 5, districts: [{ name: 'The Mills', style: 'ironworks', w: 3 }, { name: 'Old Ashgrove', style: 'oldquarter', w: 2 }], gangs: [['kings', 6], ['civic', 3], ['choir', 1]], modes: ['rail', 'bus'] },
+  vantor: { name: 'Vantor Heights', blurb: 'A corporate new-town of mirrored towers and private security.', seed: 303, d: 5, districts: [{ name: 'The Spire', style: 'skyline', w: 3 }, { name: 'Vantor Centre', style: 'downtown', w: 3 }], gangs: [['halvorsen', 5], ['corvane', 4], ['lantern', 1]], modes: ['rail', 'bus', 'maglev'] },
+  lumen: { name: 'Lumen Bay', blurb: 'A casino strip on a bay of lights. The Lantern House runs the tables.', seed: 404, d: 5, districts: [{ name: 'The Strip', style: 'neon', w: 3 }, { name: 'Bayside Park', style: 'greenbelt', w: 1 }, { name: 'Harbour Lights', style: 'downtown', w: 2 }], gangs: [['lantern', 6], ['tide', 2], ['civic', 2]], modes: ['ferry'] },
+};
+const TRANSIT_MODES = { rail: { name: 'Rail', vehicle: 'train', verb: 'Board the train' }, bus: { name: 'Coach', vehicle: 'coach', verb: 'Board the coach' }, ferry: { name: 'Ferry', vehicle: 'ferry', verb: 'Board the ferry' }, maglev: { name: 'Maglev', vehicle: 'maglev', verb: 'Board the maglev' } };
+const TRANSIT = [
+  { a: 'halcyon', b: 'portsable', mode: 'rail', hours: 2, fare: 60 }, { a: 'halcyon', b: 'ashgrove', mode: 'rail', hours: 1, fare: 40 }, { a: 'halcyon', b: 'ashgrove', mode: 'bus', hours: 2, fare: 15 },
+  { a: 'halcyon', b: 'lumen', mode: 'ferry', hours: 3, fare: 50 }, { a: 'halcyon', b: 'vantor', mode: 'maglev', hours: 1, fare: 120 }, { a: 'portsable', b: 'vantor', mode: 'rail', hours: 2, fare: 60 },
+  { a: 'portsable', b: 'lumen', mode: 'ferry', hours: 2, fare: 40 }, { a: 'ashgrove', b: 'vantor', mode: 'bus', hours: 3, fare: 20 }, { a: 'portsable', b: 'ashgrove', mode: 'rail', hours: 2, fare: 50 },
+];
+const Transit = {
+  waypoint: null,
+  here() { return Offworld.loc === 'town' && Towns.cur ? Towns.cur : 'halcyon'; },
+  cityName(id) { return id === 'halcyon' ? CITY_NAME : TOWNS[id].name; },
+  routes(from = this.here()) { return TRANSIT.filter(r => r.a === from || r.b === from).map(r => ({ ...r, to: r.a === from ? r.b : r.a })); },
+  // New Halcyon's stations sit on real streets: Central under the elevated line, the coach depot in the Ironworks, the ferry at the Harbour piers
+  nhStations() {
+    if (this._nh) return this._nh; const G = World.grid0, tr = World.train, out = [];
+    if (tr) { const z = G.z + 5 * G.P + G.P * 0.5; out.push({ id: 'central', name: 'Halcyon Central', modes: ['rail', 'maglev'], pos: V3(tr.x + 5, 0, z) }); }
+    out.push({ id: 'depot', name: 'Ironworks Coach Depot', modes: ['bus'], pos: V3(G.x + 2 * G.P + G.P / 2, 0, G.z + 1 * G.P + 4) });
+    const pier = World.piers && World.piers[3]; if (pier) out.push({ id: 'ferry', name: 'Harbour Ferry Terminal', modes: ['ferry'], pos: V3((pier.x0 + pier.x1) / 2, 0.6, pier.z1 - 8) });
+    return (this._nh = out);
+  },
+  stations() { return this.here() === 'halcyon' ? this.nhStations() : Towns.stations; },
+  stationFor(mode, city = this.here()) { const L = city === 'halcyon' ? this.nhStations() : Towns.cur === city ? Towns.stations : []; return L.find(s => s.modes.includes(mode)) || L[0] || null; },
+  atStation(ch) { if (!ch) return null; for (const s of this.stations()) if (dist2D(s.pos, ch.pos) < 7 && Math.abs(s.pos.y - ch.pos.y) < 4) return s; return null; },
+  interactions(ch) {
+    if (Interiors.cur || Modes.name !== MODE.ON_FOOT || !(Offworld.isEarth() || Offworld.loc === 'town')) return [];
+    const s = this.atStation(ch); if (!s) return [];
+    return [{ label: `${s.name} — tickets`, pri: 6, pos: s.pos, act: () => this.ticketDesk(s) }];
+  },
+  ticketDesk(s) {
+    const here = this.here(), routes = this.routes().filter(r => s.modes.includes(r.mode));
+    Dialog.open({ title: s.name, who: s.modes.map(m => TRANSIT_MODES[m].name).join(' · '), text: `<p>Departures from ${esc(this.cityName(here))}.</p>${Contracts.active && here === 'halcyon' ? '<p class="faint" style="font-size:11.5px">Leaving the city drops your current contract.</p>' : ''}`,
+      choices: routes.map(r => ({ label: `${TRANSIT_MODES[r.mode].name} to ${this.cityName(r.to)} — ${r.hours} h · ${fmtCr(r.fare)}`, cls: r.to === 'halcyon' ? 'primary' : '', fn: () => this.ride(r), dis: Game.state.econ.bank < r.fare })).concat([{ label: 'Not today', fn: () => {} }]) });
+  },
+  ride(r, cab = false) {
+    if (!Game.state.flags.originDone) { toast('Not yet — the city needs you.', 'bad'); return false; }
+    if (Modes.name === MODE.VEHICLE || Driving.car) { toast('Get out of the car first.', 'bad'); return false; }
+    if (!(Offworld.isEarth() || Offworld.loc === 'town')) { toast('Transit runs on Earth.', 'bad'); return false; }
+    const cost = r.fare + (cab ? 25 : 0); if (!Economy.spend(cost, `${TRANSIT_MODES[r.mode].name} fare`)) { toast('Not enough credits', 'bad'); return false; }
+    if (Menus.cur) Menus.hide();
+    Guild.dismiss(); if (Guild.op) Guild.endOp(false, true); if (Interiors.cur) Interiors.destroy();
+    $('fade').style.opacity = 1; Sfx.sonic();
+    Timers.add(0.6, () => {
+      const h = CitySim.headless; CitySim.headless = true; for (let i = 0; i < r.hours; i++) { CitySim.tickHour(); Sky.hour += 1; if (Sky.hour >= 24) { Sky.hour -= 24; Sky.day++; } } CitySim.headless = h;
+      this.arrive(r.to, r.mode);
+      $('fade').style.opacity = 0;
+      toast(`${r.hours} hour${r.hours > 1 ? 's' : ''} by ${TRANSIT_MODES[r.mode].vehicle}. <b>${esc(this.cityName(r.to))}</b>${r.to !== 'halcyon' ? ' — ' + esc(TOWNS[r.to].blurb) : ''}`, 'gold', 5000);
+      Game.save();
+    });
+    return true;
+  },
+  arrive(to, mode = 'rail') {
+    const T_ = Game.state.travel || (Game.state.travel = { at: 'halcyon', visits: {} }); T_.visits = T_.visits || {};
+    if (to === 'halcyon') {
+      if (Offworld.loc === 'town') { Towns.clear(); Offworld.showEarth(); Offworld.loc = 'earth'; Offworld.setZone(null); }
+      const s = this.stationFor(mode, 'halcyon'); Game.teleport(s.pos.clone().add(V3(0, 0.2, -10))); Modes.set(MODE.ON_FOOT);
+    } else {
+      if (Offworld.isEarth()) Offworld.leaveEarth(); else if (Offworld.loc === 'town') Towns.clear();
+      Towns.build(to); Offworld.loc = 'town'; Offworld.setZone(Towns.zone);
+      const s = Towns.stations.find(x => x.modes.includes(mode)) || Towns.stations[0]; Game.teleport(s.pos.clone().add(V3(0, 0.2, -12))); Cam.yaw = Math.PI; Modes.set(MODE.ON_FOOT);
+    }
+    const p = Game.player; for (const c of Crew.field.values()) if (c.alive) { const q = p.pos.clone().add(V3(R.range(-3, 3), 0, R.range(-3, 3))); q.y = World.surfaceAt(q.x, q.z, p.pos.y + 2) + 0.1; c.pos.copy(q); c.prev.copy(q); c.vel.set(0, 0, 0); }
+    T_.at = to; T_.visits[to] = (T_.visits[to] || 0) + 1; this.waypoint = null; Bus.emit('transit.arrived', { city: to });
+  },
+  markers() { return this.waypoint ? [{ pos: this.waypoint.pos, label: this.waypoint.name, kind: 'contract' }] : []; },
+};
+const Towns = {
+  cur: null, root: null, boxes: [], zone: null, stations: [], blocks: [], civs: [], gangs: [], crime: null, crimeT: 40, popT: 0,
+  def() { return TOWNS[this.cur]; },
+  get S() { const s = Game.state; if (!s.towns) s.towns = {}; return s.towns; },
+  build(id) {
+    this.clear(); const TD = TOWNS[id]; this.cur = id; const W_ = CONFIG.world, P = W_.blockSize + W_.street, S_ = W_.street, O = TOWN_O.clone();
+    const BX = TD.districts.reduce((a, d) => a + d.w, 0), BZ = TD.d;
+    const g = this.root = new T.Group(); g.userData.offworld = true; Render.scene.add(g);
+    const saved = World.grid0, savedStacks = City.stacks; World.grid0 = { x: O.x, z: O.z, P, BX, BZ, S: S_ };
+    let gx = GRID.GX0; this.districts = [];
+    for (const [i, d] of TD.districts.entries()) {
+      const D = { id: `${id}_${i}`, name: d.name, gx, gz: GRID.GZ0, w: d.w, d: BZ, style: d.style, natural: [] };
+      const L = CityGen.layout(D, TD.seed + i * 17, { town: true }); D.rect = CityGen.districtRect(D); this.districts.push(D);
+      for (const b of L.boxes) this.boxes.push(World.addBox(b[0], b[1], b[2], b[3], b[4], b[5], b[6]));
+      City.makeBuildingMesh(g, L.buildings); City.makeSidewalks(g, L.sidewalks); City.makeRoofProps(g, L.roof); City.makeLamps(g, L.lamps); City.makeNeon(g, L.neon); City.makeThin(g, L.thin); City.makeDecor(g, L);
+      for (const b of L.blocks) this.blocks.push({ ...b, district: D.name, style: d.style });
+      gx += d.w;
+    }
+    World.grid0 = saved; City.stacks = savedStacks;
+    // ground (the same street shader as New Halcyon), a distant skyline, and the zone that bounds it
+    const gm = makeGroundMaterial({ x: O.x, z: O.z }, P, S_), far = 900, BW = BX * P, BD = BZ * P;
+    const ground = new T.Mesh(new T.PlaneGeometry(BW + far * 2, BD + far * 2), gm); ground.rotation.x = -Math.PI / 2; ground.position.set(O.x + BW / 2, 0, O.z + BD / 2); ground.receiveShadow = true; g.add(ground);
+    City.buildingMesh = null;
+    this.zone = { x0: O.x - far, x1: O.x + BW + far, z0: O.z - far, z1: O.z + BD + far, grav: 1, ground: () => 0, water: null };
+    this.rect = { x0: O.x - S_ / 2, x1: O.x + BW + S_ / 2, z0: O.z - S_ / 2, z1: O.z + BD + S_ / 2 };
+    // block owners: the town's gangs, plus whatever you have taken back
+    const st = this.S[id] || (this.S[id] = { o: {} });
+    for (const b of this.blocks) { const k = b.gx + ',' + b.gz; b.k = k; b.o = st.o[k] || new RNG(TD.seed * 31 + hashStr(k)).weighted(TD.gangs); }
+    // stations along the south edge street
+    this.stations = []; const zS = O.z + BZ * P, used = new Set(TRANSIT.filter(r => r.a === id || r.b === id).map(r => r.mode));
+    const groups = [['rail', 'maglev'], ['bus'], ['ferry']].map(ms => ms.filter(m => used.has(m))).filter(ms => ms.length);
+    groups.forEach((ms, i) => { const x = O.x + (i + 1) * BW / (groups.length + 1); const name = ms.includes('ferry') ? `${TD.name} Ferry Pier` : ms.includes('bus') ? `${TD.name} Coach Station` : `${TD.name} Station`; this.stations.push({ id: ms.join('+'), name, modes: ms, pos: V3(x, 0, zS) }); this.stationMesh(g, V3(x, 0, zS), ms); });
+    this.civs = []; this.gangs = []; this.crime = null; this.crimeT = R.range(25, 45); this.popT = 0;
+  },
+  stationMesh(g, p, modes) {
+    const m = (c, e) => new T.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.3, emissive: e ? new T.Color(e) : 0x000000, emissiveIntensity: e ? 1.6 : 1 });
+    const plat = new T.Mesh(new T.BoxGeometry(14, 0.3, 5), m(0x5a5852)); plat.position.set(p.x, p.y + 0.15, p.z + 4); plat.receiveShadow = true; g.add(plat);
+    const roof = new T.Mesh(new T.BoxGeometry(14, 0.25, 5), m(0x2a2c30)); roof.position.set(p.x, p.y + 4.6, p.z + 4); roof.castShadow = true; g.add(roof);
+    for (const ox of [-6, 6]) { const post = new T.Mesh(new T.CylinderGeometry(0.12, 0.12, 4.4, 6), m(0x2a2c30)); post.position.set(p.x + ox, p.y + 2.3, p.z + 5.8); g.add(post); }
+    const sign = new T.Mesh(new T.BoxGeometry(5, 0.9, 0.15), m(0x14181c, modes.includes('ferry') ? '#7fd0ff' : modes.includes('bus') ? '#ffd27a' : '#9be3a8')); sign.position.set(p.x, p.y + 3.6, p.z + 1.6); g.add(sign);
+  },
+  styleAt(x, z) { const D = (this.districts || []).find(D => x >= D.rect.x0 && x < D.rect.x1 && z >= D.rect.z0 && z < D.rect.z1); return D ? D.style : 'downtown'; },
+  blockAt(x, z) { let best = null, bd = 1e9; for (const b of this.blocks) { const d = Math.hypot(b.x - x, b.z - z); if (d < bd) { bd = d; best = b; } } return bd < 80 ? best : null; },
+  ownerAt(x, z) { const b = this.blockAt(x, z); return b ? b.o : null; },
+  weaken(x, z, gang) { const b = this.blockAt(x, z); if (!b || b.o !== gang) return; b.o = 'civic'; this.S[this.cur].o[b.k] = 'civic'; toast(`${esc(FACTIONS[gang].short)} lost their hold on this block of ${esc(this.def().name)}.`, 'good', 3000); },
+  label() { const p = Game.player, D = p && (this.districts || []).find(D => p.pos.x >= D.rect.x0 && p.pos.x < D.rect.x1 && p.pos.z >= D.rect.z0 && p.pos.z < D.rect.z1); const b = p && this.blockAt(p.pos.x, p.pos.z); return `${this.def().name.toUpperCase()}${D ? ' · ' + D.name.toUpperCase() : ''}${b && FACTIONS[b.o] ? ' · ' + FACTIONS[b.o].short : ''}`; },
+  clear() {
+    for (const c of this.civs.concat(this.gangs)) if (!c.removed) Game.removeChar(c); this.civs = []; this.gangs = [];
+    if (this.crime) { for (const e of this.crime.foes.concat(this.crime.victims)) if (!e.removed) Game.removeChar(e); this.crime = null; }
+    for (const b of this.boxes) World.removeBox(b); this.boxes = [];
+    if (this.root) { Render.scene.remove(this.root); this.root.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); this.root = null; }
+    this.blocks = []; this.stations = []; this.districts = []; this.cur = null; this.zone = null;
+  },
+  sidewalk(near, r0, r1) {
+    for (let k = 0; k < 12; k++) {
+      const b = R.pick(this.blocks); if (!b || b.park) continue; const a = R.next() * TAU, rr = R.range(r0, r1);
+      const target = near.clone().add(V3(Math.cos(a) * rr, 0, Math.sin(a) * rr)); const bb = this.blockAt(target.x, target.z); if (!bb) continue;
+      const B = CONFIG.world.blockSize, side = R.int(0, 3), t = R.range(-B / 2 + 3, B / 2 - 3), off = B / 2 - 1.8;
+      const p = V3(bb.x + (side < 2 ? t : side === 2 ? -off : off), 0, bb.z + (side >= 2 ? t : side === 0 ? -off : off)); p.y = World.surfaceAt(p.x, p.z, 2) + 0.05;
+      let blocked = false; World.query(p.x - 0.5, p.z - 0.5, p.x + 0.5, p.z + 0.5, o => { if (o.kind === 'building' && p.y < o.y1 && p.y + 1.8 > o.y0) blocked = true; }); if (!blocked) return p;
+    }
+    return null;
+  },
+  step(dt) {
+    if (!this.cur || !Game.player) return; const p = Game.player;
+    // bounded like a landing zone — and the interior of a building is not in town
+    if (!Interiors.cur) for (const ch of Game.chars) { if (ch.removed || ch.ship) continue; const Z = this.zone; if (ch.pos.x < Z.x0 + 30 || ch.pos.x > Z.x1 - 30 || ch.pos.z < Z.z0 + 30 || ch.pos.z > Z.z1 - 30) { ch.pos.x = clamp(ch.pos.x, Z.x0 + 30, Z.x1 - 30); ch.pos.z = clamp(ch.pos.z, Z.z0 + 30, Z.z1 - 30); if (ch === p && (this.edgeT || 0) < Game.time) { this.edgeT = Game.time + 5; toast('Open country from here — the road out is by transit.', '', 2000); } } }
+    if (Interiors.cur) return;
+    this.popT -= dt; if (this.popT <= 0) { this.popT = 1.5; this.populate(); }
+    if (Game.state.flags.originDone) this.stepCrime(dt);
+  },
+  populate() {
+    const p = Game.player.pos;
+    for (const list of [this.civs, this.gangs]) for (let i = list.length - 1; i >= 0; i--) { const c = list[i]; if (c.removed || !c.alive && c.downT > 8 || dist2D(c.pos, p) > 170) { if (!c.removed) Game.removeChar(c); list.splice(i, 1); } }
+    while (this.civs.length < 12) { const q = this.sidewalk(p, 30, 110); if (!q) break; const c = Interiors.civ(q, 'town', false); c.ai.passive = false; this.civs.push(c); }
+    if (this.gangs.length < 6) {
+      const q = this.sidewalk(p, 50, 120); const b = q && this.blockAt(q.x, q.z);
+      if (b && FACTIONS[b.o] && ['gang', 'cult', 'corp'].includes(FACTIONS[b.o].type) && FACTION_ROSTER[b.o]) for (let k = 0; k < R.int(2, 3); k++) { const r = q.clone().add(V3(R.range(-2, 2), 0, R.range(-2, 2))); r.y = World.surfaceAt(r.x, r.z, q.y + 2) + 0.05; const e = Enemies.spawn(R.weighted(FACTION_ROSTER[b.o]), r, b.o, 'townpatrol', {}); e.ai.home = r.clone(); this.gangs.push(e); }
+    }
+  },
+  stepCrime(dt) {
+    const c = this.crime, p = Game.player;
+    if (!c) { this.crimeT -= dt; if (this.crimeT > 0) return; this.crimeT = R.range(45, 90); const at = this.sidewalk(p.pos, 40, 90); if (!at) return;
+      const gangs = this.def().gangs.filter(g => FACTIONS[g[0]] && ['gang', 'cult'].includes(FACTIONS[g[0]].type)); const f = gangs.length ? R.weighted(gangs) : 'kings', kind = R.chance(0.55) ? 'mugging' : 'robbery';
+      const cr = this.crime = { kind, f, at, foes: [], victims: [], t: 0, woke: false };
+      cr.victims.push(Interiors.civ(at.clone().add(V3(0.8, 0, 0.6)), 'towncrime'));
+      for (let k = 0; k < (kind === 'mugging' ? R.int(1, 2) : R.int(3, 4)); k++) { const q = at.clone().add(V3(R.range(-2.5, 2.5), 0, R.range(-2.5, 2.5))); q.y = World.surfaceAt(q.x, q.z, at.y + 2) + 0.05; const e = Enemies.spawn(kind === 'mugging' ? 'thug' : R.pick(['thug', 'gunner', 'gunner']), q, f, 'towncrime', { hostile: true }); e.ai.passive = true; e.ai.anchorPos = q.clone(); cr.foes.push(e); }
+      if (kind === 'robbery') Sfx.siren(); toast(kind === 'mugging' ? 'Mugging reported nearby' : 'Armed robbery in progress', '', 2200); return; }
+    c.t += dt;
+    if (!c.woke && c.foes.some(e => e.alive && (dist2D(e.pos, p.pos) < 20 || Game.time - (e.lastHitT || -9) < 0.5))) { c.woke = true; for (const e of c.foes) if (e.ai) { e.ai.passive = false; e.ai.alert = true; } }
+    if (c.foes.every(e => !e.alive)) { this.crime = null; Progress.addXp(45); Game.state.renown += 2; Factions.change(c.f, -3); Factions.change('civic', 2); toast(`Crime stopped in ${esc(this.def().name)} — +2 renown`, 'good', 2600); Bus.emit(EV.CRIME_DONE, { crime: { kind: c.kind, faction: c.f }, success: true }); Timers.add(6, () => { for (const e of c.foes.concat(c.victims)) if (!e.removed) Game.removeChar(e); }); return; }
+    if ((c.t > 150 && !c.woke) || dist2D(c.at, p.pos) > 400) { for (const e of c.foes.concat(c.victims)) if (!e.removed) Game.removeChar(e); this.crime = null; }
+  },
+  interactions(ch) { return []; },
+  markers() {
+    if (!this.cur) return []; const out = this.stations.map(s => ({ pos: s.pos, label: s.name, kind: 'clinic' }));
+    if (this.crime) out.push({ pos: this.crime.at, label: this.crime.kind === 'mugging' ? 'Mugging' : 'Robbery', kind: 'crime' }); return out;
+  },
+  clinicPos() { return (this.stations[0] ? this.stations[0].pos : TOWN_O).clone().add(V3(0, 0.2, -12)); },
+};
+
+// ---- glue: steps, interactions, markers, saves, phone tabs ----
+const Worlds = {
+  booted: false,
+  boot() {
+    if (this.booted) return; this.booted = true;
+    Interact.register(ch => [...Interiors.interactions(ch), ...Transit.interactions(ch)]);
+    for (const s of Transit.nhStations()) Towns.stationMesh(City.group, s.pos, s.modes);
+    Bus.on(EV.TAKEDOWN, e => Guild.onTakedown(e)); Bus.on(EV.CRIME_DONE, e => Guild.onCrime(e));
+  },
+  // where the hero 'is' for distance checks — the street door while inside a building
+  anchor() { return Interiors.cur ? Interiors.cur.exit.pos : Game.player.pos; },
+  step(dt) { Interiors.step(dt); if (Offworld.loc === 'town') Towns.step(dt); Guild.step(dt); const w = Transit.waypoint; if (w && Game.player && dist2D(w.pos, Game.player.pos) < 8) Transit.waypoint = null; },
+  markers() { return [...Guild.markers(), ...Interiors.markers(), ...Transit.markers(), ...(Offworld.loc === 'town' ? Towns.markers() : [])]; },
+  // a save made in a town or inside a building wakes you somewhere solid
+  serialize(S) {
+    S.travel = Object.assign(S.travel || { visits: {} }, { at: Transit.here() });
+    if (S.player && Interiors.cur) S.player.pos = Interiors.cur.exit.pos.toArray().map(v => +v.toFixed(2));
+    if (S.player && Offworld.loc === 'town') { const s = Transit.nhStations()[0]; if (s) S.player.pos = s.pos.clone().add(V3(0, 0.2, 2)).toArray().map(v => +v.toFixed(2)); }
+  },
+  clear() { Guild.clear(); Interiors.destroy(); if (Towns.cur) Towns.clear(); Transit.waypoint = null; Transit._nh = null; },
+};
+const _gameStart = Game.start, _gameTeardown = Game.teardown, _gameSimStep = Game.simStep;
+Game.start = function (state, isNew) {
+  const at = state.travel && state.travel.at; Worlds.boot(); _gameStart.call(this, state, isNew); if (at && at !== 'halcyon' && TOWNS[at] && state.galaxy.loc.kind === 'earth') Timers.add(0.15, () => { Transit.arrive(at, 'rail'); toast(`Back in ${esc(TOWNS[at].name)}.`, '', 2000); });
+};
+Game.teardown = function () { Worlds.clear(); return _gameTeardown.call(this); };
+Game.simStep = function (dt) { _gameSimStep.call(this, dt); if (this.state && this.state.flags.originDone) Worlds.step(dt); };
+const _offLabel = Offworld.label;
+Offworld.label = function () { return this.loc === 'town' && Towns.cur ? Towns.label() : _offLabel.call(this); };
+const _koWake = Offworld.koWake;
+Offworld.koWake = function () { if (this.loc === 'town' && Towns.cur) { Game.teleport(Towns.clinicPos()); return `You wake in a clinic in ${Towns.def().name}. Somebody called it in.`; } return _koWake.call(this); };
+const _phoneTabs = Phone.tabs;
+Phone.tabs = function () {
+  const t = _phoneTabs.call(this); const i = t.findIndex(x => x[0] === 'standing'); t.splice(i >= 0 ? i + 1 : 2, 0, ['faction', 'Faction']);
+  const m = t.findIndex(x => x[0] === 'map'); t.splice(m >= 0 ? m : t.length, 0, ['travel', 'Travel']); return t;
+};
+Object.assign(Phone, {
+  tab_faction(b) {
+    const S = Guild.S, G = Game.state;
+    if (!G.flags.originDone) { b.appendChild(el('p', 'dim', 'Nobody is recruiting a hero who has not been seen yet.')); return; }
+    if (S.id) {
+      const F = FACTIONS[S.id], rk = GUILD_RANKS[S.rank], nx = GUILD_RANKS[S.rank + 1];
+      const card = el('div', 'card', `<div class="meta">${esc(F.type.toUpperCase())} · MEMBER SINCE DAY ${S.joined}</div><h5 style="color:${F.color}">${esc(F.name)}</h5><p>${esc(rk.name)}${nx ? ` · ${S.deeds}/${nx.deeds} deeds to ${nx.name}` : ' · top rank'} · pay ${fmtCr(Guild.weeklyPay())} a week · backup of ${rk.backup} · ${S.ops} operations won</p><p class="faint" style="font-size:11.5px">Sworn enemies: ${esc(F.enemies.filter(e => FACTIONS[e]).map(e => FACTIONS[e].short).join(', '))} — their street crews come for you on sight.</p><div class="act"></div>`);
+      const a = card.querySelector('.act');
+      const bk = el('button', 'primary', Guild.cdT > 0 ? `Backup in ${Math.ceil(Guild.cdT)}s` : 'Call for backup'); bk.disabled = Guild.cdT > 0; bk.onclick = () => { Guild.callBackup(); }; a.appendChild(bk);
+      const lv = el('button', '', 'Leave'); lv.onclick = () => { if (lv.dataset.sure) { Guild.leave(); this.render('faction'); } else { lv.dataset.sure = 1; lv.textContent = 'Sure? They will remember'; } }; a.appendChild(lv);
+      b.appendChild(card);
+      const ops = el('div', 'card', '<h5>Operations</h5>');
+      if (Guild.op) { const o = Guild.op; const r = el('div', 'gear', `<span><b>ACTIVE · ${OP_KINDS[o.kind].name}</b> <span class="faint">vs ${esc(FACTIONS[o.foe].short)} · follow the marker</span></span>`); const x = el('button', '', 'Call it off'); x.onclick = () => { Guild.endOp(false); this.render('faction'); }; r.appendChild(x); ops.appendChild(r); }
+      else for (const o of Guild.offers()) { const r = el('div', 'gear', `<span><b>${OP_KINDS[o.kind].name}</b> <span class="faint" style="font-size:11px">${esc(OP_KINDS[o.kind].desc(FACTIONS[o.foe].short))} · ${fmtCr(Math.round(OP_KINDS[o.kind].pay * (1 + S.rank * 0.35) * Guild.terms(S.id).pay))}</span></span>`); const go = el('button', 'primary', 'Go'); go.onclick = () => Guild.startOp(o); r.appendChild(go); ops.appendChild(r); }
+      b.appendChild(ops);
+    } else b.appendChild(el('p', 'dim', 'You fight alone. Teams, gangs, the department and the corporations all take on powered help — if your standing is good enough. A tryout fight earns the standing in one go.'));
+    const list = el('div', 'card', '<h5>Who is hiring</h5>');
+    const order = Guild.joinable().sort((x, y) => (FACTIONS[x].type === 'squad' ? 0 : 1) - (FACTIONS[y].type === 'squad' ? 0 : 1));
+    for (const f of order) {
+      const F = FACTIONS[f], T_ = Guild.terms(f), why = Guild.why(f), st = Math.round(Factions.standing(f));
+      const r = el('div', 'gear', `<span><b style="color:${F.color}">${esc(F.name)}</b> <span class="faint" style="font-size:11px">${F.type === 'squad' ? 'SUPER-TEAM' : esc(F.type)} · standing ${st} · ${esc(T_.pitch)}${why.length && S.id !== f ? ` · <span style="color:var(--warn)">needs ${esc(why.join(', '))}</span>` : ''}</span></span>`);
+      if (S.id !== f) {
+        if (!why.length) { const j = el('button', 'primary', T_.verb); j.onclick = () => { if (Guild.join(f)) this.render('faction'); }; r.appendChild(j); }
+        else if (Guild.canTryout(f)) { const t = el('button', '', 'Tryout'); t.onclick = () => Guild.startOp({ kind: 'tryout', foe: Guild.enemyFor(f) }, f); r.appendChild(t); }
+      }
+      list.appendChild(r);
+    }
+    b.appendChild(list);
+  },
+  tab_travel(b) {
+    const here = Transit.here();
+    b.appendChild(el('div', 'card', `<div class="meta">YOU ARE IN</div><h5>${esc(Transit.cityName(here))}</h5><p class="faint" style="font-size:11.5px">${here === 'halcyon' ? 'Halcyon Central (rail, maglev) sits under the elevated line downtown; coaches leave from the Ironworks depot; the ferry from the Harbour piers.' : esc(TOWNS[here].blurb)}</p>`));
+    const at = Transit.atStation(Game.player);
+    const card = el('div', 'card', '<h5>Departures</h5>');
+    if (!Game.state.flags.originDone) card.appendChild(el('p', 'dim', 'Later.'));
+    else for (const r of Transit.routes(here)) {
+      const atHere = at && at.modes.includes(r.mode), cost = r.fare + (atHere ? 0 : 25);
+      const row = el('div', 'gear', `<span><b>${TRANSIT_MODES[r.mode].name} → ${esc(Transit.cityName(r.to))}</b> <span class="faint" style="font-size:11px">${r.hours} h · ${fmtCr(r.fare)}${atHere ? ' · you are at the station' : ' · + cab to the station ' + fmtCr(25)}${r.to !== 'halcyon' ? ' · ' + esc(TOWNS[r.to].blurb) : ''}</span></span>`);
+      const go = el('button', 'primary', 'Ride'); go.disabled = Game.state.econ.bank < cost || Offworld.loc === 'space' || Offworld.loc === 'planet' || Offworld.loc === 'shipint' || Offworld.loc === 'boarding'; go.onclick = () => Transit.ride(r, !atHere); row.appendChild(go);
+      const s = Transit.stationFor(r.mode, here); if (s && !atHere) { const w = el('button', '', 'Walk there'); w.onclick = () => { Transit.waypoint = s; Menus.hide(); toast(`${esc(s.name)} marked.`, '', 1500); }; row.appendChild(w); }
+      card.appendChild(row);
+    }
+    b.appendChild(card);
+    if (Contracts.active && here === 'halcyon') b.appendChild(el('p', 'faint', '<span style="font-size:11.5px">Leaving New Halcyon drops your current contract.</span>'));
+  },
+});
+
 // §BOOT --------------------------------------------------------------------------------
 Game.boot().catch(reportError);
-window.Meridian = { Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
+window.Meridian = { Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, Guild, Interiors, Towns, Transit, Worlds, TOWNS, TRANSIT, GUILD_RANKS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
 </script>
 </body>
 </html>
