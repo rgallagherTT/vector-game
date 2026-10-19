@@ -18,6 +18,8 @@ Open `index.html` through any static web server (for example `npx serve meridian
 
 - **Stage 6 — wider world:** join a super-team (the Halcyon Vanguard, Nightwatch, the Ember Collective) or any city faction — the department, the corporations, the gangs, the Choir, the Civic Union — from Phone → Faction. A tryout fight earns the standing in one go; members rise through five ranks, draw weekly pay, call backup that follows and fights beside you, and take operations with their side (raids take real blocks). Walk into any building in the city (`E` against a wall): offices, shops, bars, clubs, warehouses, labs, apartments — some open on a robbery or a gang hideout, quiet ones can be raided, and anyone chasing you follows you in. Four more cities on the coast — Port Sable, Ashgrove, Vantor Heights and Lumen Bay — each generated with its own districts, gangs and street crime, linked to New Halcyon by rail, coach, ferry and maglev (stations in the city, or Phone → Travel).
 
+- **Stage 7:** four more primary power sets — **Sonic** (concussive cones, shattering shrieks, resonance), **Chrono** (slow fields, rewind, haste, time stop), **Psionic** (mind spikes, psychic waves, and puppeting enemies so they fight their own side) and **Verdant** (vines, poison thorns, healing blooms) — each with skill trees and team-ups with every other set. Every car flies: press `Shift` while driving to take off, `Space`/`X` to climb and descend, come down slowly to land, or bail out mid-air. Touch controls for phones and tablets (on automatically; Phone → System to switch). Longer days: nights pass in a few minutes and new games start in the morning.
+
 Saves migrate forward automatically (v1 → v2 → v3 → v4 → v5 → v6).
 
 ## Debug

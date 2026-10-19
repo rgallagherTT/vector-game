@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Meridian</title>
 <style>
 :root{
@@ -160,6 +160,21 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line);background
 #shiphud{position:absolute;left:22px;bottom:22px;width:420px;padding:10px 12px;background:linear-gradient(90deg,rgba(10,11,13,.7),rgba(10,11,13,0));border-left:2px solid #7fd0ff;font-family:var(--mono);font-size:11px;color:var(--ink-dim)}
 #shiphud .row1{color:var(--ink);font-size:12px;margin-bottom:4px} #shiphud .row2{margin-top:4px} #shiphud .pp{margin-right:10px;color:#9ad0ff}
 #err{position:fixed;left:10px;bottom:10px;max-width:60vw;background:#3a1010;color:#fcc;font-family:var(--mono);font-size:11px;padding:8px;z-index:99;white-space:pre-wrap}
+
+/* touch controls (phones and tablets) */
+#touch{position:fixed;inset:0;z-index:6;pointer-events:none;display:none;touch-action:none;-webkit-user-select:none}
+#touch.on{display:block}
+#touch .zone{position:absolute;pointer-events:auto;touch-action:none}
+#touch .zl{left:0;top:0;bottom:0;width:42%}
+#touch .zr{right:0;top:0;bottom:0;width:58%}
+#touch .stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(233,230,223,.28);background:rgba(10,11,13,.18);display:none}
+#touch .stick i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(233,230,223,.35)}
+#touch .tb{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;border:1.5px solid rgba(233,230,223,.35);background:rgba(16,18,21,.45);color:#e9e6df;font:600 13px var(--mono);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.05;backdrop-filter:blur(2px)}
+#touch .tb.hold{background:rgba(255,179,71,.45);border-color:#ffb347}
+#touch .tb.big{width:84px;height:84px;font-size:15px}
+#touch .tb.md{width:60px;height:60px}
+#touch .tb.sm{width:46px;height:46px;font-size:11px;border-radius:12px}
+#touch .tb small{display:block;font-size:9px;opacity:.7;font-weight:400}
 </style>
 <script type="importmap">
 { "imports": {
@@ -332,6 +347,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line);background
    // §WARTABLE        The holo-table becomes the strategic view: every threat and its pressure points, both maps with terr
    // §LEGACY          The long game: crew veterans reach legendary levels with unique power mutations, long-serving crew r
    // §WORLDPLUS       Join a faction or super-team and fight with them; walk into any building (fights follow you in); ride rail, coach, ferry and maglev to other cities.
+   // §TOUCH           Phones and tablets: a floating stick, drag-to-look and buttons that press the same keys as the keyboard.
    // §DEBUG           ?debug=1 shows an overlay (fps, active sector, faction tick time, threat stages). window.dbg drives 
    // §GAME            
    // §BOOT            
@@ -367,7 +383,7 @@ const CONFIG = {
   world: {
     seed: 4207, blocksX: 7, blocksZ: 6, blockSize: 70, street: 22,
     waterfrontDepth: 40, trainHeight: 17, trainSpeed: 19, dayLengthSec: 1500,
-    startHour: 18.5, parkBlock: [1, 4], hideoutCount: 8,
+    startHour: 9.5, parkBlock: [1, 4], hideoutCount: 8, nightRate: 3.2, dayRate: 0.8,
   },
   hero: {
     radius: 0.42, height: 1.8, walk: 4.2, run: 9.5, accelGround: 70, accelAir: 16, friction: 12,
@@ -637,6 +653,10 @@ const Sfx = {
     else if (has('tech')) { this.tone({ type: 'square', f: 660, f2: 1320, dur: 0.08, vol: 0.08 }); this.tone({ type: 'square', f: 990, dur: 0.06, vol: 0.06, when: 0.08 }); }
     else if (has('kinetic')) { this.tone({ type: 'sine', f: 140, f2: 420, dur: 0.35, vol: 0.25 }); this.burst({ dur: 0.3, vol: 0.12, type: 'bandpass', f: 300, f2: 900, q: 2 }); }
     else if (has('might')) { this.tone({ type: 'sine', f: 110, f2: 30, dur: 0.35, vol: 0.55 }); this.burst({ dur: 0.3, vol: 0.35, f: 1500, f2: 200 }); }
+    else if (has('sonic')) { this.tone({ type: 'square', f: 70, f2: 35, dur: 0.4, vol: 0.3, filter: { f: 900 } }); this.burst({ dur: 0.35, vol: 0.45, type: 'bandpass', f: 1200, f2: 300, q: 0.8 }); }
+    else if (has('chrono')) { [880, 660, 440].forEach((f, i) => this.tone({ type: 'sine', f, f2: f * 0.5, dur: 0.5, vol: 0.08, when: i * 0.06 })); this.tone({ type: 'triangle', f: 220, f2: 110, dur: 0.6, vol: 0.12 }); }
+    else if (has('psionic')) { this.tone({ type: 'sine', f: 520, f2: 780, dur: 0.45, vol: 0.12, detune: 25 }); this.tone({ type: 'sine', f: 523, f2: 260, dur: 0.5, vol: 0.1, detune: -25 }); }
+    else if (has('nature')) { this.burst({ dur: 0.45, vol: 0.25, type: 'bandpass', f: 500, f2: 1400, q: 1.5 }); this.tone({ type: 'triangle', f: 180, f2: 240, dur: 0.3, vol: 0.12 }); }
     else { this.tone({ type: 'sawtooth', f: 300, f2: 1200, dur: 0.18, vol: 0.12, filter: { f: 3000 } }); this.tone({ type: 'sine', f: 600, f2: 200, dur: 0.35, vol: 0.18 }); }
     if (has('ultimate')) { this.tone({ type: 'sine', f: 55, f2: 30, dur: 1.4, vol: 0.6 }); this.burst({ dur: 1.2, vol: 0.4, f: 3000, f2: 100, q: 0.4 }); }
   },
@@ -695,7 +715,7 @@ const BINDINGS = {
   walk: ['KeyZ'], ctrlMode: ['KeyK'], relic: ['KeyJ'], relicCycle: ['KeyL'], switchChar: ['KeyN'], heroSel: ['Backquote'], crew1: ['Digit6'], crew2: ['Digit7'], crew3: ['Digit8'], callWheel: ['KeyB'], orderWheel: ['KeyY'],
 };
 const Input = {
-  down: new Set(), pressed: new Set(), released: new Set(), dx: 0, dy: 0, wheel: 0, locked: false, sens: 0.0022, invertY: false, camFollow: true,
+  down: new Set(), pressed: new Set(), released: new Set(), dx: 0, dy: 0, wheel: 0, locked: false, sens: 0.0022, invertY: false, camFollow: true, stick: null,
   init() {
     const view = $('view');
     addEventListener('keydown', e => {
@@ -728,6 +748,53 @@ const Input = {
   endTick() { this.pressed.clear(); this.released.clear(); },
   takeMouse() { const r = [this.dx, this.dy, this.wheel]; this.dx = this.dy = 0; this.wheel = 0; return r; },
   release() { if (document.pointerLockElement) { this.suppress = true; Modes.suppressPause = true; document.exitPointerLock(); } },
+  // virtual keys (touch buttons press the same codes the keyboard does)
+  press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); Sfx.init(); Modes.key(code); },
+  lift(code) { if (!this.down.has(code)) return; this.down.delete(code); this.released.add(code); },
+};
+// §TOUCH: phones and tablets — a floating stick on the left, drag-to-look on the right, buttons for everything else.
+// On by default on touch screens (or with ?touch=1); Phone → System toggles it.
+const TOUCH_BUTTONS = [
+  // [label, code, class, right, bottom, hold, sub]
+  ['HIT', 'Mouse0', 'big', 22, 26, true], ['JUMP', 'Space', 'md', 118, 18, true], ['HEAVY', 'KeyF', 'md', 30, 122, false], ['POWER', 'ShiftLeft', 'md', 118, 92, true, 'move'],
+  ['DODGE', 'KeyC', 'md', 194, 22, false], ['PARRY', 'KeyQ', 'md', 104, 166, false], ['AIM', 'Mouse2', 'sm', 196, 96, true],
+  ['1', 'Digit1', 'sm', 24, 214, false], ['2', 'Digit2', 'sm', 76, 226, false], ['3', 'Digit3', 'sm', 128, 236, false], ['ULT', 'KeyR', 'sm', 180, 160, false],
+  ['E', 'KeyE', 'md', 196, 238, false, 'use'], ['ZIP', 'KeyV', 'sm', 248, 90, false], ['DOWN', 'KeyX', 'sm', 248, 30, true], ['LOCK', 'Tab', 'sm', 248, 150, false], ['G', 'KeyG', 'sm', 248, 210, false],
+];
+const TOUCH_TOP = [['☰', 'Escape'], ['PHONE', 'KeyP'], ['MAP', 'KeyM'], ['I', 'KeyI'], ['T', 'KeyT']];
+const Touch = {
+  on: false, el: null, stickId: null, lookId: null, o: { x: 0, y: 0 }, last: { x: 0, y: 0 }, held: new Map(),
+  wanted() { const s = Game.state && Game.state.settings; if (s && s.touch != null) return !!s.touch; return /[?&]touch=1/.test(location.search) || (matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window && navigator.maxTouchPoints > 0; },
+  init() {
+    const t = this.el = document.createElement('div'); t.id = 'touch'; document.body.appendChild(t);
+    const zl = el('div', 'zone zl'), zr = el('div', 'zone zr'), st = this.stickEl = el('div', 'stick', '<i></i>'); t.append(zl, zr, st);
+    const pt = e => [...e.changedTouches];
+    zl.addEventListener('touchstart', e => { e.preventDefault(); for (const p of pt(e)) if (this.stickId == null) { this.stickId = p.identifier; this.o = { x: p.clientX, y: p.clientY }; st.style.display = 'block'; st.style.left = p.clientX + 'px'; st.style.top = p.clientY + 'px'; this.moveStick(p); } }, { passive: false });
+    zr.addEventListener('touchstart', e => { e.preventDefault(); Sfx.init(); for (const p of pt(e)) if (this.lookId == null) { this.lookId = p.identifier; this.last = { x: p.clientX, y: p.clientY }; } }, { passive: false });
+    const move = e => { for (const p of pt(e)) { if (p.identifier === this.stickId) { e.preventDefault(); this.moveStick(p); } else if (p.identifier === this.lookId) { e.preventDefault(); Input.dx += (p.clientX - this.last.x) * 1.7; Input.dy += (p.clientY - this.last.y) * 1.7; this.last = { x: p.clientX, y: p.clientY }; } } };
+    const end = e => { for (const p of pt(e)) { if (p.identifier === this.stickId) { this.stickId = null; st.style.display = 'none'; this.setStick(0, 0); } if (p.identifier === this.lookId) this.lookId = null; } };
+    for (const z of [zl, zr]) { z.addEventListener('touchmove', move, { passive: false }); z.addEventListener('touchend', end); z.addEventListener('touchcancel', end); }
+    const btn = (label, code, cls, style, hold, sub) => {
+      const b = el('div', 'tb ' + cls, sub ? `${label}<small>${sub}</small>` : label); Object.assign(b.style, style); t.appendChild(b);
+      b.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); b.classList.add('hold'); Input.press(code); for (const p of pt(e)) this.held.set(p.identifier, { b, code }); if (!hold) setTimeout(() => { Input.lift(code); b.classList.remove('hold'); }, 90); }, { passive: false });
+      const up = e => { e.preventDefault(); for (const p of pt(e)) { const h = this.held.get(p.identifier); if (!h) continue; this.held.delete(p.identifier); if (hold) Input.lift(code); b.classList.remove('hold'); } };
+      b.addEventListener('touchend', up, { passive: false }); b.addEventListener('touchcancel', up, { passive: false });
+      return b;
+    };
+    for (const [l, c, cls, r, bo, hold, sub] of TOUCH_BUTTONS) btn(l, c, cls, { right: `calc(${r}px + env(safe-area-inset-right))`, bottom: `calc(${bo}px + env(safe-area-inset-bottom))` }, hold, sub);
+    TOUCH_TOP.forEach(([l, c], i) => btn(l, c, 'sm', { left: `calc(${12 + i * 54}px + env(safe-area-inset-left))`, top: 'calc(10px + env(safe-area-inset-top))' }, false));
+  },
+  moveStick(p) { const dx = p.clientX - this.o.x, dy = p.clientY - this.o.y, L = Math.hypot(dx, dy), R0 = 56, k = L > R0 ? R0 / L : 1; this.stickEl.firstChild.style.transform = `translate(${dx * k}px,${dy * k}px)`; this.setStick(clamp(dx / R0, -1, 1), clamp(dy / R0, -1, 1)); },
+  // the analogue value drives walking; the same stick also holds W/A/S/D so cars and ships respond
+  setStick(x, y) {
+    const L = Math.hypot(x, y); if (L > 1) { x /= L; y /= L; } const dead = L < 0.12; Input.stick = dead ? null : { x, y };
+    const keys = [['KeyW', !dead && y < -0.35], ['KeyS', !dead && y > 0.35], ['KeyA', !dead && x < -0.35], ['KeyD', !dead && x > 0.35]];
+    for (const [k, on] of keys) { if (on && !Input.down.has(k)) { Input.pressed.add(k); Input.down.add(k); } else if (!on && Input.down.has(k)) Input.lift(k); }
+  },
+  frame() {
+    if (!this.el) return; const play = this.wanted() && Game.player && !Menus.cur && [MODE.ON_FOOT, MODE.HQ, MODE.VEHICLE, MODE.SPACE].includes(Modes.name);
+    if (play !== this.on) { this.on = play; this.el.classList.toggle('on', play); if (!play) { this.setStick(0, 0); this.stickId = this.lookId = null; this.stickEl.style.display = 'none'; for (const { code } of this.held.values()) Input.lift(code); this.held.clear(); } }
+  },
 };
 
 // §MODES -------------------------------------------------------------------------------
@@ -903,8 +970,10 @@ const FinalShader = {
 const Sky = {
   hour: CONFIG.world.startHour, day: 1, rain: 0, rainTarget: 0, weatherT: 120,
   sunDir: V3(),
+  // how fast the clock runs right now: nights pass in a few minutes, days take most of the cycle
+  rate(h = this.hour) { return h < 6 || h >= 19.5 ? CONFIG.world.nightRate : CONFIG.world.dayRate; },
   step(dt) {
-    this.hour += dt * 24 / CONFIG.world.dayLengthSec;
+    this.hour += dt * 24 / CONFIG.world.dayLengthSec * this.rate();
     if (this.hour >= 24) { this.hour -= 24; this.day++; }
     this.weatherT -= dt;
     if (this.weatherT <= 0) { this.weatherT = R.range(120, 300); this.rainTarget = R.chance(0.45) ? R.range(0.5, 1) : 0; }
@@ -2026,6 +2095,33 @@ for (const [ek, E] of Object.entries(ELEMENTS)) {
   ABILITIES['el_ult_avatar_' + ek] = { name: E.name + ' Avatar', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.5, anim: 'barrier', desc: `Become ${E.name.toLowerCase()} itself for eight seconds.`, targeting: { type: 'self' }, effects: [AREA(9, [D(70, ek), KB(18, 0.5), { ...st }], { at: 'caster' }), BUFF('avatar', 8, { powerDmg: 1.8, dmgTaken: 0.6, cdr: 0.5 }, { aura: { element: ek, radius: 4.5, dps: 18 } })], vfx: 'novaBig', tags: [ek, 'ultimate'], color: E.color };
   ABILITIES['el_ult_wave_' + ek] = { name: E.name + ' Tide', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.45, anim: 'heavy', desc: `A wave of ${E.name.toLowerCase()} that sweeps the street.`, targeting: { type: 'self' }, effects: [AREA(24, [D(150, ek), KB(24, 0.45), { ...st, duration: 5 }], { shape: 'cone', angle: 70, at: 'caster' })], vfx: 'wave', tags: [ek, 'ultimate'], color: E.color };
 }
+// Stage 7 power sets: Sonic, Chrono, Psionic, Verdant — the same primitives, new combinations (plus poison and charm).
+Object.assign(ABILITIES, {
+  son_boom: { name: 'Sonic Boom', slot: 'active', cost: 25, cooldown: 5, castTime: 0.22, anim: 'heavy', desc: 'A thunderclap that throws a cone of sound.', targeting: { type: 'self' }, effects: [AREA(11, [D(38), KB(22, 0.4), DEBUFF('stagger', 1.5)], { shape: 'cone', angle: 70, at: 'caster' })], vfx: 'shockcone', tags: ['sonic'] },
+  son_shriek: { name: 'Shatter Shriek', slot: 'active', cost: 30, cooldown: 7, castTime: 0.2, anim: 'beam', desc: 'A sustained shriek that cracks armour along a line.', targeting: { type: 'beam', range: 38, width: 1.2, channel: 1.4, tick: 0.1 }, effects: [D(7), KB(2, 0.05), DEBUFF('vulnerable', 2)], vfx: 'beam', tags: ['sonic'] },
+  son_resonance: { name: 'Resonance', slot: 'active', cost: 25, cooldown: 8, castTime: 0.25, anim: 'cast', desc: 'Set a point humming until everyone in it locks up.', targeting: { type: 'point', range: 32, radius: 5 }, effects: [AREA(5.5, [D(40), STUN(1.6), DEBUFF('shock', 2)], { at: 'point' })], vfx: 'shock', tags: ['sonic'] },
+  ult_crescendo: { name: 'Crescendo', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.6, anim: 'barrier', desc: 'Every sound you have ever made, at once.', targeting: { type: 'self' }, effects: [AREA(18, [D(170), KB(30, 0.6), STUN(2)], { at: 'caster' })], vfx: 'novaBig', tags: ['sonic', 'ultimate'] },
+  ult_bassdrop: { name: 'Bass Drop', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.4, anim: 'groundPound', desc: 'Lift the street on a low note, then drop it.', targeting: { type: 'point', range: 35, radius: 12 }, effects: [AREA(12, [LAUNCH(10), STUN(2)], { at: 'point' }), AREA(12, [D(150, 'blunt'), KB(4, -1)], { at: 'point', delay: 1.2, vfx: 'quakeBig' })], vfx: 'shock', tags: ['sonic', 'ultimate'] },
+  ult_wallofsound: { name: 'Wall of Sound', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.4, anim: 'beam', desc: 'A roaring column of sound that clears a street.', targeting: { type: 'beam', range: 70, width: 3, channel: 2.5, tick: 0.1 }, effects: [D(13), KB(5, 0.1), DEBUFF('stagger', 1)], vfx: 'beamBig', tags: ['sonic', 'ultimate'] },
+  chr_dilate: { name: 'Time Dilation', slot: 'active', cost: 25, cooldown: 8, castTime: 0.25, anim: 'cast', desc: 'Thicken time around a point until they move like syrup.', targeting: { type: 'point', range: 32, radius: 6 }, effects: [AREA(6.5, [DEBUFF('slow', 6, 2), D(20), STUN(0.6)], { at: 'point' })], vfx: 'crush', tags: ['chrono'] },
+  chr_rewind: { name: 'Rewind', slot: 'active', cost: 30, cooldown: 12, castTime: 0.15, anim: 'barrier', desc: 'Undo the last few seconds of damage.', targeting: { type: 'self' }, effects: [HEAL(0.22), SHIELD(60, 4), { type: 'cleanse', on: 'caster' }], vfx: 'heal', tags: ['chrono'] },
+  chr_haste: { name: 'Haste', slot: 'active', cost: 25, cooldown: 14, castTime: 0.1, anim: 'barrier', desc: 'Step half a second ahead of everyone else.', targeting: { type: 'self' }, effects: [BUFF('haste', 6, { speed: 1.45, comboSpeed: 1.35, cdr: 0.6 })], vfx: 'phase', tags: ['chrono'] },
+  ult_timestop: { name: 'Time Stop', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.4, anim: 'barrier', desc: 'The clock stops for everyone but you.', targeting: { type: 'self' }, effects: [AREA(26, [STUN(4.5), DEBUFF('slow', 9, 2), DEBUFF('vulnerable', 6)], { at: 'caster' })], vfx: 'eclipse', tags: ['chrono', 'ultimate'] },
+  ult_collapse: { name: 'Temporal Collapse', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.4, anim: 'cast', desc: 'Fold a minute into a single instant.', targeting: { type: 'point', range: 35, radius: 10 }, effects: [AREA(10, [PULL(18, 'point'), DEBUFF('slow', 4, 2)], { at: 'point' }), AREA(7, [D(190), KB(24, 0.5)], { at: 'point', delay: 1, vfx: 'novaBig' })], vfx: 'crush', tags: ['chrono', 'ultimate'] },
+  ult_echoes: { name: 'Echo Barrage', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.1, anim: 'jabR', desc: 'Your past selves all hit at once.', targeting: { type: 'self' }, ticks: { count: 8, interval: 0.18 }, effects: [AREA(9, [D(32), KB(4, 0.2), STUN(0.3)], { at: 'caster' })], vfx: 'nova', tags: ['chrono', 'ultimate'] },
+  psi_spike: { name: 'Mind Spike', slot: 'active', cost: 15, cooldown: 1.8, castTime: 0.15, anim: 'cast', desc: 'A seeking needle of thought.', targeting: { type: 'projectile', speed: 70, radius: 0.5, range: 70, homing: 4 }, effects: [D(36), DEBUFF('stagger', 1), KB(4, 0.1)], vfx: 'orb', tags: ['psionic'] },
+  psi_puppet: { name: 'Puppet', slot: 'active', cost: 30, cooldown: 12, castTime: 0.3, anim: 'cast', desc: 'Take over a mind; it fights for you for a while.', targeting: { type: 'point', range: 30, radius: 2.5 }, effects: [AREA(2.8, [DEBUFF('charm', 8), D(10)], { at: 'point' })], vfx: 'dread', tags: ['psionic'] },
+  psi_wave: { name: 'Psychic Wave', slot: 'active', cost: 25, cooldown: 7, castTime: 0.25, anim: 'barrier', desc: 'A pulse that knocks every mind nearby offline.', targeting: { type: 'self' }, effects: [AREA(9, [D(32), STUN(1.2), KB(10, 0.3)], { at: 'caster' })], vfx: 'nova', tags: ['psionic'] },
+  ult_dominate: { name: 'Mass Domination', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.5, anim: 'barrier', desc: 'Everyone near you is on your side now.', targeting: { type: 'self' }, effects: [AREA(20, [DEBUFF('charm', 10)], { at: 'caster' })], vfx: 'eclipse', tags: ['psionic', 'ultimate'] },
+  ult_migraine: { name: 'Migraine', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.4, anim: 'cast', desc: 'The worst headache in the city, all at once.', targeting: { type: 'point', range: 35, radius: 12 }, effects: [AREA(12, [D(160), STUN(2.5), DEBUFF('blind', 4)], { at: 'point' })], vfx: 'novaBig', tags: ['psionic', 'ultimate'] },
+  ult_mindstorm: { name: 'Mind Storm', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.3, anim: 'cast', desc: 'Twelve seeking thoughts that turn whoever they touch.', targeting: { type: 'projectile', speed: 45, radius: 0.5, range: 80, count: 12, spread: 80, homing: 7 }, effects: [AREA(2.5, [D(26), DEBUFF('charm', 3)], { at: 'point' })], vfx: 'orb', tags: ['psionic', 'ultimate'] },
+  ver_vines: { name: 'Strangling Vines', slot: 'active', cost: 25, cooldown: 7, castTime: 0.25, anim: 'cast', desc: 'Vines burst from the street, drag enemies in and hold them.', targeting: { type: 'point', range: 30, radius: 5 }, effects: [AREA(5.5, [PULL(10, 'point'), STUN(2), DEBUFF('poison', 5)], { at: 'point' })], vfx: 'tendrils', tags: ['nature'] },
+  ver_thorns: { name: 'Thorn Volley', slot: 'active', cost: 18, cooldown: 3, castTime: 0.18, anim: 'shoot', desc: 'A fan of poisoned thorns.', targeting: { type: 'projectile', speed: 60, radius: 0.35, range: 55, count: 5, spread: 24 }, effects: [D(16), DEBUFF('poison', 3), KB(3, 0.1)], vfx: 'bolt', tags: ['nature'] },
+  ver_bloom: { name: 'Healing Bloom', slot: 'active', cost: 30, cooldown: 12, castTime: 0.25, anim: 'barrier', desc: 'Flowers open around you; wounds close.', targeting: { type: 'self' }, effects: [HEAL(0.25), BUFF('bloom', 6, { regenPct: 0.04 }), AREA(6, [KB(12, 0.3)], { at: 'caster' })], vfx: 'heal', tags: ['nature'] },
+  ult_overgrowth: { name: 'Overgrowth', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.5, anim: 'groundPound', desc: 'The street becomes a forest with everyone caught in it.', targeting: { type: 'self' }, effects: [AREA(18, [STUN(3.5), DEBUFF('poison', 8, 2), D(70)], { at: 'caster' })], vfx: 'quakeBig', tags: ['nature', 'ultimate'] },
+  ult_spores: { name: 'Spore Cloud', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.4, anim: 'cast', desc: 'A choking cloud that blinds, slows and poisons.', targeting: { type: 'point', range: 35, radius: 12 }, effects: [AREA(13, [DEBUFF('poison', 10, 3), DEBUFF('blind', 5), DEBUFF('slow', 6)], { at: 'point' })], vfx: 'eclipse', tags: ['nature', 'ultimate'] },
+  ult_heartwood: { name: 'Heartwood', slot: 'ultimate', cost: 0, cooldown: 1, castTime: 0.5, anim: 'barrier', desc: 'Grow a living armour and shove the world back.', targeting: { type: 'self' }, effects: [HEAL(0.6), SHIELD(220, 8), BUFF('heartwood', 8, { dmgTaken: 0.5, regenPct: 0.03 }), AREA(10, [KB(24, 0.5), D(60)], { at: 'caster' })], vfx: 'harden', tags: ['nature', 'ultimate'] },
+});
 for (const [id, a] of Object.entries(ABILITIES)) a.id = id;
 
 // §POWERSETS ---------------------------------------------------------------------------
@@ -2048,6 +2144,18 @@ const POWER_SETS = {
   shadow: { name: 'Shadow', core: 'Stealth, darkness tendrils, phasing strikes, fear.', icon: '◐', color: '#a07aff',
     actives: ['sh_tendrils', 'sh_phase', 'sh_dread'], ultimates: ['ult_eclipse', 'ult_cuts', 'ult_maw'],
     melee: { dmg: 1.1, knock: 0.9, range: 0.2, speed: 1.15, weapon: 'blade' } },
+  sonic: { name: 'Sonic', core: 'Sound as a weapon: concussive cones, shattering shrieks, resonance that locks enemies up.', icon: '♫', color: '#7ad8ff',
+    actives: ['son_boom', 'son_shriek', 'son_resonance'], ultimates: ['ult_crescendo', 'ult_bassdrop', 'ult_wallofsound'],
+    melee: { dmg: 1.0, knock: 1.25, range: 0.2, speed: 1.05, shotMul: 1.2 } },
+  chrono: { name: 'Chrono', core: 'Bend time: slow fields, rewinds, haste — and stop the clock entirely.', icon: '⧗', color: '#c8a8ff',
+    actives: ['chr_dilate', 'chr_rewind', 'chr_haste'], ultimates: ['ult_timestop', 'ult_collapse', 'ult_echoes'],
+    melee: { dmg: 1.05, knock: 1.0, range: 0, speed: 1.15 } },
+  psionic: { name: 'Psionic', core: 'Mind spikes and psychic waves — and turning enemies against their own friends.', icon: '◎', color: '#ff8ad0',
+    actives: ['psi_spike', 'psi_puppet', 'psi_wave'], ultimates: ['ult_dominate', 'ult_migraine', 'ult_mindstorm'],
+    melee: { dmg: 0.95, knock: 1.0, range: 0.3, speed: 1.0, shotMul: 1.3 } },
+  verdant: { name: 'Verdant', core: 'Living green: vines that hold, thorns that poison, blooms that heal.', icon: '❦', color: '#7ad06a',
+    actives: ['ver_vines', 'ver_thorns', 'ver_bloom'], ultimates: ['ult_overgrowth', 'ult_spores', 'ult_heartwood'],
+    melee: { dmg: 1.05, knock: 1.05, range: 0.5, speed: 1.0 } },
 };
 const DEFENCES = ['def_barrier', 'def_deflect', 'def_phase', 'def_regen', 'def_harden'];
 // Resolve per-element ids
@@ -2166,6 +2274,38 @@ const SKILL_TREES = {
     [1, 'Freerunner', '+12% run speed.', 1, [{ trav: 'glide', key: 'runSpeed', mul: 1.12 }]],
     [2, 'Thermal Rider', 'Glide drains 40% less stamina.', 1, [{ trav: 'glide', key: 'glideDrain', mul: 0.6 }], 0],
     [3, 'Diving Heel', 'Glide dropkicks hit 60% harder.', 2, [{ ab: 'tr_dropkick', path: 'effects.0.effects.0.amount', mul: 1.6 }], 1],
+  ]),
+  sonic: tree('sonic', [
+    [1, 'Amplifier', '+15% power damage.', 1, [{ stat: 'powerDmg', mul: 1.15 }]],
+    [1, 'Wide Boom', 'Sonic Boom reaches 30% further.', 1, [{ ab: 'son_boom', path: 'effects.0.radius', mul: 1.3 }]],
+    [2, 'Fifth Blow', 'Adds a spinning fifth hit to the light combo.', 2, [{ unlock: 'light5' }], 0],
+    [2, 'Sustain', 'Shatter Shriek lasts 50% longer.', 2, [{ ab: 'son_shriek', path: 'targeting.channel', mul: 1.5 }], 1],
+    [3, 'Harmonics', 'Resonance stuns 60% longer.', 2, [{ ab: 'son_resonance', path: 'effects.0.effects.1.duration', mul: 1.6 }], 2],
+    [3, 'Noise Floor', 'Take 15% less damage; shrug off status effects.', 3, [{ stat: 'dmgTaken', mul: 0.85 }, { stat: 'statusResist', add: 0.2 }], 3],
+  ]),
+  chrono: tree('chrono', [
+    [1, 'Borrowed Seconds', 'Powers recharge 15% faster.', 1, [{ stat: 'cdr', mul: 0.85 }]],
+    [1, 'Wider Dilation', 'Time Dilation covers 40% more ground.', 1, [{ ab: 'chr_dilate', path: 'effects.0.radius', mul: 1.4 }]],
+    [2, 'Fifth Blow', 'Adds a spinning fifth hit to the light combo.', 2, [{ unlock: 'light5' }], 0],
+    [2, 'Deep Rewind', 'Rewind heals twice as much.', 2, [{ ab: 'chr_rewind', path: 'effects.0.pct', mul: 2 }], 1],
+    [3, 'Overclock', 'Haste lasts 60% longer.', 2, [{ ab: 'chr_haste', path: 'effects.0.duration', mul: 1.6 }], 2],
+    [3, 'Out of Step', '+15% melee damage and faster combos.', 3, [{ stat: 'meleeDmg', mul: 1.15 }, { stat: 'comboSpeed', mul: 1.15 }], 3],
+  ]),
+  psionic: tree('psionic', [
+    [1, 'Focus', '+15% power damage.', 1, [{ stat: 'powerDmg', mul: 1.15 }]],
+    [1, 'Sharper Spike', 'Mind Spike recharges 30% faster.', 1, [{ ab: 'psi_spike', path: 'cooldown', mul: 0.7 }]],
+    [2, 'Fifth Blow', 'Adds a spinning fifth hit to the light combo.', 2, [{ unlock: 'light5' }], 0],
+    [2, 'Strings', 'Puppet holds a mind 60% longer.', 2, [{ ab: 'psi_puppet', path: 'effects.0.effects.0.duration', mul: 1.6 }], 1],
+    [3, 'Wider Mind', 'Psychic Wave reaches 40% further.', 2, [{ ab: 'psi_wave', path: 'effects.0.radius', mul: 1.4 }], 2],
+    [3, 'Iron Will', '+30 max energy and status resistance.', 3, [{ stat: 'maxEnergy', add: 30 }, { stat: 'statusResist', add: 0.25 }], 3],
+  ]),
+  verdant: tree('verdant', [
+    [1, 'Deep Roots', '+15% max health.', 1, [{ stat: 'maxHp', mul: 1.15 }]],
+    [1, 'Barbed Vines', 'Vines hold 50% longer.', 1, [{ ab: 'ver_vines', path: 'effects.0.effects.1.duration', mul: 1.5 }]],
+    [2, 'Fifth Blow', 'Adds a spinning fifth hit to the light combo.', 2, [{ unlock: 'light5' }], 0],
+    [2, 'Thicket', 'Thorn Volley fires seven thorns.', 2, [{ ab: 'ver_thorns', path: 'targeting.count', set: 7 }], 1],
+    [3, 'Evergreen', 'Healing Bloom recharges 40% faster.', 2, [{ ab: 'ver_bloom', path: 'cooldown', mul: 0.6 }], 2],
+    [3, 'Bark Skin', 'Take 15% less damage.', 3, [{ stat: 'dmgTaken', mul: 0.85 }], 3],
   ]),
 };
 
@@ -2668,6 +2808,7 @@ const Phys = {
 const STATUS_DEF = {
   burn: { dps: 7, color: '#ff7a2a' }, freeze: { color: '#9fe4ff' }, shock: { color: '#b7a4ff' }, soak: { color: '#46a9ff' }, stagger: { color: '#d0a172' },
   fear: { color: '#a07aff' }, blind: { color: '#fff7c0' }, vulnerable: { color: '#ff5050' }, slow: { color: '#8899aa' },
+  poison: { dps: 9, color: '#8adf5a' }, charm: { color: '#ff8ad0' },
 };
 const Combat = {
   frontal(ch, fromPos) { _v1.subVectors(fromPos, ch.pos); _v1.y = 0; _v1.normalize(); return _v1.dot(ch.facing(_v2)) > 0.35; },
@@ -2745,6 +2886,7 @@ const Combat = {
   },
   status(tgt, id, dur, power = 1, src) {
     if (!tgt.alive) return;
+    if (id === 'charm' && (tgt.boss || tgt === Game.player || tgt.faction === 'player' || tgt.immobile || (src && src.faction !== 'player' && !(src.isProxy && src.owner && src.owner.faction === 'player')))) return;
     const resist = clamp(tgt.st('statusResist'), 0, 0.9);
     dur *= 1 - resist;
     if (tgt.boss) dur *= 0.5;
@@ -2759,6 +2901,8 @@ const Combat = {
   tickStatuses(ch, dt) {
     for (const [id, s] of Object.entries(ch.statuses)) {
       s.t -= dt;
+      if (id === 'poison') { s.tick -= dt; if (s.tick <= 0) { s.tick = 0.5; this.damage(s.src, ch, STATUS_DEF.poison.dps * 0.5 * (s.power || 1), { kind: 'energy', dot: true }); if (R.chance(0.5)) VFX.ember(ch.chestV(), '#8adf5a'); } }
+      if (id === 'charm' && s.t - dt <= 0 && ch.ai) { ch.ai.target = null; ch.ai.alert = true; }
       if (id === 'burn') { s.tick -= dt; if (s.tick <= 0) { s.tick = 0.5; this.damage(s.src, ch, STATUS_DEF.burn.dps * 0.5 * (s.power || 1), { kind: 'fire', dot: true }); if (R.chance(0.7)) VFX.ember(ch.chestV(), '#ff7a2a'); } }
       if (s.t <= 0) delete ch.statuses[id];
     }
@@ -3529,6 +3673,7 @@ class HumanController {
     I.move.set(0, 0, 0).addScaledVector(fwd, f).addScaledVector(right, s);
     I.moveMag = Math.min(1, I.move.length()); if (I.moveMag > 0) I.move.normalize();
     I.fwd = f; I.side = s; I.back = f < 0; I.walk = Input.is('walk');
+    const stick = Input.stick; if (stick && (stick.x || stick.y)) { I.move.set(0, 0, 0).addScaledVector(fwd, -stick.y).addScaledVector(right, stick.x); I.moveMag = Math.min(1, I.move.length()); if (I.moveMag > 0) I.move.normalize(); I.fwd = -stick.y; I.side = stick.x; I.back = stick.y > 0.3; }
     I.lookDir.copy(Cam.dir); I.lookPitch = Cam.pitch; I.camDir.copy(Cam.dir);
     I.jump = Input.hit('jump'); I.jumpHeld = Input.is('jump'); I.trav = Input.hit('trav'); I.travHeld = Input.is('trav'); I.descend = Input.is('descend');
     I.aim = Input.is('aim'); I.light = Input.hit('light'); I.heavy = Input.hit('heavy');
@@ -3898,6 +4043,8 @@ const Factions = {
   },
   hostile(a, b) {
     if (!a || !b || a === b) return false;
+    const ca = a.statuses && a.statuses.charm, cb = b.statuses && b.statuses.charm;
+    if (ca || cb) { if (ca && cb) return false; const o = ca ? b : a, of = o.isProxy ? o.owner.faction : o.faction; if (of === 'player') return false; const P = Game.player; return !!P && o !== P && this.hostile(P, o); }
     const fa = a.isProxy ? a.owner.faction : a.faction, fb = b.isProxy ? b.owner.faction : b.faction;
     if (fa === fb) return false;
     if (fa === 'player') return this.playerHostile(fb, b.isProxy ? b.owner : b) || (b.data && b.data.contractTarget);
@@ -5535,7 +5682,7 @@ const Menus = {
   renderHelp() {
     const rows = [['Move', 'W A S D'], ['Look', 'Mouse'], ['Jump', 'Space'], ['Traversal power', 'Shift (hold / tap — depends on set)'], ['Zip / grapple', 'V (Tether, Glide)'], ['Descend (Flight)', 'X'],
       ['Light attack / combo', 'Left mouse'], ['Heavy · launcher · finisher', 'F · hold S + F · F on a stunned enemy'], ['Aim · shoot', 'Hold right mouse · left mouse'], ['Powers', '1 · 2'], ['Defence power', '3'], ['Ultimate', 'R (or 4)'],
-      ['Dodge (invulnerable)', 'C'], ['Parry (orange ! tells)', 'Q — red ⚠ tells cannot be parried: dodge'], ['Lock on · cycle', 'Tab · T / mouse wheel'], ['Pick up · throw · interact · drive', 'E (hold Z + E to drive if you can lift cars)'], ['Gadget', 'G'], ['Walk', 'Z (hold)'], ['Crew: control mode (Solo / Squad / Hybrid)', 'K'], ['Crew: switch / borrow character', 'N · 6 7 8 · ` back to hero'], ['Crew: call in a power (wheel)', 'hold B, move mouse or press 1-9'], ['Crew: orders (wheel)', 'hold Y'], ['Revive downed crew', 'E'], ['Relic power · cycle', 'J · L'], ['Ship: steer · throttle · boost', 'Mouse · W/S · Shift'], ['Ship: guns · missile · lock · power', 'LMB · RMB · Tab · 1/2/3 (4 reset)'], ['Ship: dock/orbit/board · step outside · walk inside · galaxy map', 'E · F · I · M'], ['Ship: cycle nav · cruise to it', 'T · hold V'], ['Phone (contracts, skills, gear, map)', 'P'], ['Enter any building · leave', 'E against a wall · E at the door'], ['Join a faction or team · ride to other cities', 'Phone → Faction · Travel'], ['Map', 'M'], ['Pause', 'Esc'], ['Controls', 'H']];
+      ['Dodge (invulnerable)', 'C'], ['Parry (orange ! tells)', 'Q — red ⚠ tells cannot be parried: dodge'], ['Lock on · cycle', 'Tab · T / mouse wheel'], ['Pick up · throw · interact · drive', 'E (hold Z + E to drive if you can lift cars)'], ['Gadget', 'G'], ['Walk', 'Z (hold)'], ['Crew: control mode (Solo / Squad / Hybrid)', 'K'], ['Crew: switch / borrow character', 'N · 6 7 8 · ` back to hero'], ['Crew: call in a power (wheel)', 'hold B, move mouse or press 1-9'], ['Crew: orders (wheel)', 'hold Y'], ['Revive downed crew', 'E'], ['Relic power · cycle', 'J · L'], ['Ship: steer · throttle · boost', 'Mouse · W/S · Shift'], ['Ship: guns · missile · lock · power', 'LMB · RMB · Tab · 1/2/3 (4 reset)'], ['Ship: dock/orbit/board · step outside · walk inside · galaxy map', 'E · F · I · M'], ['Ship: cycle nav · cruise to it', 'T · hold V'], ['Phone (contracts, skills, gear, map)', 'P'], ['Enter any building · leave', 'E against a wall · E at the door'], ['Join a faction or team · ride to other cities', 'Phone → Faction · Travel'], ['Fly a car: take off · climb · descend', 'Shift · Space · X (while driving)'], ['Touch screens', 'Left thumb moves · right thumb looks · buttons on the right (Phone → System to switch)'], ['Map', 'M'], ['Pause', 'Esc'], ['Controls', 'H']];
     $('helpbox').innerHTML = `<h3 style="margin-top:0">Controls</h3><table>${rows.map(r => `<tr><td class="dim">${r[0]}</td><td class="mono">${r[1]}</td></tr>`).join('')}</table>
       <p class="dim" style="font-size:12px;margin-top:14px">Traversal chains into attacks: attack while swinging, boosting, speed-running, just after a blink, gliding, or mid-leap. Superheroes take no fall damage.</p><div style="text-align:right"><button id="h-close">Close</button></div>`;
     $('h-close').onclick = () => this.back();
@@ -5783,11 +5930,11 @@ const Phone = {
       <div class="card"><h5>Settings</h5>
       <div class="row"><label>Quality</label><select id="s-q"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
       <div class="row"><label>Master</label><input id="s-m" type="range" min="0" max="1" step="0.05"></div><div class="row"><label>Music</label><input id="s-mu" type="range" min="0" max="1" step="0.05"></div><div class="row"><label>Effects</label><input id="s-fx" type="range" min="0" max="1" step="0.05"></div>
-      <div class="row"><label>Mouse sensitivity</label><input id="s-sens" type="range" min="0.0008" max="0.006" step="0.0002"></div><div class="row"><label>Invert Y</label><input id="s-inv" type="checkbox"></div><div class="row"><label>Camera follows movement</label><input id="s-cf" type="checkbox"></div><div class="row"><label>FPS counter</label><input id="s-fps" type="checkbox"></div></div>`;
+      <div class="row"><label>Mouse sensitivity</label><input id="s-sens" type="range" min="0.0008" max="0.006" step="0.0002"></div><div class="row"><label>Invert Y</label><input id="s-inv" type="checkbox"></div><div class="row"><label>Camera follows movement</label><input id="s-cf" type="checkbox"></div><div class="row"><label>Touch controls</label><select id="s-touch"><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select></div><div class="row"><label>FPS counter</label><input id="s-fps" type="checkbox"></div></div>`;
     $('s-save').onclick = () => { Game.save(); toast('Saved', 'good'); }; $('s-exp').onclick = () => exportSave(); $('s-imp').onclick = () => importSaveFile(d => { Game.teardown(); Game.start(d, false); });
     const bind = (id, key, fn, prop = 'value') => { const e = $(id); e[prop] = s[key]; e.oninput = e.onchange = () => { s[key] = prop === 'checked' ? e.checked : e.type === 'range' ? +e.value : e.value; fn(); }; };
     bind('s-q', 'quality', () => Render.setQuality(s.quality)); bind('s-m', 'master', () => Game.applySettings()); bind('s-mu', 'music', () => Game.applySettings()); bind('s-fx', 'sfx', () => Game.applySettings());
-    bind('s-sens', 'sens', () => Game.applySettings()); bind('s-inv', 'invertY', () => Game.applySettings(), 'checked'); bind('s-cf', 'camFollow', () => Game.applySettings(), 'checked'); bind('s-fps', 'fps', () => Game.applySettings(), 'checked');
+    bind('s-sens', 'sens', () => Game.applySettings()); bind('s-inv', 'invertY', () => Game.applySettings(), 'checked'); bind('s-cf', 'camFollow', () => Game.applySettings(), 'checked'); { const t = $('s-touch'); t.value = s.touch == null ? 'auto' : s.touch ? 'on' : 'off'; t.onchange = () => { s.touch = t.value === 'auto' ? null : t.value === 'on'; }; } bind('s-fps', 'fps', () => Game.applySettings(), 'checked');
     const pd = el('div', 'card', `<h5>Crew</h5><div class="row"><label>Permanent death</label><input id="s-pd" type="checkbox"></div><p class="faint" style="font-size:11.5px">On: crew members downed by lieutenants or leaders can die if they are not revived in time and the fight is lost. Off: they always survive with an injury. Your hero is only ever knocked out.</p>`); b.appendChild(pd); bind('s-pd', 'permadeath', () => {}, 'checked');
   },
 };
@@ -5861,7 +6008,7 @@ const CitySim = {
     Bus.emit('news', { text, kind, district });
   },
   step(dt) {
-    const C = Game.state.city; C.hourAcc += dt * 24 / CONFIG.world.dayLengthSec;
+    const C = Game.state.city; C.hourAcc += dt * 24 / CONFIG.world.dayLengthSec * Sky.rate();
     while (C.hourAcc >= 1) { C.hourAcc -= 1; this.tickHour(); }
   },
   strength(f) { const F = Game.state.city.f[f]; return F ? F.manpower : 0; },
@@ -6112,7 +6259,7 @@ const PoweredBrain = {
     const d = ch.pos.distanceTo(t.pos), dir = _v1.subVectors(t.pos, ch.pos).setY(0).normalize();
     I.faceTarget = t;
     if (ai.fearT > 0 || ch.statuses.fear) { I.move.copy(dir).negate(); I.moveMag = 1; return; }
-    const ranged = ['radiance', 'elemental', 'kinesis'].includes(def.primary);
+    const ranged = ['radiance', 'elemental', 'kinesis', 'sonic', 'psionic'].includes(def.primary);
     const want = ranged ? 11 : 2.4;
     // mobility from the traversal set: close big gaps fast
     if (d > 26 && ch.onGround && ch.state === 'normal') this.mobility(ch, t, d);
@@ -6718,15 +6865,44 @@ const Driving = {
     if (!car.own && car.tag !== 'own') { Heat.add(Game.chars.some(c => c.alive && c.faction === 'nhpd' && c.pos.distanceTo(p.pos) < 50) ? 6 : 2, 'took a car'); Crowd.panic(car.pos, 15); if (R.chance(0.5)) Sfx.horn(); }
     car.driven = true; car.state = 'driven'; car.chase = null; p.rig.root.visible = false; p.setState('carried'); p.carriedBy = null; if (p.carrying) Props.drop(p);
     Modes.set(MODE.VEHICLE);
+    this.fly = false; this.vy = 0; if (!Game.state.flags.carEnterTip) { Game.state.flags.carEnterTip = true; toast('Press <kbd>Shift</kbd> to take off — every car in this city flies.', 'gold', 4500); }
   },
   exit() {
     const p = Game.player, car = this.car; if (!car) return;
+    if (this.fly) { const g = World.surfaceAt(car.pos.x, car.pos.z, car.pos.y + 0.5), alt = car.pos.y - g; this.fly = false; this.vy = 0; car.mesh.rotation.set(0, car.yaw, 0);
+      if (alt > 3) { const at = car.pos.clone(); car.driven = false; car.state = 'stopped'; car.stopT = 1e9; car.speed = 0; car.pos.y = g; Traffic.syncBox(car); car.mesh.position.copy(car.pos); p.rig.root.visible = true; p.setState('normal'); p.pos.copy(at).add(V3(0, 2.2, 0)); p.prev.copy(p.pos); p.vel.set(0, 2, 0); p.onGround = false; this.car = null; Modes.set(MODE.ON_FOOT); toast('You bail out. The car comes down on autopilot.', '', 1800); return; }
+      car.pos.y = g; }
     car.driven = false; car.state = 'stopped'; car.stopT = 1e9; car.speed = 0;
+    this.fly = false; this.vy = 0;
     p.rig.root.visible = true; p.setState('normal'); const side = V3(Math.cos(car.yaw), 0, -Math.sin(car.yaw)); p.pos.copy(car.pos).addScaledVector(side, 2.6); p.pos.y = World.surfaceAt(p.pos.x, p.pos.z, car.pos.y + 2); p.prev.copy(p.pos); p.vel.set(0, 0, 0);
     this.car = null; Modes.set(MODE.ON_FOOT);
   },
+  fly: false, vy: 0,
+  // airborne: W/S throttle, A/D or the mouse steer, Space climbs, X descends; touch the ground slowly to land
+  flyStep(dt, car, p) {
+    const thr = (Input.is('forward') ? 1 : 0) - (Input.is('back') ? 1 : 0), st = (Input.is('left') ? 1 : 0) - (Input.is('right') ? 1 : 0);
+    const top = 62; if (thr > 0) this.speed = Math.min(top, this.speed + 20 * dt); else if (thr < 0) this.speed = Math.max(-15, this.speed - 24 * dt); else this.speed = damp(this.speed, 0, 0.5, dt);
+    this.steer = damp(this.steer, st, 5, dt);
+    car.yaw += this.steer * dt * 1.3 + (Cam.idleT < 0.3 ? wrapAngle(Cam.yaw - car.yaw) * dt * 0.9 : 0);
+    const want = (Input.is('jump') ? 14 : 0) - (Input.is('descend') ? 14 : 0) + Math.sin(Game.time * 1.7) * 0.4; this.vy = damp(this.vy, want, 3, dt);
+    const fwd = dirFromYaw(car.yaw, _v1); const nx = car.pos.x + fwd.x * this.speed * dt, nz = car.pos.z + fwd.z * this.speed * dt, ny = Math.min(420, car.pos.y + this.vy * dt);
+    let blocked = null; const hw = car.P.W / 2 + 0.2, hl = car.P.L / 2;
+    World.query(nx - hl, nz - hl, nx + hl, nz + hl, b => { if (b === car.box || b.kind === 'curb') return; if (b.y1 < ny + 0.3 || b.y0 > ny + 1.8) return; const cx = clamp(nx, b.x0, b.x1), cz = clamp(nz, b.z0, b.z1); if (Math.hypot(nx - cx, nz - cz) < hw + 0.4) { blocked = b; return false; } });
+    if (blocked) { if (Math.abs(this.speed) > 14) { Sfx.impact(clamp(Math.abs(this.speed) / 20, 0.5, 2), true); Cam.shake(0.3); Traffic.damage(car, Math.abs(this.speed) * 1.2, p); VFX.sparks(car.pos.clone().add(V3(0, 1, 0)).addScaledVector(fwd, hl), '#ffd8a0', 10); } this.speed *= -0.25; }
+    else { car.pos.x = nx; car.pos.z = nz; }
+    const g = World.surfaceAt(car.pos.x, car.pos.z, car.pos.y + 0.6); car.pos.y = Math.max(g, ny);
+    if (car.pos.y <= g + 0.02 && this.vy <= 0.5 && Math.abs(this.speed) < 18 && !Input.is('jump')) { this.fly = false; this.vy = 0; car.pos.y = g; car.mesh.rotation.x = 0; Sfx.land(10); toast('Touched down', '', 1000); }
+    World.clampBounds(car.pos); Traffic.syncBox(car); car.box.vel.copy(fwd).multiplyScalar(this.speed);
+    car.mesh.position.copy(car.pos); car.mesh.rotation.set(-clamp(this.vy / 40, -0.25, 0.25) - clamp(this.speed / 400, 0, 0.08), car.yaw, -this.steer * 0.18, 'YXZ');
+    if (R.chance(0.5)) { VFX.trail(car.pos.clone().add(V3(R.range(-0.8, 0.8), 0.15, 0)).addScaledVector(fwd, -car.P.L * 0.3), '#7fd0ff', 0.35); }
+    p.pos.copy(car.pos).add(_v2.set(0, 0.6, 0)); p.prev.copy(p.pos); p.vel.copy(fwd).multiplyScalar(this.speed); p.vel.y = this.vy; p.yaw = car.yaw;
+    Sfx.setMotion(Math.abs(this.speed) * 1.4 + Math.abs(this.vy), 1, 0.9 + Math.abs(this.speed) / 40);
+  },
+  takeOff() { const car = this.car; if (!car) return; this.fly = true; this.vy = 9; Sfx.sonic(); VFX.ring(car.pos, '#7fd0ff', 3, 0.4); if (!Game.state.flags.carFlyTip) { Game.state.flags.carFlyTip = true; toast('Airborne — <kbd>Space</kbd> climbs, <kbd>X</kbd> descends, <kbd>W</kbd>/<kbd>S</kbd> throttle, the mouse steers. Come down slowly to land.', 'gold', 6000); } },
   step(dt) {
-    const car = this.car, p = Game.player; if (!car || !Traffic.cars.includes(car)) { this.car = null; if (p) { p.rig.root.visible = true; p.setState('normal'); } Modes.set(MODE.ON_FOOT); return; }
+    const car = this.car, p = Game.player; if (!car || !Traffic.cars.includes(car)) { this.car = null; this.fly = false; if (p) { p.rig.root.visible = true; p.setState('normal'); } Modes.set(MODE.ON_FOOT); return; }
+    if (Input.hit('trav')) { if (this.fly) { if (this.vy > -2) this.vy = -10; } else this.takeOff(); }
+    if (this.fly) { this.flyStep(dt, car, p); if (Input.hit('interact')) this.exit(); return; }
     const K = car.max || 30, thr = (Input.is('forward') ? 1 : 0) - (Input.is('back') ? 1 : 0), st = (Input.is('left') ? 1 : 0) - (Input.is('right') ? 1 : 0), brake = Input.is('jump');
     const top = car.own ? K : Math.min(K, 34);
     if (thr > 0) this.speed = Math.min(top, this.speed + (this.speed < 0 ? 30 : 16) * dt); else if (thr < 0) this.speed = Math.max(-10, this.speed - (this.speed > 0 ? 30 : 10) * dt); else this.speed = damp(this.speed, 0, 0.8, dt);
@@ -7608,7 +7784,7 @@ Object.assign(Crew, {
 // §TEAMUP ------------------------------------------------------------------------------
 // Two characters using powers within a short window trigger a team-up. Built from power-set pairings (all 21
 // combinations of the six primaries, same-set pairs included), with traversal variants and unique-recruit specials.
-const SET_ORDER = ['might', 'radiance', 'elemental', 'kinesis', 'arsenal', 'shadow'];
+const SET_ORDER = ['might', 'radiance', 'elemental', 'kinesis', 'arsenal', 'shadow', 'sonic', 'chrono', 'psionic', 'verdant'];
 const setPair = (a, b) => SET_ORDER.indexOf(a) <= SET_ORDER.indexOf(b) ? a + '+' + b : b + '+' + a;
 const TEAMUPS = {
   'might+might': { name: 'Twin Quake', desc: 'Two strikes in step bring the street up.', effects: [AREA(9, [D(120, 'melee'), LAUNCH(9), STUN(1.5)], { at: 'point', vfx: 'quakeBig' })] },
@@ -7633,6 +7809,16 @@ const TEAMUPS = {
   'arsenal+shadow': { name: 'Silent Charges', desc: 'Charges placed by someone nobody saw.', effects: [AREA(8, [D(160, 'blast'), KB(20, 0.5), DEBUFF('vulnerable', 4)], { at: 'point', delay: 1, vfx: 'novaBig' })], choreo: 'blinkIn', thrower: 'shadow' },
   'shadow+shadow': { name: 'Nightfall', desc: 'The street goes dark and stays dark.', effects: [AREA(16, [DEBUFF('fear', 5), DEBUFF('blind', 5), DEBUFF('vulnerable', 5), D(50)], { at: 'point', vfx: 'eclipse' })] },
 };
+// the four Stage 7 sets combine with everything from a signature per set: [lead word, tail word, effects, burst]
+const TEAMUP_SIG = {
+  might: ['Iron', 'Hammer', [KB(22, 0.5)], 'quakeBig'], radiance: ['Solar', 'Flare', [DEBUFF('blind', 3)], 'novaBig'], elemental: ['Storm', 'Surge', [DEBUFF('burn', 3)], 'nova'],
+  kinesis: ['Gravity', 'Well', [PULL(14, 'point')], 'crush'], arsenal: ['Payload', 'Strike', [DEBUFF('vulnerable', 3)], 'quake'], shadow: ['Night', 'Terror', [DEBUFF('fear', 3)], 'tendrils'],
+  sonic: ['Sonic', 'Boom', [STUN(1.4), KB(18, 0.4)], 'shock'], chrono: ['Paradox', 'Loop', [DEBUFF('slow', 5, 2), STUN(1)], 'eclipse'], psionic: ['Psychic', 'Echo', [DEBUFF('charm', 5)], 'dread'], verdant: ['Bramble', 'Bloom', [DEBUFF('poison', 5, 2), STUN(1)], 'tendrils'],
+};
+for (const a of SET_ORDER) for (const b of SET_ORDER) {
+  const key = setPair(a, b); if (TEAMUPS[key]) continue; const [x, y] = key.split('+'), A = TEAMUP_SIG[x], B = TEAMUP_SIG[y];
+  TEAMUPS[key] = { name: x === y ? `${A[0]} Chorus` : `${A[0]} ${B[1]}`, desc: `${POWER_SETS[x].name} and ${POWER_SETS[y].name}, at the same moment.`, effects: [AREA(8.5, [D(135), ...A[2], ...(x === y ? [] : B[2])], { at: 'point', vfx: B[3] })], elemental: x === 'elemental' || y === 'elemental' };
+}
 // primary set of the thrower > traversal set of the projectile
 const TEAMUP_TRAV = {
   'might>velocity': { name: 'Speedster Missile', desc: 'The strong one throws the fast one.', effects: [AREA(6, [D(160, 'melee'), KB(30, 0.5), STUN(1.5)], { at: 'point', vfx: 'quakeBig' })], choreo: 'missile' },
@@ -10863,7 +11049,7 @@ const Game = {
       settings: { quality: CONFIG.render.quality, master: CONFIG.audio.master, music: CONFIG.audio.music, sfx: CONFIG.audio.sfx, sens: 0.0022, invertY: false, camFollow: true, fps: false, permadeath: true }, stats: { parries: 0, civHarmed: 0, property: 0 }, crew: Crew.fresh(), ws: { ...WORLD_DEFAULTS } };
   },
   async boot() {
-    Render.init(); Input.init(); Cam.init(); HUD.init(); Menus.init();
+    Render.init(); Input.init(); Touch.init(); Cam.init(); HUD.init(); Menus.init();
     $('loading').textContent = 'LOADING ASSETS';
     await Assets.load();
     $('loading').textContent = 'BUILDING ' + CITY_NAME.toUpperCase();
@@ -11075,6 +11261,7 @@ const Game = {
     const heats = this.heats || []; for (let i = 0; i < 4; i++) { const h = heats[i], u = F.uHeat.value[i]; if (h) { HUD.project(h.pos, _o); const d = Math.max(1, h.pos.distanceTo(Render.camera.position)); u.set(_o.x / innerWidth, 1 - _o.y / innerHeight, clamp(h.r * 30 / d, 0.02, 0.5), _o.vis ? h.s : 0); } else u.set(0, 0, 0, 0); }
     this.heats = [];
     if (!cine || Modes.name === MODE.ON_FOOT) HUD.update(dt);
+    Touch.frame();
     Render.render(); VFX.endFrame();
   },
   animate(c, dt, alpha) {
@@ -11759,7 +11946,7 @@ Object.assign(Phone, {
 
 // §BOOT --------------------------------------------------------------------------------
 Game.boot().catch(reportError);
-window.Meridian = { Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, Guild, Interiors, Towns, Transit, Worlds, TOWNS, TRANSIT, GUILD_RANKS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
+window.Meridian = { Touch, Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, Guild, Interiors, Towns, Transit, Worlds, TOWNS, TRANSIT, GUILD_RANKS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
 </script>
 </body>
 </html>
