@@ -5253,6 +5253,7 @@ const HUD = {
   set(id, prop, v) { const key = id + prop; if (this.last[key] === v) return; this.last[key] = v; const e = $(id); if (prop === 'w') e.style.width = v; else if (prop === 'h') e.innerHTML = v; else if (prop === 't') e.textContent = v; },
   update(dt) {
     const ch = Game.player; if (!ch) return; const S = Game.state;
+    if (S.galaxy && !S.galaxy.shipHint && !S.galaxy.ships.length && S.renown >= Hangar.salvageRenown && S.econ.bank >= Hangar.salvageCost && Offworld.loc === 'earth' && !Game.originStep) { S.galaxy.shipHint = true; toast('You can afford a ship now. Open the phone (<kbd>P</kbd>) → <b>Galaxy</b> → <b>Get to space</b>.', 'gold', 7000); }
     const mh = ch.st('maxHp');
     this.set('b-hp', 'w', (ch.hp / mh * 100).toFixed(1) + '%'); this.set('b-hpg', 'w', (ch.hp / mh * 100).toFixed(0) + '%');
     $('b-hp').style.background = ch.hp / mh < 0.3 ? 'var(--hp-low)' : '';
@@ -8671,19 +8672,19 @@ const Hangar = {
   activeShip() { const G = Game.state.galaxy; return G.ships.find(s => s.id === G.active) || G.ships[0] || null; },
   makeShip(cls, name, extra = {}) { return Object.assign({ id: 'sh' + (hashStr(name + Game.state.city.tick + Game.state.galaxy.ships.length) % 1e8).toString(36), cls, name, up: {}, hull: SHIP_CLASSES[cls].hull, insured: false }, extra); },
   add(sd) { const G = Game.state.galaxy; if (G.ships.length >= FLEET_MAX) { toast(`Your fleet is full (${FLEET_MAX} hulls)`, 'bad'); return false; } G.ships.push(sd); if (!G.active) G.active = sd.id; Bus.emit('ship.acquired', { ship: sd }); return true; },
-  salvageCost: 18000, salvageRenown: 30, buyRenown: 20,
+  salvageCost: 4000, salvageRenown: 5, buyRenown: 10,
   salvage() {
     const S = Game.state; if (S.renown < this.salvageRenown) { toast(`The yard won't sell salvage to a nobody (renown ${this.salvageRenown})`, 'bad'); return; }
     if (!Economy.spend(this.salvageCost, 'Salvaged light freighter')) { toast('Not enough credits', 'bad'); return; }
     const sd = this.makeShip('freighter', R.pick(['The Second Chance', 'Rustbucket', 'Old Faithful', 'The Long Odds', 'Patchwork']), { hull: SHIP_CLASSES.freighter.hull * 0.7 }); this.add(sd);
-    toast(`You salvaged an old Kestrel freighter: the ${esc(sd.name)}. Its hull is at 70% — repairs at any shipyard.`, 'gold', 4500); CitySim.news(`A freelancer hauled an old freighter out of the Harbour breakers' yard and got it flying.`, 'city'); Game.save();
+    toast(`You salvaged an old Kestrel freighter: the ${esc(sd.name)}. Its hull is at 70% — repairs at any shipyard. Phone → Galaxy → <b>Launch to orbit</b> whenever you're ready.`, 'gold', 6000); CitySim.news(`A freelancer hauled an old freighter out of the Harbour breakers' yard and got it flying.`, 'city'); Game.save();
   },
   buy(cls, where = 'hangar') {
     const C = SHIP_CLASSES[cls], S = Game.state; if (S.renown < this.buyRenown) { toast(`Dealers want references first (renown ${this.buyRenown})`, 'bad'); return; }
     if (Game.state.galaxy.ships.length >= FLEET_MAX) { toast('Your fleet is full', 'bad'); return; }
     if (!Economy.spend(C.price, 'Bought ' + C.name)) { toast('Not enough credits', 'bad'); return; }
     const sd = this.makeShip(cls, R.pick(['Meridian Star', 'Halcyon Dawn', 'Quiet Thunder', 'Second Sun', 'Waylight', 'Undertow']) + (Game.state.galaxy.ships.length ? ' ' + ['II', 'III'][Game.state.galaxy.ships.length - 1] : '')); this.add(sd);
-    toast(`Bought a ${esc(C.name)}: the ${esc(sd.name)}.`, 'gold', 3500); Game.save();
+    toast(`Bought a ${esc(C.name)}: the ${esc(sd.name)}. Phone → Galaxy → <b>Launch to orbit</b> whenever you're ready.`, 'gold', 5000); Game.save();
   },
   insure(sd) { const c = Math.round(SHIP_CLASSES[sd.cls].price * 0.05); if (sd.insured) return; if (!Economy.spend(c, 'Hull insurance: ' + sd.name)) { toast('Not enough credits', 'bad'); return; } sd.insured = true; toast('Insured: half the hull value if you lose her. Never the cargo.', 'good', 3000); },
   repairCost(sd) { return Math.round((this.maxHull(sd) - (sd.hull ?? this.maxHull(sd))) * 6); },
@@ -8692,6 +8693,21 @@ const Hangar = {
   upgrade(sd, k) { const U = SHIP_UPGRADES[k], lvl = sd.up[k] || 0; if (lvl >= U.max) return; const c = U.price * (lvl + 1); if (!Economy.spend(c, U.name)) { toast('Not enough credits', 'bad'); return; } sd.up[k] = lvl + 1; toast(`${U.name} → mk ${lvl + 2}`, 'good'); },
   cargoCap(sd = this.activeShip()) { return sd ? Math.round(SHIP_CLASSES[sd.cls].cargo * (1 + (sd.up.cargo || 0) * SHIP_UPGRADES.cargo.step)) : 0; },
   cargoUsed() { const G = Game.state.galaxy; let v = 0; for (const [k, n] of Object.entries(G.cargo)) v += (GOODS[k] ? GOODS[k].vol : 1) * n; if (GContracts.active && GContracts.active.cargoUnits) v += GContracts.active.cargoUnits; return v; },
+  // no hangar needed: the ship flies down to wherever you are on Earth and picks you up
+  launchBlock() {
+    if (!this.activeShip()) return 'You have no ship yet';
+    if (Offworld.loc !== 'earth') return 'You are already off-world';
+    if (Game.originStep) return 'Finish what you started first';
+    if (Driving.car) return 'Get out of the car first';
+    if (Game.inCombat) return 'Not in the middle of a fight';
+    return null;
+  },
+  callDown() {
+    const why = this.launchBlock(); if (why) { toast(why, 'bad'); return false; }
+    if (Menus.cur) Menus.hide();
+    toast(`The ${esc(this.activeShip().name)} drops out of the clouds and drops a line. Up you go.`, 'gold', 2600); Sfx.sonic(); Cam.shake(0.3);
+    this.launch(); return true;
+  },
   // the base hangar: salvage or buy the first ship, then launch
   use(p) {
     const G = Game.state.galaxy, sd = this.activeShip();
@@ -9292,7 +9308,21 @@ Object.assign(Phone, {
   },
   tab_galaxy(b) {
     const G = Game.state.galaxy; if (!G || !Galaxy.layout) { b.appendChild(el('p', 'dim', 'No galaxy yet.')); return; }
-    if (!G.ships.length) b.appendChild(el('p', 'dim', 'You have no ship. A hangar at your base, renown and credits will get you one.'));
+    // getting off the ground: buy or salvage a ship from here, then launch from wherever you stand
+    const S = Game.state, go = el('div', 'card', '<h5>Get to space</h5>'), act = el('div', 'act', '');
+    if (!G.ships.length) {
+      go.appendChild(el('p', '', `You need a ship. No hangar required — it waits in orbit and comes down for you.<br><span class="faint mono" style="font-size:11px">Renown ${Math.round(S.renown)} · bank ${fmtCr(S.econ.bank)}</span>`));
+      const sv = el('button', 'primary', `Salvage an old Kestrel — ${fmtCr(Hangar.salvageCost)}${S.renown < Hangar.salvageRenown ? ` (renown ${Hangar.salvageRenown})` : ''}`); sv.disabled = S.renown < Hangar.salvageRenown || S.econ.bank < Hangar.salvageCost; sv.onclick = () => { Hangar.salvage(); this.render('galaxy'); };
+      const bu = el('button', '', `Buy a new Kestrel — ${fmtCr(SHIP_CLASSES.freighter.price)}${S.renown < Hangar.buyRenown ? ` (renown ${Hangar.buyRenown})` : ''}`); bu.disabled = S.renown < Hangar.buyRenown || S.econ.bank < SHIP_CLASSES.freighter.price; bu.onclick = () => { Hangar.buy('freighter'); this.render('galaxy'); };
+      act.appendChild(sv); act.appendChild(bu);
+      if (S.renown < Hangar.salvageRenown) go.appendChild(el('p', 'faint', `<span style="font-size:11.5px">Do a contract or stop a crime or two — the breakers' yard sells to anyone with renown ${Hangar.salvageRenown}.</span>`));
+    } else {
+      const why = Hangar.launchBlock();
+      go.appendChild(el('p', '', Offworld.loc === 'earth' ? `The ${esc(Hangar.activeShip().name)} is ready. Launch from right here — or from your base hangar if you have one.` : `You are off-world in the ${esc(Hangar.activeShip().name)}.`));
+      if (Offworld.loc === 'earth') { const l = el('button', 'primary', 'Launch to orbit'); l.disabled = !!why; if (why) l.title = why; l.onclick = () => Hangar.callDown(); act.appendChild(l); if (why) go.appendChild(el('p', 'faint', `<span style="font-size:11.5px">${esc(why)}.</span>`)); }
+      go.appendChild(el('p', 'faint', '<span style="font-size:11.5px">In space: mouse steers · W/S throttle · Shift boost · T picks a target · hold V to cruise to it · E docks / orbits a planet / boards · M galaxy map (jump to other systems) · I walks the ship.</span>'));
+    }
+    go.appendChild(act); b.appendChild(go);
     b.appendChild(this.galMap(900));
     const here = G.loc.sys; const leg = el('div', '', ''); leg.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;font-size:11px';
     for (const f of GAL_FACTIONS.concat(['earthgov'])) leg.appendChild(el('span', 'tag', `<span style="display:inline-block;width:9px;height:9px;background:${FACTIONS[f].color};margin-right:4px"></span>${esc(FACTIONS[f].short)} ${GalaxySim.owned(f).length} · str ${Math.round(G.f[f].str)}`)); b.appendChild(leg);
