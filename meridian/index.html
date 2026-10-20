@@ -360,6 +360,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 // §CONSTANTS ---------------------------------------------------------------------------
 const GAME_TITLE = "Meridian";        // placeholder
@@ -367,6 +368,15 @@ const TEAM_NAME  = "the Meridian";    // the hero team the player will lead
 const CITY_NAME  = "New Halcyon";
 const HERO_PARTS_URL = "./hero/costume_kit.glb";
 const HERO_BODY_URL  = "./hero/body_base.glb";
+// Full-body hero models (rigged, T-pose, Mixamo-style bone names). Loaded on demand when a hero picks one; the game's
+// pose library drives them by retargeting (see Rig.buildModel).
+const HERO_MODELS = {
+  longcoat_mystic: { name: 'Longcoat Mystic', url: './hero/longcoat_mystic.glb', blurb: 'A long coat, a hood and old sigils.' },
+  vigilante: { name: 'Vigilante', url: './hero/vigilante.glb', blurb: 'Street armour, a mask and no patience.' },
+  hooded_speedster: { name: 'Hooded Speedster', url: './hero/hooded_speedster.glb', blurb: 'Light, hooded and built to run.' },
+  heavy_bruiser: { name: 'Heavy Bruiser', url: './hero/heavy_bruiser.glb', blurb: 'A wall of muscle in plated gear.' },
+  corporate_merc: { name: 'Corporate Merc', url: './hero/corporate_merc.glb', blurb: 'Tactical kit with a company logo filed off.' },
+};
 const CITY_KIT_URL   = "./city/city_kit.glb";
 const SAVE_KEY = 'meridian.save';
 const SAVE_VERSION = 6;
@@ -427,7 +437,7 @@ const $ = id => document.getElementById(id);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtCr = n => Math.round(n).toLocaleString('en-US') + ' cr';
-const _v1 = V3(), _v2 = V3(), _v3 = V3(), _v4 = V3(), _q1 = new T.Quaternion(), _m1 = new T.Matrix4(), _c1 = new T.Color();
+const _v1 = V3(), _v2 = V3(), _v3 = V3(), _v4 = V3(), _q1 = new T.Quaternion(), _q2 = new T.Quaternion(), _m1 = new T.Matrix4(), _c1 = new T.Color();
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 class RNG {
   constructor(seed) { this.f = mulberry32(seed >>> 0); }
@@ -1115,6 +1125,19 @@ const Assets = {
     };
     [this.body, this.parts, this.city] = await Promise.all([tryLoad(HERO_BODY_URL), tryLoad(HERO_PARTS_URL), tryLoad(CITY_KIT_URL)]);
   },
+  models: {}, modelLoads: {},
+  // hero models load on first use; whoever is waiting for one rebuilds when it arrives
+  loadModel(key) {
+    const M = HERO_MODELS[key]; if (!M) return Promise.resolve(null); if (this.models[key]) return Promise.resolve(this.models[key]);
+    if (!this.modelLoads[key]) this.modelLoads[key] = (this.loader || (this.loader = new GLTFLoader())).loadAsync(M.url).then(g => {
+      g.scene.traverse(o => { if (o.isMesh) { o.geometry.userData.shared = true; for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) if (o.material[k]) o.material[k].userData.shared = true; } });
+      this.models[key] = g;
+      if (typeof Game !== 'undefined' && Game.hero && Game.hero.model === key && Game.heroCh) Game.rebuildRig();
+      if (typeof Creator !== 'undefined' && Creator.cfg && Creator.cfg.model === key) Creator.dirty = true;
+      return g;
+    }).catch(e => { console.warn('hero model failed', key, e); this.modelLoads[key] = null; return null; });
+    return this.modelLoads[key];
+  },
   // City kit: meshes named e.g. "streetlight", "water_tank", "ac_unit", "tree", "car" replace procedural prototypes.
   cityProto(name) {
     if (!this.city) return null; let found = null;
@@ -1733,6 +1756,8 @@ function defaultCostume() {
     finish: { primary: 'fabric', secondary: 'plate', accent: 'leather', trim: 'glow' } };
 }
 const JOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'shL', 'armL', 'elbL', 'handL', 'shR', 'armR', 'elbR', 'handR', 'legL', 'kneeL', 'footL', 'legR', 'kneeR', 'footR'];
+const JOINT_PARENT = { spine: 'hips', chest: 'spine', neck: 'chest', head: 'neck', shL: 'chest', armL: 'shL', elbL: 'armL', handL: 'elbL', shR: 'chest', armR: 'shR', elbR: 'armR', handR: 'elbR', legL: 'hips', kneeL: 'legL', footL: 'kneeL', legR: 'hips', kneeR: 'legR', footR: 'kneeR' };
+const _e1 = new THREE.Euler();
 const BONE_MAP = { hips: /hips|pelvis/i, spine: /spine$|spine1?$/i, chest: /spine2|chest|upperchest/i, neck: /neck/i, head: /^head$|head$/i,
   armL: /left.?arm$|leftupperarm|upperarm_l|l_upperarm/i, elbL: /left.?forearm|leftlowerarm|lowerarm_l/i, handL: /left.?hand$|hand_l/i,
   armR: /right.?arm$|rightupperarm|upperarm_r|r_upperarm/i, elbR: /right.?forearm|rightlowerarm|lowerarm_r/i, handR: /right.?hand$|hand_r/i,
@@ -1760,6 +1785,7 @@ class Rig {
     J('shR', 'chest', -0.2 * bw * sh, 0.22 * hs, 0); J('armR', 'shR', -0.02, 0, 0); J('elbR', 'armR', 0, -0.3 * hs, 0); J('handR', 'elbR', 0, -0.27 * hs, 0);
     J('legL', 'hips', 0.1 * bw, -0.04, 0); J('kneeL', 'legL', 0, -0.45 * hs, 0); J('footL', 'kneeL', 0, -0.45 * hs, 0);
     J('legR', 'hips', -0.1 * bw, -0.04, 0); J('kneeR', 'legR', 0, -0.45 * hs, 0); J('footR', 'kneeR', 0, -0.45 * hs, 0);
+    if (cfg.model && HERO_MODELS[cfg.model]) { const g = Assets.models[cfg.model]; if (g) { this.buildModel(g, cfg); return; } Assets.loadModel(cfg.model); }
     if (cfg.skinned && Assets.body) { this.buildSkinned(cfg); return; }
     const C = cos.colors, F = cos.finish;
     const mP = this.mat(C.primary, F.primary), mS = this.mat(C.secondary, F.secondary), mA = this.mat(C.accent, F.accent), mT = this.mat(C.trim, F.trim);
@@ -1854,6 +1880,38 @@ class Rig {
     }
     this.headMesh = headMesh;
   }
+  // A full-body model: clone it (skeleton and all), face it down +Z, and record each bone's rest orientation in body space.
+  // Arms are lowered from the T-pose to the rig's arms-down neutral, so a zero pose on the procedural joints looks the same
+  // on both. Each frame the procedural joints' body-space rotations are carried onto the bones (see applyModel).
+  buildModel(g, cfg) {
+    const clone = SkeletonUtils.clone(g.scene); this.body.add(clone); this.model = clone;
+    clone.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; o.material = o.material.clone(); this.mats.push(o.material); } });
+    const bones = {}; clone.traverse(o => { if (o.isBone) bones[o.name] = o; });
+    const wpos = n => { clone.updateMatrixWorld(true); return n.getWorldPosition(V3()); };
+    if (bones.headfront && bones.Head && wpos(bones.headfront).z < wpos(bones.Head).z) clone.rotation.y = Math.PI;
+    const hs = (cfg.body && cfg.body.height) || 1; clone.scale.multiplyScalar(hs);
+    this.root.updateMatrixWorld(true); const bodyInv = new T.Matrix4().copy(this.body.matrixWorld).invert();
+    const bodyQ = o => { const m = new T.Matrix4().multiplyMatrices(bodyInv, o.matrixWorld), q = new T.Quaternion(); m.decompose(V3(), q, V3()); return q; };
+    const named = { Hips: 'hips', Spine02: 'spine', Spine: 'chest', neck: 'neck', Head: 'head', LeftShoulder: 'shL', LeftArm: 'armL', LeftForeArm: 'elbL', LeftHand: 'handL', RightShoulder: 'shR', RightArm: 'armR', RightForeArm: 'elbR', RightHand: 'handR', LeftUpLeg: 'legL', LeftLeg: 'kneeL', LeftFoot: 'footL', RightUpLeg: 'legR', RightLeg: 'kneeR', RightFoot: 'footR' };
+    const jointOf = {}; for (const [n, j] of Object.entries(named)) if (bones[n]) jointOf[n] = j;
+    if (Object.keys(jointOf).length < 10) for (const [j, re] of Object.entries(BONE_MAP)) { const n = Object.keys(bones).find(b => re.test(b) && !jointOf[b]); if (n) jointOf[n] = j; }
+    // T-pose → arms down (a touch outward), measured from each upper arm's actual direction
+    const drop = {}; for (const [side, sg] of [['L', 1], ['R', -1]]) { const up = Object.keys(jointOf).find(n => jointOf[n] === 'arm' + side), lo = Object.keys(jointOf).find(n => jointOf[n] === 'elb' + side); if (!up || !lo) continue; const a = wpos(bones[up]), b = wpos(bones[lo]); const dir = b.sub(a).applyMatrix4(new T.Matrix4().extractRotation(bodyInv)).normalize(); const want = V3(Math.sign(dir.x || sg) * 0.16, -1, 0.03).normalize(); drop[side] = new T.Quaternion().setFromUnitVectors(dir, want); }
+    this.mbones = []; const idx = new Map();
+    clone.updateMatrixWorld(true);
+    clone.traverse(o => { if (!o.isBone) return; const j = jointOf[o.name] || null, rb = bodyQ(o); let N = rb.clone(); const side = j && /^(arm|elb|hand)([LR])$/.exec(j); if (side && drop[side[2]]) N = drop[side[2]].clone().multiply(rb);
+      const pb = o.parent && o.parent.isBone ? null : bodyQ(o.parent); idx.set(o, this.mbones.length); this.mbones.push({ bone: o, j, N, restLocal: o.quaternion.clone(), parentIdx: o.parent && o.parent.isBone ? idx.get(o.parent) : -1, parentRest: pb, bq: new T.Quaternion() }); });
+    this.boneMap = null; this.modelKey = cfg.model;
+  }
+  applyModel() {
+    const Qp = this._qp || (this._qp = {}), inv = _q2;
+    for (const name of JOINTS) { const c = this.cur[name], q = Qp[name] || (Qp[name] = new T.Quaternion()); q.setFromEuler(_e1.set(c[0], c[1], c[2])); const par = JOINT_PARENT[name]; if (par) q.premultiply(Qp[par]); }
+    for (const m of this.mbones) {
+      const pq = m.parentIdx >= 0 ? this.mbones[m.parentIdx].bq : m.parentRest;
+      if (m.j) { m.bq.copy(Qp[m.j]).multiply(m.N); inv.copy(pq).invert(); m.bone.quaternion.copy(inv).multiply(m.bq); }
+      else m.bq.copy(pq).multiply(m.restLocal);
+    }
+  }
   buildSkinned(cfg) {
     const src = Assets.body.scene; const clone = src.clone(true); this.body.add(clone); this.skinned = clone;
     const bones = {}; clone.traverse(o => { if (o.isBone) bones[o.name] = o; if (o.isMesh) { o.castShadow = true; if (o.material) this.mats.push(o.material); } });
@@ -1878,9 +1936,10 @@ class Rig {
       if (this.boneMap) { const bm = this.boneMap[name]; if (bm) { _q1.setFromEuler(new T.Euler(c[0], c[1], c[2])); bm.bone.quaternion.copy(bm.rest).multiply(_q1); } }
       else this.j[name].rotation.set(c[0], c[1], c[2]);
     }
+    if (this.mbones) this.applyModel();
     this.hipY = damp(this.hipY || 0, pose._y || 0, rate, dt);
     if (!this.boneMap) this.j.hips.position.y = 0.98 * (this.cfg.body ? this.cfg.body.height : 1) + this.hipY;
-    else this.body.position.y = this.hipY;
+    if (this.boneMap || this.model) this.body.position.y = this.hipY;
   }
   updateCape(dt, speed, t, vertical = 0) {
     if (!this.capeMesh) return;
@@ -1904,7 +1963,7 @@ class Rig {
     }
   }
   setOpacity(a) { for (const m of this.mats) { m.transparent = a < 1; m.opacity = a; m.depthWrite = a > 0.5; } }
-  dispose() { this.root.traverse(o => { if (o.geometry) o.geometry.dispose(); }); for (const m of this.mats) { if (m.map) m.map.dispose(); m.dispose(); } }
+  dispose() { this.root.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); for (const m of this.mats) { if (m.map && !m.map.userData.shared) m.map.dispose(); m.dispose(); } }
 }
 const ZERO3 = [0, 0, 0];
 
@@ -2393,7 +2452,7 @@ class Character {
     this.controller = o.controller || null; this.intent = emptyIntent(); this.trav = null; this.kit = o.kit || { ab: {}, slots: {} };
     this.gravityMul = 1; this.phasing = false; this.alive = true; this.removeT = -1; this.downT = 0; this.elite = !!o.elite; this.boss = !!o.boss;
     this.anim = { t: 0, phase: 0, landT: 0, k: 0 }; this.meter = 100; this.meterMax = 100; this.data = o.data || {};
-    this.rig = o.rig || new Rig({ body: o.body, costume: o.costume, emblem: o.emblem });
+    this.rig = o.rig || new Rig({ body: o.body, costume: o.costume, emblem: o.emblem, model: o.model });
     if (o.scale) { this.rig.root.scale.setScalar(o.scale); this.rigScale = o.scale; }
     Render.scene.add(this.rig.root);
     this.rig.root.position.copy(this.pos);
@@ -5770,6 +5829,8 @@ const Creator = {
         break;
       }
       case 'body': {
+        this.h(b, 'Look'); this.opt(b, [['', 'Built from parts', 'Your body, costume, materials and emblem — fully customisable.'], ...Object.entries(HERO_MODELS).map(([k, m]) => [k, m.name + (Assets.models[k] ? '' : ' ↓'), m.blurb + ' A full sculpted model (height still applies).'])], C.model || '', k => { C.model = k || null; if (k) Assets.loadModel(k); rerender(); }, 'opts c3');
+        if (C.model) b.appendChild(el('p', 'faint', `<span style="font-size:11.5px">${esc(HERO_MODELS[C.model].name)} is a sculpted model: the Costume, Materials and Emblem tabs only apply to the built-from-parts look.${Assets.models[C.model] ? '' : ' Loading…'}</span>`));
         const B = C.body; this.h(b, 'Body');
         this.slider(b, 'Build', B.build, 0, 1, 0.01, v => B.build = v); this.slider(b, 'Height', B.height, 0.88, 1.12, 0.01, v => B.height = v); this.slider(b, 'Shoulders', B.shoulders, 0, 1, 0.01, v => B.shoulders = v);
         this.h(b, 'Face'); this.slider(b, 'Head width', B.headW, 0, 1, 0.01, v => B.headW = v); this.slider(b, 'Jaw', B.jaw, 0, 1, 0.01, v => B.jaw = v); this.slider(b, 'Eye spacing', B.eyeSpacing, 0, 1, 0.01, v => B.eyeSpacing = v);
@@ -5843,7 +5904,7 @@ const Creator = {
   savePreset() { const list = Presets.load(); const name = (this.cfg.heroName || 'Hero') + ' · ' + new Date().toLocaleDateString(); list.push({ name, cfg: structuredClone(this.cfg) }); Presets.store(list); toast('Preset saved', 'good'); if (this.tab === 'presets') this.renderBody(); },
   begin() { const C = this.cfg; if (!C.heroName.trim()) { C.heroName = 'Unnamed'; } Game.start(Game.newState(structuredClone(C)), true); },
   frame(dt) {
-    if (this.dirty) { this.dirty = false; if (this.rig) { this.scene.remove(this.rig.root); this.rig.dispose(); } this.rig = new Rig({ body: this.cfg.body, costume: this.cfg.costume, emblem: this.cfg.emblem }); this.scene.add(this.rig.root); this.ring.material.color.set(this.cfg.powerColor).multiplyScalar(2); }
+    if (this.dirty) { this.dirty = false; if (this.rig) { this.scene.remove(this.rig.root); this.rig.dispose(); } this.rig = new Rig({ body: this.cfg.body, costume: this.cfg.costume, emblem: this.cfg.emblem, model: this.cfg.model }); this.scene.add(this.rig.root); this.ring.material.color.set(this.cfg.powerColor).multiplyScalar(2); }
     this.t = (this.t || 0) + dt;
     const casting = Math.sin(this.t * 0.6) > 0.85;
     this.rig.apply(casting ? Poses.cast(this.t, { k: 1 }) : Poses.combatIdle(this.t, {}), dt, 6); this.rig.updateCape(dt, 4 + Math.sin(this.t) * 2, this.t);
@@ -7120,7 +7181,7 @@ Creator.editHero = function () {
   Menus.show('creator'); this.tab = 'costume'; this.renderTabs(); this.renderBody();
   $('c-go').textContent = 'Save changes'; $('c-back').textContent = 'Cancel';
   $('c-back').onclick = () => { this.editing = false; $('c-go').textContent = 'Begin'; $('c-back').textContent = 'Back'; Menus.hide(); Modes.set(MODE.HQ); };
-  $('c-go').onclick = () => { const C = this.cfg; Object.assign(h, { body: C.body, costume: C.costume, emblem: C.emblem, powerColor: C.powerColor, heroName: C.heroName || h.heroName, civName: C.civName }); this.editing = false; $('c-go').textContent = 'Begin'; $('c-back').textContent = 'Back'; Menus.hide(); Game.rebuildRig(); Modes.set(MODE.HQ); toast('Look updated', 'good'); };
+  $('c-go').onclick = () => { const C = this.cfg; Object.assign(h, { body: C.body, costume: C.costume, emblem: C.emblem, model: C.model || null, powerColor: C.powerColor, heroName: C.heroName || h.heroName, civName: C.civName }); this.editing = false; $('c-go').textContent = 'Begin'; $('c-back').textContent = 'Back'; Menus.hide(); Game.rebuildRig(); Modes.set(MODE.HQ); toast('Look updated', 'good'); };
 };
 
 // §RECRUITS ----------------------------------------------------------------------------
@@ -11139,7 +11200,7 @@ const Game = {
     CitySim.init(state); Crew.init(state); Galaxy.init(state); GContracts.restore(); Space.init(); Planet.init(); Living.init(state); Offworld.loc = 'earth'; Offworld.setZone(null);
     const C = this.hero;
     const kit = Relics.kitFor('hero', HeroBuild.kit(state));
-    const p = this.player = new Character({ kind: 'hero', name: C.heroName, faction: 'player', team: 'player', pos: V3(0, 0.2, 0), body: C.body, costume: C.costume, emblem: C.emblem, stats: HeroBuild.stats(state), controller: new HumanController(), kit, powerColor: C.powerColor });
+    const p = this.player = new Character({ kind: 'hero', name: C.heroName, faction: 'player', team: 'player', pos: V3(0, 0.2, 0), body: C.body, costume: C.costume, emblem: C.emblem, model: C.model, stats: HeroBuild.stats(state), controller: new HumanController(), kit, powerColor: C.powerColor });
     p.level = state.prog.level; p.kit = kit; p.origin = C.origin; p.trav = new TRAVERSAL_CLASSES[C.traversal](p, C.traversal, kit.travParams);
     this.heroCh = p; p.aiDef = { primary: C.primary, traversal: C.traversal, leader: false }; p.data.speed = 7.5;
     this.addChar(p);
@@ -11178,7 +11239,7 @@ const Game = {
   removeChar(c) { if (c.ship) for (const t of c.ship.turrets) if (!t.removed) this.removeChar(t); const i = this.chars.indexOf(c); if (i >= 0) this.chars.splice(i, 1); Director.release(c); if (c.carriedBy && c.carriedBy.carrying) c.carriedBy.carrying = null; c.remove(); },
   rebuildRig() {
     const p = this.heroCh, h = this.hero; Render.scene.remove(p.rig.root); p.rig.dispose();
-    p.rig = new Rig({ body: h.body, costume: h.costume, emblem: h.emblem }); Render.scene.add(p.rig.root); p.powerColor.set(h.powerColor); U.powerColor.value.set(h.powerColor);
+    p.rig = new Rig({ body: h.body, costume: h.costume, emblem: h.emblem, model: h.model }); Render.scene.add(p.rig.root); p.powerColor.set(h.powerColor); U.powerColor.value.set(h.powerColor);
     if (p.trav && p.trav.rope) { p.trav.dispose(); p.trav = new TRAVERSAL_CLASSES[h.traversal](p, h.traversal, p.kit.travParams); }
   },
   rebuildHero(keepHp) {
@@ -11971,7 +12032,7 @@ Object.assign(Phone, {
 
 // §BOOT --------------------------------------------------------------------------------
 Game.boot().catch(reportError);
-window.Meridian = { Touch, Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, Guild, Interiors, Towns, Transit, Worlds, TOWNS, TRANSIT, GUILD_RANKS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
+window.Meridian = { HERO_MODELS, Assets, Rig, Touch, Living, Threats, THREATS, Conquest, Surge, Relicwake, Deep, Corp, GEvents, FleetBattle, SiegeBattle, LandBattle, RelicField, Invasion, InvBattle, Outposts, OUTPOST_KINDS, OutpostDef, OwnStations, PF, Ops, Timeline, Legacy, TITLES, MUTATIONS, MASTERY, Headless, VirtualPlayer, Debug, WORLD_DEFAULTS, GAL_SIZES, SIM_FACTIONS, Galaxy, GalaxySim, Space, Ships, ShipAI, Stations, Hangar, ShipInt, Boarding, Orbit, Descent, Planet, Offworld, Hyperspace, Trade, GContracts, GCONTRACT_TEMPLATES, Relics, RELIC_FORCES, PLANET_TYPES, GOODS, SHIP_CLASSES, Vacuum, VacuumTrav, FACTIONS, Crew, Control, Wheel, Orders, ORDERS, TeamUp, TEAMUPS, TEAMUP_TRAV, Dispatch, Loyalty, CrewDeath, PlayerFaction, Recruit, RecruitGen, Leads, Spar, BaseLife, Dialog, UNIQUE_RECRUITS, CrewBrain, CONVERSATIONS, Base, Crafting, Licence, Driving, Garage, Market, Loadout, Incidents, INCIDENT_KINDS, DISTRICTS, City, CitySim, Territory, Named, Rivals, Wants, Heat, Rep, PoweredGen, Encounters, Collateral, Game, CONFIG, ABILITIES, POWER_SETS, Contracts, Factions, World, Bus, Modes, Input, Creator, Enemies, Abilities, Combat, Traffic, Crowd, Props, Sky, Cam, Progress, Economy, Crimes, Loot, ORIGINS, Guild, Interiors, Towns, Transit, Worlds, TOWNS, TRANSIT, GUILD_RANKS, TRAVERSAL_CLASSES, TRAVERSAL_SETS, ELEMENTS, Phone, Menus, migrateSave, serializeGame, SaveStore, Spawn, Projectiles, OriginStory, Style, Interact, HUD, Render, MOVES, Actors, Director, Train, VFX };
 </script>
 </body>
 </html>
