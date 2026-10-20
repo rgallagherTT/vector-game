@@ -20,6 +20,8 @@ Open `index.html` through any static web server (for example `npx serve meridian
 
 - **Stage 7:** four more primary power sets — **Sonic** (concussive cones, shattering shrieks, resonance), **Chrono** (slow fields, rewind, haste, time stop), **Psionic** (mind spikes, psychic waves, and puppeting enemies so they fight their own side) and **Verdant** (vines, poison thorns, healing blooms) — each with skill trees and team-ups with every other set. Every car flies: press `Shift` while driving to take off, `Space`/`X` to climb and descend, come down slowly to land, or bail out mid-air. Touch controls for phones and tablets (on automatically; Phone → System to switch). Longer days: nights pass in a few minutes and new games start in the morning. Your hero carries four powers (keys 1–4: the whole primary set plus one borrowed from another set) that cost nothing and are always ready; defence moved to 5; the ultimate (R) charges 2.6× faster, trickles up on its own and hits 60% harder.
 
+- **Hero models:** five sculpted, rigged heroes in `hero/` — Longcoat Mystic, Vigilante, Hooded Speedster, Heavy Bruiser and Corporate Merc — picked on the creator's Body tab (Look). They load on demand (~2.5 MB each, textures at 1024 px) and are driven by the game's own pose library through a retarget from the procedural skeleton onto the model's bones, so they run, fight, fly and swing like the built-from-parts hero.
+
 Saves migrate forward automatically (v1 → v2 → v3 → v4 → v5 → v6).
 
 ## Debug
