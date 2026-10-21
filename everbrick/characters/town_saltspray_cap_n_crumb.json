@@ -1,0 +1,36 @@
+{
+ "id": "town_saltspray_cap_n_crumb",
+ "name": "Cap'n Crumb",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_peg_leg",
+  "boot": "boot_boots",
+  "hair": "hair_ponytail",
+  "hat": "hat_pirate_tricorn",
+  "held_R": "held_cutlass"
+ },
+ "colours": {
+  "body": "pink",
+  "torso": "white",
+  "legs": "dark_brown",
+  "hair": "red",
+  "hat": "black"
+ },
+ "prints": {
+  "face": "face_freckles_smug",
+  "torso_F": "torso_town_saltspray_2_F",
+  "torso_B": "torso_town_saltspray_2_B"
+ },
+ "realm": "saltspray",
+ "group": "Townsfolk",
+ "bio": "Searching for treasure. It is in his pocket."
+}

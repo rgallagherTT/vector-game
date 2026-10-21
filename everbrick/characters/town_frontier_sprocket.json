@@ -1,0 +1,35 @@
+{
+ "id": "town_frontier_sprocket",
+ "name": "Sprocket",
+ "plan": "biped",
+ "species": "robot",
+ "size": "standard",
+ "parts": {
+  "head": "head_robot",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_robot",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "red",
+  "legs": "blue",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_robot_neutral",
+  "torso_F": "torso_town_frontier_2_F",
+  "torso_B": "torso_town_frontier_2_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Grows space lettuce in a dome."
+}

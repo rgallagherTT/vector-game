@@ -1,0 +1,34 @@
+{
+ "id": "town_apex_unit_7",
+ "name": "Unit 7",
+ "plan": "biped",
+ "species": "robot",
+ "size": "standard",
+ "parts": {
+  "head": "head_robot",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_robot",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_navy_cap"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "dark_blue",
+  "legs": "dark_blue",
+  "hat": "dark_blue",
+  "hat2": "dark_blue"
+ },
+ "prints": {
+  "face": "face_robot_grin",
+  "torso_F": "torso_town_apex_2_F",
+  "torso_B": "torso_town_apex_2_B"
+ },
+ "realm": "apex",
+ "group": "Townsfolk",
+ "bio": "Traffic robot. Counts cars. Loses count. Starts again."
+}

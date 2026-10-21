@@ -1,0 +1,38 @@
+{
+ "id": "town_mistpeak_pebble",
+ "name": "Pebble",
+ "plan": "biped_upright_animal",
+ "species": "frog",
+ "size": "standard",
+ "parts": {
+  "head": "head_frog",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_frog",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "green",
+  "torso": "red",
+  "legs": "blue",
+  "body2": "lime",
+  "body3": "black",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_frog_happy",
+  "torso_F": "torso_town_mistpeak_1_F",
+  "torso_B": "torso_town_mistpeak_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Townsfolk",
+ "bio": "Rice terrace farmer who naps in puddles."
+}

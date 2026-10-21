@@ -1,0 +1,1 @@
+{"id":"func_jukebox","version":1,"bricks":[["brick_2x4",0,0,0,1,"red"],["curve_2x2",0,3,0,1,"yellow"],["curve_2x2",2,3,0,1,"yellow"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","fun"],"destructible":false,"function":"play_music","brickCount":3}}

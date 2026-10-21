@@ -1,0 +1,38 @@
+{
+ "id": "faction_malice_syndicate_lieutenant",
+ "name": "Malice Syndicate Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "wolf",
+ "size": "standard",
+ "parts": {
+  "head": "head_wolf",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_wolf",
+  "hat": "hat_villain_horned_hood",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "purple",
+  "legs": "black",
+  "body2": "white",
+  "body3": "dark_grey",
+  "hat": "purple",
+  "cape": "black"
+ },
+ "prints": {
+  "face": "face_wolf_happy",
+  "torso_F": "suit_rust_F",
+  "torso_B": "suit_rust_B"
+ },
+ "realm": "apex",
+ "group": "Factions",
+ "bio": ""
+}

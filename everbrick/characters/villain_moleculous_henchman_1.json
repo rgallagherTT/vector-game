@@ -1,0 +1,36 @@
+{
+ "id": "villain_moleculous_henchman_1",
+ "name": "Moleculous's Henchman 1",
+ "plan": "biped_upright_animal",
+ "species": "mouse",
+ "size": "standard",
+ "parts": {
+  "head": "head_mouse",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_mouse",
+  "hat": "hat_beanie"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "dark_grey",
+  "legs": "black",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "red"
+ },
+ "prints": {
+  "face": "face_mouse_scared",
+  "torso_F": "suit_magnetar_B",
+  "torso_B": "suit_magnetar_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Joined for the dental plan."
+}

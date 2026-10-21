@@ -1,0 +1,44 @@
+{
+ "id": "lumen_elder",
+ "name": "Lumen Elder",
+ "plan": "biped_upright_animal",
+ "species": "turtle",
+ "size": "standard",
+ "parts": {
+  "head": "head_turtle",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_turtle",
+  "hat": "hat_monk_hood",
+  "cape": "cape_lumen_cloak",
+  "panel": "panel_robe_long",
+  "held_R": "lumen_emitter_4"
+ },
+ "colours": {
+  "body": "sand_green",
+  "torso": "tan",
+  "legs": "tan",
+  "body2": "tan",
+  "body3": "dark_green",
+  "hat": "sand_green",
+  "cape": "sky_blue",
+  "cape2": "tan",
+  "panel": "tan",
+  "boots": "brown",
+  "torso2": "sky_blue"
+ },
+ "prints": {
+  "face": "face_turtle_angry",
+  "torso_F": "torso_lumen_1_F",
+  "torso_B": "torso_lumen_1_B"
+ },
+ "realm": "wildwood",
+ "group": "The Lumen Order",
+ "bio": "Lumen rank 5. Hilt built from temple brass."
+}

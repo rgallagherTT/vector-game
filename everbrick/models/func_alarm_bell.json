@@ -1,0 +1,1 @@
+{"id":"func_alarm_bell","version":1,"bricks":[["round_1x1",0,0,0,0,"brown"],["round_1x1",0,3,0,0,"brown"],["round_1x1",0,6,0,0,"brown"],["cone_2x2",0,9,0,0,"gold"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","defence"],"destructible":false,"function":"raise_alarm","brickCount":4}}

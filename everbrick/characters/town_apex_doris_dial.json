@@ -1,0 +1,35 @@
+{
+ "id": "town_apex_doris_dial",
+ "name": "Doris Dial",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_curls",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "cream",
+  "legs": "brown",
+  "hair": "dark_brown",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_stubble_smug",
+  "torso_F": "torso_town_apex_1_F",
+  "torso_B": "torso_town_apex_1_B"
+ },
+ "realm": "apex",
+ "group": "Townsfolk",
+ "bio": "Runs the Sidekick Agency. Has a waiting list of one: Zip."
+}

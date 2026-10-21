@@ -1,0 +1,36 @@
+{
+ "id": "army_jade_blades_novice",
+ "name": "Jade Blades Novice",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "hat": "hat_monk_straw_hat",
+  "held_R": "held_sword_short"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "green",
+  "legs": "dark_green",
+  "hat": "tan",
+  "cape": "green",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_scar_determined",
+  "torso_F": "torso_jade_1_F",
+  "torso_B": "torso_jade_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Armies",
+ "bio": "Rank 1 of 4."
+}

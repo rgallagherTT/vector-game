@@ -1,0 +1,41 @@
+{
+ "id": "army_caravan_guard_guard",
+ "name": "Caravan Guard Guard",
+ "plan": "biped_upright_animal",
+ "species": "dog",
+ "size": "standard",
+ "parts": {
+  "head": "head_dog",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_dog",
+  "hat": "hat_desert_wrap",
+  "back": "back_backpack",
+  "held_R": "held_spear"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "orange",
+  "legs": "tan",
+  "body2": "white",
+  "body3": "black",
+  "hat": "cream",
+  "cape": "orange",
+  "back": "brown",
+  "torso2": "cream"
+ },
+ "prints": {
+  "face": "face_dog_angry",
+  "torso_F": "torso_caravan_2_F",
+  "torso_B": "torso_caravan_2_B"
+ },
+ "realm": "ember",
+ "group": "Armies",
+ "bio": "Rank 2 of 4."
+}

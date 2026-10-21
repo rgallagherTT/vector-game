@@ -1,0 +1,40 @@
+{
+ "id": "army_royal_navy_lieutenant",
+ "name": "Royal Navy Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "bear",
+ "size": "standard",
+ "parts": {
+  "head": "head_bear",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_bear",
+  "hat": "hat_navy_bicorne",
+  "cape": "cape_hero",
+  "held_R": "held_flintlock"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "dark_blue",
+  "legs": "white",
+  "body2": "tan",
+  "body3": "black",
+  "hat": "dark_blue",
+  "cape": "dark_blue",
+  "torso2": "white"
+ },
+ "prints": {
+  "face": "face_bear_angry",
+  "torso_F": "torso_navy_3_F",
+  "torso_B": "torso_navy_3_B"
+ },
+ "realm": "saltspray",
+ "group": "Armies",
+ "bio": "Rank 3 of 4."
+}

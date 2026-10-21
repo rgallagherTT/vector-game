@@ -1,0 +1,1 @@
+{"id":"func_fuel_cell_rack","version":1,"bricks":[["round_1x1",0,0,0,0,"trans_green"],["round_1x1",2,0,0,0,"trans_green"],["round_1x1",4,0,0,0,"trans_green"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","starship"],"destructible":false,"function":"refuel_starship","brickCount":3}}

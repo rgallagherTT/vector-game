@@ -1,0 +1,36 @@
+{
+ "id": "town_brightharbour_bosun_bun",
+ "name": "Bosun Bun",
+ "plan": "biped_upright_animal",
+ "species": "rabbit",
+ "size": "standard",
+ "parts": {
+  "head": "head_rabbit",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_rabbit",
+  "hat": "hat_flat_cap"
+ },
+ "colours": {
+  "body": "white",
+  "torso": "white",
+  "legs": "dark_blue",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "dark_blue"
+ },
+ "prints": {
+  "face": "face_rabbit_shocked",
+  "torso_F": "torso_town_brightharbour_2_F",
+  "torso_B": "torso_town_brightharbour_2_B"
+ },
+ "realm": "brightharbour",
+ "group": "Townsfolk",
+ "bio": "Ties knots nobody can untie, including himself."
+}

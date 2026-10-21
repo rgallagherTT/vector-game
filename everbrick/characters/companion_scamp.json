@@ -1,0 +1,37 @@
+{
+ "id": "companion_scamp",
+ "name": "Scamp",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_peg_leg",
+  "boot": "boot_bare",
+  "tail": "tail_raccoon",
+  "hat": "hat_pirate_tricorn",
+  "held_R": "held_cutlass"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "white",
+  "legs": "dark_brown",
+  "body2": "light_grey",
+  "body3": "black",
+  "hat": "black"
+ },
+ "prints": {
+  "face": "face_raccoon_happy",
+  "torso_F": "torso_pirate_1_F",
+  "torso_B": "torso_pirate_1_B"
+ },
+ "realm": null,
+ "group": "Companions",
+ "bio": "Steals things for you. And from you."
+}

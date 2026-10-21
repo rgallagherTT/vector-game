@@ -1,0 +1,38 @@
+{
+ "id": "faction_void_marauders_recruit",
+ "name": "Void Marauders Recruit",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "hat": "hat_goggles",
+  "held_R": "held_blaster"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "dark_grey",
+  "legs": "black",
+  "body2": "white",
+  "body3": "pink",
+  "hat": "black",
+  "torso2": "magenta"
+ },
+ "prints": {
+  "face": "face_cat_neutral",
+  "torso_F": "torso_robot_4_F",
+  "torso_B": "torso_robot_4_B"
+ },
+ "realm": "frontier",
+ "group": "Factions",
+ "bio": ""
+}

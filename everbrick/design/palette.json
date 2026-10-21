@@ -1,0 +1,166 @@
+{
+ "colours": {
+  "white": "#F4F4F0",
+  "light_grey": "#A3A8AC",
+  "dark_grey": "#5A5F63",
+  "black": "#1D2023",
+  "red": "#C9252C",
+  "dark_red": "#7B1E22",
+  "orange": "#EF7E1D",
+  "yellow": "#F6C41C",
+  "cream": "#F2E2B6",
+  "tan": "#D8B878",
+  "brown": "#7B4A29",
+  "dark_brown": "#4A2D1D",
+  "lime": "#A4CC38",
+  "green": "#2E9A48",
+  "dark_green": "#1E5833",
+  "sand_green": "#9ABD9B",
+  "light_blue": "#A4D4EC",
+  "blue": "#1E6EC1",
+  "dark_blue": "#1E3868",
+  "sky_blue": "#5DB6E5",
+  "purple": "#6A3E9F",
+  "lavender": "#C6B2E4",
+  "pink": "#F3A5C5",
+  "magenta": "#C22F7E",
+  "olive": "#7C7B39",
+  "gold": "#C8A139",
+  "silver": "#B6BBC1",
+  "trans_clear": "#E8F3F7",
+  "trans_blue": "#4CA2E0",
+  "trans_red": "#E03F38",
+  "trans_orange": "#F59829",
+  "trans_green": "#59C368"
+ },
+ "properties": {
+  "white": {
+   "transparent": false,
+   "metallic": false
+  },
+  "light_grey": {
+   "transparent": false,
+   "metallic": false
+  },
+  "dark_grey": {
+   "transparent": false,
+   "metallic": false
+  },
+  "black": {
+   "transparent": false,
+   "metallic": false
+  },
+  "red": {
+   "transparent": false,
+   "metallic": false
+  },
+  "dark_red": {
+   "transparent": false,
+   "metallic": false
+  },
+  "orange": {
+   "transparent": false,
+   "metallic": false
+  },
+  "yellow": {
+   "transparent": false,
+   "metallic": false
+  },
+  "cream": {
+   "transparent": false,
+   "metallic": false
+  },
+  "tan": {
+   "transparent": false,
+   "metallic": false
+  },
+  "brown": {
+   "transparent": false,
+   "metallic": false
+  },
+  "dark_brown": {
+   "transparent": false,
+   "metallic": false
+  },
+  "lime": {
+   "transparent": false,
+   "metallic": false
+  },
+  "green": {
+   "transparent": false,
+   "metallic": false
+  },
+  "dark_green": {
+   "transparent": false,
+   "metallic": false
+  },
+  "sand_green": {
+   "transparent": false,
+   "metallic": false
+  },
+  "light_blue": {
+   "transparent": false,
+   "metallic": false
+  },
+  "blue": {
+   "transparent": false,
+   "metallic": false
+  },
+  "dark_blue": {
+   "transparent": false,
+   "metallic": false
+  },
+  "sky_blue": {
+   "transparent": false,
+   "metallic": false
+  },
+  "purple": {
+   "transparent": false,
+   "metallic": false
+  },
+  "lavender": {
+   "transparent": false,
+   "metallic": false
+  },
+  "pink": {
+   "transparent": false,
+   "metallic": false
+  },
+  "magenta": {
+   "transparent": false,
+   "metallic": false
+  },
+  "olive": {
+   "transparent": false,
+   "metallic": false
+  },
+  "gold": {
+   "transparent": false,
+   "metallic": true
+  },
+  "silver": {
+   "transparent": false,
+   "metallic": true
+  },
+  "trans_clear": {
+   "transparent": true,
+   "metallic": false
+  },
+  "trans_blue": {
+   "transparent": true,
+   "metallic": false
+  },
+  "trans_red": {
+   "transparent": true,
+   "metallic": false
+  },
+  "trans_orange": {
+   "transparent": true,
+   "metallic": false
+  },
+  "trans_green": {
+   "transparent": true,
+   "metallic": false
+  }
+ }
+}

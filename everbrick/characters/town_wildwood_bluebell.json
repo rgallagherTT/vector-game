@@ -1,0 +1,38 @@
+{
+ "id": "town_wildwood_bluebell",
+ "name": "Bluebell",
+ "plan": "biped_upright_animal",
+ "species": "rabbit",
+ "size": "standard",
+ "parts": {
+  "head": "head_rabbit",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_rabbit",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "white",
+  "torso": "red",
+  "legs": "blue",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_rabbit_shocked",
+  "torso_F": "torso_town_wildwood_2_F",
+  "torso_B": "torso_town_wildwood_2_B"
+ },
+ "realm": "wildwood",
+ "group": "Townsfolk",
+ "bio": "Grows carrots so big they need ladders."
+}

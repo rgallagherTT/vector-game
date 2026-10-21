@@ -1,0 +1,40 @@
+{
+ "id": "town_kingsreach_brother_bramble",
+ "name": "Brother Bramble",
+ "plan": "biped_upright_animal",
+ "species": "bear",
+ "size": "standard",
+ "parts": {
+  "head": "head_bear",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_bear",
+  "hat": "hat_monk_hood",
+  "panel": "panel_robe_long",
+  "held_R": "held_staff"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "orange",
+  "legs": "orange",
+  "body2": "tan",
+  "body3": "black",
+  "hat": "orange",
+  "panel": "orange",
+  "torso2": "dark_red"
+ },
+ "prints": {
+  "face": "face_bear_happy",
+  "torso_F": "torso_town_kingsreach_1_F",
+  "torso_B": "torso_town_kingsreach_1_B"
+ },
+ "realm": "kingsreach",
+ "group": "Townsfolk",
+ "bio": "Brews honey tea strong enough to wake a dragon."
+}

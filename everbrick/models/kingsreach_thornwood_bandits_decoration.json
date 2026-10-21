@@ -1,0 +1,1 @@
+{"id":"kingsreach_thornwood_bandits_decoration","version":1,"bricks":[["round_2x2",0,0,0,0,"dark_green"],["round_2x2",0,3,0,0,"brown"],["tile_2x2",0,6,0,0,"dark_green","insignia_thornwood_bandits"],["flower_1x1",0,7,0,0,"brown"]],"groups":{},"empties":{},"meta":{"tags":["faction","thornwood_bandits","kingsreach"],"destructible":true,"function":null,"brickCount":4}}

@@ -1,0 +1,36 @@
+{
+ "id": "town_brightharbour_old_gruff",
+ "name": "Old Gruff",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "hat": "hat_flat_cap"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "white",
+  "legs": "dark_blue",
+  "body2": "white",
+  "body3": "pink",
+  "hat": "dark_blue"
+ },
+ "prints": {
+  "face": "face_cat_happy",
+  "torso_F": "torso_town_brightharbour_2_F",
+  "torso_B": "torso_town_brightharbour_2_B"
+ },
+ "realm": "brightharbour",
+ "group": "Townsfolk",
+ "bio": "A grumpy fisher-cat who has never once caught a fish."
+}

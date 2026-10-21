@@ -1,0 +1,1 @@
+{"id":"func_till","version":1,"bricks":[["brick_2x2",0,0,0,0,"dark_grey"],["slope45_2x2",0,3,0,0,"dark_grey"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","shop"],"destructible":false,"function":"take_payment","brickCount":2}}

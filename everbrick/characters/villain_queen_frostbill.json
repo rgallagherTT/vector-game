@@ -1,0 +1,39 @@
+{
+ "id": "villain_queen_frostbill",
+ "name": "Queen Frostbill",
+ "plan": "biped_upright_animal",
+ "species": "penguin",
+ "size": "standard",
+ "parts": {
+  "head": "head_penguin",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_penguin",
+  "hat": "hat_crown_royal",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "black",
+  "torso": "light_blue",
+  "legs": "light_blue",
+  "body2": "white",
+  "body3": "orange",
+  "hat": "white",
+  "cape": "black",
+  "gloves": "white"
+ },
+ "prints": {
+  "face": "face_penguin_sinister",
+  "torso_F": "suit_frostbite_F",
+  "torso_B": "suit_frostbite_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Malice Syndicate. Power: frost breath."
+}

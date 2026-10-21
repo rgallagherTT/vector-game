@@ -1,0 +1,33 @@
+{
+ "id": "companion_sprocket_jr",
+ "name": "Sprocket Jr.",
+ "plan": "biped",
+ "species": "robot",
+ "size": "standard",
+ "parts": {
+  "head": "head_robot",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_robot",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "cream",
+  "legs": "brown",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_robot_grin",
+  "torso_F": "torso_shopkeeper_1_F",
+  "torso_B": "torso_shopkeeper_1_B"
+ },
+ "realm": null,
+ "group": "Companions",
+ "bio": "Polite robot who apologises to doors."
+}

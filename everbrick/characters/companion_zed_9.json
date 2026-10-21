@@ -1,0 +1,35 @@
+{
+ "id": "companion_zed_9",
+ "name": "Zed-9",
+ "plan": "biped",
+ "species": "alien",
+ "size": "standard",
+ "parts": {
+  "head": "head_alien",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_space_helmet_visor",
+  "back": "back_air_tank"
+ },
+ "colours": {
+  "body": "lime",
+  "torso": "white",
+  "legs": "white",
+  "hat": "white",
+  "torso2": "orange"
+ },
+ "prints": {
+  "face": "face_alien_grin",
+  "torso_F": "torso_legion_3_F",
+  "torso_B": "torso_legion_3_B"
+ },
+ "realm": null,
+ "group": "Companions",
+ "bio": "Alien navigator, collects Earth-like continent souvenirs."
+}

@@ -1,0 +1,1 @@
+{"id":"func_hitching_post","version":1,"bricks":[["round_1x1",0,0,0,0,"brown"],["round_1x1",0,3,0,0,"brown"],["round_1x1",5,0,0,0,"brown"],["round_1x1",5,3,0,0,"brown"],["bar_1x4",1,6,0,1,"brown"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","mount"],"destructible":false,"function":"tie_mount","brickCount":5}}

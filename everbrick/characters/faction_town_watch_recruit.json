@@ -1,0 +1,38 @@
+{
+ "id": "faction_town_watch_recruit",
+ "name": "Town Watch Recruit",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "hat": "hat_navy_cap"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "dark_blue",
+  "legs": "dark_blue",
+  "body2": "white",
+  "body3": "pink",
+  "hat": "dark_blue",
+  "hat2": "dark_blue",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_cat_neutral",
+  "torso_F": "torso_watch_1_F",
+  "torso_B": "torso_watch_1_B"
+ },
+ "realm": "brightharbour",
+ "group": "Factions",
+ "bio": ""
+}

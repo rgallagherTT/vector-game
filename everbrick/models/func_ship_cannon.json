@@ -1,0 +1,1 @@
+{"id":"func_ship_cannon","version":1,"bricks":[["plate_2x4",0,0,0,0,"brown"],["cannon_barrel",0,1,0,0,"black"]],"groups":{"barrel":[1]},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","ship"],"destructible":false,"function":"fire_cannon","brickCount":2}}

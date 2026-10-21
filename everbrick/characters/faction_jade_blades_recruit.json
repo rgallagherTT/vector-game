@@ -1,0 +1,38 @@
+{
+ "id": "faction_jade_blades_recruit",
+ "name": "Jade Blades Recruit",
+ "plan": "biped_upright_animal",
+ "species": "squirrel",
+ "size": "standard",
+ "parts": {
+  "head": "head_squirrel",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_squirrel",
+  "hat": "hat_monk_straw_hat",
+  "held_R": "held_sword_short"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "green",
+  "legs": "dark_green",
+  "body2": "cream",
+  "body3": "dark_brown",
+  "hat": "tan",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_squirrel_neutral",
+  "torso_F": "torso_jade_1_F",
+  "torso_B": "torso_jade_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Factions",
+ "bio": ""
+}

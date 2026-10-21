@@ -1,0 +1,38 @@
+{
+ "id": "faction_malice_syndicate_veteran",
+ "name": "Malice Syndicate Veteran",
+ "plan": "biped_upright_animal",
+ "species": "boar",
+ "size": "standard",
+ "parts": {
+  "head": "head_boar",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_boar",
+  "hat": "hat_villain_horned_hood",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "purple",
+  "legs": "black",
+  "body2": "brown",
+  "body3": "cream",
+  "hat": "purple",
+  "cape": "black"
+ },
+ "prints": {
+  "face": "face_boar_angry",
+  "torso_F": "suit_smog_F",
+  "torso_B": "suit_smog_B"
+ },
+ "realm": "apex",
+ "group": "Factions",
+ "bio": ""
+}

@@ -1,0 +1,37 @@
+{
+ "id": "town_kingsreach_farrier_flint",
+ "name": "Farrier Flint",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_bob",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "red",
+  "legs": "blue",
+  "hair": "light_grey",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_beard_grin",
+  "torso_F": "torso_town_kingsreach_1_F",
+  "torso_B": "torso_town_kingsreach_1_B"
+ },
+ "realm": "kingsreach",
+ "group": "Townsfolk",
+ "bio": "Shoes horses. Also shoes, for the horses who asked."
+}

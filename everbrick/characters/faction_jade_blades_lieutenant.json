@@ -1,0 +1,38 @@
+{
+ "id": "faction_jade_blades_lieutenant",
+ "name": "Jade Blades Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "lizard",
+ "size": "standard",
+ "parts": {
+  "head": "head_lizard",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_lizard",
+  "hat": "hat_monk_straw_hat",
+  "held_R": "held_sword_short"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "green",
+  "legs": "dark_green",
+  "body2": "orange",
+  "body3": "dark_brown",
+  "hat": "tan",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_lizard_happy",
+  "torso_F": "torso_jade_1_F",
+  "torso_B": "torso_jade_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Factions",
+ "bio": ""
+}

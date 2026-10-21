@@ -1,0 +1,40 @@
+{
+ "id": "town_mistpeak_master_pao",
+ "name": "Master Pao",
+ "plan": "biped_upright_animal",
+ "species": "panda",
+ "size": "standard",
+ "parts": {
+  "head": "head_panda",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_panda",
+  "hat": "hat_monk_hood",
+  "panel": "panel_robe_long",
+  "held_R": "held_staff"
+ },
+ "colours": {
+  "body": "white",
+  "torso": "orange",
+  "legs": "orange",
+  "body2": "black",
+  "body3": "black",
+  "hat": "orange",
+  "panel": "orange",
+  "torso2": "dark_red"
+ },
+ "prints": {
+  "face": "face_panda_shocked",
+  "torso_F": "torso_town_mistpeak_1_F",
+  "torso_B": "torso_town_mistpeak_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Townsfolk",
+ "bio": "Balances on anything. Even this sentence."
+}

@@ -1,0 +1,38 @@
+{
+ "id": "town_kingsreach_baker_bunwell",
+ "name": "Baker Bunwell",
+ "plan": "biped_upright_animal",
+ "species": "boar",
+ "size": "standard",
+ "parts": {
+  "head": "head_boar",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_boar",
+  "hat": "hat_chef_hat",
+  "panel": "panel_apron",
+  "held_R": "item_pie"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "white",
+  "legs": "black",
+  "body2": "brown",
+  "body3": "cream",
+  "panel": "white"
+ },
+ "prints": {
+  "face": "face_boar_shocked",
+  "torso_F": "torso_town_kingsreach_1_F",
+  "torso_B": "torso_town_kingsreach_1_B"
+ },
+ "realm": "kingsreach",
+ "group": "Townsfolk",
+ "bio": "Ye Olde Bread is not actually very old."
+}

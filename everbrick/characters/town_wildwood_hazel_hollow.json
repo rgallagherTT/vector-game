@@ -1,0 +1,36 @@
+{
+ "id": "town_wildwood_hazel_hollow",
+ "name": "Hazel Hollow",
+ "plan": "biped_upright_animal",
+ "species": "squirrel",
+ "size": "standard",
+ "parts": {
+  "head": "head_squirrel",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_squirrel",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "cream",
+  "legs": "brown",
+  "body2": "cream",
+  "body3": "dark_brown",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_squirrel_shocked",
+  "torso_F": "torso_town_wildwood_1_F",
+  "torso_B": "torso_town_wildwood_1_B"
+ },
+ "realm": "wildwood",
+ "group": "Townsfolk",
+ "bio": "Runs the Acorn Exchange. Hoards the best acorns."
+}

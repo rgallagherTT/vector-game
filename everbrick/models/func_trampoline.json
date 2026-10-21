@@ -1,0 +1,1 @@
+{"id":"func_trampoline","version":1,"bricks":[["round_1x1",0,0,0,0,"dark_grey"],["round_1x1",5,0,0,0,"dark_grey"],["round_1x1",0,0,5,0,"dark_grey"],["round_1x1",5,0,5,0,"dark_grey"],["plate_6x6",0,3,0,0,"blue"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","fun"],"destructible":false,"function":"bounce","brickCount":5}}

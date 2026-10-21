@@ -1,0 +1,36 @@
+{
+ "id": "preset_turtle",
+ "name": "Turtle (starter)",
+ "plan": "biped_upright_animal",
+ "species": "turtle",
+ "size": "standard",
+ "parts": {
+  "head": "head_turtle",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_turtle",
+  "back": "back_backpack"
+ },
+ "colours": {
+  "body": "sand_green",
+  "torso": "green",
+  "legs": "dark_blue",
+  "body2": "tan",
+  "body3": "dark_green",
+  "back": "sand_green"
+ },
+ "prints": {
+  "face": "face_turtle_happy",
+  "torso_F": "torso_town_brightharbour_1_F",
+  "torso_B": "torso_town_brightharbour_1_B"
+ },
+ "realm": null,
+ "group": "Playable species presets",
+ "bio": ""
+}

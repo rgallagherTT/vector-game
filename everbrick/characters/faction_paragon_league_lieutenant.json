@@ -1,0 +1,38 @@
+{
+ "id": "faction_paragon_league_lieutenant",
+ "name": "Paragon League Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "frog",
+ "size": "standard",
+ "parts": {
+  "head": "head_frog",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_frog",
+  "hat": "hat_hero_eye_mask",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "green",
+  "torso": "sky_blue",
+  "legs": "sky_blue",
+  "body2": "lime",
+  "body3": "black",
+  "hat": "gold",
+  "cape": "sky_blue"
+ },
+ "prints": {
+  "face": "face_frog_happy",
+  "torso_F": "suit_ember_F",
+  "torso_B": "suit_ember_B"
+ },
+ "realm": "apex",
+ "group": "Factions",
+ "bio": ""
+}

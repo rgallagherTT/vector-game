@@ -1,0 +1,1 @@
+{"id":"brightharbour_town_watch_decoration","version":1,"bricks":[["round_2x2",0,0,0,0,"dark_blue"],["round_2x2",0,3,0,0,"gold"],["tile_2x2",0,6,0,0,"dark_blue","insignia_town_watch"],["flower_1x1",0,7,0,0,"gold"]],"groups":{},"empties":{},"meta":{"tags":["faction","town_watch","brightharbour"],"destructible":true,"function":null,"brickCount":4}}

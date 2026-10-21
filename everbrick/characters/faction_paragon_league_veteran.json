@@ -1,0 +1,38 @@
+{
+ "id": "faction_paragon_league_veteran",
+ "name": "Paragon League Veteran",
+ "plan": "biped_upright_animal",
+ "species": "fox",
+ "size": "standard",
+ "parts": {
+  "head": "head_fox",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_fox",
+  "hat": "hat_hero_eye_mask",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "sky_blue",
+  "legs": "sky_blue",
+  "body2": "white",
+  "body3": "black",
+  "hat": "gold",
+  "cape": "sky_blue"
+ },
+ "prints": {
+  "face": "face_fox_angry",
+  "torso_F": "suit_tidal_F",
+  "torso_B": "suit_tidal_B"
+ },
+ "realm": "apex",
+ "group": "Factions",
+ "bio": ""
+}

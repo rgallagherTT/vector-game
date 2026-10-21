@@ -1,0 +1,38 @@
+{
+ "id": "town_frontier_gloop",
+ "name": "Gloop",
+ "plan": "biped_upright_animal",
+ "species": "frog",
+ "size": "standard",
+ "parts": {
+  "head": "head_frog",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_frog",
+  "hat": "hat_space_helmet_visor",
+  "back": "back_air_tank"
+ },
+ "colours": {
+  "body": "green",
+  "torso": "white",
+  "legs": "white",
+  "body2": "lime",
+  "body3": "black",
+  "hat": "white",
+  "torso2": "orange"
+ },
+ "prints": {
+  "face": "face_frog_neutral",
+  "torso_F": "torso_town_frontier_1_F",
+  "torso_B": "torso_town_frontier_1_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Pilot trainee. Hops in low gravity. Keeps floating off."
+}

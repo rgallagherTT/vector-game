@@ -1,0 +1,33 @@
+{
+ "id": "villain_dj_glitch_henchman_1",
+ "name": "Glitch's Henchman 1",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_beanie"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "black",
+  "legs": "black",
+  "hat": "magenta"
+ },
+ "prints": {
+  "face": "face_wide_eyes_scared",
+  "torso_F": "suit_static_B",
+  "torso_B": "suit_static_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Joined for the dental plan."
+}

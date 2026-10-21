@@ -1,0 +1,38 @@
+{
+ "id": "town_saltspray_admiral_adequate",
+ "name": "Admiral Adequate",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "hat": "hat_navy_bicorne",
+  "held_R": "held_flintlock"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "dark_blue",
+  "legs": "white",
+  "body2": "white",
+  "body3": "pink",
+  "hat": "dark_blue",
+  "torso2": "white"
+ },
+ "prints": {
+  "face": "face_cat_happy",
+  "torso_F": "torso_town_saltspray_2_F",
+  "torso_B": "torso_town_saltspray_2_B"
+ },
+ "realm": "saltspray",
+ "group": "Townsfolk",
+ "bio": "Has won exactly as many battles as he lost."
+}

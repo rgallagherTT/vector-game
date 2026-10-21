@@ -1,0 +1,1 @@
+{"id":"func_feed_bucket","version":1,"bricks":[["round_2x2",0,0,0,0,"dark_grey"],["grass_tuft",0,3,0,0,"yellow"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","mount"],"destructible":false,"function":"feed_mount","brickCount":2}}

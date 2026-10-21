@@ -1,0 +1,1 @@
+{"id":"wildwood_buildable_cannon_emplacement","version":1,"bricks":[["brick_2x4",0,0,0,0,"dark_grey"],["brick_2x4",2,0,0,0,"dark_grey"],["cannon_barrel",1,3,0,2,"black"]],"groups":{"barrel":[2]},"empties":{},"meta":{"tags":["buildable","wildwood"],"destructible":true,"function":"fire_cannon","brickCount":3}}

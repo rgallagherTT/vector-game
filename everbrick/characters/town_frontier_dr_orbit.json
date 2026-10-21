@@ -1,0 +1,40 @@
+{
+ "id": "town_frontier_dr_orbit",
+ "name": "Dr. Orbit",
+ "plan": "biped_upright_animal",
+ "species": "owl",
+ "size": "standard",
+ "parts": {
+  "head": "head_owl",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_owl",
+  "hat": "hat_desert_wide_brim",
+  "back": "back_backpack",
+  "held_R": "tool_spyglass"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "tan",
+  "legs": "olive",
+  "body2": "cream",
+  "body3": "orange",
+  "hat": "tan",
+  "back": "olive",
+  "torso2": "olive"
+ },
+ "prints": {
+  "face": "face_owl_neutral",
+  "torso_F": "torso_town_frontier_1_F",
+  "torso_B": "torso_town_frontier_1_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Astronomer. Mostly looks at Earth-like continent and sighs."
+}

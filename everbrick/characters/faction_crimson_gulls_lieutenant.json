@@ -1,0 +1,38 @@
+{
+ "id": "faction_crimson_gulls_lieutenant",
+ "name": "Crimson Gulls Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "boar",
+ "size": "standard",
+ "parts": {
+  "head": "head_boar",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_peg_leg",
+  "boot": "boot_bare",
+  "tail": "tail_boar",
+  "hat": "hat_pirate_tricorn",
+  "held_R": "held_cutlass"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "dark_red",
+  "legs": "dark_brown",
+  "body2": "brown",
+  "body3": "cream",
+  "hat": "black",
+  "torso2": "black"
+ },
+ "prints": {
+  "face": "face_boar_happy",
+  "torso_F": "torso_pirate_1_F",
+  "torso_B": "torso_pirate_1_B"
+ },
+ "realm": "saltspray",
+ "group": "Factions",
+ "bio": ""
+}

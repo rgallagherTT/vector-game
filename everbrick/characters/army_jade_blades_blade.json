@@ -1,0 +1,39 @@
+{
+ "id": "army_jade_blades_blade",
+ "name": "Jade Blades Blade",
+ "plan": "biped_upright_animal",
+ "species": "dog",
+ "size": "standard",
+ "parts": {
+  "head": "head_dog",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_dog",
+  "hat": "hat_monk_straw_hat",
+  "held_R": "held_sword_short"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "green",
+  "legs": "dark_green",
+  "body2": "white",
+  "body3": "black",
+  "hat": "tan",
+  "cape": "green",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_dog_angry",
+  "torso_F": "torso_jade_2_F",
+  "torso_B": "torso_jade_2_B"
+ },
+ "realm": "mistpeak",
+ "group": "Armies",
+ "bio": "Rank 2 of 4."
+}

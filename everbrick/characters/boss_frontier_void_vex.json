@@ -1,0 +1,37 @@
+{
+ "id": "boss_frontier_void_vex",
+ "name": "Void Vex",
+ "plan": "biped",
+ "species": "alien",
+ "size": "big",
+ "parts": {
+  "head": "head_alien",
+  "torso": "torso_broad",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_goggles",
+  "cape": "cape_royal",
+  "held_R": "held_blaster"
+ },
+ "colours": {
+  "body": "lime",
+  "torso": "dark_grey",
+  "legs": "black",
+  "hat": "black",
+  "cape": "dark_grey",
+  "torso2": "magenta"
+ },
+ "prints": {
+  "face": "face_alien_sinister",
+  "torso_F": "torso_robot_4_F",
+  "torso_B": "torso_robot_4_B"
+ },
+ "realm": "frontier",
+ "group": "Bosses",
+ "bio": "Leader of the Void Marauders."
+}

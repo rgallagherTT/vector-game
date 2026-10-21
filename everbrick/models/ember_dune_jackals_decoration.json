@@ -1,0 +1,1 @@
+{"id":"ember_dune_jackals_decoration","version":1,"bricks":[["round_2x2",0,0,0,0,"tan"],["round_2x2",0,3,0,0,"dark_red"],["tile_2x2",0,6,0,0,"tan","insignia_dune_jackals"],["flower_1x1",0,7,0,0,"dark_red"]],"groups":{},"empties":{},"meta":{"tags":["faction","dune_jackals","ember"],"destructible":true,"function":null,"brickCount":4}}

@@ -1,0 +1,38 @@
+{
+ "id": "faction_malice_syndicate_recruit",
+ "name": "Malice Syndicate Recruit",
+ "plan": "biped_upright_animal",
+ "species": "squirrel",
+ "size": "standard",
+ "parts": {
+  "head": "head_squirrel",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_squirrel",
+  "hat": "hat_villain_horned_hood",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "purple",
+  "legs": "black",
+  "body2": "cream",
+  "body3": "dark_brown",
+  "hat": "purple",
+  "cape": "black"
+ },
+ "prints": {
+  "face": "face_squirrel_neutral",
+  "torso_F": "suit_static_F",
+  "torso_B": "suit_static_B"
+ },
+ "realm": "apex",
+ "group": "Factions",
+ "bio": ""
+}

@@ -1,0 +1,35 @@
+{
+ "id": "town_brightharbour_nell_netley",
+ "name": "Nell Netley",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_bob",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "yellow",
+  "torso": "cream",
+  "legs": "brown",
+  "hair": "brown",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_stubble_grin",
+  "torso_F": "torso_town_brightharbour_1_F",
+  "torso_B": "torso_town_brightharbour_1_B"
+ },
+ "realm": "brightharbour",
+ "group": "Townsfolk",
+ "bio": "Runs the Knot Just Rope shop. Laughs at her own sign daily."
+}

@@ -1,0 +1,41 @@
+{
+ "id": "faction_umbral_court_veteran",
+ "name": "Umbral Court Veteran",
+ "plan": "biped_upright_animal",
+ "species": "tiger",
+ "size": "standard",
+ "parts": {
+  "head": "head_tiger",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_tiger",
+  "hat": "hat_villain_horned_hood",
+  "cape": "cape_ragged",
+  "held_R": "umbral_hilt_1"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "black",
+  "legs": "black",
+  "body2": "white",
+  "body3": "black",
+  "hat": "black",
+  "hat2": "dark_red",
+  "cape": "black",
+  "torso2": "dark_red"
+ },
+ "prints": {
+  "face": "face_tiger_angry",
+  "torso_F": "torso_umbral_1_F",
+  "torso_B": "torso_umbral_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Factions",
+ "bio": ""
+}

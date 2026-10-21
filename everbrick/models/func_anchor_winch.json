@@ -1,0 +1,1 @@
+{"id":"func_anchor_winch","version":1,"bricks":[["brick_2x2",0,0,0,0,"brown"],["round_2x2",0,3,0,0,"dark_grey"],["chain_link",0,6,0,0,"dark_grey"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","ship"],"destructible":false,"function":"drop_anchor","brickCount":3}}

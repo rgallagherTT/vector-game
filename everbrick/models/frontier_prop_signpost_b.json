@@ -1,0 +1,1 @@
+{"id":"frontier_prop_signpost_b","version":1,"bricks":[["brick_1x1",0,0,0,0,"brown"],["brick_1x1",0,3,0,0,"brown"],["brick_1x1",0,6,0,0,"brown"],["brick_1x1",0,9,0,0,"brown"],["tile_2x4",-1,12,0,0,"tan"]],"groups":{},"empties":{},"meta":{"tags":["prop","frontier"],"destructible":true,"function":null,"brickCount":5}}

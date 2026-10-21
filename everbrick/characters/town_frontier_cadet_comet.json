@@ -1,0 +1,42 @@
+{
+ "id": "town_frontier_cadet_comet",
+ "name": "Cadet Comet",
+ "plan": "biped_upright_animal",
+ "species": "dog",
+ "size": "standard",
+ "parts": {
+  "head": "head_dog",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_dog",
+  "hat": "hat_legion_trooper_helmet",
+  "held_R": "held_blaster_rifle"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "white",
+  "legs": "white",
+  "body2": "white",
+  "body3": "black",
+  "hat": "white",
+  "hat2": "blue",
+  "boots": "dark_grey",
+  "gloves": "dark_grey",
+  "torso2": "blue",
+  "gear": "dark_grey"
+ },
+ "prints": {
+  "face": "face_dog_shocked",
+  "torso_F": "torso_town_frontier_2_F",
+  "torso_B": "torso_town_frontier_2_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Newest Star Legion cadet. Helmet on backwards."
+}

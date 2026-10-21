@@ -1,0 +1,41 @@
+{
+ "id": "lumen_mentor_mentor_saffi",
+ "name": "Mentor Saffi",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_monk_hood",
+  "cape": "cape_lumen_cloak",
+  "panel": "panel_robe_long",
+  "held_R": "lumen_emitter_6"
+ },
+ "colours": {
+  "body": "pink",
+  "torso": "tan",
+  "legs": "tan",
+  "hat": "sand_green",
+  "cape": "sky_blue",
+  "cape2": "tan",
+  "panel": "tan",
+  "boots": "brown",
+  "torso2": "sky_blue"
+ },
+ "prints": {
+  "face": "face_elder_neutral",
+  "torso_F": "torso_lumen_1_F",
+  "torso_B": "torso_lumen_1_B"
+ },
+ "realm": "wildwood",
+ "group": "The Lumen Order",
+ "bio": "Teaches hilt-carving. Has carved 999 hilts."
+}

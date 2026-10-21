@@ -1,0 +1,44 @@
+{
+ "id": "town_wildwood_old_oakley",
+ "name": "Old Oakley",
+ "plan": "biped_upright_animal",
+ "species": "owl",
+ "size": "standard",
+ "parts": {
+  "head": "head_owl",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_owl",
+  "hat": "hat_monk_hood",
+  "cape": "cape_lumen_cloak",
+  "panel": "panel_robe_long",
+  "held_R": "lumen_training_hilt"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "tan",
+  "legs": "tan",
+  "body2": "cream",
+  "body3": "orange",
+  "hat": "sand_green",
+  "cape": "sky_blue",
+  "cape2": "tan",
+  "panel": "tan",
+  "boots": "brown",
+  "torso2": "sky_blue"
+ },
+ "prints": {
+  "face": "face_owl_happy",
+  "torso_F": "torso_town_wildwood_1_F",
+  "torso_B": "torso_town_wildwood_1_B"
+ },
+ "realm": "wildwood",
+ "group": "Townsfolk",
+ "bio": "Librarian of the Great Tree. Shushes the wind."
+}

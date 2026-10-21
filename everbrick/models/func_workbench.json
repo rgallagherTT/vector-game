@@ -1,0 +1,1 @@
+{"id":"func_workbench","version":1,"bricks":[["brick_2x6",0,0,0,0,"brown"],["tile_2x4",0,3,0,0,"tan"],["tile_2x2",0,3,4,0,"tan"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","work"],"destructible":false,"function":"craft","brickCount":3}}

@@ -1,0 +1,1 @@
+{"id":"func_ship_helm","version":1,"bricks":[["brick_1x1",0,0,0,0,"brown"],["steering_wheel",0,3,0,0,"brown"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","ship"],"destructible":false,"function":"steer_ship","brickCount":2}}

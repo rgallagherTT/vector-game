@@ -1,0 +1,39 @@
+{
+ "id": "hero_echo_girl",
+ "name": "Echo Girl",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_quiff",
+  "hat": "hat_hero_visor_band",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "magenta",
+  "legs": "magenta",
+  "hair": "light_grey",
+  "hat": "white",
+  "cape": "white",
+  "boots": "white",
+  "gloves": "white"
+ },
+ "prints": {
+  "face": "face_stubble_grin",
+  "torso_F": "suit_echo_F",
+  "torso_B": "suit_echo_B"
+ },
+ "realm": "apex",
+ "group": "Superheroes",
+ "bio": "Paragon League. Power: sound waves."
+}

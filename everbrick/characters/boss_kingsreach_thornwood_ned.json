@@ -1,0 +1,41 @@
+{
+ "id": "boss_kingsreach_thornwood_ned",
+ "name": "Thornwood Ned",
+ "plan": "biped_upright_animal",
+ "species": "wolf",
+ "size": "big",
+ "parts": {
+  "head": "head_wolf",
+  "torso": "torso_broad",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_wolf",
+  "hat": "hat_pirate_bandana",
+  "back": "back_quiver",
+  "cape": "cape_royal",
+  "held_R": "held_bow"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "dark_green",
+  "legs": "brown",
+  "body2": "white",
+  "body3": "dark_grey",
+  "hat": "dark_green",
+  "cape": "dark_green",
+  "back": "brown"
+ },
+ "prints": {
+  "face": "face_wolf_sinister",
+  "torso_F": "torso_explorer_3_F",
+  "torso_B": "torso_explorer_3_B"
+ },
+ "realm": "kingsreach",
+ "group": "Bosses",
+ "bio": "Leader of the Thornwood Bandits."
+}

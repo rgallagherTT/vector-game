@@ -1,0 +1,36 @@
+{
+ "id": "villain_queen_frostbill_henchman_1",
+ "name": "Frostbill's Henchman 1",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_raccoon",
+  "hat": "hat_beanie"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "light_blue",
+  "legs": "black",
+  "body2": "light_grey",
+  "body3": "black",
+  "hat": "white"
+ },
+ "prints": {
+  "face": "face_raccoon_scared",
+  "torso_F": "suit_frostbite_B",
+  "torso_B": "suit_frostbite_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Joined for the dental plan."
+}

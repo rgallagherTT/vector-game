@@ -1,0 +1,42 @@
+{
+ "id": "army_royal_guard_guard",
+ "name": "Royal Guard Guard",
+ "plan": "biped_upright_animal",
+ "species": "dog",
+ "size": "standard",
+ "parts": {
+  "head": "head_dog",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_armoured",
+  "arm_lower": "arm_lower_armoured",
+  "hand": "hand_armoured",
+  "thigh": "leg_thigh_armoured",
+  "shin": "leg_shin_armoured",
+  "boot": "boot_armoured",
+  "tail": "tail_dog",
+  "hat": "hat_knight_visor_helm",
+  "cape": "cape_royal",
+  "held_R": "held_sword_long",
+  "held_L": "held_shield_kite"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "silver",
+  "legs": "silver",
+  "body2": "white",
+  "body3": "black",
+  "hat": "silver",
+  "cape": "red",
+  "torso2": "gold",
+  "gear": "red"
+ },
+ "prints": {
+  "face": "face_dog_angry",
+  "torso_F": "torso_knight_2_F",
+  "torso_B": "torso_knight_2_B"
+ },
+ "realm": "kingsreach",
+ "group": "Armies",
+ "bio": "Rank 2 of 4."
+}
