@@ -2050,6 +2050,17 @@ function shapeGeom(pid){
   }
   const out=g.out(); SHAPES.set(pid,out); return out;
 }
+// design/pieces.glb: LOD0 meshes replace the procedural shapes for every non-box piece (box bricks keep the culled mesher path)
+const PieceGLB = { ready:false, count:0,
+  async load(){ try{ const head=await fetch(ASSETS.pieces,{method:'HEAD'}); if(!head.ok) return; const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js'); const gltf=await new GLTFLoader().loadAsync(ASSETS.pieces);
+      const root=gltf.scene; root.updateMatrixWorld(true); const GLOW=new Set(['flame','lamp','gem']), TRANS=new Set(['glass']);
+      for(const [pid,P] of Object.entries(PIECES)){ if(!P.design || P.shape==='box') continue; const node=root.getObjectByName(pid); if(!node) continue;
+        const parts=[]; const inv=new THREE.Matrix4().copy(node.matrixWorld).invert();
+        node.traverse(o=>{ if(!o.isMesh || /_LOD1$/.test(o.name) || /_LOD1$/.test(o.parent?.name||'')) return; const gg=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone(); gg.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv,o.matrixWorld));
+          parts.push({ mat: GLOW.has(P.kind)?'g': TRANS.has(P.kind)?'t':'o', color:null, pos:gg.attributes.position.array, nrm:gg.attributes.normal.array }); });
+        if(parts.length){ SHAPES.set(pid, parts); this.count++; } }
+      this.ready=true; console.log('pieces.glb ready:', this.count, 'shaped pieces'); }catch(e){ console.warn('pieces.glb unavailable — procedural pieces', e); } },
+};
 function functionalGeom(g,o,P,w,d,H,e){
   const fn=FUNCTIONAL[P.id]; const a=g.part('a','dark_grey'); const glow=g.part('g','trans_orange'); const base=Math.min(H,1.2);
   switch(fn.fn){
@@ -3727,7 +3738,7 @@ async function boot(){
   status('reading the design kit…');
   const t0=performance.now();
   await Promise.race([loadAssets(), new Promise(r=>setTimeout(r,4000))]); // never block start-up on slow assets
-  status('unpacking the realm kits…'); await Promise.race([RT.assets.modelsReady||Promise.resolve(), new Promise(r=>setTimeout(r,8000))]);
+  status('unpacking the realm kits and pieces…'); await Promise.race([Promise.all([RT.assets.modelsReady||Promise.resolve(), PieceGLB.load()]), new Promise(r=>setTimeout(r,9000))]);
   Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init(); Bodies.load();
   status('building the world…');
   let world=null; const saved=QS.has('new')?null:storeGet(SAVE_KEY);
