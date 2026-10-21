@@ -1,0 +1,1 @@
+{"id":"wildwood_buildable_wall_short","version":1,"bricks":[["brick_1x8",0,0,0,1,"light_grey"],["brick_1x8",0,3,0,1,"light_grey"],["brick_1x8",0,6,0,1,"light_grey"]],"groups":{},"empties":{},"meta":{"tags":["buildable","wildwood"],"destructible":true,"function":null,"brickCount":3}}

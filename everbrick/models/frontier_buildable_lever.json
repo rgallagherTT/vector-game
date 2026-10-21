@@ -1,0 +1,1 @@
+{"id":"frontier_buildable_lever","version":1,"bricks":[["brick_2x2",0,0,0,0,"dark_grey"],["hinge_plate",0,3,0,0,"dark_grey"],["round_1x1",0,4,0,0,"red"]],"groups":{"handle":[1,2]},"empties":{},"meta":{"tags":["buildable","frontier"],"destructible":true,"function":"toggle","brickCount":3}}

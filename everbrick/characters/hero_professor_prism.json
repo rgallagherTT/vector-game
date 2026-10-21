@@ -1,0 +1,39 @@
+{
+ "id": "hero_professor_prism",
+ "name": "Professor Prism",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_quiff",
+  "hat": "hat_hero_visor_band",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "white",
+  "legs": "white",
+  "hair": "orange",
+  "hat": "magenta",
+  "cape": "magenta",
+  "boots": "magenta",
+  "gloves": "magenta"
+ },
+ "prints": {
+  "face": "face_lashes_grin",
+  "torso_F": "suit_prism_F",
+  "torso_B": "suit_prism_B"
+ },
+ "realm": "apex",
+ "group": "Superheroes",
+ "bio": "Paragon League. Power: light beams."
+}

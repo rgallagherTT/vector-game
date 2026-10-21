@@ -1,0 +1,40 @@
+{
+ "id": "hero_the_hoot",
+ "name": "The Hoot",
+ "plan": "biped_upright_animal",
+ "species": "owl",
+ "size": "standard",
+ "parts": {
+  "head": "head_owl",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_owl",
+  "hat": "hat_hero_eye_mask",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "dark_blue",
+  "legs": "dark_blue",
+  "body2": "cream",
+  "body3": "orange",
+  "hat": "yellow",
+  "cape": "yellow",
+  "boots": "yellow",
+  "gloves": "yellow"
+ },
+ "prints": {
+  "face": "face_owl_happy",
+  "torso_F": "suit_nova_F",
+  "torso_B": "suit_nova_B"
+ },
+ "realm": "apex",
+ "group": "Superheroes",
+ "bio": "Paragon League. Power: night vision & flight."
+}

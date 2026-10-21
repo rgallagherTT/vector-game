@@ -1,0 +1,39 @@
+{
+ "id": "villain_gloomcap",
+ "name": "Gloomcap",
+ "plan": "biped_upright_animal",
+ "species": "frog",
+ "size": "standard",
+ "parts": {
+  "head": "head_frog",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_frog",
+  "hat": "hat_villain_top_hat_monocle",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "green",
+  "torso": "lime",
+  "legs": "lime",
+  "body2": "lime",
+  "body3": "black",
+  "hat": "purple",
+  "cape": "black",
+  "gloves": "purple"
+ },
+ "prints": {
+  "face": "face_frog_sinister",
+  "torso_F": "suit_venomcap_F",
+  "torso_B": "suit_venomcap_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Malice Syndicate. Power: spore clouds."
+}

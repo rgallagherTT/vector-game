@@ -1,0 +1,35 @@
+{
+ "id": "preset_owl",
+ "name": "Owl (starter)",
+ "plan": "biped_upright_animal",
+ "species": "owl",
+ "size": "standard",
+ "parts": {
+  "head": "head_owl",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_owl"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "red",
+  "legs": "dark_blue",
+  "body2": "cream",
+  "body3": "orange",
+  "back": "sand_green"
+ },
+ "prints": {
+  "face": "face_owl_happy",
+  "torso_F": "torso_town_brightharbour_2_F",
+  "torso_B": "torso_town_brightharbour_2_B"
+ },
+ "realm": null,
+ "group": "Playable species presets",
+ "bio": ""
+}

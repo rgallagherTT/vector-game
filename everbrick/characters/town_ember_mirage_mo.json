@@ -1,0 +1,36 @@
+{
+ "id": "town_ember_mirage_mo",
+ "name": "Mirage Mo",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "cream",
+  "legs": "brown",
+  "body2": "white",
+  "body3": "pink",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_cat_happy",
+  "torso_F": "torso_town_ember_1_F",
+  "torso_B": "torso_town_ember_1_B"
+ },
+ "realm": "ember",
+ "group": "Townsfolk",
+ "bio": "Spice seller whose stall is sometimes not there."
+}

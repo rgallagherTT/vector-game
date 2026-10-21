@@ -1,0 +1,39 @@
+{
+ "id": "villain_moleculous",
+ "name": "Moleculous",
+ "plan": "biped_upright_animal",
+ "species": "mole",
+ "size": "standard",
+ "parts": {
+  "head": "head_mole",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_mole",
+  "hat": "hat_villain_top_hat_monocle",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "dark_grey",
+  "legs": "dark_grey",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "red",
+  "cape": "black",
+  "gloves": "red"
+ },
+ "prints": {
+  "face": "face_mole_sinister",
+  "torso_F": "suit_magnetar_F",
+  "torso_B": "suit_magnetar_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Malice Syndicate. Power: magnetism."
+}

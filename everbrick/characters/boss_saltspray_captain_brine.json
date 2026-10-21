@@ -1,0 +1,39 @@
+{
+ "id": "boss_saltspray_captain_brine",
+ "name": "Captain Brine",
+ "plan": "biped_upright_animal",
+ "species": "shark",
+ "size": "big",
+ "parts": {
+  "head": "head_shark",
+  "torso": "torso_broad",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_short",
+  "shin": "leg_shin_peg_leg",
+  "boot": "boot_bare",
+  "tail": "tail_shark",
+  "hat": "hat_pirate_tricorn",
+  "cape": "cape_royal",
+  "held_R": "held_cutlass"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "white",
+  "legs": "dark_brown",
+  "body2": "white",
+  "body3": "black",
+  "hat": "black",
+  "cape": "dark_red"
+ },
+ "prints": {
+  "face": "face_shark_sinister",
+  "torso_F": "torso_pirate_1_F",
+  "torso_B": "torso_pirate_1_B"
+ },
+ "realm": "saltspray",
+ "group": "Bosses",
+ "bio": "Leader of the Crimson Gulls."
+}

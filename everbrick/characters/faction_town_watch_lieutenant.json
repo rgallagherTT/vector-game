@@ -1,0 +1,38 @@
+{
+ "id": "faction_town_watch_lieutenant",
+ "name": "Town Watch Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "goat",
+ "size": "standard",
+ "parts": {
+  "head": "head_goat",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_goat",
+  "hat": "hat_navy_cap"
+ },
+ "colours": {
+  "body": "cream",
+  "torso": "dark_blue",
+  "legs": "dark_blue",
+  "body2": "brown",
+  "body3": "dark_grey",
+  "hat": "dark_blue",
+  "hat2": "dark_blue",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_goat_happy",
+  "torso_F": "torso_watch_1_F",
+  "torso_B": "torso_watch_1_B"
+ },
+ "realm": "brightharbour",
+ "group": "Factions",
+ "bio": ""
+}

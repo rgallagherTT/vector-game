@@ -1,0 +1,38 @@
+{
+ "id": "faction_royal_navy_lieutenant",
+ "name": "Royal Navy Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "mouse",
+ "size": "standard",
+ "parts": {
+  "head": "head_mouse",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_mouse",
+  "hat": "hat_navy_bicorne",
+  "held_R": "held_flintlock"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "dark_blue",
+  "legs": "white",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "dark_blue",
+  "torso2": "white"
+ },
+ "prints": {
+  "face": "face_mouse_happy",
+  "torso_F": "torso_navy_1_F",
+  "torso_B": "torso_navy_1_B"
+ },
+ "realm": "saltspray",
+ "group": "Factions",
+ "bio": ""
+}

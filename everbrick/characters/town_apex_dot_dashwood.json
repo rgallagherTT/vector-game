@@ -1,0 +1,36 @@
+{
+ "id": "town_apex_dot_dashwood",
+ "name": "Dot Dashwood",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_bald_ring",
+  "hat": "hat_racing_helmet"
+ },
+ "colours": {
+  "body": "pink",
+  "torso": "red",
+  "legs": "red",
+  "hair": "black",
+  "hat": "red",
+  "hat2": "white"
+ },
+ "prints": {
+  "face": "face_beard_grin",
+  "torso_F": "torso_town_apex_1_F",
+  "torso_B": "torso_town_apex_1_B"
+ },
+ "realm": "apex",
+ "group": "Townsfolk",
+ "bio": "Courier who is faster than most heroes, and annoyed about it."
+}

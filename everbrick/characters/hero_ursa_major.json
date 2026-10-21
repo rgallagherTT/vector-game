@@ -1,0 +1,40 @@
+{
+ "id": "hero_ursa_major",
+ "name": "Ursa Major",
+ "plan": "biped_upright_animal",
+ "species": "bear",
+ "size": "standard",
+ "parts": {
+  "head": "head_bear",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_bear",
+  "hat": "hat_hero_eye_mask",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "brown",
+  "legs": "brown",
+  "body2": "tan",
+  "body3": "black",
+  "hat": "gold",
+  "cape": "gold",
+  "boots": "gold",
+  "gloves": "gold"
+ },
+ "prints": {
+  "face": "face_bear_happy",
+  "torso_F": "suit_boulder_F",
+  "torso_B": "suit_boulder_B"
+ },
+ "realm": "apex",
+ "group": "Superheroes",
+ "bio": "Paragon League. Power: super strength."
+}

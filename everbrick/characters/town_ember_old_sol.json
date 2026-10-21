@@ -1,0 +1,36 @@
+{
+ "id": "town_ember_old_sol",
+ "name": "Old Sol",
+ "plan": "biped_upright_animal",
+ "species": "turtle",
+ "size": "standard",
+ "parts": {
+  "head": "head_turtle",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_turtle",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "sand_green",
+  "torso": "cream",
+  "legs": "brown",
+  "body2": "tan",
+  "body3": "dark_green",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_turtle_neutral",
+  "torso_F": "torso_town_ember_1_F",
+  "torso_B": "torso_town_ember_1_B"
+ },
+ "realm": "ember",
+ "group": "Townsfolk",
+ "bio": "Sells sunhats and sun-umbrellas and sun-everything."
+}

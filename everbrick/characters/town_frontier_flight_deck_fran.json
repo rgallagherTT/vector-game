@@ -1,0 +1,38 @@
+{
+ "id": "town_frontier_flight_deck_fran",
+ "name": "Flight Deck Fran",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "hat": "hat_space_helmet_visor",
+  "back": "back_air_tank"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "white",
+  "legs": "white",
+  "body2": "white",
+  "body3": "pink",
+  "hat": "white",
+  "torso2": "orange"
+ },
+ "prints": {
+  "face": "face_cat_neutral",
+  "torso_F": "torso_town_frontier_2_F",
+  "torso_B": "torso_town_frontier_2_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Launch controller. Counts down from very large numbers."
+}

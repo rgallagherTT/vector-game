@@ -1,0 +1,36 @@
+{
+ "id": "town_brightharbour_tilly_tackle",
+ "name": "Tilly Tackle",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_raccoon",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "cream",
+  "legs": "brown",
+  "body2": "light_grey",
+  "body3": "black",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_raccoon_happy",
+  "torso_F": "torso_town_brightharbour_1_F",
+  "torso_B": "torso_town_brightharbour_1_B"
+ },
+ "realm": "brightharbour",
+ "group": "Townsfolk",
+ "bio": "Sells rope, string, and \"slightly used\" rope."
+}

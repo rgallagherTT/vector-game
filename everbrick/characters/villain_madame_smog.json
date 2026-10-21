@@ -1,0 +1,39 @@
+{
+ "id": "villain_madame_smog",
+ "name": "Madame Smog",
+ "plan": "biped_upright_animal",
+ "species": "cat",
+ "size": "standard",
+ "parts": {
+  "head": "head_cat",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_cat",
+  "hat": "hat_villain_top_hat_monocle",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "olive",
+  "legs": "olive",
+  "body2": "white",
+  "body3": "pink",
+  "hat": "dark_grey",
+  "cape": "black",
+  "gloves": "dark_grey"
+ },
+ "prints": {
+  "face": "face_cat_sinister",
+  "torso_F": "suit_smog_F",
+  "torso_B": "suit_smog_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Malice Syndicate. Power: smoke clouds."
+}

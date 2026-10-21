@@ -1,0 +1,1 @@
+{"id":"brightharbour_harbour_guild_decoration","version":1,"bricks":[["round_2x2",0,0,0,0,"blue"],["round_2x2",0,3,0,0,"white"],["tile_2x2",0,6,0,0,"blue","insignia_harbour_guild"],["flower_1x1",0,7,0,0,"white"]],"groups":{},"empties":{},"meta":{"tags":["faction","harbour_guild","brightharbour"],"destructible":true,"function":null,"brickCount":4}}

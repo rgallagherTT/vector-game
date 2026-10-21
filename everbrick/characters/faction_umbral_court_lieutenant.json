@@ -1,0 +1,38 @@
+{
+ "id": "faction_umbral_court_lieutenant",
+ "name": "Umbral Court Lieutenant",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_villain_horned_hood",
+  "cape": "cape_ragged",
+  "held_R": "umbral_hilt_1"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "black",
+  "legs": "black",
+  "hat": "black",
+  "hat2": "dark_red",
+  "cape": "black",
+  "torso2": "dark_red"
+ },
+ "prints": {
+  "face": "face_rosy_smug",
+  "torso_F": "torso_umbral_1_F",
+  "torso_B": "torso_umbral_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Factions",
+ "bio": ""
+}

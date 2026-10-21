@@ -1,0 +1,40 @@
+{
+ "id": "town_ember_ember",
+ "name": "Ember",
+ "plan": "biped_upright_animal",
+ "species": "fox",
+ "size": "standard",
+ "parts": {
+  "head": "head_fox",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_fox",
+  "hat": "hat_desert_wide_brim",
+  "back": "back_backpack",
+  "held_R": "tool_spyglass"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "tan",
+  "legs": "olive",
+  "body2": "white",
+  "body3": "black",
+  "hat": "tan",
+  "back": "olive",
+  "torso2": "olive"
+ },
+ "prints": {
+  "face": "face_fox_shocked",
+  "torso_F": "torso_town_ember_2_F",
+  "torso_B": "torso_town_ember_2_B"
+ },
+ "realm": "ember",
+ "group": "Townsfolk",
+ "bio": "Ruin explorer who collects shiny pebbles."
+}

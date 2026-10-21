@@ -1,0 +1,40 @@
+{
+ "id": "faction_gull_gang_recruit",
+ "name": "Gull Gang Recruit",
+ "plan": "biped_upright_animal",
+ "species": "lion",
+ "size": "standard",
+ "parts": {
+  "head": "head_lion",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_lion",
+  "hat": "hat_pirate_bandana",
+  "back": "back_quiver",
+  "held_R": "held_bow"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "yellow",
+  "legs": "brown",
+  "body2": "cream",
+  "body3": "dark_brown",
+  "hat": "dark_green",
+  "back": "brown",
+  "torso2": "dark_grey"
+ },
+ "prints": {
+  "face": "face_lion_neutral",
+  "torso_F": "torso_explorer_3_F",
+  "torso_B": "torso_explorer_3_B"
+ },
+ "realm": "brightharbour",
+ "group": "Factions",
+ "bio": ""
+}

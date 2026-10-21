@@ -1,0 +1,35 @@
+{
+ "id": "faction_crimson_gulls_veteran",
+ "name": "Crimson Gulls Veteran",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_peg_leg",
+  "boot": "boot_boots",
+  "hat": "hat_pirate_tricorn",
+  "held_R": "held_cutlass"
+ },
+ "colours": {
+  "body": "yellow",
+  "torso": "dark_red",
+  "legs": "dark_brown",
+  "hat": "black",
+  "torso2": "black"
+ },
+ "prints": {
+  "face": "face_scar_determined",
+  "torso_F": "torso_pirate_1_F",
+  "torso_B": "torso_pirate_1_B"
+ },
+ "realm": "saltspray",
+ "group": "Factions",
+ "bio": ""
+}

@@ -1,0 +1,1 @@
+{"id":"func_anvil","version":1,"bricks":[["brick_2x2",0,0,0,0,"dark_grey"],["brick_2x4",0,3,-1,0,"dark_grey"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","work"],"destructible":false,"function":"forge","brickCount":2}}

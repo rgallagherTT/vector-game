@@ -1,0 +1,1 @@
+{"id":"mistpeak_buildable_gate","version":1,"bricks":[["arch_1x6",0,0,0,1,"brown"],["fence_1x4",1,0,1,1,"dark_brown"]],"groups":{"gate_leaf":[1]},"empties":{},"meta":{"tags":["buildable","mistpeak"],"destructible":true,"function":"gate","brickCount":2}}

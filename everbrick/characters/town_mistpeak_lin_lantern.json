@@ -1,0 +1,35 @@
+{
+ "id": "town_mistpeak_lin_lantern",
+ "name": "Lin Lantern",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_bob",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "pink",
+  "torso": "cream",
+  "legs": "brown",
+  "hair": "red",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_classic_shocked",
+  "torso_F": "torso_town_mistpeak_2_F",
+  "torso_B": "torso_town_mistpeak_2_B"
+ },
+ "realm": "mistpeak",
+ "group": "Townsfolk",
+ "bio": "Lantern seller who is afraid of the dark."
+}

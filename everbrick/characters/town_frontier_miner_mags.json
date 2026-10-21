@@ -1,0 +1,37 @@
+{
+ "id": "town_frontier_miner_mags",
+ "name": "Miner Mags",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hair": "hair_bald_ring",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "red",
+  "legs": "blue",
+  "hair": "light_grey",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_elder_neutral",
+  "torso_F": "torso_town_frontier_2_F",
+  "torso_B": "torso_town_frontier_2_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Asteroid miner with a very shiny pickaxe."
+}

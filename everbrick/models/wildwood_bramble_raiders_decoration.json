@@ -1,0 +1,1 @@
+{"id":"wildwood_bramble_raiders_decoration","version":1,"bricks":[["round_2x2",0,0,0,0,"olive"],["round_2x2",0,3,0,0,"orange"],["tile_2x2",0,6,0,0,"olive","insignia_bramble_raiders"],["flower_1x1",0,7,0,0,"orange"]],"groups":{},"empties":{},"meta":{"tags":["faction","bramble_raiders","wildwood"],"destructible":true,"function":null,"brickCount":4}}

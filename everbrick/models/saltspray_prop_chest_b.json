@@ -1,0 +1,1 @@
+{"id":"saltspray_prop_chest_b","version":1,"bricks":[["brick_2x4",0,0,0,1,"brown"],["curve_2x2",0,3,0,1,"brown"],["curve_2x2",2,3,0,1,"brown"],["tile_1x1",2,2,-1,0,"gold"]],"groups":{},"empties":{},"meta":{"tags":["prop","saltspray"],"destructible":true,"function":null,"brickCount":4}}

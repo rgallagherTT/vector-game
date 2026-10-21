@@ -1,0 +1,35 @@
+{
+ "id": "faction_royal_navy_veteran",
+ "name": "Royal Navy Veteran",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_navy_bicorne",
+  "held_R": "held_flintlock"
+ },
+ "colours": {
+  "body": "yellow",
+  "torso": "dark_blue",
+  "legs": "white",
+  "hat": "dark_blue",
+  "torso2": "white"
+ },
+ "prints": {
+  "face": "face_eyepatch_determined",
+  "torso_F": "torso_navy_1_F",
+  "torso_B": "torso_navy_1_B"
+ },
+ "realm": "saltspray",
+ "group": "Factions",
+ "bio": ""
+}

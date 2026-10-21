@@ -1,0 +1,40 @@
+{
+ "id": "hero_bramble",
+ "name": "Bramble",
+ "plan": "biped_upright_animal",
+ "species": "hedgehog",
+ "size": "standard",
+ "parts": {
+  "head": "head_hedgehog",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_hedgehog",
+  "hat": "hat_hero_eye_mask",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "green",
+  "legs": "green",
+  "body2": "cream",
+  "body3": "black",
+  "hat": "lime",
+  "cape": "lime",
+  "boots": "lime",
+  "gloves": "lime"
+ },
+ "prints": {
+  "face": "face_hedgehog_happy",
+  "torso_F": "suit_verdant_F",
+  "torso_B": "suit_verdant_B"
+ },
+ "realm": "apex",
+ "group": "Superheroes",
+ "bio": "Paragon League. Power: plant control."
+}

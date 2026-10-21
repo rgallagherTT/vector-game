@@ -1,0 +1,38 @@
+{
+ "id": "town_wildwood_pipkin",
+ "name": "Pipkin",
+ "plan": "biped_upright_animal",
+ "species": "hedgehog",
+ "size": "standard",
+ "parts": {
+  "head": "head_hedgehog",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_hedgehog",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "red",
+  "legs": "blue",
+  "body2": "cream",
+  "body3": "black",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_hedgehog_neutral",
+  "torso_F": "torso_town_wildwood_2_F",
+  "torso_B": "torso_town_wildwood_2_B"
+ },
+ "realm": "wildwood",
+ "group": "Townsfolk",
+ "bio": "Mushroom farmer, accidentally prickly with customers."
+}

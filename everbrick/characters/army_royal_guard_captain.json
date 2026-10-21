@@ -1,0 +1,42 @@
+{
+ "id": "army_royal_guard_captain",
+ "name": "Royal Guard Captain",
+ "plan": "biped_upright_animal",
+ "species": "fox",
+ "size": "big",
+ "parts": {
+  "head": "head_fox",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_armoured",
+  "arm_lower": "arm_lower_armoured",
+  "hand": "hand_armoured",
+  "thigh": "leg_thigh_armoured",
+  "shin": "leg_shin_armoured",
+  "boot": "boot_armoured",
+  "tail": "tail_fox",
+  "hat": "hat_knight_visor_helm",
+  "cape": "cape_royal",
+  "held_R": "held_sword_long",
+  "held_L": "held_shield_kite"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "silver",
+  "legs": "silver",
+  "body2": "white",
+  "body3": "black",
+  "hat": "silver",
+  "cape": "red",
+  "torso2": "gold",
+  "gear": "red"
+ },
+ "prints": {
+  "face": "face_fox_angry",
+  "torso_F": "torso_knight_4_F",
+  "torso_B": "torso_knight_4_B"
+ },
+ "realm": "kingsreach",
+ "group": "Armies",
+ "bio": "Rank 4 of 4."
+}

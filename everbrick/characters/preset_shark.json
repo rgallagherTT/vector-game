@@ -1,0 +1,36 @@
+{
+ "id": "preset_shark",
+ "name": "Shark (starter)",
+ "plan": "biped_upright_animal",
+ "species": "shark",
+ "size": "standard",
+ "parts": {
+  "head": "head_shark",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_short",
+  "shin": "leg_shin_short",
+  "boot": "boot_bare",
+  "tail": "tail_shark",
+  "hat": "hat_fishbowl"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "orange",
+  "legs": "dark_blue",
+  "body2": "white",
+  "body3": "black",
+  "back": "sand_green"
+ },
+ "prints": {
+  "face": "face_shark_happy",
+  "torso_F": "torso_town_brightharbour_2_F",
+  "torso_B": "torso_town_brightharbour_2_B"
+ },
+ "realm": null,
+ "group": "Playable species presets",
+ "bio": ""
+}

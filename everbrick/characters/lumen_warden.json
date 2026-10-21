@@ -1,0 +1,44 @@
+{
+ "id": "lumen_warden",
+ "name": "Lumen Warden",
+ "plan": "biped_upright_animal",
+ "species": "bear",
+ "size": "standard",
+ "parts": {
+  "head": "head_bear",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_bear",
+  "hat": "hat_monk_hood",
+  "cape": "cape_lumen_cloak",
+  "panel": "panel_robe_long",
+  "held_R": "lumen_emitter_3"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "tan",
+  "legs": "tan",
+  "body2": "tan",
+  "body3": "black",
+  "hat": "sand_green",
+  "cape": "sky_blue",
+  "cape2": "tan",
+  "panel": "tan",
+  "boots": "brown",
+  "torso2": "sky_blue"
+ },
+ "prints": {
+  "face": "face_bear_angry",
+  "torso_F": "torso_lumen_1_F",
+  "torso_B": "torso_lumen_1_B"
+ },
+ "realm": "wildwood",
+ "group": "The Lumen Order",
+ "bio": "Lumen rank 4. Hilt built from old bone."
+}

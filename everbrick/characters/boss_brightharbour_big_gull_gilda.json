@@ -1,0 +1,41 @@
+{
+ "id": "boss_brightharbour_big_gull_gilda",
+ "name": "Big Gull Gilda",
+ "plan": "biped_upright_animal",
+ "species": "parrot",
+ "size": "big",
+ "parts": {
+  "head": "head_parrot",
+  "torso": "torso_broad",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_parrot",
+  "hat": "hat_pirate_bandana",
+  "back": "back_quiver",
+  "cape": "cape_royal",
+  "held_R": "held_bow"
+ },
+ "colours": {
+  "body": "red",
+  "torso": "dark_green",
+  "legs": "brown",
+  "body2": "yellow",
+  "body3": "yellow",
+  "hat": "dark_green",
+  "cape": "yellow",
+  "back": "brown"
+ },
+ "prints": {
+  "face": "face_parrot_sinister",
+  "torso_F": "torso_explorer_3_F",
+  "torso_B": "torso_explorer_3_B"
+ },
+ "realm": "brightharbour",
+ "group": "Bosses",
+ "bio": "Leader of the Gull Gang."
+}

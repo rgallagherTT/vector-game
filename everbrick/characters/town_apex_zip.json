@@ -1,0 +1,37 @@
+{
+ "id": "town_apex_zip",
+ "name": "Zip",
+ "plan": "biped_upright_animal",
+ "species": "squirrel",
+ "size": "standard",
+ "parts": {
+  "head": "head_squirrel",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_squirrel",
+  "hat": "hat_racing_helmet"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "red",
+  "legs": "red",
+  "body2": "cream",
+  "body3": "dark_brown",
+  "hat": "red",
+  "hat2": "white"
+ },
+ "prints": {
+  "face": "face_squirrel_neutral",
+  "torso_F": "torso_town_apex_2_F",
+  "torso_B": "torso_town_apex_2_B"
+ },
+ "realm": "apex",
+ "group": "Townsfolk",
+ "bio": "Sidekick applicant, 47 attempts and counting."
+}

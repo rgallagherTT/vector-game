@@ -1,0 +1,40 @@
+{
+ "id": "faction_dune_jackals_veteran",
+ "name": "Dune Jackals Veteran",
+ "plan": "biped_upright_animal",
+ "species": "hedgehog",
+ "size": "standard",
+ "parts": {
+  "head": "head_hedgehog",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_hedgehog",
+  "hat": "hat_pirate_bandana",
+  "back": "back_quiver",
+  "held_R": "held_bow"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "tan",
+  "legs": "brown",
+  "body2": "cream",
+  "body3": "black",
+  "hat": "dark_green",
+  "back": "brown",
+  "torso2": "dark_red"
+ },
+ "prints": {
+  "face": "face_hedgehog_angry",
+  "torso_F": "torso_explorer_3_F",
+  "torso_B": "torso_explorer_3_B"
+ },
+ "realm": "ember",
+ "group": "Factions",
+ "bio": ""
+}

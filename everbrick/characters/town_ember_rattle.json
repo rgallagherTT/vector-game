@@ -1,0 +1,40 @@
+{
+ "id": "town_ember_rattle",
+ "name": "Rattle",
+ "plan": "biped_upright_animal",
+ "species": "mouse",
+ "size": "standard",
+ "parts": {
+  "head": "head_mouse",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_mouse",
+  "hat": "hat_desert_wrap",
+  "back": "back_backpack",
+  "held_R": "held_spear"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "orange",
+  "legs": "tan",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "cream",
+  "back": "brown",
+  "torso2": "cream"
+ },
+ "prints": {
+  "face": "face_mouse_neutral",
+  "torso_F": "torso_town_ember_2_F",
+  "torso_B": "torso_town_ember_2_B"
+ },
+ "realm": "ember",
+ "group": "Townsfolk",
+ "bio": "Caravan scout. Small. Loud. Brave."
+}

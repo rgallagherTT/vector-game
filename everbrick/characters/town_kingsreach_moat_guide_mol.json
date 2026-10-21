@@ -1,0 +1,36 @@
+{
+ "id": "town_kingsreach_moat_guide_mol",
+ "name": "Moat Guide Mol",
+ "plan": "biped_upright_animal",
+ "species": "frog",
+ "size": "standard",
+ "parts": {
+  "head": "head_frog",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_frog",
+  "hat": "hat_flat_cap"
+ },
+ "colours": {
+  "body": "green",
+  "torso": "white",
+  "legs": "dark_blue",
+  "body2": "lime",
+  "body3": "black",
+  "hat": "dark_blue"
+ },
+ "prints": {
+  "face": "face_frog_shocked",
+  "torso_F": "torso_town_kingsreach_2_F",
+  "torso_B": "torso_town_kingsreach_2_B"
+ },
+ "realm": "kingsreach",
+ "group": "Townsfolk",
+ "bio": "Runs moat tours. The moat is twelve studs long."
+}

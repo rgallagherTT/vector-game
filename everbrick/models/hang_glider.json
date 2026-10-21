@@ -1,0 +1,1 @@
+{"id":"hang_glider","version":1,"bricks":[["wedge_plate_4x4",0,6,0,0,"orange"],["wedge_plate_4x4",4,6,0,1,"orange"],["bar_1x4",3,0,1,0,"dark_grey"]],"groups":{"wing":[0,1]},"empties":{"seat_driver":[4,0,2,2]},"meta":{"tags":["vehicle","air"],"destructible":true,"function":"vehicle_glide","brickCount":3}}

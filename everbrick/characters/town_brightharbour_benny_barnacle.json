@@ -1,0 +1,38 @@
+{
+ "id": "town_brightharbour_benny_barnacle",
+ "name": "Benny Barnacle",
+ "plan": "biped_upright_animal",
+ "species": "mouse",
+ "size": "standard",
+ "parts": {
+  "head": "head_mouse",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_mouse",
+  "hat": "hat_chef_hat",
+  "panel": "panel_apron",
+  "held_R": "item_pie"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "white",
+  "legs": "black",
+  "body2": "pink",
+  "body3": "pink",
+  "panel": "white"
+ },
+ "prints": {
+  "face": "face_mouse_happy",
+  "torso_F": "torso_town_brightharbour_1_F",
+  "torso_B": "torso_town_brightharbour_1_B"
+ },
+ "realm": "brightharbour",
+ "group": "Townsfolk",
+ "bio": "Bakery apprentice, terrified of the oven."
+}

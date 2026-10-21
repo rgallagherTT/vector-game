@@ -1,0 +1,39 @@
+{
+ "id": "army_royal_navy_midshipman",
+ "name": "Royal Navy Midshipman",
+ "plan": "biped_upright_animal",
+ "species": "dog",
+ "size": "standard",
+ "parts": {
+  "head": "head_dog",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_dog",
+  "hat": "hat_navy_bicorne",
+  "held_R": "held_flintlock"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "dark_blue",
+  "legs": "white",
+  "body2": "white",
+  "body3": "black",
+  "hat": "dark_blue",
+  "cape": "dark_blue",
+  "torso2": "white"
+ },
+ "prints": {
+  "face": "face_dog_angry",
+  "torso_F": "torso_navy_2_F",
+  "torso_B": "torso_navy_2_B"
+ },
+ "realm": "saltspray",
+ "group": "Armies",
+ "bio": "Rank 2 of 4."
+}

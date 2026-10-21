@@ -1,0 +1,42 @@
+{
+ "id": "companion_brick",
+ "name": "Brick",
+ "plan": "biped_upright_animal",
+ "species": "bear",
+ "size": "standard",
+ "parts": {
+  "head": "head_bear",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_armoured",
+  "arm_lower": "arm_lower_armoured",
+  "hand": "hand_armoured",
+  "thigh": "leg_thigh_armoured",
+  "shin": "leg_shin_armoured",
+  "boot": "boot_armoured",
+  "tail": "tail_bear",
+  "hat": "hat_knight_visor_helm",
+  "cape": "cape_royal",
+  "held_R": "held_sword_long",
+  "held_L": "held_shield_kite"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "silver",
+  "legs": "silver",
+  "body2": "tan",
+  "body3": "black",
+  "hat": "silver",
+  "cape": "red",
+  "torso2": "gold",
+  "gear": "red"
+ },
+ "prints": {
+  "face": "face_bear_happy",
+  "torso_F": "torso_knight_1_F",
+  "torso_B": "torso_knight_1_B"
+ },
+ "realm": null,
+ "group": "Companions",
+ "bio": "Gentle giant knight. Cries at sunsets."
+}

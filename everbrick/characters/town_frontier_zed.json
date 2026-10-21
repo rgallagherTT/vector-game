@@ -1,0 +1,33 @@
+{
+ "id": "town_frontier_zed",
+ "name": "Zed",
+ "plan": "biped",
+ "species": "alien",
+ "size": "standard",
+ "parts": {
+  "head": "head_alien",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "panel": "panel_apron"
+ },
+ "colours": {
+  "body": "lime",
+  "torso": "cream",
+  "legs": "brown",
+  "panel": "green"
+ },
+ "prints": {
+  "face": "face_alien_shocked",
+  "torso_F": "torso_town_frontier_1_F",
+  "torso_B": "torso_town_frontier_1_B"
+ },
+ "realm": "frontier",
+ "group": "Townsfolk",
+ "bio": "Friendly alien trader. Accepts pips and compliments."
+}

@@ -1,0 +1,41 @@
+{
+ "id": "boss_wildwood_bramble_bess",
+ "name": "Bramble Bess",
+ "plan": "biped_upright_animal",
+ "species": "boar",
+ "size": "big",
+ "parts": {
+  "head": "head_boar",
+  "torso": "torso_broad",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_boar",
+  "hat": "hat_pirate_bandana",
+  "back": "back_quiver",
+  "cape": "cape_royal",
+  "held_R": "held_bow"
+ },
+ "colours": {
+  "body": "dark_brown",
+  "torso": "dark_green",
+  "legs": "brown",
+  "body2": "brown",
+  "body3": "cream",
+  "hat": "dark_green",
+  "cape": "olive",
+  "back": "brown"
+ },
+ "prints": {
+  "face": "face_boar_sinister",
+  "torso_F": "torso_explorer_3_F",
+  "torso_B": "torso_explorer_3_B"
+ },
+ "realm": "wildwood",
+ "group": "Bosses",
+ "bio": "Leader of the Bramble Raiders."
+}

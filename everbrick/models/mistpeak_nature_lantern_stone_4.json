@@ -1,0 +1,1 @@
+{"id":"mistpeak_nature_lantern_stone_4","version":1,"bricks":[["brick_2x2",0,0,0,0,"light_grey"],["round_1x1",0,3,0,0,"light_grey"],["lamp_1x1",0,6,0,0,"trans_orange"],["slope45_2x2",0,7,0,0,"dark_grey"]],"groups":{},"empties":{},"meta":{"tags":["scatter","nature","mistpeak"],"destructible":true,"function":null,"brickCount":4}}

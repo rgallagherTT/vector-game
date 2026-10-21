@@ -1,0 +1,38 @@
+{
+ "id": "town_apex_gus_gearbox",
+ "name": "Gus Gearbox",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_raccoon",
+  "hat": "hat_farmer_straw",
+  "held_R": "tool_pickaxe"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "red",
+  "legs": "blue",
+  "body2": "light_grey",
+  "body3": "black",
+  "hat": "tan",
+  "hat2": "red"
+ },
+ "prints": {
+  "face": "face_raccoon_happy",
+  "torso_F": "torso_town_apex_1_F",
+  "torso_B": "torso_town_apex_1_B"
+ },
+ "realm": "apex",
+ "group": "Townsfolk",
+ "bio": "Rooftop gardener who grows suspiciously large turnips."
+}

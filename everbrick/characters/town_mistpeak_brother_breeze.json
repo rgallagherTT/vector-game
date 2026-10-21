@@ -1,0 +1,40 @@
+{
+ "id": "town_mistpeak_brother_breeze",
+ "name": "Brother Breeze",
+ "plan": "biped_upright_animal",
+ "species": "goat",
+ "size": "standard",
+ "parts": {
+  "head": "head_goat",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_goat",
+  "hat": "hat_monk_hood",
+  "panel": "panel_robe_long",
+  "held_R": "held_staff"
+ },
+ "colours": {
+  "body": "cream",
+  "torso": "orange",
+  "legs": "orange",
+  "body2": "brown",
+  "body3": "dark_grey",
+  "hat": "orange",
+  "panel": "orange",
+  "torso2": "dark_red"
+ },
+ "prints": {
+  "face": "face_goat_neutral",
+  "torso_F": "torso_town_mistpeak_1_F",
+  "torso_B": "torso_town_mistpeak_1_B"
+ },
+ "realm": "mistpeak",
+ "group": "Townsfolk",
+ "bio": "Rings the prayer bell at exactly the wrong time."
+}

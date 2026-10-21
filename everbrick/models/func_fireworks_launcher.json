@@ -1,0 +1,1 @@
+{"id":"func_fireworks_launcher","version":1,"bricks":[["brick_2x2",0,0,0,0,"dark_grey"],["cone_1x1",0,3,0,0,"red"],["cone_1x1",1,3,0,0,"blue"],["cone_1x1",0,3,1,0,"yellow"],["cone_1x1",1,3,1,0,"green"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","fun"],"destructible":false,"function":"fireworks","brickCount":5}}

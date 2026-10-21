@@ -1,0 +1,1 @@
+{"id":"func_bed","version":1,"bricks":[["brick_2x6",0,0,0,0,"brown"],["brick_2x6",2,0,0,0,"brown"],["plate_4x4",0,3,0,0,"white"],["plate_2x4",0,3,4,1,"white"],["brick_2x4",0,4,0,1,"blue"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","home"],"destructible":false,"function":"sleep_save","brickCount":5}}

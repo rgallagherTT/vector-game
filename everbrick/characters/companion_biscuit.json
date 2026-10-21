@@ -1,0 +1,40 @@
+{
+ "id": "companion_biscuit",
+ "name": "Biscuit",
+ "plan": "biped_upright_animal",
+ "species": "dog",
+ "size": "standard",
+ "parts": {
+  "head": "head_dog",
+  "torso": "torso_bulky_jacket",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_dog",
+  "hat": "hat_desert_wide_brim",
+  "back": "back_backpack",
+  "held_R": "tool_spyglass"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "tan",
+  "legs": "olive",
+  "body2": "white",
+  "body3": "black",
+  "hat": "tan",
+  "back": "olive",
+  "torso2": "olive"
+ },
+ "prints": {
+  "face": "face_dog_happy",
+  "torso_F": "torso_explorer_1_F",
+  "torso_B": "torso_explorer_1_B"
+ },
+ "realm": null,
+ "group": "Companions",
+ "bio": "Loyal, loud, and convinced every stick is the best stick."
+}

@@ -1,0 +1,36 @@
+{
+ "id": "villain_dj_glitch",
+ "name": "DJ Glitch",
+ "plan": "biped",
+ "species": "robot",
+ "size": "standard",
+ "parts": {
+  "head": "head_robot",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_goggles",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "black",
+  "legs": "black",
+  "hat": "magenta",
+  "cape": "black",
+  "gloves": "magenta"
+ },
+ "prints": {
+  "face": "face_robot_sinister",
+  "torso_F": "suit_static_F",
+  "torso_B": "suit_static_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Malice Syndicate. Power: sonic pop."
+}

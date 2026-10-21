@@ -1,0 +1,1 @@
+{"id":"func_nav_console","version":1,"bricks":[["brick_2x4",0,0,0,1,"light_grey"],["slope45_2x2",0,3,0,0,"light_grey"],["screen_tile_1x2",2,3,0,0,"black","screen_03"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","starship"],"destructible":false,"function":"plot_course","brickCount":3}}

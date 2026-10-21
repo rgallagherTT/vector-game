@@ -1,0 +1,40 @@
+{
+ "id": "army_jade_blades_grandmaster",
+ "name": "Jade Blades Grandmaster",
+ "plan": "biped_upright_animal",
+ "species": "fox",
+ "size": "big",
+ "parts": {
+  "head": "head_fox",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_fox",
+  "hat": "hat_monk_straw_hat",
+  "cape": "cape_hero",
+  "held_R": "held_sword_short"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "green",
+  "legs": "dark_green",
+  "body2": "white",
+  "body3": "black",
+  "hat": "tan",
+  "cape": "green",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_fox_angry",
+  "torso_F": "torso_jade_2_F",
+  "torso_B": "torso_jade_2_B"
+ },
+ "realm": "mistpeak",
+ "group": "Armies",
+ "bio": "Rank 4 of 4."
+}

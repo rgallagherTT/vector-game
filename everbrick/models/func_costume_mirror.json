@@ -1,0 +1,1 @@
+{"id":"func_costume_mirror","version":1,"bricks":[["brick_1x4",0,0,0,1,"gold"],["glass_1x4x3",0,3,0,1,"trans_clear"],["plate_1x4",0,12,0,1,"gold"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","hero"],"destructible":false,"function":"design_costume","brickCount":3}}

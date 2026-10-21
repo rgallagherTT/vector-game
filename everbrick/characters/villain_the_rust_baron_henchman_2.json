@@ -1,0 +1,33 @@
+{
+ "id": "villain_the_rust_baron_henchman_2",
+ "name": "Baron's Henchman 2",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "hat": "hat_beanie"
+ },
+ "colours": {
+  "body": "yellow",
+  "torso": "brown",
+  "legs": "black",
+  "hat": "orange"
+ },
+ "prints": {
+  "face": "face_sleepy_smug",
+  "torso_F": "suit_rust_B",
+  "torso_B": "suit_rust_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Thinks the boss is \"a bit much\"."
+}

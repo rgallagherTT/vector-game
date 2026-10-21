@@ -1,0 +1,37 @@
+{
+ "id": "town_brightharbour_lamp_keeper_lou",
+ "name": "Lamp-Keeper Lou",
+ "plan": "biped_upright_animal",
+ "species": "owl",
+ "size": "standard",
+ "parts": {
+  "head": "head_owl",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_owl",
+  "hat": "hat_navy_cap"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "dark_blue",
+  "legs": "dark_blue",
+  "body2": "cream",
+  "body3": "orange",
+  "hat": "dark_blue",
+  "hat2": "dark_blue"
+ },
+ "prints": {
+  "face": "face_owl_happy",
+  "torso_F": "torso_town_brightharbour_2_F",
+  "torso_B": "torso_town_brightharbour_2_B"
+ },
+ "realm": "brightharbour",
+ "group": "Townsfolk",
+ "bio": "Night watch. Mostly watches the moon."
+}

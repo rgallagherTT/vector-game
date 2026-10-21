@@ -1,0 +1,40 @@
+{
+ "id": "hero_vixen_velocity",
+ "name": "Vixen Velocity",
+ "plan": "biped_upright_animal",
+ "species": "fox",
+ "size": "standard",
+ "parts": {
+  "head": "head_fox",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_fox",
+  "hat": "hat_hero_eye_mask",
+  "cape": "cape_hero"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "orange",
+  "legs": "orange",
+  "body2": "white",
+  "body3": "black",
+  "hat": "white",
+  "cape": "white",
+  "boots": "white",
+  "gloves": "white"
+ },
+ "prints": {
+  "face": "face_fox_happy",
+  "torso_F": "suit_gale_F",
+  "torso_B": "suit_gale_B"
+ },
+ "realm": "apex",
+ "group": "Superheroes",
+ "bio": "Paragon League. Power: super speed."
+}

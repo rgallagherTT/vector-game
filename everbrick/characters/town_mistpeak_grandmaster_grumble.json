@@ -1,0 +1,38 @@
+{
+ "id": "town_mistpeak_grandmaster_grumble",
+ "name": "Grandmaster Grumble",
+ "plan": "biped_upright_animal",
+ "species": "turtle",
+ "size": "standard",
+ "parts": {
+  "head": "head_turtle",
+  "torso": "torso_robed",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_sandals",
+  "tail": "tail_turtle",
+  "hat": "hat_monk_straw_hat",
+  "held_R": "held_sword_short"
+ },
+ "colours": {
+  "body": "sand_green",
+  "torso": "green",
+  "legs": "dark_green",
+  "body2": "tan",
+  "body3": "dark_green",
+  "hat": "tan",
+  "torso2": "gold"
+ },
+ "prints": {
+  "face": "face_turtle_happy",
+  "torso_F": "torso_town_mistpeak_2_F",
+  "torso_B": "torso_town_mistpeak_2_B"
+ },
+ "realm": "mistpeak",
+ "group": "Townsfolk",
+ "bio": "Very slow. Very strict. Very old."
+}

@@ -1,0 +1,37 @@
+{
+ "id": "faction_harbour_guild_recruit",
+ "name": "Harbour Guild Recruit",
+ "plan": "biped_upright_animal",
+ "species": "mouse",
+ "size": "standard",
+ "parts": {
+  "head": "head_mouse",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_mouse",
+  "hat": "hat_flat_cap"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "blue",
+  "legs": "dark_blue",
+  "body2": "pink",
+  "body3": "pink",
+  "hat": "dark_blue",
+  "torso2": "white"
+ },
+ "prints": {
+  "face": "face_mouse_neutral",
+  "torso_F": "torso_town_brightharbour_1_F",
+  "torso_B": "torso_town_brightharbour_1_B"
+ },
+ "realm": "brightharbour",
+ "group": "Factions",
+ "bio": ""
+}

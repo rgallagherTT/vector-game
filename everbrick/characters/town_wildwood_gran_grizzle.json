@@ -1,0 +1,38 @@
+{
+ "id": "town_wildwood_gran_grizzle",
+ "name": "Gran Grizzle",
+ "plan": "biped_upright_animal",
+ "species": "bear",
+ "size": "standard",
+ "parts": {
+  "head": "head_bear",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_bear",
+  "hat": "hat_chef_hat",
+  "panel": "panel_apron",
+  "held_R": "item_pie"
+ },
+ "colours": {
+  "body": "brown",
+  "torso": "white",
+  "legs": "black",
+  "body2": "tan",
+  "body3": "black",
+  "panel": "white"
+ },
+ "prints": {
+  "face": "face_bear_happy",
+  "torso_F": "torso_town_wildwood_1_F",
+  "torso_B": "torso_town_wildwood_1_B"
+ },
+ "realm": "wildwood",
+ "group": "Townsfolk",
+ "bio": "Feeds the whole village. Feeds the owls too, despite the sign."
+}

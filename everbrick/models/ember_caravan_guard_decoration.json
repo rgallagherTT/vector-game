@@ -1,0 +1,1 @@
+{"id":"ember_caravan_guard_decoration","version":1,"bricks":[["round_2x2",0,0,0,0,"orange"],["round_2x2",0,3,0,0,"cream"],["tile_2x2",0,6,0,0,"orange","insignia_caravan_guard"],["flower_1x1",0,7,0,0,"cream"]],"groups":{},"empties":{},"meta":{"tags":["faction","caravan_guard","ember"],"destructible":true,"function":null,"brickCount":4}}

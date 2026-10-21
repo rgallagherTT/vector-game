@@ -1,0 +1,39 @@
+{
+ "id": "villain_the_rust_baron",
+ "name": "The Rust Baron",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_muscle_suit",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_raccoon",
+  "hat": "hat_villain_top_hat_monocle",
+  "cape": "cape_ragged"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "brown",
+  "legs": "brown",
+  "body2": "light_grey",
+  "body3": "black",
+  "hat": "orange",
+  "cape": "black",
+  "gloves": "orange"
+ },
+ "prints": {
+  "face": "face_raccoon_sinister",
+  "torso_F": "suit_rust_F",
+  "torso_B": "suit_rust_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Malice Syndicate. Power: corrosion."
+}

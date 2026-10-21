@@ -1,0 +1,36 @@
+{
+ "id": "villain_quakeboar_henchman_2",
+ "name": "Quakeboar's Henchman 2",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_bare",
+  "tail": "tail_raccoon",
+  "hat": "hat_beanie"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "dark_brown",
+  "legs": "black",
+  "body2": "light_grey",
+  "body3": "black",
+  "hat": "tan"
+ },
+ "prints": {
+  "face": "face_raccoon_happy",
+  "torso_F": "suit_quake_B",
+  "torso_B": "suit_quake_B"
+ },
+ "realm": "apex",
+ "group": "Supervillains",
+ "bio": "Thinks the boss is \"a bit much\"."
+}

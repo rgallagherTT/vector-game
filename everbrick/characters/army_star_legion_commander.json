@@ -1,0 +1,44 @@
+{
+ "id": "army_star_legion_commander",
+ "name": "Star Legion Commander",
+ "plan": "biped_upright_animal",
+ "species": "fox",
+ "size": "big",
+ "parts": {
+  "head": "head_fox",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_fox",
+  "hat": "hat_legion_trooper_helmet",
+  "cape": "cape_hero",
+  "held_R": "held_blaster_rifle"
+ },
+ "colours": {
+  "body": "orange",
+  "torso": "white",
+  "legs": "white",
+  "body2": "white",
+  "body3": "black",
+  "hat": "white",
+  "hat2": "blue",
+  "cape": "white",
+  "boots": "dark_grey",
+  "gloves": "dark_grey",
+  "torso2": "blue",
+  "gear": "dark_grey"
+ },
+ "prints": {
+  "face": "face_fox_angry",
+  "torso_F": "torso_legion_4_F",
+  "torso_B": "torso_legion_4_B"
+ },
+ "realm": "frontier",
+ "group": "Armies",
+ "bio": "Rank 4 of 4."
+}

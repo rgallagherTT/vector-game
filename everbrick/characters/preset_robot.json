@@ -1,0 +1,32 @@
+{
+ "id": "preset_robot",
+ "name": "Robot (starter)",
+ "plan": "biped",
+ "species": "robot",
+ "size": "standard",
+ "parts": {
+  "head": "head_robot",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_robot",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots"
+ },
+ "colours": {
+  "body": "light_grey",
+  "torso": "red",
+  "legs": "dark_blue",
+  "back": "sand_green"
+ },
+ "prints": {
+  "face": "face_robot_grin",
+  "torso_F": "torso_town_brightharbour_2_F",
+  "torso_B": "torso_town_brightharbour_2_B"
+ },
+ "realm": null,
+ "group": "Playable species presets",
+ "bio": ""
+}

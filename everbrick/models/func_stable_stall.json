@@ -1,0 +1,1 @@
+{"id":"func_stable_stall","version":1,"bricks":[["fence_1x4",0,0,0,0,"tan"],["fence_1x4",4,0,0,1,"tan"],["plate_4x4",1,0,1,0,"yellow"]],"groups":{},"empties":{"use_spot":[0,0,-1,0]},"meta":{"tags":["functional","mount"],"destructible":false,"function":"rest_mount","brickCount":3}}

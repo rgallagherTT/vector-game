@@ -1,0 +1,42 @@
+{
+ "id": "faction_star_legion_lieutenant",
+ "name": "Star Legion Lieutenant",
+ "plan": "biped_upright_animal",
+ "species": "lion",
+ "size": "standard",
+ "parts": {
+  "head": "head_lion",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_gloved",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_standard",
+  "boot": "boot_boots",
+  "tail": "tail_lion",
+  "hat": "hat_legion_trooper_helmet",
+  "held_R": "held_blaster_rifle"
+ },
+ "colours": {
+  "body": "tan",
+  "torso": "white",
+  "legs": "white",
+  "body2": "cream",
+  "body3": "dark_brown",
+  "hat": "white",
+  "hat2": "blue",
+  "boots": "dark_grey",
+  "gloves": "dark_grey",
+  "torso2": "blue",
+  "gear": "dark_grey"
+ },
+ "prints": {
+  "face": "face_lion_happy",
+  "torso_F": "torso_legion_1_F",
+  "torso_B": "torso_legion_1_B"
+ },
+ "realm": "frontier",
+ "group": "Factions",
+ "bio": ""
+}

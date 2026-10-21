@@ -1,0 +1,42 @@
+{
+ "id": "faction_royal_guard_veteran",
+ "name": "Royal Guard Veteran",
+ "plan": "biped_upright_animal",
+ "species": "raccoon",
+ "size": "standard",
+ "parts": {
+  "head": "head_raccoon",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_armoured",
+  "arm_lower": "arm_lower_armoured",
+  "hand": "hand_armoured",
+  "thigh": "leg_thigh_armoured",
+  "shin": "leg_shin_armoured",
+  "boot": "boot_armoured",
+  "tail": "tail_raccoon",
+  "hat": "hat_knight_visor_helm",
+  "cape": "cape_royal",
+  "held_R": "held_sword_long",
+  "held_L": "held_shield_kite"
+ },
+ "colours": {
+  "body": "dark_grey",
+  "torso": "red",
+  "legs": "silver",
+  "body2": "light_grey",
+  "body3": "black",
+  "hat": "silver",
+  "cape": "red",
+  "torso2": "gold",
+  "gear": "red"
+ },
+ "prints": {
+  "face": "face_raccoon_angry",
+  "torso_F": "torso_knight_1_F",
+  "torso_B": "torso_knight_1_B"
+ },
+ "realm": "kingsreach",
+ "group": "Factions",
+ "bio": ""
+}

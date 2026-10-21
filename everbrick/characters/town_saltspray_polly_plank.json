@@ -1,0 +1,37 @@
+{
+ "id": "town_saltspray_polly_plank",
+ "name": "Polly Plank",
+ "plan": "biped_upright_animal",
+ "species": "parrot",
+ "size": "standard",
+ "parts": {
+  "head": "head_parrot",
+  "torso": "torso_standard",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_standard",
+  "arm_lower": "arm_lower_standard",
+  "hand": "hand_standard",
+  "thigh": "leg_thigh_standard",
+  "shin": "leg_shin_peg_leg",
+  "boot": "boot_bare",
+  "tail": "tail_parrot",
+  "hat": "hat_pirate_tricorn",
+  "held_R": "held_cutlass"
+ },
+ "colours": {
+  "body": "red",
+  "torso": "white",
+  "legs": "dark_brown",
+  "body2": "yellow",
+  "body3": "yellow",
+  "hat": "black"
+ },
+ "prints": {
+  "face": "face_parrot_happy",
+  "torso_F": "torso_town_saltspray_1_F",
+  "torso_B": "torso_town_saltspray_1_B"
+ },
+ "realm": "saltspray",
+ "group": "Townsfolk",
+ "bio": "Repeats secrets, loudly, to everyone."
+}

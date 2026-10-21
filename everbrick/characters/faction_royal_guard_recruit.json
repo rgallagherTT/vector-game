@@ -1,0 +1,39 @@
+{
+ "id": "faction_royal_guard_recruit",
+ "name": "Royal Guard Recruit",
+ "plan": "biped",
+ "species": "human",
+ "size": "standard",
+ "parts": {
+  "head": "head_standard",
+  "torso": "torso_armoured",
+  "hips": "hips_standard",
+  "arm_upper": "arm_upper_armoured",
+  "arm_lower": "arm_lower_armoured",
+  "hand": "hand_armoured",
+  "thigh": "leg_thigh_armoured",
+  "shin": "leg_shin_armoured",
+  "boot": "boot_armoured",
+  "hat": "hat_knight_visor_helm",
+  "cape": "cape_royal",
+  "held_R": "held_sword_long",
+  "held_L": "held_shield_kite"
+ },
+ "colours": {
+  "body": "cream",
+  "torso": "red",
+  "legs": "silver",
+  "hat": "silver",
+  "cape": "red",
+  "torso2": "gold",
+  "gear": "red"
+ },
+ "prints": {
+  "face": "face_moustache_neutral",
+  "torso_F": "torso_knight_1_F",
+  "torso_B": "torso_knight_1_B"
+ },
+ "realm": "kingsreach",
+ "group": "Factions",
+ "bio": ""
+}

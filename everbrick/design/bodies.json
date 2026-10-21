@@ -1,0 +1,2796 @@
+{
+ "units": "stud = 1",
+ "note": "Each part pivots at its joint. Child empties name the next joint/socket.",
+ "parts": {
+  "head_standard": {
+   "category": "head",
+   "tris": 158,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.52
+    ]
+   }
+  },
+  "head_round": {
+   "category": "head",
+   "tris": 158,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.12,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.53
+    ]
+   }
+  },
+  "head_square": {
+   "category": "head",
+   "tris": 266,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.52
+    ]
+   }
+  },
+  "head_narrow": {
+   "category": "head",
+   "tris": 158,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.22,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.495
+    ]
+   }
+  },
+  "head_wide": {
+   "category": "head",
+   "tris": 158,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.05,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.52
+    ]
+   }
+  },
+  "head_alien": {
+   "category": "head",
+   "tris": 682,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.2,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.52
+    ]
+   }
+  },
+  "head_robot": {
+   "category": "head",
+   "tris": 510,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.52
+    ]
+   }
+  },
+  "head_elf": {
+   "category": "head",
+   "tris": 190,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1.1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.52
+    ]
+   }
+  },
+  "hair_crop": {
+   "category": "hair",
+   "tris": 240,
+   "joints": {}
+  },
+  "hair_side_part": {
+   "category": "hair",
+   "tris": 348,
+   "joints": {}
+  },
+  "hair_quiff": {
+   "category": "hair",
+   "tris": 232,
+   "joints": {}
+  },
+  "hair_spiky": {
+   "category": "hair",
+   "tris": 216,
+   "joints": {}
+  },
+  "hair_mohawk": {
+   "category": "hair",
+   "tris": 240,
+   "joints": {}
+  },
+  "hair_buzz": {
+   "category": "hair",
+   "tris": 132,
+   "joints": {}
+  },
+  "hair_bob": {
+   "category": "hair",
+   "tris": 456,
+   "joints": {}
+  },
+  "hair_long_straight": {
+   "category": "hair",
+   "tris": 456,
+   "joints": {}
+  },
+  "hair_ponytail": {
+   "category": "hair",
+   "tris": 352,
+   "joints": {}
+  },
+  "hair_pigtails": {
+   "category": "hair",
+   "tris": 356,
+   "joints": {}
+  },
+  "hair_bun": {
+   "category": "hair",
+   "tris": 232,
+   "joints": {}
+  },
+  "hair_top_knot": {
+   "category": "hair",
+   "tris": 424,
+   "joints": {}
+  },
+  "hair_afro": {
+   "category": "hair",
+   "tris": 100,
+   "joints": {}
+  },
+  "hair_curls": {
+   "category": "hair",
+   "tris": 692,
+   "joints": {}
+  },
+  "hair_braids_twin": {
+   "category": "hair",
+   "tris": 692,
+   "joints": {}
+  },
+  "hair_braid_long": {
+   "category": "hair",
+   "tris": 692,
+   "joints": {}
+  },
+  "hair_wavy_long": {
+   "category": "hair",
+   "tris": 692,
+   "joints": {}
+  },
+  "hair_bangs": {
+   "category": "hair",
+   "tris": 348,
+   "joints": {}
+  },
+  "hair_pompadour": {
+   "category": "hair",
+   "tris": 232,
+   "joints": {}
+  },
+  "hair_mullet": {
+   "category": "hair",
+   "tris": 240,
+   "joints": {}
+  },
+  "hair_bald_ring": {
+   "category": "hair",
+   "tris": 324,
+   "joints": {}
+  },
+  "hair_cornrows": {
+   "category": "hair",
+   "tris": 672,
+   "joints": {}
+  },
+  "hair_messy": {
+   "category": "hair",
+   "tris": 228,
+   "joints": {}
+  },
+  "hair_swept_back": {
+   "category": "hair",
+   "tris": 232,
+   "joints": {}
+  },
+  "hat_knight_great_helm": {
+   "category": "hat",
+   "tris": 324,
+   "joints": {}
+  },
+  "hat_knight_visor_helm": {
+   "category": "hat",
+   "tris": 564,
+   "joints": {}
+  },
+  "hat_knight_plumed_helm": {
+   "category": "hat",
+   "tris": 448,
+   "joints": {}
+  },
+  "hat_knight_kettle_hat": {
+   "category": "hat",
+   "tris": 212,
+   "joints": {}
+  },
+  "hat_pirate_tricorn": {
+   "category": "hat",
+   "tris": 456,
+   "joints": {}
+  },
+  "hat_pirate_bandana": {
+   "category": "hat",
+   "tris": 448,
+   "joints": {}
+  },
+  "hat_pirate_captain_hat": {
+   "category": "hat",
+   "tris": 748,
+   "joints": {}
+  },
+  "hat_navy_cap": {
+   "category": "hat",
+   "tris": 444,
+   "joints": {}
+  },
+  "hat_navy_bicorne": {
+   "category": "hat",
+   "tris": 228,
+   "joints": {}
+  },
+  "hat_legion_trooper_helmet": {
+   "category": "hat",
+   "tris": 312,
+   "joints": {}
+  },
+  "hat_legion_officer_helmet": {
+   "category": "hat",
+   "tris": 324,
+   "joints": {}
+  },
+  "hat_monk_hood": {
+   "category": "hat",
+   "tris": 240,
+   "joints": {}
+  },
+  "hat_monk_straw_hat": {
+   "category": "hat",
+   "tris": 32,
+   "joints": {}
+  },
+  "hat_hero_eye_mask": {
+   "category": "hat",
+   "tris": 324,
+   "joints": {}
+  },
+  "hat_hero_cowl_fins": {
+   "category": "hat",
+   "tris": 172,
+   "joints": {}
+  },
+  "hat_hero_visor_band": {
+   "category": "hat",
+   "tris": 216,
+   "joints": {}
+  },
+  "hat_hero_crest_helm": {
+   "category": "hat",
+   "tris": 368,
+   "joints": {}
+  },
+  "hat_hero_antenna_circlet": {
+   "category": "hat",
+   "tris": 616,
+   "joints": {}
+  },
+  "hat_villain_horned_hood": {
+   "category": "hat",
+   "tris": 580,
+   "joints": {}
+  },
+  "hat_villain_tall_collar": {
+   "category": "hat",
+   "tris": 32,
+   "joints": {}
+  },
+  "hat_villain_top_hat_monocle": {
+   "category": "hat",
+   "tris": 528,
+   "joints": {}
+  },
+  "hat_crown_royal": {
+   "category": "hat",
+   "tris": 136,
+   "joints": {}
+  },
+  "hat_crown_circlet": {
+   "category": "hat",
+   "tris": 200,
+   "joints": {}
+  },
+  "hat_chef_hat": {
+   "category": "hat",
+   "tris": 164,
+   "joints": {}
+  },
+  "hat_hard_hat": {
+   "category": "hat",
+   "tris": 312,
+   "joints": {}
+  },
+  "hat_wizard_hat": {
+   "category": "hat",
+   "tris": 300,
+   "joints": {}
+  },
+  "hat_wizard_hat_bent": {
+   "category": "hat",
+   "tris": 128,
+   "joints": {}
+  },
+  "hat_space_helmet": {
+   "category": "hat",
+   "tris": 552,
+   "joints": {}
+  },
+  "hat_space_helmet_visor": {
+   "category": "hat",
+   "tris": 216,
+   "joints": {}
+  },
+  "hat_goggles": {
+   "category": "hat",
+   "tris": 384,
+   "joints": {}
+  },
+  "hat_fishbowl": {
+   "category": "hat",
+   "tris": 552,
+   "joints": {}
+  },
+  "hat_desert_wide_brim": {
+   "category": "hat",
+   "tris": 336,
+   "joints": {}
+  },
+  "hat_desert_wrap": {
+   "category": "hat",
+   "tris": 776,
+   "joints": {}
+  },
+  "hat_farmer_straw": {
+   "category": "hat",
+   "tris": 336,
+   "joints": {}
+  },
+  "hat_beanie": {
+   "category": "hat",
+   "tris": 424,
+   "joints": {}
+  },
+  "hat_top_hat": {
+   "category": "hat",
+   "tris": 336,
+   "joints": {}
+  },
+  "hat_flat_cap": {
+   "category": "hat",
+   "tris": 240,
+   "joints": {}
+  },
+  "hat_racing_helmet": {
+   "category": "hat",
+   "tris": 324,
+   "joints": {}
+  },
+  "hat_propeller_cap": {
+   "category": "hat",
+   "tris": 288,
+   "joints": {}
+  },
+  "hat_flower_crown": {
+   "category": "hat",
+   "tris": 672,
+   "joints": {}
+  },
+  "hat_knight_bear_helm": {
+   "category": "hat",
+   "tris": 332,
+   "joints": {}
+  },
+  "hat_legion_cap_soft": {
+   "category": "hat",
+   "tris": 240,
+   "joints": {}
+  },
+  "torso_standard": {
+   "category": "torso",
+   "tris": 310,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.71,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.71,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.33
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.28
+    ]
+   }
+  },
+  "torso_broad": {
+   "category": "torso",
+   "tris": 310,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.86,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.86,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.37
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.32
+    ]
+   }
+  },
+  "torso_slim": {
+   "category": "torso",
+   "tris": 310,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.625,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.625,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.3
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.25
+    ]
+   }
+  },
+  "torso_armoured": {
+   "category": "torso",
+   "tris": 618,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.76,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.76,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.36
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.31
+    ]
+   }
+  },
+  "torso_bulky_jacket": {
+   "category": "torso",
+   "tris": 718,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.8,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.8,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.41
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.36
+    ]
+   }
+  },
+  "torso_robed": {
+   "category": "torso",
+   "tris": 474,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.7,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.7,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.35
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.3
+    ]
+   }
+  },
+  "torso_robot": {
+   "category": "torso",
+   "tris": 682,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.75,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.75,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.35
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.3
+    ]
+   }
+  },
+  "torso_muscle_suit": {
+   "category": "torso",
+   "tris": 558,
+   "joints": {
+    "joint_neck": [
+     0,
+     1.55,
+     0
+    ],
+    "joint_shoulder_L": [
+     0.8,
+     1.32,
+     0
+    ],
+    "joint_shoulder_R": [
+     -0.8,
+     1.32,
+     0
+    ],
+    "socket_back": [
+     0,
+     0.85,
+     -0.36
+    ],
+    "socket_cape": [
+     0,
+     1.45,
+     -0.31
+    ]
+   }
+  },
+  "hips_standard": {
+   "category": "hips",
+   "tris": 324,
+   "joints": {
+    "joint_hip_L": [
+     0.26,
+     -0.38,
+     0
+    ],
+    "joint_hip_R": [
+     -0.26,
+     -0.38,
+     0
+    ],
+    "socket_belt": [
+     0,
+     -0.06,
+     0.36
+    ],
+    "socket_panel_F": [
+     0,
+     -0.02,
+     0.36
+    ],
+    "socket_panel_B": [
+     0,
+     -0.02,
+     -0.36
+    ],
+    "socket_tail": [
+     0,
+     -0.25,
+     -0.34
+    ]
+   }
+  },
+  "arm_upper_standard": {
+   "category": "arm",
+   "tris": 212,
+   "joints": {
+    "joint_elbow": [
+     0,
+     -0.75,
+     0
+    ]
+   }
+  },
+  "arm_lower_standard": {
+   "category": "arm",
+   "tris": 112,
+   "joints": {
+    "joint_wrist": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "arm_upper_armoured": {
+   "category": "arm",
+   "tris": 312,
+   "joints": {
+    "joint_elbow": [
+     0,
+     -0.75,
+     0
+    ]
+   }
+  },
+  "arm_lower_armoured": {
+   "category": "arm",
+   "tris": 160,
+   "joints": {
+    "joint_wrist": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "arm_upper_bulky": {
+   "category": "arm",
+   "tris": 212,
+   "joints": {
+    "joint_elbow": [
+     0,
+     -0.75,
+     0
+    ]
+   }
+  },
+  "arm_lower_bulky": {
+   "category": "arm",
+   "tris": 212,
+   "joints": {
+    "joint_wrist": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "arm_upper_sleeved": {
+   "category": "arm",
+   "tris": 260,
+   "joints": {
+    "joint_elbow": [
+     0,
+     -0.75,
+     0
+    ]
+   }
+  },
+  "arm_lower_sleeved": {
+   "category": "arm",
+   "tris": 160,
+   "joints": {
+    "joint_wrist": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "arm_upper_robot": {
+   "category": "arm",
+   "tris": 360,
+   "joints": {
+    "joint_elbow": [
+     0,
+     -0.75,
+     0
+    ]
+   }
+  },
+  "arm_lower_robot": {
+   "category": "arm",
+   "tris": 160,
+   "joints": {
+    "joint_wrist": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "hand_standard": {
+   "category": "hand",
+   "tris": 288,
+   "joints": {
+    "socket_hand": [
+     0,
+     -0.24,
+     0
+    ]
+   }
+  },
+  "hand_gloved": {
+   "category": "hand",
+   "tris": 336,
+   "joints": {
+    "socket_hand": [
+     0,
+     -0.24,
+     0
+    ]
+   }
+  },
+  "hand_armoured": {
+   "category": "hand",
+   "tris": 612,
+   "joints": {
+    "socket_hand": [
+     0,
+     -0.24,
+     0
+    ]
+   }
+  },
+  "hand_robot": {
+   "category": "hand",
+   "tris": 336,
+   "joints": {
+    "socket_hand": [
+     0,
+     -0.24,
+     0
+    ]
+   }
+  },
+  "hand_claw": {
+   "category": "hand",
+   "tris": 212,
+   "joints": {
+    "socket_hand": [
+     0,
+     -0.24,
+     0
+    ]
+   }
+  },
+  "leg_thigh_standard": {
+   "category": "leg",
+   "tris": 108,
+   "joints": {
+    "joint_knee": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_shin_standard": {
+   "category": "leg",
+   "tris": 108,
+   "joints": {
+    "joint_ankle": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_thigh_armoured": {
+   "category": "leg",
+   "tris": 316,
+   "joints": {
+    "joint_knee": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_shin_armoured": {
+   "category": "leg",
+   "tris": 216,
+   "joints": {
+    "joint_ankle": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_thigh_robed_panel": {
+   "category": "leg",
+   "tris": 216,
+   "joints": {
+    "joint_knee": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_shin_robed_panel": {
+   "category": "leg",
+   "tris": 216,
+   "joints": {
+    "joint_ankle": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_thigh_short": {
+   "category": "leg",
+   "tris": 108,
+   "joints": {
+    "joint_knee": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "leg_shin_short": {
+   "category": "leg",
+   "tris": 108,
+   "joints": {
+    "joint_ankle": [
+     0,
+     -0.65,
+     0
+    ]
+   }
+  },
+  "leg_thigh_robot": {
+   "category": "leg",
+   "tris": 156,
+   "joints": {
+    "joint_knee": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_shin_robot": {
+   "category": "leg",
+   "tris": 216,
+   "joints": {
+    "joint_ankle": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_thigh_peg_leg": {
+   "category": "leg",
+   "tris": 108,
+   "joints": {
+    "joint_knee": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "leg_shin_peg_leg": {
+   "category": "leg",
+   "tris": 232,
+   "joints": {
+    "joint_ankle": [
+     0,
+     -1,
+     0
+    ]
+   }
+  },
+  "boot_sneakers": {
+   "category": "boot",
+   "tris": 216,
+   "joints": {}
+  },
+  "boot_boots": {
+   "category": "boot",
+   "tris": 156,
+   "joints": {}
+  },
+  "boot_armoured": {
+   "category": "boot",
+   "tris": 432,
+   "joints": {}
+  },
+  "boot_sandals": {
+   "category": "boot",
+   "tris": 324,
+   "joints": {}
+  },
+  "boot_heels": {
+   "category": "boot",
+   "tris": 216,
+   "joints": {}
+  },
+  "boot_robot_feet": {
+   "category": "boot",
+   "tris": 148,
+   "joints": {}
+  },
+  "boot_flippers": {
+   "category": "boot",
+   "tris": 216,
+   "joints": {}
+  },
+  "boot_bare": {
+   "category": "boot",
+   "tris": 100,
+   "joints": {}
+  },
+  "cape_hero_seg_1": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_2": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_hero_seg_2": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_3": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_hero_seg_3": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_4": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_lumen_cloak_seg_1": {
+   "category": "cape",
+   "tris": 216,
+   "joints": {
+    "joint_cape_2": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_lumen_cloak_seg_2": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_3": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_lumen_cloak_seg_3": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_4": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_royal_seg_1": {
+   "category": "cape",
+   "tris": 300,
+   "joints": {
+    "joint_cape_2": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_royal_seg_2": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_3": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_royal_seg_3": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_4": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_ragged_seg_1": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_2": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_ragged_seg_2": {
+   "category": "cape",
+   "tris": 108,
+   "joints": {
+    "joint_cape_3": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "cape_ragged_seg_3": {
+   "category": "cape",
+   "tris": 140,
+   "joints": {
+    "joint_cape_4": [
+     0,
+     -0.62,
+     0
+    ]
+   }
+  },
+  "panel_coat_long": {
+   "category": "panel",
+   "tris": 108,
+   "joints": {}
+  },
+  "panel_coat_short": {
+   "category": "panel",
+   "tris": 108,
+   "joints": {}
+  },
+  "panel_robe_long": {
+   "category": "panel",
+   "tris": 108,
+   "joints": {}
+  },
+  "panel_skirt": {
+   "category": "panel",
+   "tris": 108,
+   "joints": {}
+  },
+  "panel_tabard": {
+   "category": "panel",
+   "tris": 110,
+   "joints": {}
+  },
+  "panel_apron": {
+   "category": "panel",
+   "tris": 108,
+   "joints": {}
+  },
+  "back_jetpack": {
+   "category": "back",
+   "tris": 292,
+   "joints": {}
+  },
+  "back_backpack": {
+   "category": "back",
+   "tris": 216,
+   "joints": {}
+  },
+  "back_wings": {
+   "category": "back",
+   "tris": 180,
+   "joints": {
+    "joint_wing_L": [
+     0.15,
+     0.3,
+     -0.1
+    ],
+    "joint_wing_R": [
+     -0.15,
+     0.3,
+     -0.1
+    ]
+   }
+  },
+  "back_quiver": {
+   "category": "back",
+   "tris": 384,
+   "joints": {}
+  },
+  "back_sheath": {
+   "category": "back",
+   "tris": 216,
+   "joints": {}
+  },
+  "back_air_tank": {
+   "category": "back",
+   "tris": 488,
+   "joints": {}
+  },
+  "back_parrot_perch": {
+   "category": "back",
+   "tris": 476,
+   "joints": {}
+  },
+  "head_bear": {
+   "category": "head",
+   "tris": 566,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_bear": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_fox": {
+   "category": "head",
+   "tris": 382,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_fox": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_cat": {
+   "category": "head",
+   "tris": 382,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_cat": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_dog": {
+   "category": "head",
+   "tris": 582,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_dog": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_rabbit": {
+   "category": "head",
+   "tris": 582,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_rabbit": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_frog": {
+   "category": "head",
+   "tris": 358,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_frog": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_raccoon": {
+   "category": "head",
+   "tris": 382,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_raccoon": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_owl": {
+   "category": "head",
+   "tris": 186,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_owl": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_turtle": {
+   "category": "head",
+   "tris": 366,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_turtle": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_shark": {
+   "category": "head",
+   "tris": 386,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_shark": {
+   "category": "tail",
+   "tris": 28,
+   "joints": {}
+  },
+  "head_panda": {
+   "category": "head",
+   "tris": 566,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_panda": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_wolf": {
+   "category": "head",
+   "tris": 382,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_wolf": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_lion": {
+   "category": "head",
+   "tris": 666,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_lion": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_tiger": {
+   "category": "head",
+   "tris": 566,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_tiger": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_mouse": {
+   "category": "head",
+   "tris": 566,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_mouse": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_boar": {
+   "category": "head",
+   "tris": 406,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_boar": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_goat": {
+   "category": "head",
+   "tris": 806,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_goat": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_lizard": {
+   "category": "head",
+   "tris": 366,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_lizard": {
+   "category": "tail",
+   "tris": 112,
+   "joints": {}
+  },
+  "head_squirrel": {
+   "category": "head",
+   "tris": 382,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_squirrel": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_hedgehog": {
+   "category": "head",
+   "tris": 438,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_hedgehog": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_parrot": {
+   "category": "head",
+   "tris": 170,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_parrot": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_penguin": {
+   "category": "head",
+   "tris": 170,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_penguin": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "head_mole": {
+   "category": "head",
+   "tris": 366,
+   "joints": {
+    "socket_head_top": [
+     0,
+     1,
+     0
+    ],
+    "socket_head_back": [
+     0,
+     0.6,
+     -0.5
+    ]
+   }
+  },
+  "tail_mole": {
+   "category": "tail",
+   "tris": 100,
+   "joints": {}
+  },
+  "held_sword_short": {
+   "category": "held",
+   "tris": 372,
+   "joints": {}
+  },
+  "held_sword_long": {
+   "category": "held",
+   "tris": 200,
+   "joints": {}
+  },
+  "held_sword_broad": {
+   "category": "held",
+   "tris": 348,
+   "joints": {}
+  },
+  "held_shield_round": {
+   "category": "held",
+   "tris": 372,
+   "joints": {}
+  },
+  "held_shield_kite": {
+   "category": "held",
+   "tris": 46,
+   "joints": {}
+  },
+  "held_shield_tower": {
+   "category": "held",
+   "tris": 216,
+   "joints": {}
+  },
+  "held_spear": {
+   "category": "held",
+   "tris": 40,
+   "joints": {}
+  },
+  "held_lance": {
+   "category": "held",
+   "tris": 64,
+   "joints": {}
+  },
+  "held_hammer_tool": {
+   "category": "held",
+   "tris": 140,
+   "joints": {}
+  },
+  "held_bow": {
+   "category": "held",
+   "tris": 232,
+   "joints": {}
+  },
+  "held_crossbow": {
+   "category": "held",
+   "tris": 252,
+   "joints": {}
+  },
+  "held_staff": {
+   "category": "held",
+   "tris": 132,
+   "joints": {}
+  },
+  "held_dagger": {
+   "category": "held",
+   "tris": 264,
+   "joints": {}
+  },
+  "held_whip": {
+   "category": "held",
+   "tris": 720,
+   "joints": {}
+  },
+  "held_cutlass": {
+   "category": "held",
+   "tris": 276,
+   "joints": {}
+  },
+  "held_flintlock": {
+   "category": "held",
+   "tris": 140,
+   "joints": {}
+  },
+  "held_blaster": {
+   "category": "held",
+   "tris": 248,
+   "joints": {}
+  },
+  "held_blaster_rifle": {
+   "category": "held",
+   "tris": 248,
+   "joints": {}
+  },
+  "lumen_pommel_1": {
+   "category": "lumen",
+   "tris": 238,
+   "joints": {
+    "attach_top": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  "lumen_grip_1": {
+   "category": "lumen",
+   "tris": 808,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.6,
+     0
+    ]
+   }
+  },
+  "lumen_guard_1": {
+   "category": "lumen",
+   "tris": 168,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.12,
+     0
+    ]
+   }
+  },
+  "lumen_emitter_1": {
+   "category": "lumen",
+   "tris": 52,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "blade_origin": [
+     0,
+     0.3,
+     0
+    ]
+   }
+  },
+  "lumen_pommel_2": {
+   "category": "lumen",
+   "tris": 36,
+   "joints": {
+    "attach_top": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  "lumen_grip_2": {
+   "category": "lumen",
+   "tris": 456,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.6,
+     0
+    ]
+   }
+  },
+  "lumen_guard_2": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.12,
+     0
+    ]
+   }
+  },
+  "lumen_emitter_2": {
+   "category": "lumen",
+   "tris": 60,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "blade_origin": [
+     0,
+     0.3,
+     0
+    ]
+   }
+  },
+  "lumen_pommel_3": {
+   "category": "lumen",
+   "tris": 200,
+   "joints": {
+    "attach_top": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  "lumen_grip_3": {
+   "category": "lumen",
+   "tris": 360,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.6,
+     0
+    ]
+   }
+  },
+  "lumen_guard_3": {
+   "category": "lumen",
+   "tris": 212,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.12,
+     0
+    ]
+   }
+  },
+  "lumen_emitter_3": {
+   "category": "lumen",
+   "tris": 64,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "blade_origin": [
+     0,
+     0.3,
+     0
+    ]
+   }
+  },
+  "lumen_pommel_4": {
+   "category": "lumen",
+   "tris": 224,
+   "joints": {
+    "attach_top": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  "lumen_grip_4": {
+   "category": "lumen",
+   "tris": 808,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.6,
+     0
+    ]
+   }
+  },
+  "lumen_guard_4": {
+   "category": "lumen",
+   "tris": 68,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.12,
+     0
+    ]
+   }
+  },
+  "lumen_emitter_4": {
+   "category": "lumen",
+   "tris": 232,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "blade_origin": [
+     0,
+     0.3,
+     0
+    ]
+   }
+  },
+  "lumen_pommel_5": {
+   "category": "lumen",
+   "tris": 246,
+   "joints": {
+    "attach_top": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  "lumen_grip_5": {
+   "category": "lumen",
+   "tris": 908,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.6,
+     0
+    ]
+   }
+  },
+  "lumen_guard_5": {
+   "category": "lumen",
+   "tris": 168,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.12,
+     0
+    ]
+   }
+  },
+  "lumen_emitter_5": {
+   "category": "lumen",
+   "tris": 52,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "blade_origin": [
+     0,
+     0.3,
+     0
+    ]
+   }
+  },
+  "lumen_pommel_6": {
+   "category": "lumen",
+   "tris": 44,
+   "joints": {
+    "attach_top": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  "lumen_grip_6": {
+   "category": "lumen",
+   "tris": 456,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.6,
+     0
+    ]
+   }
+  },
+  "lumen_guard_6": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "attach_top": [
+     0,
+     0.12,
+     0
+    ]
+   }
+  },
+  "lumen_emitter_6": {
+   "category": "lumen",
+   "tris": 60,
+   "joints": {
+    "attach_bottom": [
+     0,
+     0,
+     0
+    ],
+    "blade_origin": [
+     0,
+     0.3,
+     0
+    ]
+   }
+  },
+  "lumen_heartstone_01": {
+   "category": "lumen",
+   "tris": 8,
+   "joints": {}
+  },
+  "lumen_heartstone_02": {
+   "category": "lumen",
+   "tris": 8,
+   "joints": {}
+  },
+  "lumen_heartstone_03": {
+   "category": "lumen",
+   "tris": 8,
+   "joints": {}
+  },
+  "lumen_heartstone_04": {
+   "category": "lumen",
+   "tris": 8,
+   "joints": {}
+  },
+  "lumen_heartstone_05": {
+   "category": "lumen",
+   "tris": 8,
+   "joints": {}
+  },
+  "lumen_heartstone_06": {
+   "category": "lumen",
+   "tris": 8,
+   "joints": {}
+  },
+  "lumen_heartstone_07": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {}
+  },
+  "lumen_heartstone_08": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {}
+  },
+  "lumen_heartstone_09": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {}
+  },
+  "lumen_heartstone_10": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {}
+  },
+  "lumen_heartstone_11": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {}
+  },
+  "lumen_heartstone_12": {
+   "category": "lumen",
+   "tris": 20,
+   "joints": {}
+  },
+  "lumen_training_hilt": {
+   "category": "lumen",
+   "tris": 416,
+   "joints": {
+    "blade_origin": [
+     0,
+     0.8,
+     0
+    ]
+   }
+  },
+  "umbral_hilt_1": {
+   "category": "umbral",
+   "tris": 46,
+   "joints": {
+    "blade_origin": [
+     0,
+     0.75,
+     0
+    ]
+   }
+  },
+  "umbral_hilt_2": {
+   "category": "umbral",
+   "tris": 52,
+   "joints": {
+    "blade_origin": [
+     0,
+     0.75,
+     0
+    ]
+   }
+  },
+  "umbral_hilt_3": {
+   "category": "umbral",
+   "tris": 58,
+   "joints": {
+    "blade_origin": [
+     0,
+     0.75,
+     0
+    ]
+   }
+  },
+  "umbral_hilt_4": {
+   "category": "umbral",
+   "tris": 64,
+   "joints": {
+    "blade_origin": [
+     0,
+     0.75,
+     0
+    ]
+   }
+  },
+  "gadget_utility_belt": {
+   "category": "gadget",
+   "tris": 840,
+   "joints": {}
+  },
+  "gadget_utility_belt_tech": {
+   "category": "gadget",
+   "tris": 336,
+   "joints": {}
+  },
+  "gadget_grapple_launcher": {
+   "category": "gadget",
+   "tris": 306,
+   "joints": {}
+  },
+  "gadget_drone": {
+   "category": "gadget",
+   "tris": 400,
+   "joints": {}
+  },
+  "gadget_gauntlet": {
+   "category": "gadget",
+   "tris": 148,
+   "joints": {}
+  },
+  "gadget_visor": {
+   "category": "gadget",
+   "tris": 216,
+   "joints": {}
+  },
+  "powersuit_chest": {
+   "category": "gadget",
+   "tris": 540,
+   "joints": {}
+  },
+  "powersuit_arm": {
+   "category": "gadget",
+   "tris": 260,
+   "joints": {}
+  },
+  "powersuit_leg": {
+   "category": "gadget",
+   "tris": 316,
+   "joints": {}
+  },
+  "powersuit_jetpack": {
+   "category": "gadget",
+   "tris": 236,
+   "joints": {}
+  },
+  "armour_knight_plate_t1": {
+   "category": "armour",
+   "tris": 216,
+   "joints": {}
+  },
+  "armour_knight_plate_t2": {
+   "category": "armour",
+   "tris": 524,
+   "joints": {}
+  },
+  "armour_knight_plate_t3": {
+   "category": "armour",
+   "tris": 832,
+   "joints": {}
+  },
+  "armour_navy_coat_t1": {
+   "category": "armour",
+   "tris": 576,
+   "joints": {}
+  },
+  "armour_navy_coat_t2": {
+   "category": "armour",
+   "tris": 896,
+   "joints": {}
+  },
+  "armour_navy_coat_t3": {
+   "category": "armour",
+   "tris": 1216,
+   "joints": {}
+  },
+  "armour_legion_armour_t1": {
+   "category": "armour",
+   "tris": 216,
+   "joints": {}
+  },
+  "armour_legion_armour_t2": {
+   "category": "armour",
+   "tris": 524,
+   "joints": {}
+  },
+  "armour_legion_armour_t3": {
+   "category": "armour",
+   "tris": 832,
+   "joints": {}
+  },
+  "armour_monk_wrap_t1": {
+   "category": "armour",
+   "tris": 108,
+   "joints": {}
+  },
+  "armour_monk_wrap_t2": {
+   "category": "armour",
+   "tris": 216,
+   "joints": {}
+  },
+  "armour_monk_wrap_t3": {
+   "category": "armour",
+   "tris": 408,
+   "joints": {}
+  },
+  "mount_saddle_horse": {
+   "category": "mount",
+   "tris": 756,
+   "joints": {
+    "seat_rider": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  "mount_saddlebags_horse": {
+   "category": "mount",
+   "tris": 324,
+   "joints": {}
+  },
+  "mount_barding_horse": {
+   "category": "mount",
+   "tris": 218,
+   "joints": {}
+  },
+  "mount_banner_horse": {
+   "category": "mount",
+   "tris": 134,
+   "joints": {}
+  },
+  "mount_saddle_elk": {
+   "category": "mount",
+   "tris": 756,
+   "joints": {
+    "seat_rider": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  "mount_saddlebags_elk": {
+   "category": "mount",
+   "tris": 324,
+   "joints": {}
+  },
+  "mount_barding_elk": {
+   "category": "mount",
+   "tris": 218,
+   "joints": {}
+  },
+  "mount_banner_elk": {
+   "category": "mount",
+   "tris": 134,
+   "joints": {}
+  },
+  "mount_saddle_bear": {
+   "category": "mount",
+   "tris": 756,
+   "joints": {
+    "seat_rider": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  "mount_saddlebags_bear": {
+   "category": "mount",
+   "tris": 324,
+   "joints": {}
+  },
+  "mount_barding_bear": {
+   "category": "mount",
+   "tris": 218,
+   "joints": {}
+  },
+  "mount_banner_bear": {
+   "category": "mount",
+   "tris": 134,
+   "joints": {}
+  },
+  "mount_saddle_wolf": {
+   "category": "mount",
+   "tris": 756,
+   "joints": {
+    "seat_rider": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  "mount_saddlebags_wolf": {
+   "category": "mount",
+   "tris": 324,
+   "joints": {}
+  },
+  "mount_barding_wolf": {
+   "category": "mount",
+   "tris": 218,
+   "joints": {}
+  },
+  "mount_banner_wolf": {
+   "category": "mount",
+   "tris": 134,
+   "joints": {}
+  },
+  "mount_saddle_boar": {
+   "category": "mount",
+   "tris": 756,
+   "joints": {
+    "seat_rider": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  "mount_saddlebags_boar": {
+   "category": "mount",
+   "tris": 324,
+   "joints": {}
+  },
+  "mount_barding_boar": {
+   "category": "mount",
+   "tris": 218,
+   "joints": {}
+  },
+  "mount_banner_boar": {
+   "category": "mount",
+   "tris": 134,
+   "joints": {}
+  },
+  "mount_saddle_lizard": {
+   "category": "mount",
+   "tris": 756,
+   "joints": {
+    "seat_rider": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  "mount_saddlebags_lizard": {
+   "category": "mount",
+   "tris": 324,
+   "joints": {}
+  },
+  "mount_barding_lizard": {
+   "category": "mount",
+   "tris": 218,
+   "joints": {}
+  },
+  "mount_banner_lizard": {
+   "category": "mount",
+   "tris": 134,
+   "joints": {}
+  },
+  "tool_pickaxe": {
+   "category": "tool",
+   "tris": 152,
+   "joints": {}
+  },
+  "tool_axe": {
+   "category": "tool",
+   "tris": 60,
+   "joints": {}
+  },
+  "tool_fishing_rod": {
+   "category": "tool",
+   "tris": 72,
+   "joints": {}
+  },
+  "tool_watering_can": {
+   "category": "tool",
+   "tris": 264,
+   "joints": {}
+  },
+  "tool_hammer": {
+   "category": "tool",
+   "tris": 140,
+   "joints": {}
+  },
+  "tool_map": {
+   "category": "tool",
+   "tris": 148,
+   "joints": {}
+  },
+  "tool_spyglass": {
+   "category": "tool",
+   "tris": 80,
+   "joints": {}
+  },
+  "tool_compass": {
+   "category": "tool",
+   "tris": 236,
+   "joints": {}
+  },
+  "tool_lantern": {
+   "category": "tool",
+   "tris": 440,
+   "joints": {}
+  },
+  "item_carrot": {
+   "category": "item",
+   "tris": 26,
+   "joints": {}
+  },
+  "item_pumpkin": {
+   "category": "item",
+   "tris": 504,
+   "joints": {}
+  },
+  "item_fish": {
+   "category": "item",
+   "tris": 120,
+   "joints": {}
+  },
+  "item_pie": {
+   "category": "item",
+   "tris": 128,
+   "joints": {}
+  },
+  "item_potion_red": {
+   "category": "item",
+   "tris": 164,
+   "joints": {}
+  },
+  "item_potion_blue": {
+   "category": "item",
+   "tris": 164,
+   "joints": {}
+  },
+  "item_potion_green": {
+   "category": "item",
+   "tris": 164,
+   "joints": {}
+  },
+  "item_treasure_chest": {
+   "category": "item",
+   "tris": 472,
+   "joints": {}
+  },
+  "item_key_gold": {
+   "category": "item",
+   "tris": 324,
+   "joints": {}
+  },
+  "item_key_iron": {
+   "category": "item",
+   "tris": 324,
+   "joints": {}
+  },
+  "item_scroll": {
+   "category": "item",
+   "tris": 280,
+   "joints": {}
+  },
+  "item_apple": {
+   "category": "item",
+   "tris": 148,
+   "joints": {}
+  },
+  "item_bread": {
+   "category": "item",
+   "tris": 100,
+   "joints": {}
+  },
+  "item_cheese": {
+   "category": "item",
+   "tris": 20,
+   "joints": {}
+  },
+  "item_cake": {
+   "category": "item",
+   "tris": 164,
+   "joints": {}
+  },
+  "item_drumstick": {
+   "category": "item",
+   "tris": 212,
+   "joints": {}
+  },
+  "item_mushroom": {
+   "category": "item",
+   "tris": 164,
+   "joints": {}
+  },
+  "item_corn": {
+   "category": "item",
+   "tris": 110,
+   "joints": {}
+  },
+  "item_tomato": {
+   "category": "item",
+   "tris": 100,
+   "joints": {}
+  },
+  "item_egg": {
+   "category": "item",
+   "tris": 100,
+   "joints": {}
+  },
+  "item_milk_bottle": {
+   "category": "item",
+   "tris": 80,
+   "joints": {}
+  },
+  "item_honey_pot": {
+   "category": "item",
+   "tris": 140,
+   "joints": {}
+  },
+  "item_gem_red": {
+   "category": "item",
+   "tris": 8,
+   "joints": {}
+  },
+  "item_gem_blue": {
+   "category": "item",
+   "tris": 8,
+   "joints": {}
+  },
+  "item_coin_bag": {
+   "category": "item",
+   "tris": 196,
+   "joints": {}
+  },
+  "item_book": {
+   "category": "item",
+   "tris": 216,
+   "joints": {}
+  },
+  "item_letter": {
+   "category": "item",
+   "tris": 108,
+   "joints": {}
+  },
+  "item_bone": {
+   "category": "item",
+   "tris": 352,
+   "joints": {}
+  },
+  "item_cupcake": {
+   "category": "item",
+   "tris": 172,
+   "joints": {}
+  },
+  "item_watermelon": {
+   "category": "item",
+   "tris": 100,
+   "joints": {}
+  }
+ }
+}
