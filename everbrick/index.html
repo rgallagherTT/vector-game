@@ -1963,7 +1963,7 @@ const studGeo = (()=>{ const g=new THREE.CylinderGeometry(0.3,0.3,0.18,8,1,true)
 const studMat = new THREE.MeshPhysicalMaterial({ roughness:0.3, clearcoat:0.55, clearcoatRoughness:0.18 });
 // post-processing: bloom on glowing things, optional tilt-shift
 const composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass);
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.35, 0.4, 0.97); bloom.enabled=CONFIG.bloom; composer.addPass(bloom);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.4, 0.45, 1.5); bloom.enabled=CONFIG.bloom; composer.addPass(bloom);
 const TiltShift = { uniforms:{ tDiffuse:{value:null}, focus:{value:0.55}, band:{value:0.16}, amount:{value:0.0045}, res:{value:new THREE.Vector2(innerWidth,innerHeight)} },
   vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader:`uniform sampler2D tDiffuse; uniform float focus, band, amount; varying vec2 vUv;
@@ -1977,9 +1977,32 @@ const Grade = { uniforms:{ tDiffuse:{value:null}, grade:{value:0} }, vertexShade
     if(grade==1){ c.rgb = vec3(dot(c.rgb,vec3(0.3,0.59,0.11))); } else if(grade==2){ c.rgb = vec3(dot(c.rgb,vec3(0.393,0.769,0.189)),dot(c.rgb,vec3(0.349,0.686,0.168)),dot(c.rgb,vec3(0.272,0.534,0.131))); }
     else if(grade==3){ c.rgb = pow(c.rgb, vec3(0.9,1.0,1.15))*vec3(1.05,1.0,0.92); } else if(grade==4){ c.rgb = pow(c.rgb, vec3(1.15,1.0,0.85)); }
     else if(grade==5){ c.rgb = clamp((c.rgb-0.5)*1.3+0.5,0.0,1.0); }
-    vec2 v=vUv-0.5; if(grade>0) c.rgb *= 1.0-dot(v,v)*0.6; gl_FragColor=c; }` };
-const gradePass = new ShaderPass(Grade); gradePass.enabled=false; composer.addPass(gradePass);
+    if(grade==0){ float l=dot(c.rgb,vec3(0.299,0.587,0.114)); c.rgb=mix(vec3(l),c.rgb,1.08); c.rgb=c.rgb*vec3(1.02,1.0,0.97); }
+    vec2 v=vUv-0.5; c.rgb *= 1.0-dot(v,v)*(grade>0?0.6:0.28); gl_FragColor=c; }` };
+const gradePass = new ShaderPass(Grade); gradePass.enabled=!QS.has('low'); composer.addPass(gradePass);
 composer.addPass(new OutputPass());
+// sky dome: zenith→horizon gradient, sun glow and disc, stars at night; brick clouds drift on the wind
+const SkyDome = (()=>{ const m=new THREE.ShaderMaterial({ uniforms:{ top:{value:new THREE.Color(0x4f8fd8)}, hor:{value:new THREE.Color(0xcfe4f5)}, sunDir:{value:new THREE.Vector3(0,1,0)}, sunCol:{value:new THREE.Color(1,0.9,0.7)}, night:{value:0}, time:{value:0} },
+  vertexShader:`varying vec3 vDir; void main(){ vDir=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader:`uniform vec3 top, hor, sunDir, sunCol; uniform float night, time; varying vec3 vDir;
+    float h3(vec3 p){ return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758.5453); }
+    void main(){ vec3 d=normalize(vDir); float y=max(d.y,0.0); vec3 c=mix(hor, top, pow(y,0.55)); if(d.y<0.0) c=mix(hor, hor*0.82, min(1.0,-d.y*4.0));
+      float sd=max(dot(d,normalize(sunDir)),0.0); c += sunCol*(pow(sd,8.0)*0.25 + pow(sd,64.0)*0.5) + sunCol*smoothstep(0.9993,0.9996,sd)*2.0;
+      if(night>0.01 && d.y>0.0){ vec3 q=floor(d*220.0); float st=step(0.9975,h3(q)); float tw=0.6+0.4*sin(time*2.0+h3(q+1.0)*40.0); c += vec3(st*tw*night*0.9); }
+      gl_FragColor=vec4(c,1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`, side:THREE.BackSide, depthWrite:false, depthTest:false, fog:false });
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(900,32,16), m); mesh.renderOrder=-10; mesh.frustumCulled=false; scene.add(mesh); return { mesh, m }; })();
+const Clouds = (()=>{ const N=46, per=7; const geo=new RoundedBoxGeometry(1,1,1,2,0.2); const mat=new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.9, fog:false });
+  const im=new THREE.InstancedMesh(geo,mat,N*per); im.frustumCulled=false; scene.add(im); const R=mulberry32?mulberry32(777):Math.random; const list=[];
+  for(let i=0;i<N;i++){ const c={ x:(R()-.5)*1400, z:(R()-.5)*1400, y:150+R()*70, parts:[] }; const w=12+R()*20;
+    for(let k=0;k<per;k++) c.parts.push([ (R()-.5)*w*1.3, (k<3?0:2+R()*5), (R()-.5)*w*0.6, w*(0.45+R()*0.5)*(k<3?1:0.6), k<3?4+R()*3:5+R()*6, w*(0.35+R()*0.35)*(k<3?1:0.7) ]); list.push(c); }
+  const M=new THREE.Matrix4(), Q=new THREE.Quaternion(), P=new THREE.Vector3(), S=new THREE.Vector3();
+  return { im, mat, update(dt, focus, tint){ const wd=(typeof Vehicles!=='undefined'&&Vehicles.wind)?Vehicles.wind:{dir:0.6,str:0.5}; const vx=Math.sin(wd.dir)*(2+wd.str*6)*dt, vz=Math.cos(wd.dir)*(2+wd.str*6)*dt; let n=0;
+    for(const c of list){ c.x+=vx; c.z+=vz; const dx=c.x-focus.x, dz=c.z-focus.z; if(dx>700) c.x-=1400; if(dx<-700) c.x+=1400; if(dz>700) c.z-=1400; if(dz<-700) c.z+=1400;
+      for(const p of c.parts){ P.set(c.x+p[0], c.y+p[1], c.z+p[2]); S.set(p[3],p[4],p[5]); M.compose(P,Q,S); im.setMatrixAt(n++,M); } }
+    im.instanceMatrix.needsUpdate=true; mat.color.copy(tint); } }; })();
 // weather + day/night
 const Weather = { kind:'clear', t:0, fog:0, rainAmt:0, snowAmt:0, snowCover:0, next:120 };
 function dayFrac(){ return RT.world ? (RT.world.day % 1) : 0.35; }
@@ -1995,6 +2018,12 @@ function updateSky(dt){
   if(Weather.kind==='rain'||Weather.kind==='storm') sky.lerp(new THREE.Color(0x6c7480), 0.6);
   if(Weather.kind==='snow') sky.lerp(new THREE.Color(0xd8dde6), 0.5);
   scene.background.copy(sky); scene.fog.color.copy(sky);
+  // dome: deeper zenith, the fog colour on the horizon, sun glow tinted by time of day
+  const D=SkyDome.m.uniforms; D.hor.value.copy(sky); const tN=new THREE.Color(0x03081a), tD=new THREE.Color(0x3c4f8f), tM=new THREE.Color(0x3a7ccf); D.top.value.copy(day<0.5 ? tN.lerp(tD,day*2) : tD.lerp(tM,(day-0.5)*2)); if(Weather.kind!=='clear') D.top.value.lerp(sky,0.7); if(RT.inSpace) D.top.value.set(0x020308);
+  D.sunDir.value.set(Math.cos(ang), Math.max(-0.2,sunUp), 0.25).normalize(); D.sunCol.value.setRGB(1, 0.7+0.25*day, 0.45+0.45*day).multiplyScalar(sunUp>-0.1 ? (Weather.kind==='clear'?1:0.25) : 0);
+  D.night.value=RT.inSpace?1:clamp(1-day*1.6,0,1); D.time.value=RT.time; SkyDome.mesh.position.copy(camera.position); SkyDome.mesh.visible=!RT.inSpace || true;
+  if(!scene._cloudTint) scene._cloudTint=new THREE.Color(); const ct=scene._cloudTint.setRGB(1,1,1).lerp(new THREE.Color(0xffc9a0), clamp(1-Math.abs(day-0.55)*4,0,1)*0.5*(day<0.9?1:0)); ct.lerp(sky,0.25); if(Weather.kind==='rain'||Weather.kind==='storm') ct.lerp(new THREE.Color(0x8a9099),0.6); if(day<0.3) ct.multiplyScalar(0.3+day*2.3);
+  Clouds.im.visible=!RT.inSpace; Clouds.update(dt, p, ct);
   const fogMul = 1 - Weather.fog*0.7; scene.fog.near = 120*fogMul; scene.fog.far = (RT.inSpace?1400:420)*fogMul;
   U.uGlow.value = 0.4 + (1-day)*1.4; MAT.glow.emissiveIntensity = 1.0 + (1-day)*2.2;
   U.uWet.value = lerp(U.uWet.value, Weather.rainAmt>0.2?0.75:0, dt*0.3);
@@ -4604,14 +4633,14 @@ const AutoQ = { t:0, sum:0, n:0, level:0, update(real){ if(QS.has('noauto')) ret
 // §PHOTO ----------------------------------------------------------------------
 const Photo = {
   on:false, pos:new THREE.Vector3(), yaw:0, pitch:0, grade:0,
-  toggle(){ this.on=!this.on; Modes.set(this.on?'PHOTO':'ON_FOOT'); $('photoUI').style.display=this.on?'block':'none'; $('hud').style.visibility=this.on?'hidden':'visible'; if(this.on){ this.pos.copy(camera.position); const d=camera.getWorldDirection(new THREE.Vector3()); this.yaw=Math.atan2(-d.x,-d.z); this.pitch=Math.asin(d.y); tiltPass.enabled=true; this.render(); if(document.pointerLockElement) document.exitPointerLock(); } else { tiltPass.enabled=CONFIG.tiltShift; gradePass.enabled=false; } },
+  toggle(){ this.on=!this.on; Modes.set(this.on?'PHOTO':'ON_FOOT'); $('photoUI').style.display=this.on?'block':'none'; $('hud').style.visibility=this.on?'hidden':'visible'; if(this.on){ this.pos.copy(camera.position); const d=camera.getWorldDirection(new THREE.Vector3()); this.yaw=Math.atan2(-d.x,-d.z); this.pitch=Math.asin(d.y); tiltPass.enabled=true; this.render(); if(document.pointerLockElement) document.exitPointerLock(); } else { tiltPass.enabled=CONFIG.tiltShift; gradePass.enabled=!QS.has('low'); gradePass.uniforms.grade.value=0; } },
   render(){ const f=RT.players[0].fig; $('photoUI').innerHTML=`<div class="chip" style="flex-direction:column;align-items:flex-start;gap:4px;max-width:320px">Photo mode — world frozen. WASD+QE fly, right-drag look.
     <div class="row">Grade: ${['none','mono','sepia','cool','warm','punch'].map((g,i)=>`<button class="${this.grade===i?'on':''}" data-g="${i}">${g}</button>`).join('')}</div>
     <div class="row">Focus <input type="range" min="0" max="100" value="55" id="ts_focus"> Blur <input type="range" min="0" max="100" value="45" id="ts_amt"></div>
     <div class="row">Pose: ${['wave','dance','celebrate','meditate','sit','sleep'].map(p=>`<button data-pose="${p}">${p}</button>`).join('')}</div>
     <div class="row">Face: ${['face_smile','face_grin','face_angry','face_sad','face_surprise','face_sleep'].map(e=>`<button data-e="${e}">${e.slice(5)}</button>`).join('')}</div>
     <div class="row"><button id="snap">Save screenshot</button><button id="pexit">Exit</button></div></div>`;
-    $('photoUI').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ this.grade=+b.dataset.g; gradePass.enabled=this.grade>0; gradePass.uniforms.grade.value=this.grade; this.render(); });
+    $('photoUI').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ this.grade=+b.dataset.g; gradePass.enabled=true; gradePass.uniforms.grade.value=this.grade; this.render(); });
     $('photoUI').querySelectorAll('[data-pose]').forEach(b=>b.onclick=()=>{ f.emote={name:b.dataset.pose,t:0.3,dur:1e9}; animateFigure(f,0); });
     $('photoUI').querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ f.expr=b.dataset.e; f.exprT=1e9; });
     $('ts_focus').oninput=e=>tiltPass.uniforms.focus.value=e.target.value/100; $('ts_amt').oninput=e=>tiltPass.uniforms.amount.value=e.target.value/100*0.01;
