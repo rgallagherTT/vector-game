@@ -2817,6 +2817,162 @@ function updateDebris(f, dt){
     if(k>=1){ f.ko=false; f.debris=null; f.homeSet=false; f.hp=f.maxHp; f.iframes=1.5; f.vel.set(0,0,0); if(f.isPlayer) Audio.jingle(3); } }
 }
 
+// §BODIES ---------------------------------------------------------------------
+// Figures from design/bodies.glb: parts snap to the rig's joints, slot materials take the recipe's colours,
+// faces and torso prints come from the print atlas. The box figure above stays as the far LOD and the fallback.
+const Bodies = {
+  ready:false, lib:{}, rig:null, animals:{}, pages:[], prints:null, mats:new Map(), printTex:new Map(), EMPTY:new THREE.BufferGeometry(), json:null,
+  async load(){
+    try{
+      const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+      const [gltf, bj] = await Promise.all([ new GLTFLoader().loadAsync(ASSETS.bodies), fetchJSON('design/bodies.json') ]);
+      this.json = bj?.parts || {};
+      const root=gltf.scene; root.updateMatrixWorld(true);
+      for(const setName of ['biped_parts','gear','biped_big_set','biped_giant_set']){ const set=root.getObjectByName(setName); if(set) for(const c of set.children) if(!this.lib[c.name]) this.lib[c.name]=c; }
+      this.rig=root.getObjectByName('biped_rig_reference');
+      const an=root.getObjectByName('animals'); if(an) for(const c of an.children) this.animals[c.name]=c;
+      const pj=RT.assets.prints; if(pj?.pages){ const tl=new THREE.TextureLoader(); this.size=pj.size||2048; this.pages=await Promise.all(pj.pages.map(async pg=>{ try{ const t=await tl.loadAsync('design/'+pg); t.colorSpace=THREE.SRGBColorSpace; t.flipY=false; t.anisotropy=4; t.needsUpdate=true; return t; }catch(e){ return null; } })); this.prints=pj.prints||{}; }
+      this.ready=!!this.rig; if(this.ready){ console.log('bodies.glb ready:', Object.keys(this.lib).length, 'parts,', Object.keys(this.animals).length, 'animals'); for(const f of RT.figures) f.glb=null; }
+    }catch(e){ console.warn('bodies.glb unavailable — using built-in figures', e); }
+  },
+  hasPrint(n){ return !!(this.prints && this.prints[n]); },
+  printMaterial(name){ // one material per print, sharing the atlas page image
+    if(!name || !this.hasPrint(name)) return null; if(this.printTex.has(name)) return this.printTex.get(name);
+    const p=this.prints[name]; const page=this.pages[p.page]; if(!page) return null; const S=this.size; const t=page.clone();
+    t.offset.set(p.px[0]/S, p.px[1]/S); t.repeat.set(p.px[2]/S, p.px[3]/S); t.flipY=false;
+    const m=new THREE.MeshPhysicalMaterial({ map:t, transparent:true, roughness:0.35, clearcoat:0.3, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2 }); this.printTex.set(name,m); return m; },
+  colorMaterial(cname){ const key='c|'+cname; if(this.mats.has(key)) return this.mats.get(key); const metal = cname==='gold'||cname==='silver'; const trans=isTrans(cname); const glow=cname.startsWith('glow_');
+    const base = glow ? cname.slice(5) : cname;
+    const m=new THREE.MeshPhysicalMaterial({ color:COLORS[base]||COLORS.white, roughness:metal?0.25:0.33, metalness:metal?0.7:0, clearcoat:0.35, clearcoatRoughness:0.3, transparent:trans, opacity:trans?0.55:1, depthWrite:!trans, emissive: glow?(COLORS[base]||COLORS.orange):new THREE.Color(0), emissiveIntensity: glow?1.5:0 });
+    this.mats.set(key,m); return m; },
+};
+const SLOT_DEFAULTS = { skin:'body', skin2:'body2', skin3:'body3', body:'body', hair:'hair', hair2:'hair2', hat:'hat', hat2:'hat2', torso:'torso', torso2:'torso2', legs:'legs', legs2:'legs2',
+  belt:'belt', arms:'arms', arms2:'arms2', gloves:'gloves', boots:'boots', boots2:'boots2', cape:'cape', cape2:'cape2', panel:'panel', back:'back', back2:'back2', gear:'gear', gear2:'gear2', detail:'detail' };
+function slotColour(D, slot){ const c=D.colours||{}; const k=SLOT_DEFAULTS[slot]||slot;
+  return c[k] || ({ body2:c.body, body3:'black', hair:'dark_brown', hair2:c.hair||'dark_brown', hat:c.torso||'red', hat2:c.hat||'gold', torso2:c.torso, legs2:c.legs, belt:'dark_brown', arms:c.torso, arms2:c.torso2||c.torso,
+    gloves:c.body, boots:'black', boots2:'dark_grey', cape:c.torso||'red', cape2:c.cape||'gold', panel:c.torso2||c.torso, back:c.gear||'dark_brown', back2:'silver', gear:'dark_grey', gear2:'silver', detail:'black' }[k]) || c.body || 'white'; }
+function materialFor(origName, D, f){
+  if(!origName) return Bodies.colorMaterial('white');
+  if(origName==='mat_print') return null; // resolved per mesh by its role (face or torso)
+  if(origName.startsWith('slot_')) return Bodies.colorMaterial(slotColour(D, origName.slice(5)));
+  if(origName.startsWith('pal_')){ let c=origName.slice(4); if(D.recolor && D.recolor[c]) c=D.recolor[c]; return Bodies.colorMaterial(c); }
+  if(origName.startsWith('glow_')) return Bodies.colorMaterial(origName);
+  return Bodies.colorMaterial('white');
+}
+const HAT_MAP = { helmet_kettle:'hat_knight_kettle_hat', helmet_visor:'hat_legion_trooper_helmet', hat_bicorne:'hat_navy_bicorne', hat_tricorn:'hat_pirate_tricorn', hat_cap:'hat_flat_cap', hat_headband:'hat_pirate_bandana',
+  hat_wrap:'hat_desert_wrap', hat_pith:'hat_desert_wide_brim', hat_straw:'hat_farmer_straw', hat_chef:'hat_chef_hat', hat_hardhat:'hat_hard_hat', hat_hood:'hat_monk_hood', helmet_racing:'hat_racing_helmet', crown:'hat_crown_royal', fishbowl:'hat_fishbowl' };
+const HEAD_FOR = { human:'head_standard', robot:'head_robot', alien:'head_alien', shark:'head_shark', penguin:'head_penguin', mole:'head_mole', panda:'head_panda', monkey:'head_round', crab:'head_wide', badger:'head_raccoon' };
+const FACE_FOR = { human:'face_classic_neutral', robot:'face_robot_neutral', alien:'face_alien_neutral', shark:'face_shark_neutral', penguin:'face_penguin_neutral', mole:'face_mole_neutral', panda:'face_panda_neutral', monkey:'face_freckles_neutral', crab:'face_wide_eyes_neutral' };
+const HELD_MAP = { sword:['held_sword_long','held_shield_round'], spear:['held_spear'], hammer:['held_hammer_tool'], bow:['held_bow'], staff:['held_staff'], blaster:['held_blaster'], daggers:['held_dagger','held_dagger'], whip:['held_whip'], lumen:['lumen'], umbral:['umbral'] };
+function designFor(f){ // the design-kit recipe that drives the GLB figure
+  const rc=f.recipe; if(rc.design && RT.assets.characters[rc.design]){ const D={ ...RT.assets.characters[rc.design] }; D.parts={...D.parts}; delete D.parts.held_R; delete D.parts.held_L; return withHeld(D,f); }
+  const sp=f.species; const robot=sp==='robot'; const armor=rc.torso==='outfit_armor';
+  const torso = robot?'torso_robot': armor?'torso_armoured': rc.torso==='outfit_suit'?'torso_slim': rc.torso==='outfit_robe'?'torso_robed': rc.torso==='outfit_vest'?'torso_bulky_jacket': 'torso_standard';
+  const arm = robot?'robot': armor?'armoured': rc.torso==='outfit_vest'?'sleeved':'standard';
+  const parts={ head:HEAD_FOR[sp]||'head_standard', torso, hips:'hips_standard', arm_upper:`arm_upper_${arm}`, arm_lower:`arm_lower_${arm}`, hand: robot?'hand_robot': armor?'hand_armoured':'hand_standard',
+    thigh: armor?'leg_thigh_armoured': rc.torso==='outfit_robe'?'leg_thigh_robed_panel':'leg_thigh_standard', shin: armor?'leg_shin_armoured': rc.torso==='outfit_robe'?'leg_shin_robed_panel':'leg_shin_standard',
+    boot: robot?'boot_robot_feet': armor?'boot_armoured':'boot_boots' };
+  if(rc.hat && rc.hat!=='none' && HAT_MAP[rc.hat]) parts.hat=HAT_MAP[rc.hat];
+  if(!parts.hat){ const h={ short:'hair_crop', long:'hair_long_straight', spiky:'hair_spiky', bun:'hair_bun' }[rc.hair]; if(h) parts.hair=h; }
+  if(rc.cape && rc.cape!=='none') parts.cape = rc.cape==='cloak' ? 'cape_lumen_cloak' : 'cape_hero';
+  if(rc.back && rc.back!=='none'){ const b={ backpack:'back_backpack', jetpack:'back_jetpack', quiver:'back_quiver' }[rc.back]; if(b) parts.back=b; }
+  if(rc.torso==='outfit_apron') parts.panel='panel_apron';
+  const c=rc.colors||{}; const D={ id:null, plan:'biped', species:sp, parts, colours:{ body:c.body, torso:c.torso, legs:c.legs, hat:c.accent, cape:c.accent, hair:c.hair, gear:c.accent, belt:'dark_brown' }, prints:{ face: FACE_FOR[sp]||'face_classic_neutral' } };
+  if(rc.emblemPrint) D.prints.torso_F=rc.emblemPrint;
+  return withHeld(D,f);
+}
+function withHeld(D,f){ const h=HELD_MAP[f.weapon]; if(h){ D.parts.held_R=h[0]; if(h[1]) D.parts.held_L=h[1]; } return D; }
+const ANIMAL_FOR = { dragon:'small_dragon', dragonboss:'small_dragon', tortoise:'turtle', serpent:'sea_serpent', worm:'sand_worm', leopard:'tiger', grazer:'cow', badger:'raccoon', boarboss:'boar', whale:'dolphin', heron:'crane' };
+const BIPED_MAP = { hips:'joint_root', waist:'joint_waist', neck:'joint_neck', lsh:'joint_shoulder_R', rsh:'joint_shoulder_L', lel:'joint_elbow_R', rel:'joint_elbow_L', lwr:'joint_wrist_R', rwr:'joint_wrist_L', lhip:'joint_hip_R', rhip:'joint_hip_L', lkn:'joint_knee_R', rkn:'joint_knee_L' };
+const ANIMAL_MAP = { body:'body', neck:'joint_neck', jaw:'joint_jaw', flsh:'joint_hip_FR', frsh:'joint_hip_FL', blsh:'joint_hip_BR', brsh:'joint_hip_BL', flkn:'joint_knee_FR', frkn:'joint_knee_FL', blkn:'joint_knee_BR', brkn:'joint_knee_BL',
+  tail1:'joint_tail_1', tail2:'joint_tail_2', tail3:'joint_tail_3', lwing:'joint_wing_R_1', lwing2:'joint_wing_R_2', rwing:'joint_wing_L_1', rwing2:'joint_wing_L_2', lhip:'joint_hip_R', rhip:'joint_hip_L', lkn:'joint_knee_R', rkn:'joint_knee_L',
+  seg1:'joint_body_1', seg2:'joint_body_2', seg3:'joint_body_3', lfin:'joint_fin_R', rfin:'joint_fin_L', seg0:'joint_seg_1', seg4:'joint_seg_5', seg5:'joint_seg_6', seg6:'joint_seg_7', seg7:'joint_seg_8', seg8:'joint_seg_9' };
+function partMeshes(src){ const out=[]; if(src.isMesh) out.push({ m:src, local:new THREE.Matrix4() }); for(const c of src.children) if(c.isMesh) out.push({ m:c, local:c.matrix.clone() }); return out; }
+function addPart(holder, partName, D, role){
+  const src=Bodies.lib[partName]; if(!src) return null; const g=new THREE.Group(); g.name='part:'+partName;
+  for(const {m,local} of partMeshes(src)){ const mats = Array.isArray(m.material)?m.material:[m.material];
+    const mesh=new THREE.Mesh(m.geometry, mats[0]); mesh.userData.orig=mats[0].name; mesh.userData.role=role; mesh.applyMatrix4(local); g.add(mesh); }
+  holder.add(g); return g; }
+function stripMeshes(node){ if(node.isMesh){ node.geometry=Bodies.EMPTY; } for(const c of [...node.children]) if(c.isMesh) node.remove(c); }
+function partChild(joint){ return joint.children.find(c=>(c.isMesh||c.children.some(k=>k.isMesh)) && !/^(joint|socket)_/.test(c.name)); }
+function buildGLB(f){
+  if(!Bodies.ready) return null;
+  let root, map, D, kind;
+  if(f.plan==='biped'||f.plan==='giant'){
+    D=designFor(f); kind='biped'; root=Bodies.rig.clone(true); root.position.set(0,0,0); root.quaternion.identity(); root.scale.set(1,1,1);
+    const J=n=>root.getObjectByName(n);
+    const slots=[['joint_root','hips'],['joint_waist','torso'],['joint_neck','head'],['joint_hip_L','thigh'],['joint_hip_R','thigh'],['joint_knee_L','shin'],['joint_knee_R','shin'],['joint_ankle_L','boot'],['joint_ankle_R','boot'],
+      ['joint_shoulder_L','arm_upper'],['joint_shoulder_R','arm_upper'],['joint_elbow_L','arm_lower'],['joint_elbow_R','arm_lower'],['joint_wrist_L','hand'],['joint_wrist_R','hand']];
+    for(const [jn,slot] of slots){ const j=J(jn); if(!j) continue; const pc=partChild(j); const want=D.parts?.[slot]; if(!pc||!want||!Bodies.lib[want]) continue; stripMeshes(pc); addPart(pc, want, D, slot);
+      // move the part's child joints/sockets to the new part's own joint positions
+      const js=Bodies.json[want]?.joints||{}; for(const c of pc.children){ const p=js[c.name]; if(p) c.position.set(p[0],p[1],p[2]); } }
+    const sock=n=>J(n);
+    if(D.parts?.hat) { const s=sock('socket_head_top'); if(s) addPart(s, D.parts.hat, D, 'hat'); }
+    if(D.parts?.hair){ const s=sock('socket_head_top'); if(s) addPart(s, D.parts.hair, D, 'hair'); }
+    if(D.parts?.tail){ const s=sock('socket_tail'); if(s) addPart(s, D.parts.tail, D, 'tail'); }
+    if(D.parts?.back){ const s=sock('socket_back'); if(s) addPart(s, D.parts.back, D, 'back'); }
+    if(D.parts?.panel){ const s=sock('socket_panel_F'); if(s) addPart(s, D.parts.panel, D, 'panel'); }
+    f.glbCape=null; if(D.parts?.cape){ let s=sock('socket_cape'); const segs=[]; for(let i=1;i<=3 && s;i++){ const name=`${D.parts.cape}_seg_${i}`; if(!Bodies.lib[name]) break; const holder=new THREE.Object3D(); s.add(holder); addPart(holder,name,D,'cape'); segs.push(holder); const nx=Bodies.json[name]?.joints?.[`joint_cape_${i+1}`]; const next=new THREE.Object3D(); next.position.set(...(nx||[0,-0.62,0])); holder.add(next); s=next; } f.glbCape=segs; }
+    if(D.parts?.held_R){ const s=sock('socket_hand_L'); if(s) addHeldGLB(s, D.parts.held_R, D, f); }
+    if(D.parts?.held_L){ const s=sock('socket_hand_R'); if(s) addHeldGLB(s, D.parts.held_L, D, f); }
+    map=BIPED_MAP;
+  } else {
+    const name='animal_'+(ANIMAL_FOR[f.species]||f.species); const src=Bodies.animals[name]; if(!src) return null; kind='animal';
+    root=src.clone(true); root.position.set(0,0,0); root.quaternion.identity(); root.scale.set(1,1,1);
+    D={ colours:{}, recolor:{}, prints:{ face:`face_${ANIMAL_FOR[f.species]||f.species}_neutral` } }; const def=f.sp.colors?.[0]; const want=f.recipe.colors?.body; if(def && want && def!==want) D.recolor[def]=want;
+    map=ANIMAL_MAP;
+    if((f.weapon==='lumen'||f.weapon==='umbral')){ const s=root.getObjectByName('socket_mouth')||root.getObjectByName('joint_jaw'); if(s) addHeldGLB(s,'lumen',D,f,true); }
+    if(f.recipe.hat && f.recipe.hat!=='none' && HAT_MAP[f.recipe.hat]){ const s=root.getObjectByName('socket_head_top'); if(s) addPart(s,HAT_MAP[f.recipe.hat],D,'hat'); }
+  }
+  // materials: slot colours, palette colours, prints (faces and torso fronts)
+  const faceMeshes=[];
+  root.traverse(o=>{ if(!o.isMesh || o.geometry===Bodies.EMPTY) return; o.castShadow=true; o.receiveShadow=true; const orig=o.userData.orig||o.material?.name; o.userData.orig=orig;
+    if(orig==='mat_print'){ const pn=(o.parent?.name||'')+'|'+o.name; const role=o.userData.role || (/head/.test(pn)?'head': /torso|body/.test(pn)?'torso':'other');
+      const print = role==='head' ? D.prints?.face : role==='torso' ? D.prints?.torso_F : null;
+      if(role==='head') faceMeshes.push(o);
+      const pm=Bodies.printMaterial(print); if(pm) o.material=pm; else o.visible=false; }
+    else o.material=materialFor(orig, D, f); });
+  // the head part of an animal rig carries the face print
+  if(kind==='animal'){ root.traverse(o=>{ if(o.isMesh && o.userData.orig==='mat_print' && !faceMeshes.includes(o)) faceMeshes.push(o); }); }
+  const joints={}; for(const [mine,theirs] of Object.entries(map)){ const o=root.getObjectByName(theirs); if(o) joints[mine]={ o, rest:o.position.clone(), restQ:o.quaternion.clone() }; }
+  const faceBase = (D.prints?.face||'').replace(/_(neutral|grin|happy|determined|angry|shocked|smug|hurt|sad|scared|laughing|sinister|blink)$/,'_');
+  const g={ root, joints, kind, faceMeshes, faceBase, faceNow:null, D, scale: kind==='animal' && !ANIMAL_FOR[f.species] ? f.scale/(f.sp.size||1) : f.scale };
+  if(kind==='animal' && (f.species==='dragonboss'||f.species==='boarboss'||f.species==='whale')) g.scale=f.scale;
+  if(kind==='biped') g.scale=f.scale; // the rig is authored at the standard 4.5-brick height
+  return g;
+}
+function addHeldGLB(socket, name, D, f, mouth){
+  if(name==='lumen'||name==='umbral'){ // carved hilt parts stacked on attach_top, plus a blade of light
+    const L=RT.world?.player?.lumen; const n = 1+((hashStr(JSON.stringify(L?.hilt||{}))>>>0)%6); let y=0; const holder=new THREE.Object3D(); if(mouth){ holder.rotation.x=Math.PI/2; holder.rotation.z=Math.PI/2; } socket.add(holder);
+    const parts = name==='umbral' ? [`umbral_hilt_${1+(n%4)}`] : [`lumen_pommel_${n}`,`lumen_grip_${n}`,`lumen_guard_${n}`,`lumen_emitter_${n}`];
+    for(const p of parts){ if(!Bodies.lib[p]) continue; const h=new THREE.Object3D(); h.position.y=y; holder.add(h); addPart(h,p,D,'held'); y += (Bodies.json[p]?.joints?.attach_top?.[1]) ?? 0.25; }
+    const blade=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,2.6,10), new THREE.MeshBasicMaterial({ color:0xffffff, toneMapped:false })); blade.position.y=y+1.3; blade.visible=false; blade.userData.blade=true; holder.add(blade); f.glbBlade=blade; return; }
+  if(/shield/.test(name)){ const h=new THREE.Object3D(); h.rotation.x=-Math.PI/2; h.position.z=0.1; socket.add(h); addPart(h, name, D, 'held'); return; }
+  addPart(socket, name, D, 'held');
+}
+function syncGLB(f){
+  const g=f.glb; const R=g.root; R.position.copy(f.pos); R.rotation.set(f.pitch||0, f.yaw, f.roll||0, 'YXZ'); R.scale.setScalar(g.scale);
+  for(const [mine,j] of Object.entries(g.joints)){ const a=f.joints[mine]; if(!a) continue; _Q.setFromEuler(a.rotation); j.o.quaternion.copy(j.restQ).multiply(_Q); }
+  if(g.kind==='biped' && g.joints.hips && f.joints.hips){ g.joints.hips.o.position.y = g.joints.hips.rest.y + (f.joints.hips.position.y-2.4); }
+  if(f.glbCape?.length && f.joints.cape){ f.glbCape[0].rotation.x=f.joints.cape.rotation.x; if(f.glbCape[1]&&f.joints.cape2) f.glbCape[1].rotation.x=f.joints.cape2.rotation.x; }
+  if(f.glbBlade){ f.glbBlade.visible=!!f.bladeOn; if(f.bladeColor) f.glbBlade.material.color.copy(f.bladeColor).multiplyScalar(1.6); }
+  // faces swap printed expressions; blink
+  if(g.faceMeshes.length && g.faceBase){ const e = f.blink>0 ? 'blink' : f.expr; const cands = { face_smile:['neutral'], face_grin:['grin','happy','laughing'], face_angry:['angry','determined'], face_surprise:['shocked','scared'], face_sad:['hurt','sad'], face_sleep:['blink'], blink:['blink'] }[e]||['neutral'];
+    let name=null; for(const c of cands){ if(Bodies.hasPrint(g.faceBase+c)){ name=g.faceBase+c; break; } } if(!name && Bodies.hasPrint(g.D.prints?.face)) name=g.D.prints.face;
+    if(name && name!==g.faceNow){ g.faceNow=name; const m=Bodies.printMaterial(name); if(m) for(const fm of g.faceMeshes){ fm.material=m; fm.visible=true; } } }
+}
+const GLBLOD = { max:18, dist:55, active:new Set(),
+  update(){ // nearest figures get the full design-kit model; the rest draw as instanced box figures
+    if(!Bodies.ready){ return; } const c=camera.position; const near=[];
+    for(const f of RT.figures){ if(!f.alive||f.ko||!f.visible) continue; const d=f.pos.distanceTo(c); if(d<this.dist) near.push([d,f]); }
+    near.sort((a,b)=>a[0]-b[0]); const want=new Set(near.slice(0,this.max).map(x=>x[1]));
+    for(const f of this.active) if(!want.has(f) && f.glb){ scene.remove(f.glb.root); }
+    for(const f of want){ if(f.glb===undefined || f.glb===null){ f.glb = buildGLB(f) || false; } if(f.glb){ if(!f.glb.root.parent) scene.add(f.glb.root); syncGLB(f); } }
+    this.active=new Set([...want].filter(f=>f.glb));
+  },
+  drawn(f){ return this.active.has(f); },
+};
+
 // §CONTROLLERS ----------------------------------------------------------------
 const Input = { keys:new Set(), pressed:new Set(), mouse:{ dx:0, dy:0, b:new Set(), pressed:new Set(), wheel:0 }, locked:false, pads:[],
   init(){ addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return; if(!this.keys.has(e.code)) this.pressed.add(e.code); this.keys.add(e.code); if(['Space','Tab','F1','ArrowUp','ArrowDown','Quote'].includes(e.code)) e.preventDefault(); Audio.init(); });
@@ -3090,7 +3246,7 @@ function grapple(f, range){ // power-built tether line between buildings: pulls 
 
 // §BLADES ---------------------------------------------------------------------
 function bladeColorFromState(L){ const c=L.color||lumenColor(L); return new THREE.Color().setHSL(c.h,c.s,c.l); }
-function equipWeapon(f, w){ if(!WEAPONS[w]) return; f.weapon=w; f.parts=f.parts.filter(p=>p.tag!=='held'&&p.tag!=='blade'&&p.tag!=='shield');
+function equipWeapon(f, w){ if(!WEAPONS[w]) return; f.weapon=w; if(f.glb){ scene.remove(f.glb.root); } f.glb=null; f.parts=f.parts.filter(p=>p.tag!=='held'&&p.tag!=='blade'&&p.tag!=='shield');
   const biped = f.plan==='biped'||f.plan==='giant';
   if(biped && w!=='natural') addHeld(f,'rwr',w,1);
   if(w==='lumen'||w==='umbral') f.bladeColor = w==='umbral'? new THREE.Color(0.95,0.08,0.12) : bladeColorFromState(RT.world.player.lumen);
@@ -3319,7 +3475,7 @@ Menu.acts.loadChar = i=>{ RT.editRecipe={...RT.world.player.characters[+i]}; };
 Menu.acts.importChar = ()=>{ const r=decodeCharacter($('ccode').value.trim()); if(!r.ok) toast('Import failed: '+r.error); else { RT.editRecipe=r.recipe; toast('Character imported.'); } };
 Menu.acts.preset = id=>{ const c=RT.assets.characters[id]||Object.values(RT.assets.characters).find(x=>x.id===id); if(c){ const r=designRecipe(c); if(!SPECIES[r.species]?.playable) r.species='human'; RT.editRecipe=r; } };
 function applyPlayerRecipe(rc){ const W=RT.world; W.player.recipe={...rc}; W.player.species=rc.species; const pl=RT.players[0]; const old=pl.fig; const f=new Figure(rc,{team:'player',name:W.player.name}); f.pos.copy(old.pos); f.yaw=old.yaw; f.isPlayer=true; f.controller=pl.ctrl;
-  RT.figures[RT.figures.indexOf(old)]=f; pl.fig=f; if(old.mount) { f.mount=old.mount; old.mount.rider=f; } const w = rc.held&&rc.held!=='none' ? rc.held : (f.plan==='biped'?'sword':'natural'); equipWeapon(f, W.player.gearUnlocks.includes('lumen_blade') && W.player.equipBlade ? 'lumen' : w); }
+  if(old.glb) scene.remove(old.glb.root); old.alive=false; RT.figures[RT.figures.indexOf(old)]=f; pl.fig=f; if(old.mount) { f.mount=old.mount; old.mount.rider=f; } const w = rc.held&&rc.held!=='none' ? rc.held : (f.plan==='biped'?'sword':'natural'); equipWeapon(f, W.player.gearUnlocks.includes('lumen_blade') && W.player.equipBlade ? 'lumen' : w); }
 
 // careers / recruiter -------------------------------------------------------
 Menu.pages.careers = ()=>{ const P=RT.world.player; return `<h2>Career board</h2><p>Hold several careers at once — but some conflict, and being caught in both has consequences.</p><table><tr><th>Career</th><th>Rank</th><th>Progress</th><th>Top</th></tr>${CAREER_IDS.map(c=>{ const C=CAREERS[c], cs=P.careers[c];
@@ -3572,7 +3728,7 @@ async function boot(){
   const t0=performance.now();
   await Promise.race([loadAssets(), new Promise(r=>setTimeout(r,4000))]); // never block start-up on slow assets
   status('unpacking the realm kits…'); await Promise.race([RT.assets.modelsReady||Promise.resolve(), new Promise(r=>setTimeout(r,8000))]);
-  Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init();
+  Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init(); Bodies.load();
   status('building the world…');
   let world=null; const saved=QS.has('new')?null:storeGet(SAVE_KEY);
   if(saved){ try{ world=loadFromString(saved); }catch(e){ console.warn('save load failed',e); } }
@@ -3649,7 +3805,7 @@ function render(dt){
   }
   updateSky(dt);
   for(const sct of RT.sectors.values()) if(sct.meshes?.studs){ const cx=sct.x0+32-camera.position.x, cz=sct.z0+32-camera.position.z; sct.meshes.studs.visible = CONFIG.studNear>0 && Math.hypot(cx,cz) < CONFIG.studNear+12; }
-  FigR.begin(); for(const f of RT.figures) if(f.alive && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
+  GLBLOD.update(); FigR.begin(); for(const f of RT.figures) if(f.alive && !GLBLOD.drawn(f) && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
   renderer.info.reset(); renderer.info.autoReset=false;
   const two = P.length>1 && P[0].fig.pos.distanceTo(P[1].fig.pos)>28;
   if(P.length>1 && !two){ // one shared camera when close
