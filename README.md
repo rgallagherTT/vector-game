@@ -1,26 +1,35 @@
-# VECTOR
+# Meridian
 
-Browser space-combat game (Three.js r170, single-file). Open `index.html` from any static host.
+A third-person open-world superhero sandbox in a single self-contained `index.html` (Three.js from CDN via an import map, no build step).
 
-- Six-mission campaign, four bosses, seven playable ships, hangar upgrades
-- Wingmen, forward base, touch controls
-- Live lobby: everyone online is listed by callsign; one click to host or join
-- Up to 4 players: co-op campaign or free-for-all versus dogfight (first to 10)
-- Nametags over other pilots, bigger arenas, touch controls
-- Persistent sandbox universe (EVE-style): 20 systems, permanent ship loss, fitting with powergrid/CPU, living per-station markets, mining, factions, agents, autosave + save export
+Open `index.html` through any static web server (for example `npx serve meridian`) — the optional GLB kits are fetched relative to the page, and every asset has a procedural fallback, so the game is fully playable with none.
 
-Deployed automatically to GitHub Pages on every push to `main`.
+- `index.html` starts with a manifest of `// §ANCHOR` sections; search for an anchor to jump to a system.
+- Saves live in `localStorage` (with an in-memory fallback) and can be exported/imported as JSON from the phone (`P` → System).
+- Press `H` in game for controls.
 
-Play: https://rgallaghertt.github.io/vector-game/
+## What is in it
 
-## Fangball
+- **Stage 1 — your hero:** creator (origins, traversal sets, power sets, costume, emblem), traversal, combat, one district.
+- **Stage 2 — the open city:** eight streamed districts of New Halcyon, block territory, an hourly faction simulation, generated contracts, incidents, reputation and heat, markets, crafting, bases, vehicles.
+- **Stage 3 — the crew:** recruits generated from the ability framework, eight unique recruits, turned lieutenants; hiring, wages, loyalty and personalities; Solo / Squad / Hybrid control (`K` cycles, `N` / `6`–`8` switch, `` ` `` back to the hero); radial call-in wheel (hold `B`) and orders (hold `Y`); team-ups for every pairing of the six primary sets; dispatch from a base holo-table with after-action reports; permanent crew death (toggle in Phone → System); the crew becomes a faction that can protect blocks.
+- **Stage 4 — the galaxy:** a deterministic 20-system galaxy with six star-faring factions simulating daily; salvage or buy a ship, fly it (`Tab` lock, `1`–`4` power, `V` cruise), walk its interior, jump through hyperspace while New Halcyon keeps ticking; crew stations change ship combat; fight in vacuum (punch hulls, tear off turrets), board and capture ships by the bridge; land on eight planet types with their own gravity and traversal; trade, galactic contracts and dispatch across systems; relics with powers (`J` / `L`) and corruption that can permanently claim a recruit.
+- **Stage 5 — the living universe:** nothing is scheduled. Five threats grow out of the simulations — the Ascendancy's conquest, awakening surges, relic awakenings, the thing beneath the city, a corporate takeover — each with visible stages and pressure points that are cheaper early; defeated threats return remixed. Galaxy events (wars, fleet battles you can join, sieges, landings, shortages, pirate surges, refugees). If the Ascendancy reaches Sol it invades: an orbital battle, landings that take New Halcyon block by block, every faction reacting by its own interests, a conqueror whose strength scales with the relics it holds — and an occupied city with a resistance if it is lost. Hold blocks, build outposts, own a station, make alliances and declare wars from the war table (base or ship holo-table), which also plans multi-crew operations and replays history. Legacy: legendary veterans with power mutations, retirement, the memorial, titles, deep hero mastery; legendary contracts at renown 150; custom world settings for new saves (creator → World).
 
-5v5 full-contact animal basketball (Three.js, single file + GLB characters).
+- **Stage 6 — wider world:** join a super-team (the Halcyon Vanguard, Nightwatch, the Ember Collective) or any city faction — the department, the corporations, the gangs, the Choir, the Civic Union — from Phone → Faction. A tryout fight earns the standing in one go; members rise through five ranks, draw weekly pay, call backup that follows and fights beside you, and take operations with their side (raids take real blocks). Walk into any building in the city (`E` against a wall): offices, shops, bars, clubs, warehouses, labs, apartments — some open on a robbery or a gang hideout, quiet ones can be raided, and anyone chasing you follows you in. Four more cities on the coast — Port Sable, Ashgrove, Vantor Heights and Lumen Bay — each generated with its own districts, gangs and street crime, linked to New Halcyon by rail, coach, ferry and maglev (stations in the city, or Phone → Travel).
 
-Play: https://rgallaghertt.github.io/vector-game/fangball/
+- **Stage 7:** four more primary power sets — **Sonic** (concussive cones, shattering shrieks, resonance), **Chrono** (slow fields, rewind, haste, time stop), **Psionic** (mind spikes, psychic waves, and puppeting enemies so they fight their own side) and **Verdant** (vines, poison thorns, healing blooms) — each with skill trees and team-ups with every other set. Every car flies: press `Shift` while driving to take off, `Space`/`X` to climb and descend, come down slowly to land, or bail out mid-air. Touch controls for phones and tablets (on automatically; Phone → System to switch). Longer days: nights pass in a few minutes and new games start in the morning. Your hero carries four powers (keys 1–4: the whole primary set plus one borrowed from another set) that cost nothing and are always ready; defence moved to 5; the ultimate (R) charges 2.6× faster, trickles up on its own and hits 60% harder.
 
-## Meridian
+- **Hero models:** five sculpted, rigged heroes in `hero/` — Longcoat Mystic, Vigilante, Hooded Speedster, Heavy Bruiser and Corporate Merc — picked on the creator's Body tab (Look). They load on demand (~2.5 MB each, textures at 1024 px) and are driven by the game's own pose library through a retarget from the procedural skeleton onto the model's bones, so they run, fight, fly and swing like the built-from-parts hero.
 
-Open-world superhero sandbox: your hero, the city of New Halcyon, a crew, a galaxy, and a living universe (Three.js, single file).
+- **Hero looks for everyone:** enemies and crew wear the five hero models too, picked by build and power (bruisers and brutes take the Heavy Bruiser, corporate and armoured types the Corporate Merc, mystics the Longcoat, speedsters the Hooded Speedster) and tinted with their faction or power colour; civilians and some street toughs keep the built-from-parts look.
 
-Play: https://rgallaghertt.github.io/vector-game/meridian/
+- **Space combat:** flying is now a dogfight. The mouse is a virtual stick (how far you push it sets how fast you turn), `A`/`D` roll and the ship banks into turns, `W`/`S` set the throttle, `Shift` burns a boost pool that refills when you let go, and `Space` air-brakes so the nose swings ahead of your drift. Twin cannons alternate, converge ahead of the nose and overheat if you hold the trigger; a lead marker shows where to shoot. Hold the nose on a target to build a lock, then fire a guided missile (`RMB`). `Tab` cycles targets. Enemies fly attack runs, break off when they overshoot, aces jink when you line up, and they fire in aimed bursts. A spring chase camera, screen shake, speed lines, target brackets, an off-screen arrow and a 3-D radar with height stalks round it out.
+
+- **HUD and phone:** the street HUD uses glass cards: health with numbers, energy and ultimate side by side, cooldown seconds on every power, a framed minimap and an info card. The phone opens on a Home dashboard (current job, hero, wallet and heat, crew health, allegiance, location and fleet — click any tile to jump to it). There is a status header, and a side rail of tabs with icons that becomes a scrolling strip on a phone.
+
+Saves migrate forward automatically (v1 → v2 → v3 → v4 → v5 → v6).
+
+## Debug
+
+Open with `?debug=1` for an overlay (fps, active sector, faction tick time, threat stages). `window.dbg` drives the simulation from the console — `dbg.help()` lists the commands: advance days, set strengths, force any threat stage, start the invasion, spawn events, grant credits and relics, and `dbg.compare(100)` runs the headless simulation (a hundred in-game days, passive and with a simulated player, a few seconds each) and reports the difference.
