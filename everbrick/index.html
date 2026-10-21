@@ -37,6 +37,33 @@
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0}
   .sw{width:22px;height:22px;border:2px solid var(--ink);border-radius:5px;cursor:pointer;display:inline-block}
   .sw.on{outline:3px solid #fe8a18}
+  #menuBox.wide{width:min(1100px,96vw)}
+  #menu.boot{background:#9fc3e9 url(design/keyart/title.jpg) center/cover;z-index:10}
+  .cre{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:18px;align-items:start}
+  .cleft{position:sticky;top:0;display:flex;flex-direction:column;gap:8px}
+  #cprevSlot{height:min(52vh,420px);border:3px solid var(--ink);border-radius:16px;background:radial-gradient(circle at 50% 35%,#fffdf4,#cfe3f2);overflow:hidden;touch-action:none;cursor:grab}
+  #cprevSlot canvas{display:block}
+  .ctools{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+  .cname input{width:100%;box-sizing:border-box;font:inherit;font-size:18px;font-weight:800;padding:6px 10px;border:3px solid var(--ink);border-radius:10px;text-align:center}
+  .csum{font-size:13px;text-align:center}
+  button.go{font-size:20px;padding:10px;background:#4b9f4a;color:#fff}
+  .cright{max-height:74vh;overflow:auto;padding-right:4px}
+  .cright h2{margin-top:0}
+  .hint{font-size:13px;opacity:.75;margin:4px 0}.center{text-align:center;justify-content:center}
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
+  .ccard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;background:#fff;box-shadow:0 3px 0 var(--ink);font-size:12px;line-height:1.15}
+  .ccard.on{background:#ffd9a6;outline:3px solid #fe8a18}.ccard small{font-weight:500;font-size:10px;opacity:.7}
+  .thumb{width:84px;height:84px;border-radius:10px;background:linear-gradient(#f3f7fb,#dfe9f1);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:900;object-fit:contain}
+  img.thumb:not([src]){animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.5}}
+  .ccard.scheme{flex-direction:row;flex-wrap:wrap;justify-content:center}.ccard.scheme i{width:18px;height:28px;border:2px solid var(--ink);border-radius:4px}.ccard.scheme span{width:100%;text-align:center}
+  i.dot{display:inline-block;width:12px;height:12px;border:2px solid var(--ink);border-radius:50%;margin-right:5px;vertical-align:-2px}
+  .pal{display:flex;flex-wrap:wrap;gap:6px}.pal .sw{width:30px;height:30px}
+  button.small{padding:1px 7px;font-size:12px}.cwrap{position:relative}.cwrap .x{position:absolute;top:2px;right:2px}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-top:10px}
+  .pcard{display:flex;flex-direction:column;gap:6px}.pcard.on .pplay{outline:3px solid #fe8a18}
+  .pplay{display:flex;flex-direction:column;align-items:center;gap:3px;background:#fff;padding:10px}.pplay .thumb{width:128px;height:128px}.pplay small{font-weight:500;font-size:12px;opacity:.75}
+  .pplay.new .thumb{background:#fff3c4}
+  @media (max-width:720px){ .cre{grid-template-columns:1fr} .cleft{position:static} #cprevSlot{height:300px} .cright{max-height:none} }
   #buildbar{position:absolute;left:12px;bottom:12px;background:var(--panel);border:3px solid var(--ink);border-radius:12px;padding:8px;display:none;max-width:46vw;pointer-events:auto;font-size:12px}
   #buildbar .pal{display:flex;flex-wrap:wrap;gap:3px;max-height:96px;overflow:auto}
   #buildbar .pc{padding:2px 5px;border:2px solid var(--ink);border-radius:6px;background:#fff;cursor:pointer}
@@ -2847,6 +2874,8 @@ const Bodies = {
       const [gltf, bj] = await Promise.all([ new GLTFLoader().loadAsync(ASSETS.bodies), fetchJSON('design/bodies.json') ]);
       this.json = bj?.parts || {};
       const root=gltf.scene; root.updateMatrixWorld(true);
+      // the loader suffixes repeated node names (socket_head_top_47); restore the authored names so sockets and joints resolve
+      const nj=gltf.parser.json.nodes||[]; root.traverse(o=>{ const a=gltf.parser.associations.get(o); if(a && a.nodes!==undefined && nj[a.nodes]?.name) o.name=nj[a.nodes].name; });
       for(const setName of ['biped_parts','gear','biped_big_set','biped_giant_set']){ const set=root.getObjectByName(setName); if(set) for(const c of set.children) if(!this.lib[c.name]) this.lib[c.name]=c; }
       this.rig=root.getObjectByName('biped_rig_reference');
       const an=root.getObjectByName('animals'); if(an) for(const c of an.children) this.animals[c.name]=c;
@@ -3485,9 +3514,11 @@ function dismount(f){ const m=f.mount; if(!m) return; m.rider=null; f.mount=null
 const Menu = {
   open(name, ctx={}){ RT.menuOpen=name; RT.menuCtx=ctx; if(document.pointerLockElement) document.exitPointerLock(); $('menu').style.display='flex'; this.render(); },
   close(){ RT.menuOpen=null; $('menu').style.display='none'; if(RT.onMenuClose){ const f=RT.onMenuClose; RT.onMenuClose=null; f(); } },
-  render(){ const b=$('menuBox'); const fnc=this.pages[RT.menuOpen]; if(!fnc){ this.close(); return; } b.innerHTML=fnc(RT.menuCtx)+`<div class="row" style="margin-top:12px"><button data-act="close">Close (Esc)</button></div>`;
+  render(){ const b=$('menuBox'); const fnc=this.pages[RT.menuOpen]; if(!fnc){ this.close(); return; } const page=RT.menuOpen; const keep=page===this.lastPage ? [b.scrollTop, ...[...b.querySelectorAll('[data-keepscroll]')].map(e=>e.scrollTop)] : null; this.lastPage=page; if(RT.keepScroll===0){ RT.keepScroll=null; if(keep) keep.fill(0); }
+    const ctx=RT.menuCtx||{}; b.classList.toggle('wide', page==='creator'||page==='profiles'); b.innerHTML=fnc(ctx)+(ctx.noClose?'':`<div class="row" style="margin-top:12px"><button data-act="close">Close (Esc)</button></div>`);
+    if(keep){ b.scrollTop=keep[0]; b.querySelectorAll('[data-keepscroll]').forEach((e,i)=>e.scrollTop=keep[i+1]||0); } this.after[page]?.(ctx);
     b.querySelectorAll('[data-act]').forEach(el=>el.onclick=()=>{ const a=el.dataset.act; const arg=el.dataset.arg; if(a==='close') this.close(); else if(this.acts[a]) this.acts[a](arg, el); if(RT.menuOpen) this.render(); }); },
-  pages:{}, acts:{},
+  pages:{}, acts:{}, after:{}, lastPage:null,
 };
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 Menu.pages.help = ()=>`<h2>${GAME_TITLE} — controls</h2><table>
@@ -3500,32 +3531,122 @@ Menu.pages.help = ()=>`<h2>${GAME_TITLE} — controls</h2><table>
 <tr><td>Functional pieces</td><td>Walk up and press E: beds save, chests store, forges/looms/workbenches craft, soil grows crops, counters run shops, booths change costumes, town stones found towns…</td></tr>
 <tr><td>Menus</td><td>Esc menu · M map · J jobs · K careers · O companions · P photo mode · F1 help</td></tr><tr><td>Player 2 (drop in)</td><td>Press Enter or a second gamepad's Start. Keys: IJKL move, U jump, O light, P heavy, Y special, ; block, N dodge, H interact</td></tr></table>`;
 Menu.pages.main = ()=>`<h2>${GAME_TITLE}</h2><div class="tabs">
-${[['creator','Character'],['careers','Careers'],['jobs','Jobs'],['map','World map'],['companions','Companions'],['inventory','Bag & crafting'],['blueprints','Blueprints & share'],['records','Hall of records'],['creative','Creative mode'],['newworld','New world'],['costume','Costume'],['save','Save & settings'],['help','Controls']].map(([k,v])=>`<button data-act="go" data-arg="${k}">${v}</button>`).join('')}</div>
+${[['creator','Character'],['profiles','Profiles'],['careers','Careers'],['jobs','Jobs'],['map','World map'],['companions','Companions'],['inventory','Bag & crafting'],['blueprints','Blueprints & share'],['records','Hall of records'],['creative','Creative mode'],['newworld','New world'],['costume','Costume'],['save','Save & settings'],['help','Controls']].map(([k,v])=>`<button data-act="go" data-arg="${k}">${v}</button>`).join('')}</div>
 <p>${esc(RT.world.player.name)} the ${SPECIES[RT.world.player.species].name} · ${RT.world.player.pips} pips · ${bankCount()} bricks · titles: ${RT.world.player.titles.map(esc).join(', ')||'none yet'}</p>`;
 Menu.acts.go = a=>{ RT.menuOpen=a; RT.menuCtx={}; };
 
 // §CREATOR --------------------------------------------------------------------
-Menu.pages.creator = ()=>{ const rc=RT.editRecipe||(RT.editRecipe={...RT.world.player.recipe}); const sp=SPECIES[rc.species];
-  const sw=(slot)=>COLOR_NAMES.map(c=>`<span class="sw ${rc.colors[slot]===c?'on':''}" title="${c}" style="background:${PALETTE[c]}" data-act="col" data-arg="${slot}:${c}"></span>`).join('');
-  const opt=(k,list)=>list.map(v=>`<button class="${rc[k]===v?'on':''}" data-act="part" data-arg="${k}:${v}">${v.replace(/_/g,' ')}</button>`).join(' ');
-  return `<h2>Be anything — the mirror</h2><p>${esc(sp.name)}: <i>${esc(sp.traitText)}</i></p>
-  <div class="row">${PLAYABLE_SPECIES.map(s=>`<button class="${rc.species===s?'on':''}" data-act="species" data-arg="${s}">${SPECIES[s].name}</button>`).join('')}</div>
-  <div class="row">Size: ${opt('size',['small','standard','big'])}</div>
-  <h3>Colours</h3>${['body','torso','legs','accent','hair'].map(s=>`<div class="row"><b style="width:60px">${s}</b>${sw(s)}</div>`).join('')}
-  <h3>Parts</h3><div class="row">Hair/ears: ${opt('hair',CHAR_PARTS.hair)}</div><div class="row">Hat: ${opt('hat',CHAR_PARTS.hat)}</div><div class="row">Torso: ${opt('torso',CHAR_PARTS.torso)}</div>
-  <div class="row">Cape: ${opt('cape',CHAR_PARTS.cape)}</div><div class="row">Back: ${opt('back',CHAR_PARTS.back)}</div><div class="row">Held: ${opt('held',CHAR_PARTS.held)}</div><div class="row">Pattern: ${opt('pattern',CHAR_PARTS.pattern)}</div>
-  <div class="row">Name: <input id="pname" value="${esc(RT.world.player.name)}" maxlength="20"> <button data-act="applyChar">Become this!</button> <button data-act="saveChar">Save as character</button></div>
-  <div class="row">${RT.world.player.characters.map((c,i)=>`<button data-act="loadChar" data-arg="${i}">${esc(c.name||SPECIES[c.species].name)}</button>`).join('')}</div>
-  <div class="row">Character code: <input id="ccode" style="width:60%" value="${encodeCharacter(rc)}"> <button data-act="importChar">Import code</button></div>
-  ${Object.keys(RT.assets.characters).length?`<h3>Presets from the design kit</h3><div class="row">${Object.values(RT.assets.characters).filter(c=>c.group==='Playable species presets'||c.group==='Superheroes'||c.group==='Companions').slice(0,30).map(c=>`<button data-act="preset" data-arg="${esc(c.id)}">${esc(c.name)}</button>`).join('')}</div>`:''}`; };
-Menu.acts.species = s=>{ const old=RT.editRecipe; RT.editRecipe={...defaultRecipe(s), colors:{...old.colors, body:SPECIES[s].colors[0]}}; };
-Menu.acts.col = a=>{ const [slot,c]=a.split(':'); RT.editRecipe.colors={...RT.editRecipe.colors,[slot]:c}; };
-Menu.acts.part = a=>{ const [k,v]=a.split(':'); RT.editRecipe[k]=v; };
-Menu.acts.applyChar = ()=>{ const n=$('pname')?.value?.trim(); if(n) RT.world.player.name=n; applyPlayerRecipe(RT.editRecipe); toast(`You are now a ${SPECIES[RT.editRecipe.species].name}!`); Menu.close(); };
-Menu.acts.saveChar = ()=>{ RT.world.player.characters.push({...RT.editRecipe, name:$('pname')?.value||RT.world.player.name}); toast('Character saved.'); };
-Menu.acts.loadChar = i=>{ RT.editRecipe={...RT.world.player.characters[+i]}; };
-Menu.acts.importChar = ()=>{ const r=decodeCharacter($('ccode').value.trim()); if(!r.ok) toast('Import failed: '+r.error); else { RT.editRecipe=r.recipe; toast('Character imported.'); } };
-Menu.acts.preset = id=>{ const c=RT.assets.characters[id]||Object.values(RT.assets.characters).find(x=>x.id===id); if(c){ const r=designRecipe(c); if(!SPECIES[r.species]?.playable) r.species='human'; RT.editRecipe=r; } };
+// live 3D preview (drag to turn) + picture cards rendered from the real figure builder
+function previewStage(r){ const sc=new THREE.Scene(); const pm=new THREE.PMREMGenerator(r); sc.environment=pm.fromScene(new RoomEnvironment(),0.04).texture; pm.dispose();
+  sc.add(new THREE.HemisphereLight(0xfff4e0,0x6b5a40,0.9)); const d=new THREE.DirectionalLight(0xffffff,1.6); d.position.set(4,9,7); sc.add(d); const b=new THREE.DirectionalLight(0xbfd8ff,0.6); b.position.set(-6,4,-5); sc.add(b);
+  const plate=new THREE.Mesh(new THREE.CylinderGeometry(3.4,3.6,0.4,40), Bodies.colorMaterial('green')); plate.position.y=-0.2; sc.add(plate);
+  for(let x=-2;x<=2;x++) for(let z=-2;z<=2;z++){ if(x*x+z*z>6) continue; const s=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.18,14), Bodies.colorMaterial('green')); s.position.set(x*1.1,0.09,z*1.1); sc.add(s); }
+  return { scene:sc, plate }; }
+function previewModel(rc){ // { root, f, glb } — the design-kit figure when loaded, else the box figure
+  const f=new Figure(rc,{name:'preview'}); f.pos.set(0,0,0);
+  if(Bodies.ready){ const g=buildGLB(f); if(g){ f.glb=g; syncGLB(f); return { root:g.root, f, glb:g }; } }
+  for(const p of f.parts){ if(p.tag==='blade') continue; const m=new THREE.Mesh(FIG_GEO, Bodies.colorMaterial(p.col)); m.position.copy(p.off); if(p.rot) m.rotation.z=p.rot; m.scale.copy(p.size); p.joint.add(m); }
+  f.root.rotation.y=f.yaw; return { root:f.root, f, glb:null }; }
+function frameModel(cam, root, mode, aspect=1){ root.updateMatrixWorld(true); const bb=new THREE.Box3().setFromObject(root); const sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
+  let h=Math.max(sz.y, Math.max(sz.x,sz.z)/aspect*0.9), cy=c.y; if(mode==='head' && sz.y>sz.x*1.2){ h=sz.y*0.34; cy=bb.max.y-h*0.5; } if(mode==='fixed'){ h=Math.max(8, sz.y*1.05); cy=h*0.45; }
+  const dist=(h*0.62)/Math.tan(THREE.MathUtils.degToRad(cam.fov/2)); cam.position.set(dist*0.38, cy+h*0.12, dist); cam.lookAt(0,cy,0); cam.near=0.1; cam.far=dist*4; cam.updateProjectionMatrix(); }
+const Preview = {
+  r:null, stage:null, cam:null, canvas:null, model:null, key:null, yaw:0.5, spin:true, t:0, hop:0, raf:0, pose:0,
+  init(){ if(this.r) return true; try{ this.canvas=document.createElement('canvas'); this.canvas.className='cprev'; this.r=new THREE.WebGLRenderer({ canvas:this.canvas, antialias:true, alpha:true }); }catch(e){ this.r=null; return false; }
+    this.r.setPixelRatio(Math.min(devicePixelRatio,2)); this.r.outputColorSpace=THREE.SRGBColorSpace; this.r.toneMapping=THREE.ACESFilmicToneMapping; this.r.toneMappingExposure=1.0;
+    this.stage=previewStage(this.r); this.cam=new THREE.PerspectiveCamera(30,1,0.1,200);
+    let drag=null; this.canvas.addEventListener('pointerdown',e=>{ drag={x:e.clientX}; this.spin=false; this.canvas.setPointerCapture(e.pointerId); });
+    this.canvas.addEventListener('pointermove',e=>{ if(!drag) return; this.yaw+=(e.clientX-drag.x)*0.012; drag.x=e.clientX; });
+    this.canvas.addEventListener('pointerup',()=>{ drag=null; }); this.canvas.addEventListener('dblclick',()=>{ this.spin=!this.spin; });
+    return true; },
+  attach(slot, rc){ if(!slot || !this.init()) { if(slot) slot.textContent='(3D preview unavailable)'; return; } slot.appendChild(this.canvas); const w=slot.clientWidth||300, h=slot.clientHeight||380; this.r.setSize(w,h,false); this.canvas.style.width='100%'; this.canvas.style.height='100%'; this.cam.aspect=w/h; this.set(rc); if(!this.raf){ let last=performance.now(); const tick=now=>{ if(!this.canvas.isConnected){ this.raf=0; return; } this.frame(Math.min(0.05,(now-last)/1000)); last=now; this.raf=requestAnimationFrame(tick); }; this.raf=requestAnimationFrame(tick); } },
+  set(rc){ const key=JSON.stringify(rc)+Bodies.ready; if(key===this.key && this.model) return; const had=!!this.model; if(this.model) this.stage.scene.remove(this.model.root); this.key=key; this.model=previewModel(rc); this.stage.scene.add(this.model.root); this.frameNow=true; if(had){ this.hop=0.45; this.model.f.expr='face_grin'; this.model.f.exprT=1.2; } },
+  frame(dt){ const M=this.model; if(!M) return; this.t+=dt; if(this.spin) this.yaw+=dt*0.5; const f=M.f, J=f.joints, s=Math.sin(this.t*2.2);
+    if(this.hop>0){ this.hop-=dt; } const hy=this.hop>0 ? Math.sin((0.45-this.hop)/0.45*Math.PI)*0.9 : 0;
+    // idle: breathe, sway arms; pose 1 = wave, 2 = ready stance
+    if(f.plan==='biped'||f.plan==='giant'){ if(J.waist) J.waist.rotation.y=s*0.05; if(J.neck) J.neck.rotation.y=Math.sin(this.t*0.9)*0.25;
+      if(J.lsh) J.lsh.rotation.x= this.pose===2?-1.0: s*0.15; if(J.rsh){ J.rsh.rotation.x= this.pose===1? -2.6+Math.sin(this.t*9)*0.25 : this.pose===2?-0.5: -s*0.15; J.rsh.rotation.z= this.pose===1?0.4:0; }
+      if(J.lhip) J.lhip.rotation.x= this.pose===2?-0.3:0; if(J.rhip) J.rhip.rotation.x= this.pose===2?0.25:0; }
+    else { if(J.neck) J.neck.rotation.x=s*0.08; if(J.tail1) J.tail1.rotation.y=Math.sin(this.t*4)*0.4; }
+    if(f.exprT>0){ f.exprT-=dt; if(f.exprT<=0) f.expr='face_smile'; } f.blink = (this.t%3.7)<0.12 ? 1 : 0;
+    f.yaw=this.yaw; f.pos.y=hy; if(M.glb) syncGLB(f); else { f.root.position.copy(f.pos); f.root.rotation.set(0,f.yaw,0); }
+    if(this.frameNow){ f.pos.y=0; const y0=f.yaw; f.yaw=0; if(M.glb) syncGLB(f); else f.root.rotation.set(0,0,0); frameModel(this.cam, M.root, 'full', this.cam.aspect); f.yaw=y0; this.frameNow=false; }
+    this.r.render(this.stage.scene, this.cam); },
+};
+const Thumbs = { r:null, stage:null, cam:null, canvas:null, cache:new Map(), queue:[], pending:new Map(), busy:false,
+  init(){ if(this.r) return true; try{ this.canvas=document.createElement('canvas'); this.canvas.width=this.canvas.height=128; this.r=new THREE.WebGLRenderer({ canvas:this.canvas, antialias:true, alpha:true, preserveDrawingBuffer:true }); }catch(e){ this.r=null; return false; }
+    this.r.setSize(128,128,false); this.r.outputColorSpace=THREE.SRGBColorSpace; this.r.toneMapping=THREE.ACESFilmicToneMapping; this.stage=previewStage(this.r); this.stage.plate.visible=false; this.stage.scene.children.filter(o=>o.isMesh&&o!==this.stage.plate).forEach(o=>o.visible=false); this.cam=new THREE.PerspectiveCamera(28,1,0.1,200); return true; },
+  key(rc,mode){ return 't'+hashStr(JSON.stringify(rc)+mode+Bodies.ready).toString(36); },
+  img(rc, mode='full', cls=''){ const k=this.key(rc,mode); const src=this.cache.get(k); if(!src && !this.pending.has(k)){ this.pending.set(k,{rc,mode}); this.queue.push(k); this.pump(); }
+    return `<img class="thumb ${cls}" data-tk="${k}" alt="" ${src?`src="${src}"`:''}>`; },
+  pump(){ if(this.busy) return; this.busy=true; const step=()=>{ const t0=performance.now(); while(this.queue.length && performance.now()-t0<14){ const k=this.queue.shift(); const job=this.pending.get(k); this.pending.delete(k); if(job) this.render(k,job); } if(this.queue.length) requestAnimationFrame(step); else this.busy=false; }; requestAnimationFrame(step); },
+  render(k,{rc,mode}){ if(!this.init()) return; let M; try{ M=previewModel(rc); }catch(e){ return; } M.f.yaw=0.45; if(M.glb) syncGLB(M.f); else M.root.rotation.y=0.45;
+    this.stage.scene.add(M.root); frameModel(this.cam, M.root, mode); this.r.render(this.stage.scene,this.cam); const url=this.canvas.toDataURL('image/png'); this.stage.scene.remove(M.root);
+    this.cache.set(k,url); document.querySelectorAll(`img[data-tk="${k}"]`).forEach(i=>i.src=url); },
+};
+const QUICK_SCHEMES = [ ['Harbour',{torso:'blue',legs:'dark_blue',accent:'yellow',hair:'dark_brown'}], ['Ember',{torso:'red',legs:'black',accent:'orange',hair:'black'}], ['Forest',{torso:'green',legs:'brown',accent:'tan',hair:'dark_brown'}],
+  ['Royal',{torso:'purple',legs:'dark_blue',accent:'gold',hair:'yellow'}], ['Snow',{torso:'white',legs:'light_grey',accent:'sky_blue',hair:'white'}], ['Desert',{torso:'tan',legs:'brown',accent:'dark_red',hair:'black'}],
+  ['Candy',{torso:'pink',legs:'lavender',accent:'magenta',hair:'yellow'}], ['Night',{torso:'black',legs:'dark_grey',accent:'silver',hair:'dark_grey'}], ['Sunny',{torso:'yellow',legs:'orange',accent:'red',hair:'brown'}], ['Sea',{torso:'light_blue',legs:'blue',accent:'white',hair:'sand_green'}] ];
+const SLOT_LABEL = { body:'Skin / fur', torso:'Top', legs:'Legs', accent:'Accent', hair:'Hair' };
+const PART_LABEL = { none:'None', short:'Short', long:'Long', spiky:'Spiky', bun:'Bun', ears_round:'Round ears', ears_pointy:'Pointy ears', ears_long:'Long ears', helmet_kettle:'Knight helm', helmet_visor:'Visor helmet', hat_bicorne:'Bicorne', hat_tricorn:'Tricorn', hat_cap:'Cap', hat_headband:'Bandana', hat_wrap:'Desert wrap', hat_pith:'Explorer hat', hat_straw:'Straw hat', hat_chef:'Chef hat', hat_hardhat:'Hard hat', hat_hood:'Hood', helmet_racing:'Racing helmet', crown:'Crown', fishbowl:'Fishbowl',
+  plain:'Plain', outfit_vest:'Jacket', outfit_armor:'Armour', outfit_suit:'Suit', outfit_robe:'Robe', outfit_apron:'Apron', cloak:'Cloak', backpack:'Backpack', saddle:'Saddle', jetpack:'Jetpack', quiver:'Quiver', fur_stripes:'Stripes', fur_spots:'Spots', fur_patch:'Patches' };
+const plabel = v=>PART_LABEL[v]||(v[0].toUpperCase()+v.slice(1)).replace(/_/g,' ');
+function creatorEdit(fn){ const rc=RT.editRecipe; (RT.editUndo||(RT.editUndo=[])).push(JSON.stringify(rc)); if(RT.editUndo.length>40) RT.editUndo.shift(); const n={...rc, colors:{...rc.colors}}; fn(n); delete n.design; RT.editRecipe=n; }
+function surpriseRecipe(){ const R=Math.random; const s=pick(R,PLAYABLE_SPECIES); const sp=SPECIES[s]; const rc=defaultRecipe(s); const nice=COLOR_NAMES.filter(c=>!c.startsWith('trans_'));
+  const sch=pick(R,QUICK_SCHEMES)[1]; rc.colors={ ...rc.colors, ...sch, body: sp.plan==='biped'&&s==='human' ? pick(R,['tan','cream','brown','dark_brown','yellow','light_grey']) : (R()<0.6?sp.colors[0]:pick(R,nice)) };
+  if(sp.plan==='biped'){ rc.hair=pick(R,['short','long','spiky','bun','none']); rc.hat=R()<0.5?'none':pick(R,CHAR_PARTS.hat.slice(1,-1)); rc.torso=pick(R,CHAR_PARTS.torso); rc.cape=R()<0.3?pick(R,['short','long','cloak']):'none'; rc.held=pick(R,CHAR_PARTS.held.slice(1)); rc.back=R()<0.2?pick(R,['backpack','jetpack','quiver']):'none'; }
+  else { rc.hat=R()<0.25?pick(R,['crown','hat_cap','hat_headband','hat_straw']):'none'; rc.pattern=pick(R,CHAR_PARTS.pattern); }
+  rc.size=R()<0.7?'standard':pick(R,['small','big']); return rc; }
+const CREATOR_TABS = [['looks','Looks'],['body','Body'],['colours','Colours'],['outfit','Outfit'],['gear','Gear'],['saved','Saved & share']];
+Menu.pages.creator = ()=>{ const rc=RT.editRecipe||(RT.editRecipe={...RT.world.player.recipe, colors:{...RT.world.player.recipe.colors}}); const sp=SPECIES[rc.species]; const tab=RT.creatorTab||(RT.creatorTab='looks');
+  if(RT.editName==null) RT.editName=RT.world.player.name;
+  const card=(act,arg,on,img,label,sub='')=>`<button class="ccard ${on?'on':''}" data-act="${act}" data-arg="${esc(arg)}">${img}<span>${esc(label)}</span>${sub?`<small>${esc(sub)}</small>`:''}</button>`;
+  const partCards=(k,list,mode)=>`<div class="cgrid">${list.map(v=>card('part',`${k}:${v}`,rc[k]===v,Thumbs.img({...rc,[k]:v},mode),plabel(v))).join('')}</div>`;
+  let body='';
+  if(tab==='looks'){ const presets=Object.values(RT.assets.characters||{}).filter(c=>c.group==='Playable species presets'||c.group==='Superheroes'||c.group==='Companions').slice(0,24);
+    RT.surprises=RT.surprises||[surpriseRecipe(),surpriseRecipe(),surpriseRecipe(),surpriseRecipe()];
+    body=`<p class="hint">Pick a look to start from, then tweak it in the other tabs.</p><h3>Surprise looks <button class="small" data-act="reroll">New ideas</button></h3><div class="cgrid">${RT.surprises.map((r,i)=>card('surprise',i,false,Thumbs.img(r),SPECIES[r.species].name)).join('')}</div>
+    ${presets.length?`<h3>From the design kit</h3><div class="cgrid">${presets.map(c=>{ const r=designRecipe(c); if(!SPECIES[r.species]?.playable) r.species='human'; return card('preset',c.id,rc.design===c.id,Thumbs.img(r),c.name); }).join('')}</div>`:''}`; }
+  else if(tab==='body'){ body=`<h3>Species</h3><div class="cgrid">${PLAYABLE_SPECIES.map(s=>card('species',s,rc.species===s,Thumbs.img(speciesSwap(rc,s)),SPECIES[s].name,SPECIES[s].traitText)).join('')}</div>
+    <h3>Size</h3><div class="cgrid">${['small','standard','big'].map(z=>card('part',`size:${z}`,rc.size===z,Thumbs.img({...rc,size:z},'fixed'),plabel(z), z==='small'?'Nimble, fits small gaps':z==='big'?'Tough, hits harder':'Balanced')).join('')}</div>`; }
+  else if(tab==='colours'){ const slot=RT.colourSlot||'torso';
+    body=`<h3>Quick schemes</h3><div class="cgrid">${QUICK_SCHEMES.map(([n,s])=>`<button class="ccard scheme" data-act="scheme" data-arg="${n}">${['torso','legs','accent','hair'].map(k=>`<i style="background:${PALETTE[s[k]]}"></i>`).join('')}<span>${n}</span></button>`).join('')}</div>
+    <h3>Fine-tune</h3><div class="tabs">${Object.entries(SLOT_LABEL).map(([k,l])=>`<button class="${slot===k?'on':''}" data-act="cslot" data-arg="${k}"><i class="dot" style="background:${PALETTE[rc.colors[k]]||'#fff'}"></i>${l}</button>`).join('')}</div>
+    <div class="pal">${COLOR_NAMES.map(c=>`<span class="sw ${rc.colors[slot]===c?'on':''}" title="${c.replace(/_/g,' ')}" style="background:${PALETTE[c]}" data-act="col" data-arg="${slot}:${c}"></span>`).join('')}</div>`; }
+  else if(tab==='outfit'){ const biped=sp.plan==='biped'; body = biped ? `<h3>Hair</h3>${partCards('hair',CHAR_PARTS.hair.filter(h=>!h.startsWith('ears')),'head')}<h3>Hat</h3>${partCards('hat',CHAR_PARTS.hat,'head')}<h3>Top</h3>${partCards('torso',CHAR_PARTS.torso)}<h3>Cape</h3>${partCards('cape',CHAR_PARTS.cape)}`
+      : `<h3>Ears</h3>${partCards('hair',['none','ears_round','ears_pointy','ears_long'],'head')}<h3>Hat</h3>${partCards('hat',['none','crown','hat_cap','hat_headband','hat_straw','hat_chef','helmet_kettle'],'head')}<h3>Fur pattern</h3>${partCards('pattern',CHAR_PARTS.pattern)}`; }
+  else if(tab==='gear'){ body = sp.plan==='biped' ? `<h3>Held</h3>${partCards('held',CHAR_PARTS.held)}<h3>On your back</h3>${partCards('back',CHAR_PARTS.back.filter(b=>b!=='saddle'))}` : `<p class="hint">Animals fight with tooth and claw — but they can carry a saddle so a friend can ride.</p><h3>On your back</h3>${partCards('back',['none','saddle','backpack'])}`; }
+  else if(tab==='saved'){ const chars=RT.world.player.characters;
+    body=`<div class="row"><button data-act="saveChar">Save this look</button></div>${chars.length?`<div class="cgrid">${chars.map((c,i)=>`<div class="cwrap">${card('loadChar',i,false,Thumbs.img(c),c.name||SPECIES[c.species].name)}<button class="small x" data-act="delChar" data-arg="${i}" title="Delete">✕</button></div>`).join('')}</div>`:'<p class="hint">Looks you save appear here.</p>'}
+    <h3>Share</h3><p class="hint">Copy this code to share your look, or paste a friend's code and press Import.</p><div class="row"><input id="ccode" style="flex:1" value="${encodeCharacter(rc)}"><button data-act="copyCode">Copy</button><button data-act="importChar">Import</button></div>`; }
+  return `<div class="cre"><div class="cleft"><div id="cprevSlot"></div>
+    <div class="ctools"><button data-act="randomChar" title="Random look">🎲 Surprise me</button><button data-act="undoChar" ${RT.editUndo?.length?'':'disabled'}>↶ Undo</button><button data-act="poseChar">${['Wave','Ready','Relax'][Preview.pose]}</button></div>
+    <p class="hint center">Drag to turn · double-click to spin</p>
+    <div class="cname"><input id="pname" value="${esc(RT.editName)}" maxlength="20" placeholder="Your name"></div>
+    <div class="csum"><b>${esc(sp.name)}</b> — ${esc(sp.traitText)}</div>
+    <button class="go" data-act="applyChar">Become this! ✓</button></div>
+  <div class="cright" data-keepscroll="1"><h2>The mirror</h2><div class="tabs">${CREATOR_TABS.map(([k,l])=>`<button class="${tab===k?'on':''}" data-act="ctab" data-arg="${k}">${l}</button>`).join('')}</div>${body}</div></div>`; };
+Menu.after.creator = ()=>{ Preview.attach($('cprevSlot'), RT.editRecipe); const n=$('pname'); if(n) n.oninput=()=>{ RT.editName=n.value; }; };
+function speciesSwap(rc,s){ const d=defaultRecipe(s), sp=SPECIES[s], biped=sp.plan==='biped'; return { ...d, size:rc.size, colors:{ ...rc.colors, body:(SPECIES[rc.species].colors[0]===rc.colors.body||!biped)?sp.colors[0]:rc.colors.body },
+  hair: biped ? (rc.hair?.startsWith('ears')?d.hair:rc.hair) : d.hair, hat: biped||!rc.hat?.startsWith('helmet_visor') ? (biped?rc.hat:d.hat) : d.hat, torso: biped?rc.torso:d.torso, cape: biped?rc.cape:'none', held: biped?(rc.held==='none'?d.held:rc.held):'none', back: biped?rc.back:'none' }; }
+Menu.acts.ctab = t=>{ RT.creatorTab=t; RT.keepScroll=0; };
+Menu.acts.species = s=>creatorEdit(n=>Object.assign(n, speciesSwap(n,s)));
+Menu.acts.col = a=>{ const [slot,c]=a.split(':'); creatorEdit(n=>{ n.colors[slot]=c; }); };
+Menu.acts.cslot = s=>{ RT.colourSlot=s; };
+Menu.acts.scheme = name=>{ const s=QUICK_SCHEMES.find(q=>q[0]===name)?.[1]; if(s) creatorEdit(n=>{ Object.assign(n.colors,s); }); };
+Menu.acts.part = a=>{ const [k,v]=a.split(':'); creatorEdit(n=>{ n[k]=v; if(k==='hair'&&v!=='none'&&n.hat==='fishbowl') n.hat='none'; }); };
+Menu.acts.randomChar = ()=>{ const r=surpriseRecipe(); creatorEdit(n=>{ for(const k of Object.keys(n)) delete n[k]; Object.assign(n,r); }); };
+Menu.acts.reroll = ()=>{ RT.surprises=[surpriseRecipe(),surpriseRecipe(),surpriseRecipe(),surpriseRecipe()]; };
+Menu.acts.surprise = i=>{ const r=RT.surprises?.[+i]; if(r) creatorEdit(n=>{ for(const k of Object.keys(n)) delete n[k]; Object.assign(n,JSON.parse(JSON.stringify(r))); }); };
+Menu.acts.undoChar = ()=>{ const s=RT.editUndo?.pop(); if(s) RT.editRecipe=JSON.parse(s); };
+Menu.acts.poseChar = ()=>{ Preview.pose=(Preview.pose+1)%3; };
+Menu.acts.applyChar = ()=>{ const n=(RT.editName||'').trim(); if(n) RT.world.player.name=n.slice(0,20); applyPlayerRecipe(RT.editRecipe); RT.editUndo=[]; RT.editName=null; toast(`You are now ${RT.world.player.name} the ${SPECIES[RT.editRecipe.species].name}!`); RT.editRecipe=null; saveGame(); Menu.close(); };
+Menu.acts.saveChar = ()=>{ RT.world.player.characters.push({...RT.editRecipe, name:(RT.editName||RT.world.player.name)}); toast('Look saved.'); };
+Menu.acts.delChar = i=>{ RT.world.player.characters.splice(+i,1); };
+Menu.acts.loadChar = i=>{ const c=RT.world.player.characters[+i]; if(c) creatorEdit(n=>{ for(const k of Object.keys(n)) delete n[k]; Object.assign(n,JSON.parse(JSON.stringify(c))); }); };
+Menu.acts.copyCode = ()=>{ const v=$('ccode')?.value||''; try{ navigator.clipboard.writeText(v); toast('Code copied.'); }catch(e){ $('ccode')?.select(); } };
+Menu.acts.importChar = ()=>{ const r=decodeCharacter($('ccode').value.trim()); if(!r.ok) toast('Import failed: '+r.error); else { creatorEdit(n=>{ for(const k of Object.keys(n)) delete n[k]; Object.assign(n,r.recipe); }); toast('Look imported.'); } };
+Menu.acts.preset = id=>{ const c=RT.assets.characters[id]||Object.values(RT.assets.characters).find(x=>x.id===id); if(c){ const r=designRecipe(c); if(!SPECIES[r.species]?.playable) r.species='human'; (RT.editUndo||(RT.editUndo=[])).push(JSON.stringify(RT.editRecipe)); RT.editRecipe=r; if(c.name && (!RT.editName||RT.editName===RT.world.player.name)) RT.editName=c.name; } };
 function applyPlayerRecipe(rc){ const W=RT.world; W.player.recipe={...rc}; W.player.species=rc.species; const pl=RT.players[0]; const old=pl.fig; const f=new Figure(rc,{team:'player',name:W.player.name}); f.pos.copy(old.pos); f.yaw=old.yaw; f.isPlayer=true; f.controller=pl.ctrl;
   if(old.glb) scene.remove(old.glb.root); old.alive=false; RT.figures[RT.figures.indexOf(old)]=f; pl.fig=f; if(old.mount) { f.mount=old.mount; old.mount.rider=f; } const w = rc.held&&rc.held!=='none' ? rc.held : (f.plan==='biped'?'sword':'natural'); equipWeapon(f, W.player.gearUnlocks.includes('lumen_blade') && W.player.equipBlade ? 'lumen' : w); }
 
@@ -3607,11 +3728,46 @@ const Jobs = {
 };
 
 // §SAVE (runtime) -------------------------------------------------------------
-const MEM = {}; const SAVE_KEY = QS.has('creative') ? 'everbrick.creative' : 'everbrick.save'; RT.creative = QS.has('creative');
+const MEM = {}; let SAVE_KEY = QS.has('creative') ? 'everbrick.creative' : 'everbrick.save'; RT.creative = QS.has('creative');
 function storeGet(k){ try{ const v=localStorage.getItem(k); if(v!==null) return v; }catch(e){} return MEM[k]??null; }
 function storeSet(k,v){ MEM[k]=v; try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
-function saveGame(){ const W=RT.world; const f=RT.players[0]?.fig; if(f) W.player.pos=[+f.pos.x.toFixed(1),+f.pos.y.toFixed(1),+f.pos.z.toFixed(1)]; W.player.inSpace=!!RT.inSpace; const s=saveToString(W); storeSet(SAVE_KEY,s); RT.lastSave=RT.time; return s.length; }
-Menu.pages.save = ()=>`<h2>Save & settings</h2><div class="row"><button data-act="saveNow">Save now</button><button data-act="exportSave">Export JSON</button><button data-act="importSave">Import JSON</button><button data-act="newWorldPrompt">New world…</button></div>
+function saveGame(){ const W=RT.world; const f=RT.players[0]?.fig; if(f) W.player.pos=[+f.pos.x.toFixed(1),+f.pos.y.toFixed(1),+f.pos.z.toFixed(1)]; W.player.inSpace=!!RT.inSpace; const s=saveToString(W); storeSet(SAVE_KEY,s); Profiles.touch(W); RT.lastSave=RT.time; return s.length; }
+// §PROFILES — several players on one device, each with their own character and world
+const Profiles = { KEY:'everbrick.profiles', MAX:8,
+  read(){ let d=null; try{ d=JSON.parse(storeGet(this.KEY)||'null'); }catch(e){} if(!d||!Array.isArray(d.list)) d={ list:[], current:null };
+    if(!d.list.length){ const legacy=storeGet('everbrick.save'); if(legacy){ const id='p1'; storeSet(this.key(id),legacy); let meta={}; try{ meta=this.metaOf(loadFromString(legacy)); }catch(e){} d.list.push({ id, created:Date.now(), ...meta, name:meta.name||'Player 1' }); d.current=id; this.write(d); } }
+    return d; },
+  write(d){ storeSet(this.KEY, JSON.stringify(d)); },
+  key(id){ return 'everbrick.save.'+id; },
+  get(id){ return this.read().list.find(p=>p.id===id)||null; },
+  metaOf(w){ const P=w.player; return { name:P.name, recipe:P.recipe, day:Math.floor(w.day||0)+1, pips:P.pips|0, titles:(P.titles||[]).length, last:Date.now() }; },
+  create(name){ const d=this.read(); const id='p'+Date.now().toString(36)+(Math.random()*1e4|0).toString(36); d.list.push({ id, name:(name||`Player ${d.list.length+1}`).slice(0,20), created:Date.now(), last:Date.now(), fresh:true }); d.current=id; this.write(d); return id; },
+  remove(id){ const d=this.read(); d.list=d.list.filter(p=>p.id!==id); if(d.current===id) d.current=d.list[0]?.id||null; this.write(d); storeSet(this.key(id),''); try{ localStorage.removeItem(this.key(id)); }catch(e){} },
+  rename(id,name){ const d=this.read(); const p=d.list.find(x=>x.id===id); if(p&&name){ p.name=name.slice(0,20); this.write(d); } },
+  use(id){ const d=this.read(); d.current=id; this.write(d); },
+  touch(w){ if(RT.creative||!RT.profile) return; const d=this.read(); const p=d.list.find(x=>x.id===RT.profile); if(!p) return; Object.assign(p,this.metaOf(w)); delete p.fresh; this.write(d); },
+  ago(t){ if(!t) return ''; const s=(Date.now()-t)/1000; return s<90?'just now': s<3600?`${Math.round(s/60)} min ago`: s<86400?`${Math.round(s/3600)} h ago`:`${Math.round(s/86400)} days ago`; },
+  async choose(){ // returns the profile id to play
+    const d=this.read(); const want=QS.get('profile');
+    if(want && d.list.some(p=>p.id===want)){ this.use(want); return want; }
+    if(QS.has('auto')||QS.has('bench')||QS.has('new')||want==='new'){ if(d.current && !want) return d.current; return this.create(); }
+    if(!d.list.length) return this.create('Player 1');
+    $('loading').style.display='none'; $('menu').classList.add('boot');
+    const id = await new Promise(res=>{ RT.profilePick=res; Menu.open('profiles',{ boot:true, noClose:true }); });
+    RT.profilePick=null; Menu.close(); $('menu').classList.remove('boot'); $('loading').style.display='flex'; return id; },
+};
+Menu.pages.profiles = (ctx)=>{ const d=Profiles.read(); const cur=RT.profile;
+  const cards=d.list.map(p=>{ const sp=SPECIES[p.recipe?.species]; return `<div class="pcard ${p.id===cur?'on':''}"><button class="pplay" data-act="pPlay" data-arg="${p.id}">${p.recipe?Thumbs.img(p.recipe):'<div class="thumb empty">?</div>'}<b>${esc(p.name||'Player')}</b>
+    <small>${p.fresh||!sp?'New adventure':`${esc(sp.name)} · day ${p.day||1} · ${p.pips||0} pips`}</small><small>${p.id===cur?'Playing now':esc(Profiles.ago(p.last))}</small></button>
+    <div class="row center"><button class="small" data-act="pRename" data-arg="${p.id}">Rename</button>${p.id===cur?'':`<button class="small" data-act="pDelete" data-arg="${p.id}">Delete</button>`}</div></div>`; }).join('');
+  return `<h2>${ctx.boot?'Who is playing?':'Profiles'}</h2><p class="hint">Each profile has its own character, world and progress.</p><div class="pgrid">${cards}
+  ${d.list.length<Profiles.MAX?`<div class="pcard"><button class="pplay new" data-act="pNew"><div class="thumb empty">+</div><b>New profile</b><small>Make a new character</small></button></div>`:''}</div>`; };
+Menu.acts.pPlay = id=>{ if(RT.profilePick){ Profiles.use(id); RT.profilePick(id); return; } if(id===RT.profile){ Menu.close(); return; } saveGame(); Profiles.use(id); location.href=location.pathname+'?profile='+encodeURIComponent(id); };
+Menu.acts.pNew = ()=>{ const name=prompt('Name for the new profile?', `Player ${Profiles.read().list.length+1}`); if(name===null) return; const id=Profiles.create(name.trim()||undefined); if(RT.profilePick){ RT.profilePick(id); return; } saveGame(); location.href=location.pathname+'?profile='+encodeURIComponent(id); };
+Menu.acts.pRename = id=>{ const p=Profiles.get(id); const name=prompt('New name?', p?.name||''); if(name&&name.trim()){ Profiles.rename(id,name.trim()); if(id===RT.profile && RT.world){ RT.world.player.name=name.trim().slice(0,20); const f=RT.players[0]?.fig; if(f) f.name=RT.world.player.name; } } };
+Menu.acts.pDelete = id=>{ const p=Profiles.get(id); if(p && confirm(`Delete ${p.name}'s profile and world? This can't be undone.`)) Profiles.remove(id); };
+
+Menu.pages.save = ()=>`<h2>Save & settings</h2><div class="row"><button data-act="saveNow">Save now</button><button data-act="exportSave">Export JSON</button><button data-act="importSave">Import JSON</button><button data-act="newWorldPrompt">New world…</button><button data-act="go" data-arg="profiles">Switch profile…</button></div>
   <textarea id="saveText" style="width:100%;height:90px" placeholder="Exported or pasted save JSON appears here"></textarea>
   <h3>Settings</h3><div class="row"><button class="${CONFIG.shadows?'on':''}" data-act="toggle" data-arg="shadows">Shadows</button><button class="${CONFIG.bloom?'on':''}" data-act="toggle" data-arg="bloom">Bloom</button><button class="${CONFIG.tiltShift?'on':''}" data-act="toggle" data-arg="tiltShift">Tilt-shift</button><button class="${CONFIG.stopMotion?'on':''}" data-act="toggle" data-arg="stopMotion">Stop-motion (12 fps poses)</button><button class="${Audio.musicOn?'on':''}" data-act="toggle" data-arg="music">Music</button></div>
   <p>Save size: ${(storeGet(SAVE_KEY)||'').length} chars. Version ${SAVE_VERSION}${RT.world._migrated?.length?` (migrated ${RT.world._migrated.join(', ')})`:''}.</p>`;
@@ -4314,11 +4470,13 @@ async function boot(){
   const t0=performance.now();
   await Promise.race([loadAssets(), new Promise(r=>setTimeout(r,4000))]); // never block start-up on slow assets
   status('unpacking the realm kits and pieces…'); await Promise.race([Promise.all([RT.assets.modelsReady||Promise.resolve(), PieceGLB.load()]), new Promise(r=>setTimeout(r,9000))]);
-  Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init(); Bodies.load();
+  Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init(); const bodiesP=Bodies.load();
+  if(!RT.creative){ status('finding your profiles…'); if(Profiles.read().list.length>0 && !QS.has('profile') && !QS.has('auto') && !QS.has('bench')) await Promise.race([bodiesP, new Promise(r=>setTimeout(r,5000))]);
+    RT.profile=await Profiles.choose(); SAVE_KEY=Profiles.key(RT.profile); }
   status('building the world…');
   let world=null; const saved=QS.has('new')?null:storeGet(SAVE_KEY);
   if(saved){ try{ world=loadFromString(saved); }catch(e){ console.warn('save load failed',e); } }
-  const isNew=!world; if(!world){ let ns={}; try{ ns=JSON.parse(storeGet('everbrick.newsettings')||'{}')||{}; }catch(e){} world=newWorld(RT.creative?CONFIG.seed+1:(ns.seed||CONFIG.seed), ns); world.day=0.3; if(RT.creative){ world.player.pips=999999; world.player.name='Creator'; } } if(QS.has('time')) world.day=Math.floor(world.day)+(+QS.get('time'))/24;
+  const isNew=!world; if(!world){ let ns={}; try{ ns=JSON.parse(storeGet('everbrick.newsettings')||'{}')||{}; }catch(e){} world=newWorld(RT.creative?CONFIG.seed+1:(ns.seed||CONFIG.seed), ns); world.day=0.3; if(RT.creative){ world.player.pips=999999; world.player.name='Creator'; } else { const pr=Profiles.get(RT.profile); if(pr?.name) world.player.name=pr.name; } } if(QS.has('time')) world.day=Math.floor(world.day)+(+QS.get('time'))/24;
   RT.world=world; RT.terrain=makeTerrain(world.map);
   if(!world.player.recipe) world.player.recipe={...defaultRecipe('human'), colors:{body:'tan',torso:'red',legs:'dark_blue',accent:'yellow',hair:'brown'}};
   const f=new Figure(world.player.recipe,{team:'player',name:world.player.name}); f.isPlayer=true; RT.figures.push(f);
@@ -4356,7 +4514,7 @@ function loop(now){
 function simStep(dt){
   RT.dt=dt; RT.time+=dt; const W=RT.world;
   // global keys
-  if(Input.hit('Escape')){ if(RT.menuOpen) Menu.close(); else if(BuildMode.on) BuildMode.toggle(RT.players[0]); else if(RT.mode==='PHOTO') Photo.toggle(); else Menu.open('main'); }
+  if(Input.hit('Escape')){ if(RT.menuOpen){ if(!RT.menuCtx?.noClose) Menu.close(); } else if(BuildMode.on) BuildMode.toggle(RT.players[0]); else if(RT.mode==='PHOTO') Photo.toggle(); else Menu.open('main'); }
   if(!RT.menuOpen){ if(Input.hit('F1')) Menu.open('help'); if(!BuildMode.on){ if(Input.hit('KeyM')) Menu.open('map'); if(Input.hit('KeyJ')) Menu.open('jobs'); if(Input.hit('KeyK')) Menu.open('careers'); if(Input.hit('KeyP')) Photo.toggle(); if(Input.hit('Enter')) RT.players.length>1?removePlayer2():addPlayer2(); if(Input.hit('KeyO')) Menu.open('companions'); } }
   if(Input.pads.length>1 && RT.players.length<2 && Input.pads[1].buttons[9]?.pressed) addPlayer2();
   if(RT.mode==='PHOTO'){ Photo.update(dt); return; }
