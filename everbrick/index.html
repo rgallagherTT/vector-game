@@ -124,7 +124,7 @@ const CONFIG = {
   worldRadius: 4200,       // studs; ~20 minutes on foot across
   seaRadius: 1150,
   seaLevel: 6,             // plates
-  walkSpeed: 4.2, runSpeed: 7, sprintSpeed: 10.5, jumpVel: 9.5, gravity: 30,
+  walkSpeed: 6.5, runSpeed: 12, sprintSpeed: 18, jumpVel: 11, gravity: 32,
   stepUp: 3,               // plates a figure steps up without jumping
   dayLength: 900,          // real seconds per in-game day
   daysPerSeason: 14,
@@ -2203,6 +2203,13 @@ function collapseBrick(s, uid){ // hide a merged brick instantly by collapsing i
   for(const [k,mk] of [['o','opaque'],['t','trans'],['g','glow']]){ const [st,c]=r[k]; const m=s.meshes[mk]; if(!m||!c) continue; const pa=m.geometry.attributes.position; for(let i=st;i<st+c;i++) pa.setXYZ(i,0,-9999,0); pa.needsUpdate=true; }
 }
 
+// carts and caravans trundle along the roads between towns
+const RoadLife = { t:0, update(dt){ this.t+=dt; if(this.t<6) return; this.t=0; const p0=RT.players[0].fig; if(RT.inSpace) return; const carts=Vehicles.list.filter(v=>v.cart && v.alive);
+  for(const c of carts) if(c.pos.distanceTo(p0.pos)>260){ c.alive=false; scene.remove(c.group); }
+  if(carts.length>=3) return; let best=null, bd=120; for(const r of RT.world.map.roads){ const d=distToSeg(p0.pos.x,p0.pos.z,r[0],r[1],r[2],r[3]); if(d<bd){ bd=d; best=r; } } if(!best) return;
+  const m=RT.assets.models[pick(Math.random,['farm_cart','truck_delivery','carriage_royal','farm_cart'])]; if(!m) return; const k=Math.random(); const x=lerp(best[0],best[2],k), z=lerp(best[1],best[3],k); if(Math.hypot(x-p0.pos.x,z-p0.pos.z)<30) return;
+  const dirTo = Math.random()<0.5 ? [best[2],best[3]] : [best[0],best[1]]; const v=Vehicles.spawnModel(m,new THREE.Vector3(x,surfaceY(x,z),z),Math.atan2(-(dirTo[0]-x),-(dirTo[1]-z)),{team:'neutral',name:m.id.replace(/_/g,' ')}); v.cart=true;
+  v.ai=(vv)=>{ const to=new THREE.Vector3(dirTo[0]-vv.pos.x,0,dirTo[1]-vv.pos.z); if(to.length()<10){ vv.alive=false; scene.remove(vv.group); return {keys:{}}; } const want=Math.atan2(-to.x,-to.z); const dy=((want-vv.yaw+Math.PI*3)%(Math.PI*2))-Math.PI; const blocked=RT.figures.some(o=>!o.ko && o.pos.distanceTo(vv.pos.clone().addScaledVector(vv.fwd(),5))<3); return { keys:{ left:dy>0.05, right:dy<-0.05, up:!blocked && Math.abs(vv.speed)<7 } }; }; } };
 // §STREAM ---------------------------------------------------------------------
 // Sectors stream around the players; content is generated deterministically; meshing runs in budgeted slices.
 const TownLayouts = new Map();
@@ -3031,7 +3038,8 @@ class AIController {
     if(this.calm>0){ this.calm-=RT.dt; if(this.calm<=0 && f.team==='enemy') this.brain='wander'; return it; }
     if(this.fear>0){ this.fear-=RT.dt; const p=nearestPlayer(f); if(p) go(f.pos.x*2-p.pos.x, f.pos.z*2-p.pos.z, 1); return it; }
     switch(this.brain){
-      case 'wander': case 'townsfolk': { if(this.t<=0){ this.t=2+Math.random()*5; const r=this.o.radius||20; this.wp = new THREE.Vector3(this.home.x+(Math.random()-.5)*r*2, 0, this.home.z+(Math.random()-.5)*r*2); if(this.brain==='townsfolk' && Math.random()<0.25) this.wp=null; }
+      case 'wander': case 'townsfolk': { if(f.guard && RT.frame%20===0){ const foe=nearestFoe(f,18); if(foe){ this.brain='fight'; this.target=foe; this.prevBrain='wander'; break; } }
+        if(this.t<=0){ this.t=2+Math.random()*5; const r=this.o.radius||20; this.wp = new THREE.Vector3(this.home.x+(Math.random()-.5)*r*2, 0, this.home.z+(Math.random()-.5)*r*2); if(this.brain==='townsfolk' && Math.random()<0.25) this.wp=null; }
         if(this.wp){ const d=go(this.wp.x,this.wp.z,0.35); if(d<1) this.wp=null; }
         const p=nearestPlayer(f);
         if(p && this.brain==='townsfolk' && p.pos.distanceTo(f.pos)<5 && !f.emote && Math.random()<0.006){ f.emote={name:'wave',t:0,dur:1.2}; f.yaw=Math.atan2(p.pos.x-f.pos.x,p.pos.z-f.pos.z); f.expr='face_grin'; f.exprT=1.5; Audio.voice(f.sp.voice); }
@@ -3062,7 +3070,7 @@ class AIController {
   }
 }
 function nearestPlayer(f){ let best=null, bd=1e9; for(const p of RT.players){ const g=p.fig; if(!g||g.ko) continue; const d=g.pos.distanceTo(f.pos); if(d<bd){ bd=d; best=g; } } return best; }
-function hostile(a,b){ if(a===b||!a||!b) return false; if(a.team===b.team) return false; if(a.angry===b||b.angry===a) return true; if(a.team==='neutral'||b.team==='neutral'||a.team==='wild'||b.team==='wild') return !!(a.predator&&b.team!=='wild'||b.predator&&a.team!=='wild'); return true; }
+function hostile(a,b){ if(a===b||!a||!b) return false; if(a.team===b.team) return false; if((a.guard&&b.team==='enemy')||(b.guard&&a.team==='enemy')) return true; if(a.angry===b||b.angry===a) return true; if(a.team==='neutral'||b.team==='neutral'||a.team==='wild'||b.team==='wild') return !!(a.predator&&b.team!=='wild'||b.predator&&a.team!=='wild'); return true; }
 function nearestFoe(f, r){ let best=null, bd=r; for(const o of RT.figures){ if(o.ko||!o.alive||!hostile(f,o)) continue; const d=o.pos.distanceTo(f.pos); if(d<bd){ bd=d; best=o; } } return best; }
 // physics: voxel collision against bricks and terrain
 function blockedAt(x, y0, y1, z, r){ for(const ox of [-r,r]) for(const oz of [-r,r]){ const X=Math.floor(x+ox), Z=Math.floor(z+oz); for(let y=Math.floor(y0/PL); y<y1/PL; y+=1){ if(solidAt(X,y,Z)) return y*PL; } } return null; }
@@ -3079,9 +3087,9 @@ function moveFigure(f, it, dt){
   if(RT.realm==='ember' && f.isPlayer && f.recipe.torso==='outfit_armor') maxSpd*=0.8; // armour slows in the Ember heat
   if(f.swim) maxSpd *= (f.species==='shark'?2.4:f.species==='frog'?1.7:f.plan==='swimmer'?2:0.55);
   if(f.stun>0) maxSpd=0; if(f.action && f.action.A?.slot==='heavy' && f.action.t<f.action.A.cast) maxSpd*=0.2;
-  if(it.sprint && it.mag>0.1 && !f.swim) f.stamina=Math.max(0,f.stamina-dt*14); else f.stamina=Math.min(100,f.stamina+dt*(f.blocking?6:18));
+  if(it.sprint && it.mag>0.1 && !f.swim) f.stamina=Math.max(0,f.stamina-dt*8); else f.stamina=Math.min(100,f.stamina+dt*(f.blocking?6:18));
   const tx=it.mx*maxSpd*(it.mag||0), tz=it.mz*maxSpd*(it.mag||0);
-  const ice = RT.realm==='mistpeak' && f.pos.y>55*PL && f.onGround; const accel = f.onGround ? (ice?1.6:14) : 3.5;
+  const ice = RT.realm==='mistpeak' && f.pos.y>55*PL && f.onGround; const accel = f.onGround ? (ice?2:22) : 5;
   f.vel.x += (tx-f.vel.x)*Math.min(1,accel*dt); f.vel.z += (tz-f.vel.z)*Math.min(1,accel*dt);
   if(f.faceTarget){ f.yaw=lerpAngle(f.yaw,Math.atan2(f.faceTarget.pos.x-f.pos.x,f.faceTarget.pos.z-f.pos.z),Math.min(1,dt*10)); f.faceTarget=null; }
   else if(it.mag>0.05) f.yaw = lerpAngle(f.yaw, Math.atan2(it.mx,it.mz), Math.min(1,dt*12));
@@ -3157,7 +3165,7 @@ function forward(f){ return new THREE.Vector3(Math.sin(f.yaw),0,Math.cos(f.yaw))
 function fireAbility(f, A){
   const fwd=forward(f); const origin=f.pos.clone(); origin.y+=Math.min(f.height*0.55,4); const mult=(f.buffs.atk?.mul||1)*(f.debuffs?.atk?.mul||1)*(f.isPlayer?1+playerPowerMul():1)*(f.sp.boss?1.3:1);
   const targets=[]; const R=A.range*Math.max(1,f.scale*0.8);
-  if(A.t==='melee'||A.t==='cone'){ const cosA=A.t==='cone'?0.5:0.3; for(const o of RT.figures){ if(o===f||o.ko||!hostile(f,o)) continue; const d=o.pos.clone().sub(f.pos); const dy=d.y; d.y=0; const dist=d.length()-o.radius; if(dist>R || Math.abs(dy)>Math.max(4,o.height)) continue; d.normalize(); if(d.dot(fwd)<cosA && dist>0.8) continue; targets.push(o); } }
+  if(A.t==='melee'||A.t==='cone'){ const cosA=A.t==='cone'?0.5:0.3; for(const o of RT.figures){ if(o===f||o.ko||(!hostile(f,o) && !(f.isPlayer && o.team!=='player' && !o.isPlayer))) continue; const d=o.pos.clone().sub(f.pos); const dy=d.y; d.y=0; const dist=d.length()-o.radius; if(dist>R || Math.abs(dy)>Math.max(4,o.height)) continue; d.normalize(); if(d.dot(fwd)<cosA && dist>0.8) continue; targets.push(o); } }
   else if(A.t==='area'){ for(const o of RT.figures){ if(o===f||o.ko) continue; if(o.pos.distanceTo(f.pos)<A.radius*Math.max(1,f.scale*0.7) && hostile(f,o)) targets.push(o); } }
   else if(A.t==='target'){ const t=f.lockTarget||nearestInFront(f,R); if(t) targets.push(t); }
   else if(A.t==='projectile'){ const n=A.count||1; for(let i=0;i<n;i++){ const dir=fwd.clone(); if(f.isPlayer && RT.camAim) dir.copy(RT.camAim); const lt=f.lockTarget; if(lt){ dir.copy(lt.pos).add(new THREE.Vector3(0,lt.height*0.5,0)).sub(origin).normalize(); }
@@ -3182,7 +3190,11 @@ function fireAbility(f, A){
   if(A.vfx==='lumen'||A.vfx==='umbral'||A.vfx==='mind') FX.burst(A.vfx==='mind'?'magic':A.vfx,origin.x+fwd.x*2,origin.y,origin.z+fwd.z*2,10,5);
   if(A.tags.includes('blade') && f.bladeOn) for(let i=0;i<6;i++) FX.spawn('blade',origin.x+fwd.x*1.8,origin.y,origin.z+fwd.z*1.8,(Math.random()-.5)*4,(Math.random()-.5)*4,(Math.random()-.5)*4,f.bladeColor);
   if(A.t!=='projectile') Audio.whoosh();
+  if((A.t==='melee'||A.t==='cone') && f.weapon!=='natural'){ // a brick slash trail sweeps across the swing
+    const right=new THREE.Vector3(fwd.z,0,-fwd.x); const col=f.bladeOn&&f.bladeColor?f.bladeColor:COLORS.white; const sweep=A.slot==='heavy'?1.4:1;
+    for(let i=0;i<9;i++){ const a=(i/8-0.5)*2.2*sweep; const p=origin.clone().addScaledVector(fwd,Math.cos(a)*R*0.75).addScaledVector(right,Math.sin(a)*R*0.75); p.y+= (A.anim==='overhead'||A.anim==='slam') ? (1-i/8)*2 : (i/8-0.5)*0.6; FX.spawn(f.bladeOn?'blade':'hit',p.x,p.y,p.z,fwd.x*2,0,fwd.z*2,col); } }
   for(const o of targets) applyEffects(f,o,A,mult);
+  if(f.isPlayer && (A.t==='melee'||A.t==='cone') && !targets.length){ const pt=origin.clone().addScaledVector(fwd,Math.min(R,2.2)); smashAt(pt,0.7,{by:f,noTerrain:true,rubble:false,noPips:true}); }
   if(A.t==='melee' && !targets.length && (f.species==='bear'||A.slot==='heavy'||f.plan==='giant'||f.bladeOn)){ const pt=origin.clone().addScaledVector(fwd,1.6); if(smashAt(pt,0.9*Math.min(f.scale,3),{by:f,noTerrain:true})) hitStop(0.03); }
 }
 function mendNearby(f, n){ // Mend rebuilds smashed objects instantly
@@ -3214,9 +3226,10 @@ function damage(f, amt, src, opts={}){
   if(f.isPlayer && f.sp && RT.world.player.inventory.some(i=>i.equipped && i.stats.def)) amt*=0.85;
   amt=Math.max(0,Math.round(amt)); if(!amt) return 0;
   f.hp-=amt; f.flash=0.12; f.expr='face_angry'; f.exprT=0.6;
+  if(src?.isPlayer && f.townsfolk){ for(const g of RT.figures) if(g.guard && !g.ko && g.pos.distanceTo(f.pos)<30){ g.angry=src; g.controller.brain='fight'; g.controller.target=src; } if(f.faction||nearestTown(f.pos)) { const own=siteById(RT.world,nearestTown(f.pos).id)?.owner; if(own) RT.world.player.wanted[own]=(RT.world.player.wanted[own]||0)+0.5; } }
   if(src && f.controller instanceof AIController && f.controller.brain!=='fight' && !opts.fall){ f.angry=src; f.controller.prevBrain=f.controller.brain; f.controller.brain='fight'; f.controller.target=src; }
   if(!f.action || f.action.cancel) f.action={ anim:'hit', t:0, dur:0.2, fired:true, A:{effects:[],tags:[],cast:0}, cancel:true };
-  FX.burst('hit',f.pos.x,f.pos.y+Math.min(f.height*0.6,5),f.pos.z,5,5); Audio.impact(amt>20);
+  FX.burst('hit',f.pos.x,f.pos.y+Math.min(f.height*0.6,5),f.pos.z,5,5); Audio.impact(amt>20); DmgText.add(f.pos.x,f.pos.y+Math.min(f.height,6)+0.6,f.pos.z,amt,f.isPlayer);
   if(src && (src.isPlayer || f.isPlayer)){ hitStop(amt>20?0.07:0.035); RT.shake=Math.min(1,RT.shake+amt*0.012); }
   if(src?.isPlayer && RT.world.player.powers) RT.world.player.powers.charge=Math.min(100,(RT.world.player.powers.charge||0)+amt*0.3);
   if(f.onHurt) f.onHurt(amt, src);
@@ -3293,7 +3306,7 @@ class CameraRig {
 
 // §WILDLIFE / §TOWNSFOLK -------------------------------------------------------
 function spawnFigure(recipe, pos, o={}){
-  const f=new Figure(recipe, o); f.pos.copy(pos); f.yaw=Math.random()*6.28; f.team=o.team||'neutral'; f.respawn=o.respawn||false; f.predator=!!SPECIES[f.species]?.predator && f.team==='wild';
+  const f=new Figure(recipe, o); f.pos.copy(pos); if(o.guardRole){ f.guard=true; } f.yaw=Math.random()*6.28; f.team=o.team||'neutral'; f.respawn=o.respawn||false; f.predator=!!SPECIES[f.species]?.predator && f.team==='wild';
   f.controller = o.controller || new AIController(o.brain||'wander', o.ai||{}); f.home=pos.clone(); f.tag=o.tag; f.ownerSector=o.sector; f.town=o.town; f.job=o.job;
   if(o.weapon) equipWeapon(f,o.weapon);
   RT.figures.push(f); return f;
@@ -3315,7 +3328,7 @@ const Populace = {
         const f=spawnFigure(rec, new THREE.Vector3(x,surfaceY(x,z),z), { team:'neutral', brain:'townsfolk', ai:{radius:t.radius*0.6}, sector:s.key, town:t.id, name:rec.name||genName(r) }); f.townsfolk=true; f.job=pick(r,TOWNSFOLK_JOBS); }
       // guards of the owning faction
       const site=siteById(W,t.id); const owner=W.factions[site?.owner]; if(owner){ for(let i=0;i<2;i++){ const rec=pickCharacter(r,'Armies',R)||randomRecipe(r,'human',{held:'spear',hat:'helmet_kettle',torso:'outfit_armor'}); if(!owner.lawful) rec.colors={...(rec.colors||{}), torso:owner.color, legs:'black'}; const x=t.x+8+i*4, z=t.z-6;
-        const g=spawnFigure(rec,new THREE.Vector3(x,surfaceY(x,z),z),{ team: owner.lawful?'neutral':'enemy', brain:'wander', ai:{radius:6, aggro: owner.lawful && !(W.player.wanted[owner.id]>2)?0:12}, sector:s.key, name:`${owner.name} guard`, weapon:'spear' }); g.faction=owner.id; } }
+        const g=spawnFigure(rec,new THREE.Vector3(x,surfaceY(x,z),z),{ team: owner.lawful?'neutral':'enemy', guardRole:owner.lawful, brain:'wander', ai:{radius:6, aggro: owner.lawful && !(W.player.wanted[owner.id]>2)?0:12}, sector:s.key, name:`${owner.name} guard`, weapon:'spear' }); g.faction=owner.id; } }
       if(R==='apex' && (night || r()<0.3)){ for(let i=0;i<3;i++){ const x=t.x+(r()-.5)*t.radius, z=t.z+(r()-.5)*t.radius; const f=spawnFigure(randomRecipe(r,pick(r,['raccoon','human','mole']),{held:'daggers',colors:{torso:'black',legs:'dark_grey'}}),new THREE.Vector3(x,surfaceY(x,z),z),{team:'enemy',brain:'wander',ai:{aggro:10,radius:10},sector:s.key,name:'Street crook',hp:60}); f.crook=true; } }
     }
     // crab bandits on the Brightharbour docks, the big crab boss
@@ -3359,6 +3372,9 @@ function spawnBoss(kind, pos, sector){
   Bus.on('ko',e=>{ if(e.f===b && !b.done){ b.done=true; const k = kind==='bigcrab'?'bigCrab':'boss_'+(REALM_IDS.find(r=>REALMS[r].boss===kind)||kind); RT.world.player.stats[k]=true; Pips.burst(b.pos.x,b.pos.y+3,b.pos.z,40,5); toast(`${b.name} defeated! Big rewards!`); RT.world.player.materials.gold=(RT.world.player.materials.gold||0)+3; news(RT.world,`${RT.world.player.name} defeated ${b.name}.`,RT.realm,'boss'); } });
   return b; }
 
+// floating damage numbers
+const DmgText = { list:[], add(x,y,z,n,mine){ const el=document.createElement('div'); el.textContent=n; el.style.cssText=`position:fixed;font:900 ${n>25?28:20}px Trebuchet MS;color:${mine?'#c9252c':'#f6c41c'};-webkit-text-stroke:2px #1d2023;pointer-events:none;transform:translate(-50%,-50%);z-index:3`; document.body.appendChild(el); this.list.push({el,p:new THREE.Vector3(x,y,z),t:0}); if(this.list.length>30){ const o=this.list.shift(); o.el.remove(); } },
+  update(dt){ for(const d of this.list){ d.t+=dt; d.p.y+=dt*2.5; const v=d.p.clone().project(camera); d.el.style.left=((v.x+1)/2*innerWidth)+'px'; d.el.style.top=((1-v.y)/2*innerHeight)+'px'; d.el.style.opacity=String(Math.max(0,1-d.t/0.9)); d.el.style.display=v.z<1?'block':'none'; if(d.t>0.9) d.el.remove(); } this.list=this.list.filter(d=>d.t<=0.9); } };
 // §HUD ------------------------------------------------------------------------
 const $=id=>document.getElementById(id);
 function toast(msg, ms=2600){ const el=document.createElement('div'); el.className='toast'; el.textContent=msg; $('toast').appendChild(el); setTimeout(()=>el.remove(), ms); while($('toast').children.length>4) $('toast').firstChild.remove(); }
@@ -3380,7 +3396,11 @@ const HUD = {
     list.forEach((a,i)=>{ const A=ABILITIES[a]; const cd=(f.cds[a]||0)/(A.cooldown||1); s+=`<div class="slot"><b>${labels[i]}</b>${A.name.slice(0,12)}<div class="cd" style="transform:scaleY(${clamp(cd,0,1)})"></div></div>`; });
     if(P.powers) s+=`<div class="slot"><b>ULT</b>${Math.floor(P.powers.charge||0)}%</div>`;
     if($('slots').innerHTML!==s) $('slots').innerHTML=s;
-    const pr=interactPrompt(f); $('prompt').innerHTML = pr ? `<span class="chip">${pr}</span>` : '';
+    let pr=interactPrompt(f); const v=f.vehicle;
+    if(v){ const kmh=Math.round(Math.abs(v.speed)*3.6); pr = v.kind==='ship' ? `⛵ ${kmh} km/h · wind ${['N','NE','E','SE','S','SW','W','NW'][Math.round(((Vehicles.wind.dir%(Math.PI*2))+Math.PI*2)%(Math.PI*2)/(Math.PI/4))%8]} ${Math.round(Vehicles.wind.str*10)} · sail ${Math.round((v.sailEff||0)*100)}% (Q/R trim) · hull ${Math.round(v.hp*100)}% · cannons: click`
+      : v.kind==='star' ? `🚀 ${kmh} · fuel ${Math.round(v.fuel*100)}% · hull ${Math.round(v.hp*100)}% · Shift boost, click fire` : `${v.kind==='air'?'🎈':'🚗'} ${kmh} km/h · ${v.rolled?'ROLLED — get out (E) and flip it':`hull ${Math.round(v.hp*100)}%`} · E exit`; }
+    else if(f.mount) pr=`🐎 ${f.mount.name} · stamina ${Math.round(f.mount.stamina)} · click: lance/spear charge · X dismount`;
+    $('prompt').innerHTML = pr ? `<span class="chip">${pr}</span>` : '';
     $('pipChip').title=`Brick bank: ${bankCount()} bricks`;
   },
 };
@@ -3427,6 +3447,7 @@ const Modes = { list:['ON_FOOT','RIDING','VEHICLE','BUILD','MENU','CUTSCENE','SA
 function playerUpdate(pl, dt){
   const f=pl.fig; const it=pl.ctrl.intent(pl.cam); pl.it=it;
   if(f.vehicle){ if(it.interact) Vehicles.exit(f); return it; }
+  if(pl.coopBuild){ CoopBuild.update(pl,it); return it; }
   if(RT.mode!=='ON_FOOT' && RT.mode!=='RIDING' && RT.mode!=='FLY') return it;
   // lock-on
   if(it.lock){ f.lockTarget = f.lockTarget ? null : nearestFoe(f,25)||nearestInFront(f,25); if(f.lockTarget) toast(`Locked on: ${f.lockTarget.name}`); }
@@ -3446,7 +3467,7 @@ function playerUpdate(pl, dt){
   else if(it.interact) interact(pl);
   if(it.throw){ if(f.carry) throwCarry(f); else { const b=nearestCarryable(f); if(b){ b.alive=false; f.carry={pid:b.pid,color:b.color}; toast('Picked up — click to throw.'); } } }
   if(it.mount){ if(f.mount){ dismount(f); } else { const m=nearestMountable(f); if(m) mountOn(f,m); } }
-  if(it.build){ BuildMode.toggle(pl); }
+  if(it.build){ if(pl===RT.players[0]) BuildMode.toggle(pl); else CoopBuild.toggle(pl); }
   return it;
 }
 function throwCarry(f){ const fwd=RT.camAim?RT.camAim.clone():forward(f); const b=Live.spawn(f.carry.pid,f.carry.color,f.pos.x+fwd.x,f.pos.y+3,f.pos.z+fwd.z,fwd.x*22,6+fwd.y*20,fwd.z*22); f.carry=null; f.action={anim:'throw',t:0,dur:0.35,fired:true,A:{effects:[],tags:[],cast:0}};
@@ -3474,7 +3495,10 @@ Menu.pages.help = ()=>`<h2>${GAME_TITLE} — controls</h2><table>
 <tr><td>Sprint</td><td>Shift</td></tr><tr><td>Light combo / heavy</td><td>Left click (or Z) / Right click</td></tr><tr><td>Special · abilities · power</td><td>Q · 1–4 · R</td></tr>
 <tr><td>Block (tap just before a hit to parry) / dodge</td><td>F / C</td></tr><tr><td>Lock-on</td><td>Tab</td></tr><tr><td>Interact · hold to build from sparkling rubble</td><td>E</td></tr>
 <tr><td>Pick up / throw</td><td>G</td></tr><tr><td>Mount / tame / ride a friend</td><td>X</td></tr><tr><td>Lumen blade on/off</td><td>V</td></tr><tr><td>Build mode</td><td>B</td></tr>
-<tr><td>Menus</td><td>Esc menu · M map · J jobs · K careers · P photo mode · F1 help</td></tr><tr><td>Player 2 (drop in)</td><td>Press Enter or a second gamepad's Start. Keys: IJKL move, U jump, O light, P heavy, Y special, ; block, N dodge, H interact</td></tr></table>`;
+<tr><td>Vehicles</td><td>E next to a vehicle to drive/sail/fly · garages at docks, plots, stables and launch pads · W/S A/D · ships: Q/R trim the sail to the wind, click to fire a broadside · starships: mouse/arrows steer, Shift boost · E to get out</td></tr>
+<tr><td>Build mode (B)</td><td>Click place · X remove · P paint · R rotate · M mirror · Z/Y undo/redo · G G select box · Ctrl+C / Ctrl+V copy/paste · F fill selection · N N measure · K stability check · Enter complete (loose bricks fall) · V turn your build into a vehicle · right-drag orbit · wheel zoom</td></tr>
+<tr><td>Functional pieces</td><td>Walk up and press E: beds save, chests store, forges/looms/workbenches craft, soil grows crops, counters run shops, booths change costumes, town stones found towns…</td></tr>
+<tr><td>Menus</td><td>Esc menu · M map · J jobs · K careers · O companions · P photo mode · F1 help</td></tr><tr><td>Player 2 (drop in)</td><td>Press Enter or a second gamepad's Start. Keys: IJKL move, U jump, O light, P heavy, Y special, ; block, N dodge, H interact</td></tr></table>`;
 Menu.pages.main = ()=>`<h2>${GAME_TITLE}</h2><div class="tabs">
 ${[['creator','Character'],['careers','Careers'],['jobs','Jobs'],['map','World map'],['companions','Companions'],['inventory','Bag & crafting'],['blueprints','Blueprints & share'],['records','Hall of records'],['creative','Creative mode'],['newworld','New world'],['costume','Costume'],['save','Save & settings'],['help','Controls']].map(([k,v])=>`<button data-act="go" data-arg="${k}">${v}</button>`).join('')}</div>
 <p>${esc(RT.world.player.name)} the ${SPECIES[RT.world.player.species].name} · ${RT.world.player.pips} pips · ${bankCount()} bricks · titles: ${RT.world.player.titles.map(esc).join(', ')||'none yet'}</p>`;
@@ -4264,6 +4288,15 @@ Menu.acts.meditate = ()=>{ RT.players[0].fig.emote={name:'meditate',t:0,dur:4}; 
 Menu.acts.umbral = ()=>{ joinCareer(RT.world,'umbral',{force:true}); RT.world.player.lumen.umbralOffer=false; equipWeapon(RT.players[0].fig,'umbral'); toast('You join the Umbral Court. Your blade burns dark.'); };
 Menu.acts.redeem = ()=>{ redeemStep(RT.world); toast(`Redemption step ${RT.world.player.lumen.redemption}/3.`); };
 
+// co-op building: player 2 builds at the same time with their own cursor (in front of their figure)
+const CoopBuild = { pieces:['brick_2x4','brick_2x2','brick_1x2','plate_2x4','slope45_2x2','tile_2x2','fn_lamp'],
+  toggle(pl){ pl.coopBuild=!pl.coopBuild; if(!pl.coopBuild){ if(pl.ghost) pl.ghost.visible=false; toast('Player 2 stopped building.'); return; } pl.bpiece=0; pl.bcol='blue'; pl.brot=0; toast('Player 2 builds! O place · P remove · Y rotate · N next piece · ; next colour · . to stop'); },
+  update(pl,it){ const f=pl.fig; const P=PIECES[this.pieces[pl.bpiece]]; const [w,d]=pieceDims(P,pl.brot); const fw=forward(f); const cx=Math.floor(f.pos.x+fw.x*3)-Math.floor((w-1)/2), cz=Math.floor(f.pos.z+fw.z*3)-Math.floor((d-1)/2);
+    let y=0; for(let i=0;i<w;i++) for(let k=0;k<d;k++) y=Math.max(y, supportTop(cx+i,cz+k,(f.pos.y+6)/PL)); if(!pl.ghost){ pl.ghost=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({transparent:true,opacity:0.45,depthWrite:false})); scene.add(pl.ghost); }
+    pl.ghost.visible=true; pl.ghost.scale.set(w,P.h*PL,d); pl.ghost.position.set(cx+w/2,(y+P.h/2)*PL,cz+d/2); pl.ghost.material.color.copy(COLORS[pl.bcol]);
+    if(it.light){ const b=[this.pieces[pl.bpiece],cx,y,cz,pl.brot,pl.bcol]; if(!cellsOf(b).some(c=>{ const [x,yy,z]=c.split(',').map(Number); return solidAt(x,yy,z); }) && BuildMode.cost(b[0],b[5])) placeWorldBrick(b); }
+    if(it.heavy){ const r=brickSolidAt(cx,y-1,cz); if(r&&r.player){ removeWorldBrick(r); bankAdd(r.b[0],r.b[5],1); } }
+    if(it.special) pl.brot=(pl.brot+1)&3; if(it.dodge) pl.bpiece=(pl.bpiece+1)%this.pieces.length; if(Input.hit('Semicolon')) pl.bcol=COLOR_NAMES[(COLOR_NAMES.indexOf(pl.bcol)+1)%COLOR_NAMES.length]; } };
 // §COOP -----------------------------------------------------------------------
 function addPlayer2(){ if(RT.players.length>1) return; const p1=RT.players[0].fig; const rc=RT.world.player.p2recipe||{...defaultRecipe('horse')}; const f=new Figure(rc,{team:'player',name:'Player 2'}); f.pos.copy(p1.pos).add(new THREE.Vector3(3,0,0)); f.isPlayer=true; f.p2=true;
   const ctrl=new HumanController(1); f.controller=ctrl; RT.figures.push(f); RT.players.push({ fig:f, ctrl, cam:new CameraRig(camera2) }); equipWeapon(f, rc.held&&rc.held!=='none'?rc.held:f.plan==='biped'?'sword':'natural'); toast('Player 2 joined! (IJKL, U, O, P…) — a horse can be ridden with X.'); }
@@ -4295,6 +4328,9 @@ async function boot(){
   if(world.player.inSpace){ RT.inSpace=true; RT.gravityMul=0.5; }
   // stream the first ring before showing anything
   RT.realm=realmAt(f.pos.x,f.pos.z); Stream.update(); const tm=performance.now(); while((Stream.queue.length||Stream.active) && performance.now()-tm<6000){ Stream.update(); }
+  if(!world.player.pos){ // find open ground near the plaza so the first steps aren't boxed in
+    const c=f.pos.clone(); outer: for(let r=0;r<40;r+=2) for(let a=0;a<Math.PI*2;a+=Math.PI/8){ const x=c.x+Math.cos(a)*r, z=c.z+Math.sin(a)*r; let ok=true; const y=surfaceY(x,z);
+      for(let dx=-3;dx<=3&&ok;dx++) for(let dz=-3;dz<=3&&ok;dz++) if(brickSolidAt(Math.floor(x+dx),Math.floor(y/PL)+1,Math.floor(z+dz))) ok=false; if(ok){ f.pos.set(x,y,z); break outer; } } }
   f.pos.y=Math.max(surfaceY(f.pos.x,f.pos.z), world.player.pos?f.pos.y:0); if(!world.player.pos) f.pos.y=surfaceY(f.pos.x,f.pos.z);
   for(const p of world.player.companions.filter(c=>c.active)) spawnCompanion(p);
   $('loading').style.display='none'; RT.bootMs=performance.now()-t0;
@@ -4334,14 +4370,14 @@ function simStep(dt){
   for(const pl of RT.players){ if(BuildMode.on && pl===RT.players[0]){ BuildMode.update(pl,dt); continue; } const it=playerUpdate(pl,dt); pl.fig.ctrlIntent=it; }
   for(const f of RT.figures){ if(!f.alive) continue; if(f.ko){ updateDebris(f,dt); continue; }
     let it; if(f.isPlayer) it = BuildMode.on&&f===p0.fig ? {mx:0,mz:0,mag:0} : f.ctrlIntent||{mx:0,mz:0,mag:0};
-    else if(f.riderCtrl && f.rider){ it=f.rider.ctrlIntent||{mx:0,mz:0,mag:0}; if(it.light||it.heavy) { useAbility(f.rider, it.heavy?'spear_h':'spear_l1'); } it={...it, light:false, heavy:false}; }
+    else if(f.riderCtrl && f.rider){ it=f.rider.ctrlIntent||{mx:0,mz:0,mag:0}; if(it.light||it.heavy){ const spd=Math.hypot(f.vel.x,f.vel.z); f.rider.buffs.atk={mul:1+spd/8,time:0.5}; useAbility(f.rider, it.heavy?'spear_h':'spear_l1'); if(spd>8){ for(const o of RT.figures) if(o!==f && o!==f.rider && hostile(f.rider,o) && o.pos.distanceTo(f.pos)<3.5){ o.vel.addScaledVector(forward(f),spd*0.8); o.vel.y+=6; damage(o,spd*2,f.rider); } } } if(f.sp.mount?.special==='fly' && it.jumpHeld){ f.vel.y=Math.max(f.vel.y,7); } it={...it, light:false, heavy:false}; f.stamina=Math.max(0,f.stamina-(it.sprint?dt*10:0)); }
     else if(f.rider && f.isPlayer){ it=f.ctrlIntent; } // a co-op friend being ridden controls the movement
     else { if(Math.abs(f.pos.x-p0.fig.pos.x)>140||Math.abs(f.pos.z-p0.fig.pos.z)>140){ continue; } it=f.controller?f.controller.intent(f):{mx:0,mz:0,mag:0}; if(it.light) useAbility(f,(WEAPONS[f.weapon]||WEAPONS.natural).light[0]); if(it.heavy) useAbility(f,(WEAPONS[f.weapon]||WEAPONS.natural).heavy); if(it.special) useAbility(f,(WEAPONS[f.weapon]||WEAPONS.natural).special); if(it.dodge){ f.vel.addScaledVector(forward(f),-10); f.iframes=0.3; } }
     moveFigure(f,it,dt); updateActions(f,dt);
     if(!CONFIG.stopMotion || RT.frame%5===0) animateFigure(f, CONFIG.stopMotion?dt*5:dt);
   }
   for(const pl of RT.players) Live.collect(pl.fig);
-  Vehicles.update(dt); FnPassive.update(dt); TownLife.update(dt); TownFolkSpawner.update(); SeaLife.update(dt); ShopSim.update(dt); Siege.update(dt); ThreatLife.update(dt); Events.update(dt); Events.frame(); Villainy.update(dt); AnimalKin.update(dt); Live.update(dt); Pips.update(dt); FX.update(dt); Proj.update(dt); Rubble.update(dt); Jobs.update(dt); Battles.update(dt); Training.update(dt);
+  Vehicles.update(dt); FnPassive.update(dt); TownLife.update(dt); TownFolkSpawner.update(); SeaLife.update(dt); ShopSim.update(dt); RoadLife.update(dt); Siege.update(dt); ThreatLife.update(dt); Events.update(dt); Events.frame(); Villainy.update(dt); AnimalKin.update(dt); Live.update(dt); Pips.update(dt); FX.update(dt); Proj.update(dt); Rubble.update(dt); Jobs.update(dt); Battles.update(dt); Training.update(dt);
   if(RT.autoBuild){ const A=RT.autoBuild; A.t+=dt; while(A.t>0.04 && A.queue.length){ A.t-=0.04; const b=A.queue.shift(); if(RT.creativeFree||BuildMode.cost(b[0],b[5])) placeWorldBrick([b[0],A.ox+b[1],A.oy+b[2],A.oz+b[3],b[4],b[5]],{silent:false}); } if(!A.queue.length){ RT.autoBuild=null; RT.creativeFree=false; toast('Auto-build complete!'); } }
   if(RT.heartQuest){ const q=RT.heartQuest; const d=Math.hypot(q.pos.x-p0.fig.pos.x,q.pos.z-p0.fig.pos.z); if(RT.frame%3===0) FX.spawn('lumen',q.pos.x,surfaceY(q.pos.x,q.pos.z)+2,q.pos.z,0,2,0); if(d<4){ lumenAdvance(W,'heartstone',{stone:q.k}); RT.heartQuest=null; toast('You found the heartstone! Return to any temple for the Forging.'); } }
   Stream.update(); Populace.update(); updateWeather(dt); Audio.update(); HUD.update();
@@ -4357,7 +4393,7 @@ function render(dt){
       const aim=pl.cam.update(tgt, dt, look); if(pl===p0) RT.camAim=aim; }
     RT.focus.copy(p0.fig.pos);
   }
-  updateSky(dt);
+  updateSky(dt); DmgText.update(dt);
   for(const sct of RT.sectors.values()) if(sct.meshes?.studs){ const cx=sct.x0+32-camera.position.x, cz=sct.z0+32-camera.position.z; sct.meshes.studs.visible = CONFIG.studNear>0 && Math.hypot(cx,cz) < CONFIG.studNear+12; }
   if(RT.frame%10===0) Farm.draw(); Stars.update(); GLBLOD.update(); FigR.begin(); for(const f of RT.figures) if(f.alive && !GLBLOD.drawn(f) && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
   renderer.info.reset(); renderer.info.autoReset=false;
