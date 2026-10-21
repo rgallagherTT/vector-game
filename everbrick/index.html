@@ -16,6 +16,11 @@
   .heart.off{background:#a0a5a9}
   #stam{width:150px;height:10px;border:2px solid var(--ink);border-radius:6px;background:#fff;overflow:hidden}
   #stam>i{display:block;height:100%;background:#bbe90b}
+  #keys{position:absolute;right:12px;bottom:12px;background:var(--panel);border:3px solid var(--ink);border-radius:14px;padding:8px 10px;font-size:12px;min-width:190px;box-shadow:0 4px 0 var(--ink);pointer-events:none}
+  #keys .kt{font-weight:900;font-size:13px;display:flex;justify-content:space-between;gap:10px;margin-bottom:4px}#keys .kt span{font-weight:600;opacity:.55;font-size:11px}
+  #keys .kr{display:flex;align-items:center;gap:6px;margin:3px 0}#keys .kr span{margin-left:4px}#keys i{opacity:.5;font-style:normal}
+  #keys kbd{font:800 11px Inter,system-ui,sans-serif;background:#fff;border:2px solid var(--ink);border-bottom-width:3px;border-radius:6px;padding:0 5px;min-width:14px;text-align:center}
+  @media (max-width:820px){ #keys{display:none!important} }
   #slots{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
   .slot{width:58px;height:58px;background:var(--panel);border:3px solid var(--ink);border-radius:12px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;text-align:center;box-shadow:0 4px 0 var(--ink)}
   .slot b{font-size:15px}.slot .cd{position:absolute;inset:0;background:rgba(27,42,52,.45);border-radius:9px;transform-origin:bottom}
@@ -98,6 +103,7 @@
     <div class="chip" id="news" style="display:none"></div>
   </div>
   <div id="slots"></div>
+  <div id="keys"></div>
   <div id="toast"></div>
   <div id="prompt"></div>
   <div id="buildbar"></div>
@@ -3426,13 +3432,31 @@ const HUD = {
     if(P.powers) s+=`<div class="slot"><b>ULT</b>${Math.floor(P.powers.charge||0)}%</div>`;
     if($('slots').innerHTML!==s) $('slots').innerHTML=s;
     let pr=interactPrompt(f); const v=f.vehicle;
-    if(v){ const kmh=Math.round(Math.abs(v.speed)*3.6); pr = v.kind==='ship' ? `⛵ ${kmh} km/h · wind ${['N','NE','E','SE','S','SW','W','NW'][Math.round(((Vehicles.wind.dir%(Math.PI*2))+Math.PI*2)%(Math.PI*2)/(Math.PI/4))%8]} ${Math.round(Vehicles.wind.str*10)} · sail ${Math.round((v.sailEff||0)*100)}% (Q/R trim) · hull ${Math.round(v.hp*100)}% · cannons: click`
+    if(v){ const kmh=Math.round(Math.abs(v.speed)*3.6); pr = v.kind==='ship' ? `⛵ ${kmh} km/h · wind ${['N','NE','E','SE','S','SW','W','NW'][Math.round(((Vehicles.wind.dir%(Math.PI*2))+Math.PI*2)%(Math.PI*2)/(Math.PI/4))%8]} ${Math.round(Vehicles.wind.str*10)} · sail ${Math.round((v.sailEff||0)*100)}% · hull ${Math.round(v.hp*100)}% · click: fire cannons · E leave the helm`
       : v.kind==='star' ? `🚀 ${kmh} · fuel ${Math.round(v.fuel*100)}% · hull ${Math.round(v.hp*100)}% · Shift boost, click fire` : `${v.kind==='air'?'🎈':'🚗'} ${kmh} km/h · ${v.rolled?'ROLLED — get out (E) and flip it':`hull ${Math.round(v.hp*100)}%`} · E exit`; }
-    else if(f.mount) pr=`🐎 ${f.mount.name} · stamina ${Math.round(f.mount.stamina)} · click: lance/spear charge · X dismount`;
+    else if(f.mount) pr=`🐎 ${f.mount.name} · stamina ${Math.round(f.mount.stamina)} · click: charge · E get off`;
     $('prompt').innerHTML = pr ? `<span class="chip">${pr}</span>` : '';
-    $('pipChip').title=`Brick bank: ${bankCount()} bricks`;
+    $('pipChip').title=`Brick bank: ${bankCount()} bricks`; Keys.update(f);
   },
 };
+
+// on-screen controls: a small card that shows only what matters right now (F1 hides it)
+const Keys = { shown:true, last:'', init(){ try{ this.shown = storeGet('everbrick.keys')!=='off'; }catch(e){} },
+  toggle(){ this.shown=!this.shown; storeSet('everbrick.keys', this.shown?'on':'off'); this.last=''; toast(this.shown?'Controls shown (F1 to hide)':'Controls hidden (F1 to show)'); },
+  sets(f){ const v=f.vehicle;
+    if(RT.mode==='BUILD') return ['Building',[['Click','Place brick'],['X','Remove'],['P','Paint'],['R','Rotate'],['Wheel','Zoom'],['Right-drag','Turn view'],['Z','Undo'],['Enter','Finish'],['B','Stop building']]];
+    if(RT.mode==='PHOTO') return ['Photo mode',[['WASD','Move camera'],['Q / E','Down / up'],['Shift','Faster'],['P','Exit']]];
+    if(v){ if(v.kind==='ship') return ['Sailing',[['W / S','Sail / slow'],['A / D','Steer'],['Click','Fire cannons'],['Q / R','Trim sail (optional)'],['E','Leave the helm']]];
+      if(v.kind==='star') return ['Starship',[['W / S','Thrust'],['Mouse','Steer'],['Shift','Boost'],['Click','Fire'],['E','Get out']]];
+      if(v.kind==='air') return ['Flying',[['W / S','Speed'],['A / D','Turn'],['Space / C','Up / down'],['E','Get out']]];
+      return ['Driving',[['W / S','Go / reverse'],['A / D','Steer'],['Space','Brake'],['E','Get out']]]; }
+    if(f.mount) return ['Riding',[['WASD','Ride'],['Shift','Gallop'],['Space','Jump'],['Click','Charge'],['E','Get off']]];
+    const list=[['WASD','Move'],['Shift','Run'],['Space','Jump'],['Click','Attack'],['Right-click','Heavy attack'],['Q','Special'],['F','Block'],['C','Dodge'],['E','Use · talk · ride · pick up'],['B','Build'],['M','Map'],['Esc','Menu']];
+    if(f.carry) list.splice(3,1,['Click','Throw']);
+    return ['Controls',list]; },
+  update(f){ const el=$('keys'); if(!el) return; if(!this.shown||RT.menuOpen){ if(el.style.display!=='none') el.style.display='none'; this.last=''; return; }
+    const [title,list]=this.sets(f); const html=`<div class="kt">${title}<span>F1 hide</span></div>`+list.map(([k,d])=>`<div class="kr">${k.split(' / ').map(x=>`<kbd>${x}</kbd>`).join('<i>/</i>')}<span>${d}</span></div>`).join('');
+    if(html!==this.last){ el.innerHTML=html; this.last=html; } el.style.display='block'; } };
 
 // §INTERACT -------------------------------------------------------------------
 function nearbyFn(f, r=6){ let best=null, bd=r; for(const s of RT.sectors.values()) for(const fn of s.fn){ const d=Math.hypot(fn.x-f.pos.x,fn.z-f.pos.z); if(d<bd){ bd=d; best=fn; } } return best; }
@@ -3442,8 +3466,10 @@ function interactPrompt(f){
   const og=Origins.near(f); if(og) return og.text;
   const vv=Vehicles.near(f,3); if(vv) return vv.team==='enemy' ? (vv.hp<0.8?'E: Board her!':'Enemy ship — knock bricks off her hull, then board') : `E: ${vv.rolled?'Flip':'Take'} the ${vv.name}`;
   const fn=nearbyFn(f); if(fn) return { dock:'E: Docks (boats)', plot:'E: Home plot', stable:'E: Stable (mounts)', waystone:'E: Waystone (fast travel)', board:'E: Job board', recruiter:'E: Recruiter', inn:'E: Inn (rest, save)', shop:'E: Shop', bakery:'E: Bakery', temple:'E: Lumen temple', launchpad:'E: Launch to the Frontier', statue:`A statue: ${fn.deed||''}`, colony:'E: Colony (return to the launch pad)' }[fn.kind]||null;
-  const m=nearestMountable(f); if(m) return `X: ${m.tamed||m===RT.players[1]?.fig?'Ride':'Tame'} ${m.name}`;
-  const prop=nearestCarryable(f); if(prop) return 'G: pick up';
+  const m=nearestMountable(f); if(m) return `E: ${m.tamed||m===RT.players[1]?.fig?'Ride':'Tame'} ${m.name}`;
+  const npc=RT.figures.find(o=>o!==f && !o.ko && o.team==='neutral' && o.pos.distanceTo(f.pos)<3.2); if(npc) return `E: Talk to ${npc.name}`;
+  if(f.carry) return 'Click or E: throw';
+  const prop=nearestCarryable(f); if(prop) return 'E: Pick up';
   return null;
 }
 function interact(pl){
@@ -3451,6 +3477,7 @@ function interact(pl){
   if(v && v.team==='enemy' && v.hp<0.8){ boardShip(f,v); return true; }
   const fr=fnRefsNear(f.pos); if(fr.length){ useFunctional(f, fr[0]); return true; }
   const og=Origins.near(f); if(og){ Origins.use(f,og); return true; }
+  const mt=nearestMountable(f); if(mt){ mountOn(f,mt); return true; }
   const npc=RT.figures.find(o=>o!==f && !o.ko && o.team==='neutral' && o.pos.distanceTo(f.pos)<3.2); if(npc){ if(npc.merchant){ Menu.open('merchant'); return true; } const pool=COMPANION_POOL.find(c=>c.name===npc.name); if(pool){ Menu.open('companions'); return true; } toast(`${npc.name}${npc.job?` the ${npc.job}`:''}: “${npc.opinion||pick(Math.random,['Lovely day for smashing things!','Have you seen my goat?','The job board has work, you know.','Mind the crabs down at the docks.','I hear the Frontier is lovely this time of year.'])}”`); npc.emote={name:'wave',t:0,dur:1}; npc.expr='face_grin'; npc.exprT=1.5; Audio.voice(npc.sp.voice); return true; }
   const fn=nearbyFn(f); if(!fn) return false;
   switch(fn.kind){
@@ -3493,7 +3520,8 @@ function playerUpdate(pl, dt){
   if(it.blade) toggleBlade(f);
   // interact / build from rubble
   const pile=Rubble.nearest(f,4); if(pile){ if(Input.hit('Digit1')&&pile.options.length>1) pile.choice=0; if(Input.hit('Digit2')&&pile.options.length>1) pile.choice=1; if(it.interactHeld) Rubble.build(pile,true); else if(pile.building) pile.building.holding=false; }
-  else if(it.interact) interact(pl);
+  else if(it.interact){ // E is the one "do it" key: use, talk, board, ride, get off, pick up, throw
+    if(f.mount) dismount(f); else if(!interact(pl)){ const m=nearestMountable(f); if(m) mountOn(f,m); else if(f.carry) throwCarry(f); else { const b=nearestCarryable(f); if(b){ b.alive=false; f.carry={pid:b.pid,color:b.color}; toast('Picked up — click or E to throw.'); } } } }
   if(it.throw){ if(f.carry) throwCarry(f); else { const b=nearestCarryable(f); if(b){ b.alive=false; f.carry={pid:b.pid,color:b.color}; toast('Picked up — click to throw.'); } } }
   if(it.mount){ if(f.mount){ dismount(f); } else { const m=nearestMountable(f); if(m) mountOn(f,m); } }
   if(it.build){ if(pl===RT.players[0]) BuildMode.toggle(pl); else CoopBuild.toggle(pl); }
@@ -3521,12 +3549,12 @@ const Menu = {
   pages:{}, acts:{}, after:{}, lastPage:null,
 };
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-Menu.pages.help = ()=>`<h2>${GAME_TITLE} — controls</h2><table>
+Menu.pages.help = ()=>`<h2>${GAME_TITLE} — controls</h2><p class="hint">The essentials are always in the bottom-right corner (F1 shows/hides them). <b>E does almost everything</b>: use things, talk, ride, pick up, get in and out.</p><table>
 <tr><td>Move / look</td><td>WASD · mouse (click to capture) · gamepad sticks</td></tr><tr><td>Jump / glide / swim up</td><td>Space (hold to glide as a bird or owl)</td></tr>
 <tr><td>Sprint</td><td>Shift</td></tr><tr><td>Light combo / heavy</td><td>Left click (or Z) / Right click</td></tr><tr><td>Special · abilities · power</td><td>Q · 1–4 · R</td></tr>
-<tr><td>Block (tap just before a hit to parry) / dodge</td><td>F / C</td></tr><tr><td>Lock-on</td><td>Tab</td></tr><tr><td>Interact · hold to build from sparkling rubble</td><td>E</td></tr>
-<tr><td>Pick up / throw</td><td>G</td></tr><tr><td>Mount / tame / ride a friend</td><td>X</td></tr><tr><td>Lumen blade on/off</td><td>V</td></tr><tr><td>Build mode</td><td>B</td></tr>
-<tr><td>Vehicles</td><td>E next to a vehicle to drive/sail/fly · garages at docks, plots, stables and launch pads · W/S A/D · ships: Q/R trim the sail to the wind, click to fire a broadside · starships: mouse/arrows steer, Shift boost · E to get out</td></tr>
+<tr><td>Block (tap just before a hit to parry) / dodge</td><td>F / C</td></tr><tr><td>Lock-on</td><td>Tab</td></tr><tr><td>Use · talk · ride / get off · pick up / throw · get in / out · hold to build from sparkling rubble</td><td>E</td></tr>
+<tr><td>Shortcuts (optional)</td><td>G pick up · X ride</td></tr><tr><td>Lumen blade on/off</td><td>V</td></tr><tr><td>Build mode</td><td>B</td></tr>
+<tr><td>Vehicles</td><td>E next to a vehicle to drive/sail/fly · garages at docks, plots, stables and launch pads · W/S A/D · ships: the crew trims the sail for you (Q/R to trim it yourself), click to fire a broadside · starships: mouse/arrows steer, Shift boost · E to get out</td></tr>
 <tr><td>Build mode (B)</td><td>Click place · X remove · P paint · R rotate · M mirror · Z/Y undo/redo · G G select box · Ctrl+C / Ctrl+V copy/paste · F fill selection · N N measure · K stability check · Enter complete (loose bricks fall) · V turn your build into a vehicle · right-drag orbit · wheel zoom</td></tr>
 <tr><td>Functional pieces</td><td>Walk up and press E: beds save, chests store, forges/looms/workbenches craft, soil grows crops, counters run shops, booths change costumes, town stones found towns…</td></tr>
 <tr><td>Menus</td><td>Esc menu · M map · J jobs · K careers · O companions · P photo mode · F1 help</td></tr><tr><td>Player 2 (drop in)</td><td>Press Enter or a second gamepad's Start. Keys: IJKL move, U jump, O light, P heavy, Y special, ; block, N dodge, H interact</td></tr></table>`;
@@ -3897,6 +3925,7 @@ const Vehicles = {
     else if(keys.trim!==undefined) v.trim=keys.trim;
     // sail force: the sail catches wind when the trimmed sail faces it; dead upwind gives nothing, so you tack
     const heading=Math.atan2(-Math.sin(v.yaw), -Math.cos(v.yaw)); const windTo=W.dir; let rel=((windTo-heading)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI; const angleOff=Math.abs(rel);
+    if(v.driver?.isPlayer){ if(Input.down('KeyQ')||Input.down('KeyR')) v.manualT=RT.time; else if(RT.time-(v.manualT??-9)>3) v.trim=lerp(v.trim, clamp(rel,-1.4,1.4), Math.min(1,dt*1.5)); } // the crew trims the sail for you unless you take over
     const sailAngle = rel - v.trim; const eff = Math.max(0, Math.cos(sailAngle*0.8)) * (angleOff>2.6 ? 0.05 : 1); // 2.6 rad ≈ 150°: into the wind
     let force = S.sailPower*W.str*eff*1.6 + thr*(S.oars?4.5:1.2);
     v.speed += force*dt; v.speed*=Math.exp(-0.35*dt); v.speed=clamp(v.speed,-3,S.sailPower*1.3+4);
@@ -4470,7 +4499,7 @@ async function boot(){
   const t0=performance.now();
   await Promise.race([loadAssets(), new Promise(r=>setTimeout(r,4000))]); // never block start-up on slow assets
   status('unpacking the realm kits and pieces…'); await Promise.race([Promise.all([RT.assets.modelsReady||Promise.resolve(), PieceGLB.load()]), new Promise(r=>setTimeout(r,9000))]);
-  Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init(); const bodiesP=Bodies.load();
+  Input.init(); Keys.init(); FX.init(); Live.init(); Pips.init(); FigR.init(); const bodiesP=Bodies.load();
   if(!RT.creative){ status('finding your profiles…'); if(Profiles.read().list.length>0 && !QS.has('profile') && !QS.has('auto') && !QS.has('bench')) await Promise.race([bodiesP, new Promise(r=>setTimeout(r,5000))]);
     RT.profile=await Profiles.choose(); SAVE_KEY=Profiles.key(RT.profile); }
   status('building the world…');
@@ -4494,7 +4523,7 @@ async function boot(){
   $('loading').style.display='none'; RT.bootMs=performance.now()-t0;
   addEventListener('resize',onResize); onResize();
   Bus.on('news',()=>{ RT.newsShown=RT.time; });
-  if(isNew && !QS.has('bench') && !QS.has('auto')){ toast('You wake in a rented room above the bakery. Make yourself in the mirror!',5000); Menu.open('creator'); RT.onMenuClose=()=>{ toast('Welcome to Brightharbour! WASD to move, click to fight, E to interact, F1 for help.',6000); }; }
+  if(isNew && !QS.has('bench') && !QS.has('auto')){ toast('You wake in a rented room above the bakery. Make yourself in the mirror!',5000); Menu.open('creator'); RT.onMenuClose=()=>{ toast('Welcome to Brightharbour! The controls are in the corner — press F1 to hide them.',6000); }; }
   else toast(`Welcome back, ${world.player.name}.`);
   if(QS.has('bench')) Bench.start(QS.get('bench'));
   requestAnimationFrame(loop);
@@ -4515,7 +4544,7 @@ function simStep(dt){
   RT.dt=dt; RT.time+=dt; const W=RT.world;
   // global keys
   if(Input.hit('Escape')){ if(RT.menuOpen){ if(!RT.menuCtx?.noClose) Menu.close(); } else if(BuildMode.on) BuildMode.toggle(RT.players[0]); else if(RT.mode==='PHOTO') Photo.toggle(); else Menu.open('main'); }
-  if(!RT.menuOpen){ if(Input.hit('F1')) Menu.open('help'); if(!BuildMode.on){ if(Input.hit('KeyM')) Menu.open('map'); if(Input.hit('KeyJ')) Menu.open('jobs'); if(Input.hit('KeyK')) Menu.open('careers'); if(Input.hit('KeyP')) Photo.toggle(); if(Input.hit('Enter')) RT.players.length>1?removePlayer2():addPlayer2(); if(Input.hit('KeyO')) Menu.open('companions'); } }
+  if(!RT.menuOpen){ if(Input.hit('F1')) Keys.toggle(); if(!BuildMode.on){ if(Input.hit('KeyM')) Menu.open('map'); if(Input.hit('KeyJ')) Menu.open('jobs'); if(Input.hit('KeyK')) Menu.open('careers'); if(Input.hit('KeyP')) Photo.toggle(); if(Input.hit('Enter')) RT.players.length>1?removePlayer2():addPlayer2(); if(Input.hit('KeyO')) Menu.open('companions'); } }
   if(Input.pads.length>1 && RT.players.length<2 && Input.pads[1].buttons[9]?.pressed) addPlayer2();
   if(RT.mode==='PHOTO'){ Photo.update(dt); return; }
   if(RT.menuOpen) return;
