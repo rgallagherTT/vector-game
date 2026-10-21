@@ -2543,6 +2543,7 @@ function smashAt(pt, radius, opts={}){
     const mat = it.kind==='tree'?'wood': it.kind==='rock'?'stone': it.kind==='ore'?'ore': it.kind==='crystal'?'crystal':null;
     if(mat && W){ W.player.materials[mat]=(W.player.materials[mat]||0)+(it.kind==='tree'?4:2); if(it.kind==='ore'&&it.realm==='isles') W.player.materials.gold=(W.player.materials.gold||0)+1; if(it.realm==='frontier') W.player.materials.alien=(W.player.materials.alien||0)+1; if(it.kind==='tree') W.metrics.forestCut+=0.2; }
     count+=lim; }
+  if(R>=1.2 && typeof Vehicles!=='undefined') for(const v of Vehicles.list){ if(v.alive && v.pos.distanceTo(pt)<Math.max(v.half[0],v.half[1])+R && v.driver!==opts.by) count+=v.hitAt(pt,R,opts.by); }
   if(count){ FX.burst('dust',pt.x,pt.y,pt.z,Math.min(12,count),3); Audio.click(count); if(!opts.noPips) Pips.burst(pt.x,pt.y+0.5,pt.z, Math.max(1,Math.round(count/3)));
     if(W) W.player.stats.smashed+=count; RT.shake=Math.min(1,RT.shake+count*0.02); Bus.emit('smash',{pt,count,by:opts.by});
     for(const s of touched) Stream.markDirty(s);
@@ -3065,9 +3066,11 @@ function hostile(a,b){ if(a===b||!a||!b) return false; if(a.team===b.team) retur
 function nearestFoe(f, r){ let best=null, bd=r; for(const o of RT.figures){ if(o.ko||!o.alive||!hostile(f,o)) continue; const d=o.pos.distanceTo(f.pos); if(d<bd){ bd=d; best=o; } } return best; }
 // physics: voxel collision against bricks and terrain
 function blockedAt(x, y0, y1, z, r){ for(const ox of [-r,r]) for(const oz of [-r,r]){ const X=Math.floor(x+ox), Z=Math.floor(z+oz); for(let y=Math.floor(y0/PL); y<y1/PL; y+=1){ if(solidAt(X,y,Z)) return y*PL; } } return null; }
-function groundUnder(f, r){ let g=-1e9; const y=(f.pos.y+0.6)/PL; for(const [ox,oz] of [[0,0],[r,0],[-r,0],[0,r],[0,-r]]) g=Math.max(g, supportTop(Math.floor(f.pos.x+ox),Math.floor(f.pos.z+oz),y)); return g*PL; }
+function groundUnder(f, r){ let g=-1e9; const y=(f.pos.y+0.6)/PL; for(const [ox,oz] of [[0,0],[r,0],[-r,0],[0,r],[0,-r]]) g=Math.max(g, supportTop(Math.floor(f.pos.x+ox),Math.floor(f.pos.z+oz),y)); g*=PL; f.onVehicle=null;
+  for(const v of Vehicles.list){ if(!v.alive) continue; const d=v.deckAt(f.pos); if(d!==null && d<=f.pos.y+1.2 && d>g){ g=d; f.onVehicle=v; } } return g; }
 function moveFigure(f, it, dt){
   if(f.ko){ updateDebris(f,dt); return; }
+  if(f.vehicle) return;
   if(f.mount){ f.pos.copy(f.mount.pos).add(_V.set(0, f.mount.height*0.78, 0)); f.yaw=f.mount.yaw; f.vel.copy(f.mount.vel); f.onGround=true; return; }
   if(f.flying){ flyMove(f,it,dt); return; }
   const S=f.scale; const buff=(k)=>f.buffs[k]?.mul||1;
@@ -3247,6 +3250,8 @@ const Proj = {
             else { p.vel.applyAxisAngle(_UP,(Math.random()-.5)*2.4); p.vel.y+=6; o.stamina=Math.max(0,o.stamina-12); p.team=o.team; Audio.tone(900,0.06,'sine',0.1); } break; }
           applyEffects(p.src,o,p.A,p.mult); p.dead=true; break; }
       if(p.dead) continue;
+      for(const v of Vehicles.list){ if(!v.alive || v.team===p.team) continue; const l=v.toLocal(p.pos); if(Math.abs(l.x)<v.half[0]+0.3 && Math.abs(l.z)<v.half[1]+0.3 && l.y>-0.5 && l.y<v.height+0.5){ const sm=p.A.effects.find(e=>e.type==='smash'); v.hitAt(p.pos, sm?sm.radius:0.6, p.src); if(v.driver && !v.driver.isPlayer) damage(v.driver,5,p.src); p.dead=true; break; } }
+      if(p.dead) continue;
       if(solidAt(Math.floor(p.pos.x),Math.floor(p.pos.y/PL),Math.floor(p.pos.z))){ p.dead=true; const sm=p.A.effects.find(e=>e.type==='smash'); smashAt(p.pos, sm?sm.radius:0.5, { by:p.src, noTerrain:!sm||sm.radius<1.5, noPips:!sm, rubble:!!sm }); FX.burst('hit',p.pos.x,p.pos.y,p.pos.z,4,3); } }
     this.list=this.list.filter(p=>!p.dead);
   },
@@ -3384,13 +3389,18 @@ const HUD = {
 function nearbyFn(f, r=6){ let best=null, bd=r; for(const s of RT.sectors.values()) for(const fn of s.fn){ const d=Math.hypot(fn.x-f.pos.x,fn.z-f.pos.z); if(d<bd){ bd=d; best=fn; } } return best; }
 function interactPrompt(f){
   const p=Rubble.nearest(f,4); if(p) return p.options.length>1 ? `Hold E to build: ${p.options.map((o,i)=>(i===p.choice?'▶':'')+RUBBLE_BUILDS[o].name).join(' / ')} (1/2 to choose)` : `Hold E to build a ${RUBBLE_BUILDS[p.options[0]].name}`;
-  const fn=nearbyFn(f); if(fn) return { waystone:'E: Waystone (fast travel)', board:'E: Job board', recruiter:'E: Recruiter', inn:'E: Inn (rest, save)', shop:'E: Shop', bakery:'E: Bakery', temple:'E: Lumen temple', launchpad:'E: Launch to the Frontier', statue:`A statue: ${fn.deed||''}`, colony:'E: Colony (return to the launch pad)' }[fn.kind]||null;
+  const fr=fnRefsNear(f.pos); if(fr.length) return 'E: '+(FN_LABEL[fr[0].fn]||fr[0].fn);
+  const vv=Vehicles.near(f,3); if(vv) return vv.team==='enemy' ? (vv.hp<0.8?'E: Board her!':'Enemy ship — knock bricks off her hull, then board') : `E: ${vv.rolled?'Flip':'Take'} the ${vv.name}`;
+  const fn=nearbyFn(f); if(fn) return { dock:'E: Docks (boats)', plot:'E: Home plot', stable:'E: Stable (mounts)', waystone:'E: Waystone (fast travel)', board:'E: Job board', recruiter:'E: Recruiter', inn:'E: Inn (rest, save)', shop:'E: Shop', bakery:'E: Bakery', temple:'E: Lumen temple', launchpad:'E: Launch to the Frontier', statue:`A statue: ${fn.deed||''}`, colony:'E: Colony (return to the launch pad)' }[fn.kind]||null;
   const m=nearestMountable(f); if(m) return `X: ${m.tamed||m===RT.players[1]?.fig?'Ride':'Tame'} ${m.name}`;
   const prop=nearestCarryable(f); if(prop) return 'G: pick up';
   return null;
 }
 function interact(pl){
-  const f=pl.fig; const W=RT.world; const fn=nearbyFn(f); if(!fn) return false;
+  const f=pl.fig; const W=RT.world; const v=Vehicles.near(f,3); if(v && v.team!=='enemy'){ Vehicles.enter(f,v); return true; }
+  if(v && v.team==='enemy' && v.hp<0.8){ boardShip(f,v); return true; }
+  const fr=fnRefsNear(f.pos); if(fr.length){ useFunctional(f, fr[0]); return true; }
+  const fn=nearbyFn(f); if(!fn) return false;
   switch(fn.kind){
     case 'waystone': { const ws=W.map.waystones.find(w=>w.town===fn.town); if(ws && !W.player.waystones.includes(ws.id)){ W.player.waystones.push(ws.id); toast('Waystone unlocked!'); Audio.jingle(4); FX.burst('magic',fn.x,fn.y+4,fn.z,20,4); } Menu.open('travel'); return true; }
     case 'board': Menu.open('jobs',{ site:fn.town }); return true;
@@ -3398,7 +3408,10 @@ function interact(pl){
     case 'inn': case 'bakery': Menu.open('inn',{ town:fn.town }); return true;
     case 'shop': Menu.open('shop',{ town:fn.town }); return true;
     case 'temple': Menu.open('temple',{ realm:fn.realm }); return true;
-    case 'launchpad': launchToSpace(); return true;
+    case 'launchpad': Menu.open('launchpad'); return true;
+    case 'dock': Menu.open('garage',{kinds:['ship'],title:'The docks'}); return true;
+    case 'plot': Menu.open('plot',{plot:fn.plot}); return true;
+    case 'stable': Menu.open('stable',{realm:fn.realm}); return true;
     case 'colony': returnFromSpace(); return true;
   }
   return false;
@@ -3410,6 +3423,7 @@ function nearestCarryable(f){ let best=null, bd=3; for(const b of Live.pool){ if
 const Modes = { list:['ON_FOOT','RIDING','VEHICLE','BUILD','MENU','CUTSCENE','SAIL','FLY','SPACE','PHOTO'], set(m){ if(RT.mode===m) return; Bus.emit('mode',{from:RT.mode,to:m}); RT.mode=m; } };
 function playerUpdate(pl, dt){
   const f=pl.fig; const it=pl.ctrl.intent(pl.cam); pl.it=it;
+  if(f.vehicle){ if(it.interact) Vehicles.exit(f); return it; }
   if(RT.mode!=='ON_FOOT' && RT.mode!=='RIDING' && RT.mode!=='FLY') return it;
   // lock-on
   if(it.lock){ f.lockTarget = f.lockTarget ? null : nearestFoe(f,25)||nearestInFront(f,25); if(f.lockTarget) toast(`Locked on: ${f.lockTarget.name}`); }
@@ -3519,9 +3533,11 @@ Menu.acts.buy = a=>{ const [k,p]=a.split('|'); const P=RT.world.player; if(P.pip
 Menu.acts.sell = k=>{ const P=RT.world.player; if((P.materials[k]||0)<=0) return; P.materials[k]--; P.pips+=itemValue(k); Audio.jingle(1); addCareerXp(RT.world,'merchant',3); };
 Menu.pages.travel = ()=>{ const W=RT.world; return `<h2>Waystones</h2><p>Touch a waystone to unlock it, then travel between unlocked waystones.</p>${W.map.waystones.map(w=>{ const t=W.map.towns.find(x=>x.id===w.town)||{name:'Orbital Station',realm:'frontier'}; const un=W.player.waystones.includes(w.id);
   return `<div class="row"><span style="flex:1">${esc(t.name)} — ${esc(REALMS[t.realm]?.name||'')}</span>${un?`<button data-act="travel" data-arg="${w.id}">Travel</button>`:'<i>locked</i>'}</div>`; }).join('')}
+  ${W.player.plots.length?`<h3>Your homes</h3><div class="row">${W.player.plots.map(id=>{ const pl=W.map.plots.find(p=>p.id===id); return `<button data-act="travelHome" data-arg="${id}">${esc(pl.kind)} near ${esc(W.map.towns.find(t=>t.id===pl.town)?.name||'')}</button>`; }).join('')}</div>`:''}
   <h3>Ferries, the coastal train and airships</h3><div class="row">${W.map.ferries.map(([a,b])=>`<button data-act="ride" data-arg="${a}|${b}">Ferry: ${esc(W.map.towns.find(t=>t.id===a).name)} ⇄ ${esc(W.map.towns.find(t=>t.id===b).name)}</button>`).join('')}
   <button data-act="ride" data-arg="${W.map.train.join('|')}">Coastal train</button>${W.map.airships.slice(1).map(t=>`<button data-act="ride" data-arg="${W.map.airships[0]}|${t}">Airship to ${esc(W.map.towns.find(x=>x.id===t).name)}</button>`).join('')}</div>`; };
 Menu.acts.travel = id=>{ const w=RT.world.map.waystones.find(x=>x.id===id); Menu.close(); if(id==='ws_station'){ launchToSpace(); return; } teleportPlayers(w.x, w.z, 'waystone'); };
+Menu.acts.travelHome = id=>{ const pl=RT.world.map.plots.find(p=>p.id===id); Menu.close(); teleportPlayers(pl.x+4,pl.z+4,'home'); };
 Menu.acts.ride = a=>{ const ids=a.split('|'); const here=nearestTown(RT.players[0].fig.pos); const dest = ids.find(i=>i!==here.id) || ids[ids.length-1]; const t=RT.world.map.towns.find(x=>x.id===dest); Menu.close(); Travel.journey(t, ids.length>2?'train': a.includes('mistpeak')||a.includes('wildwood_t0')||a.includes('ember_t0')&&RT.world.map.airships.includes(dest)?'airship':'ferry'); };
 function teleportPlayers(x,z,kind){ FX.burst('magic',RT.players[0].fig.pos.x,RT.players[0].fig.pos.y+2,RT.players[0].fig.pos.z,30,6); Audio.jingle(4);
   for(const [i,pl] of RT.players.entries()){ pl.fig.pos.set(x+i*2, 200, z); pl.fig.vel.set(0,0,0); pl.cam.inited=false; } RT.pendingDrop=true; RT.inSpace=false; RT.gravityMul=1; }
@@ -3538,7 +3554,7 @@ const Travel = {
 const Jobs = {
   start(j){ const W=RT.world; const site=siteById(W,j.site); RT.job={ ...j, pos:new THREE.Vector3(site.x+(Math.random()-.5)*60, 0, site.z+(Math.random()-.5)*60), spawned:false, kills:0, progressText:'' };
     if(j.obj==='deliver'||j.obj==='escort'||j.obj==='trade'){ const other=pick(Math.random, W.map.towns.filter(t=>t.realm===site.realm && t.id!==site.id)) || site; RT.job.pos.set(other.x, 0, other.z); RT.job.destName=other.name; }
-    toast(`Job: ${j.title}`); Audio.jingle(2); Bus.emit('job.start',{job:j}); },
+    toast(`Job: ${j.title}`); Audio.jingle(2); Bus.emit('job.start',{job:j}); if(j.obj==='build'){ RT.job.briefIdx=Math.floor(Math.random()*COMMISSION_BRIEFS.length); setTimeout(()=>Menu.open('commission'),300); } },
   clear(){ for(const f of RT.figures) if(f.jobSpawn) f.alive=false; RT.job=null; },
   update(dt){
     const J=RT.job; if(!J) return; const f=RT.players[0].fig; const d=Math.hypot(J.pos.x-f.pos.x, J.pos.z-f.pos.z);
@@ -3555,7 +3571,7 @@ const Jobs = {
       else J.progressText=`(${Math.round(d)}m)`;
     } else if(J.obj==='gather'){ const have=(RT.world.player.stats.smashed||0)-(J.base??(J.base=RT.world.player.stats.smashed||0)); J.progressText=`(${Math.min(have,J.count*5)}/${J.count*5} smashed)`; if(have>=J.count*5) this.finish(true); }
     else if(J.obj==='race'){ Race.update(J,f,dt); }
-    else if(J.obj==='build'){ J.progressText='(open Build mode on a plot, then submit from the Blueprints menu)'; }
+    else if(J.obj==='build'){ J.progressText='(build it, then open the brief with Esc → Jobs → Submit)'; if(Input.hit('KeyU')) Menu.open('commission'); }
     else { J.progressText=`(${Math.round(d)}m${J.destName?' to '+J.destName:''})`; if(d<8){ if(J.obj==='meditate'){ f.emote={name:'meditate',t:0,dur:3}; } if(J.obj==='tame'||J.obj==='cook'||J.obj==='sneak'||J.obj==='catch'||J.obj==='broker'||J.obj==='reach'||J.obj==='deliver'||J.obj==='escort'||J.obj==='meditate') this.finish(true); } }
     // a marker of glowing bricks shows where to go
     if(RT.frame%4===0){ const y=surfaceY(J.pos.x,J.pos.z)+6+Math.sin(RT.time*3); FX.spawn('sparkle',J.pos.x,y,J.pos.z,0,1,0); }
@@ -3596,6 +3612,379 @@ window.dbg=dbg; window.RT=RT; if(DEBUG) window.evalIn=src=>eval(src);
 function updateDebugOverlay(){ if(!DEBUG) return; const el=$('debug'); el.style.display='block'; const i=renderer.info; let mb=0, st=0, sc=0; for(const s of RT.sectors.values()){ if(s.group){ mb+=s.mergedBricks||0; st+=s.studCount||0; sc+=s.studCulled||0; } }
   RT.stats.studsVisible=st; RT.stats.studsCulled=sc;
   el.textContent=`FPS ${RT.fps.toFixed(0)}  frame ${RT.frameMs.toFixed(1)}ms\ndraw calls ${RT.drawCalls}  tris ${(RT.tris/1000).toFixed(0)}k\nmerged bricks ${mb}  live bricks ${Live.active}\nstuds ${st} (culled ${sc})  sectors ${[...RT.sectors.values()].filter(s=>s.group).length}/${RT.sectors.size}\nfigures ${RT.figures.length}  mode ${RT.mode}  realm ${RT.realm}\npos ${RT.players[0]?.fig.pos.toArray().map(v=>v.toFixed(0)).join(',')}`; }
+
+// §VEHICLEBUILD / §SHIPBUILD / §SAILING / §SPACE -------------------------------
+// Vehicles are brick models that move: kit vehicles (models/*.json tagged vehicle) or anything the player builds.
+// Handling comes from the bricks; every hit knocks bricks off; figures can stand on decks.
+const VEH_PARTS = { wheel_small:'wheel', wheel_medium:'wheel', wheel_large:'wheel', tyre_small:'wheel', tyre_medium:'wheel', tyre_large:'wheel', wheel_2x2:'wheel', tyre_2x2:'wheel', fn_axle:'wheel',
+  sail_cloth:'sail', fn_mast:'sail', fn_oars:'oar', cannon_barrel:'cannon', fn_cannon:'cannon', flame_cone:'thrust', fn_thruster:'thrust', fn_booster:'thrust', fn_engine:'engine', fn_shield:'shield', fn_fuel:'fuel',
+  fn_blaster:'blaster', fn_seat:'seat', seat_2x2:'seat', fn_cockpit:'seat', fn_helm:'seat', steering_wheel:'seat', rotor_3blade:'rotor', fn_keel:'keel', fn_ram:'ram' };
+function vehicleKindOf(m, bricks){ const f=m?.meta?.function||''; if(/space/.test(f)) return 'star'; if(/ship|raft/.test(f)) return 'ship'; if(/air|glide/.test(f)) return 'air';
+  const c={}; for(const b of bricks){ const k=VEH_PARTS[b[0]]; if(k) c[k]=(c[k]||0)+1; } if(c.keel||c.sail||c.oar) return 'ship'; if(c.thrust>=2 && !c.wheel) return 'star'; if(c.rotor && !c.wheel) return 'air'; return 'car'; }
+function vehicleStats(bricks, kind, fn){
+  const st=blueprintStats(bricks)||{ mass:1 }; const c={}; for(const b of bricks){ const k=VEH_PARTS[b[0]]; if(k){ const P=PIECES[b[0]]; c[k]=(c[k]||0)+(k==='sail'?P.w*P.d*P.h/6:1); } }
+  const mass=Math.max(1.5,st.mass);
+  const wheels=c.wheel||0, sail=(c.sail||0)+(c.oar||0)*0.5, cannons=c.cannon||0, thrust=(c.thrust||0), shields=c.shield||0;
+  const engine = (c.engine||0)*10 + (kind==='car' ? 8+mass*1.2 : 0);           // kit cars carry a hidden motor
+  const comY=st.comY*PL, width=Math.max(2,st.width), len=Math.max(2,st.length);
+  return { mass, wheels, sail, cannons, thrust, shields, seats:c.seat||0, rams:c.ram||0,
+    accel: kind==='car' ? (wheels? engine/mass*3 : 0) : 0, top: kind==='car' ? clamp(10+engine*1.6/Math.sqrt(mass),8,42) * (wheels>=4?1: wheels>=2?0.75: wheels?0.4:0.1) : 0,
+    turn: clamp(0.5+wheels*0.18+5/len,0.4,2.6), rollRisk: comY/width,
+    sailPower: clamp((sail*2.4 + (fn==='vehicle_ship'&&!sail?6:0))/Math.sqrt(mass),0.5,30), shipTurn: clamp(10/len,0.15,1.4), oars:(c.oar||0)+(/rowboat/.test(fn)?2:0),
+    thrustPower: clamp((thrust*6 + (kind==='star'?14:0))/Math.sqrt(mass),2,60), spin: st.spin||0, endurance: 60+(c.fuel||0)*60+shields*20,
+    lift: kind==='air' ? 8 : 0, glide: fn==='vehicle_glide' };
+}
+let VEHSEQ=0;
+class Vehicle {
+  constructor(bricks, o={}){ this.id=++VEHSEQ; this.name=o.name||'Vehicle'; this.src=o.src||null; this.fn=o.fn||''; this.kind=o.kind||vehicleKindOf(o.model,bricks); this.team=o.team||'player'; this.ai=o.ai||null;
+    this.pos=(o.pos||new THREE.Vector3()).clone(); this.yaw=o.yaw||0; this.pitch=0; this.roll=0; this.vel=new THREE.Vector3(); this.speed=0; this.vy=0; this.trim=0; this.rolled=false; this.alive=true; this.driver=null; this.hp=1; this.shield=0; this.cool=0; this.fuel=1;
+    this.group=new THREE.Group(); scene.add(this.group); this.setBricks(bricks); this.startBricks=this.bricks.length; this.empties=o.empties||{}; }
+  setBricks(bricks){ // centre the footprint on the origin; forward is -Z
+    let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9,y0=1e9; for(const b of bricks){ const P=PIECES[b[0]]; if(!P) continue; const c=brickCells(b); x0=Math.min(x0,c.x0); z0=Math.min(z0,c.z0); x1=Math.max(x1,c.x1); z1=Math.max(z1,c.z1); y0=Math.min(y0,c.y0); }
+    const ox=Math.round((x0+x1)/2), oz=Math.round((z0+z1)/2); this.bricks=bricks.filter(b=>PIECES[b[0]]).map(b=>[b[0],b[1]-ox,b[2]-y0,b[3]-oz,b[4]||0,b[5],b[6]]); this.half=[(x1-x0)/2,(z1-z0)/2]; this.rebuild(); }
+  rebuild(){ if(this.mesh){ this.group.remove(this.mesh); this.mesh.geometry.dispose(); }
+    this.mesh=new THREE.Mesh(modelToGeo({bricks:this.bricks}, true), MAT.opaque); this.mesh.castShadow=true; this.mesh.receiveShadow=true; this.group.add(this.mesh);
+    this.stats=vehicleStats(this.bricks,this.kind,this.fn); this.hp=this.bricks.length/Math.max(1,this.startBricks||this.bricks.length);
+    // deck heights per local stud column, so figures can stand on vehicles
+    this.deck=new Map(); let top=0; for(const b of this.bricks){ const P=PIECES[b[0]]; if(P.nonSolid) continue; const c=brickCells(b); for(let x=c.x0;x<c.x1;x++) for(let z=c.z0;z<c.z1;z++){ const k=x+','+z; this.deck.set(k,Math.max(this.deck.get(k)||0,c.y1)); } top=Math.max(top,c.y1); } this.height=top*PL; }
+  fwd(){ return new THREE.Vector3(-Math.sin(this.yaw),0,-Math.cos(this.yaw)); }
+  toLocal(p){ const d=p.clone().sub(this.pos); d.applyAxisAngle(_UP,-this.yaw); return d; }
+  toWorld(l){ return l.clone().applyAxisAngle(_UP,this.yaw).add(this.pos); }
+  deckAt(p){ const l=this.toLocal(p); const k=Math.floor(l.x)+','+Math.floor(l.z); const h=this.deck.get(k); return h===undefined?null:this.pos.y+h*PL; }
+  seatWorld(){ const s=this.empties.seat_driver; return s ? this.toWorld(new THREE.Vector3(s[0]-this.half[0]+0.5, s[1]*PL, s[2]-this.half[1]+0.5)) : this.pos.clone().add(new THREE.Vector3(0,this.height*0.5,0)); }
+  hitAt(p, radius, by){ // knock bricks off around a world point
+    const l=this.toLocal(p); let n=0; const keep=[];
+    for(const b of this.bricks){ const c=brickCells(b); const cx=(c.x0+c.x1)/2, cy=(c.y0+c.y1)/2*PL, cz=(c.z0+c.z1)/2; if(Math.hypot(cx-l.x,cy-l.y,cz-l.z)<radius+0.6 && n<24){ n++; const w=this.toWorld(new THREE.Vector3(cx,cy,cz)); Live.spawn(b[0],b[5],w.x,w.y,w.z,(Math.random()-.5)*8,4+Math.random()*5,(Math.random()-.5)*8); } else keep.push(b); }
+    if(!n) return 0; this.bricks=keep; Audio.click(n); FX.burst('dust',p.x,p.y,p.z,6,3); if(this.kind==='ship') FX.burst('splash',p.x,p.y,p.z,6,4);
+    if(this.bricks.length < this.startBricks*0.35 || !this.bricks.length){ this.wreck(by); return n; } this.rebuild();
+    if(this.driver && !this.bricks.some(b=>VEH_PARTS[b[0]]==='seat') && this.stats.seats===0 && this.kind!=='ship'){ /* the seat is gone: the driver tumbles out */ Vehicles.exit(this.driver); }
+    return n; }
+  wreck(by){ if(!this.alive) return; this.alive=false; for(const b of this.bricks.slice(0,200)){ const c=brickCells(b); const w=this.toWorld(new THREE.Vector3((c.x0+c.x1)/2,(c.y0+c.y1)/2*PL,(c.z0+c.z1)/2)); Live.spawn(b[0],b[5],w.x,w.y,w.z,(Math.random()-.5)*12,6+Math.random()*8,(Math.random()-.5)*12); }
+    FX.burst('fire',this.pos.x,this.pos.y+2,this.pos.z,30,8); FX.burst('smoke',this.pos.x,this.pos.y+3,this.pos.z,20,4); Audio.impact(true); Pips.burst(this.pos.x,this.pos.y+3,this.pos.z,this.team==='enemy'?20:4);
+    if(this.driver) Vehicles.exit(this.driver); scene.remove(this.group); Bus.emit('vehicle.wreck',{v:this,by}); if(this.team==='enemy' && by?.isPlayer){ toast(`${this.name} destroyed!`); addCareerXp(RT.world,'army_navy',40); addCareerXp(RT.world,'pirate',40); } }
+}
+const Vehicles = {
+  list:[], wind:{ dir:0, str:0.6 },
+  spawnModel(m, pos, yaw=0, o={}){ const v=new Vehicle(m.bricks.map(b=>b.slice()),{ ...o, model:m, fn:m.meta?.function||'', name:o.name||m.id.replace(/_/g,' '), empties:m.empties, pos, yaw }); this.list.push(v); return v; },
+  near(f, r=6){ let best=null, bd=r; for(const v of this.list){ if(!v.alive) continue; const d=Math.hypot(v.pos.x-f.pos.x, v.pos.z-f.pos.z) - Math.max(v.half[0],v.half[1]); if(d<bd){ bd=d; best=v; } } return best; },
+  enter(f, v){ if(v.driver||v.team==='enemy'||v.rolled&&v.kind==='car') { if(v.rolled){ v.rolled=false; v.roll=0; toast('You flip it back onto its wheels.'); } return; } v.driver=f; f.vehicle=v; f.mount=null; Modes.set(v.kind==='ship'?'SAIL': v.kind==='star'?'SPACE': v.kind==='air'?'FLY':'VEHICLE');
+    toast(v.kind==='ship'?'Sailing! W/S row, A/D steer, Q/E trim the sail to the wind, click to fire a broadside, E to step off.': v.kind==='star'?'Flying! W throttle, mouse/arrows steer, Shift boost, click to fire, E to land.': v.kind==='air'?'Airborne! W forward, Space up, C down, E to land.':'Driving! W/S, A/D, Space brake, click horn, E to get out.', 4500); },
+  exit(f){ const v=f.vehicle; if(!v) return; v.driver=null; f.vehicle=null; const p=v.toWorld(new THREE.Vector3(v.half[0]+2,0,0)); f.pos.copy(p); f.pos.y=Math.max(p.y, groundUnderPoint(p)); f.vel.set(0,0,0); Modes.set('ON_FOOT'); },
+  update(dt){
+    // the wind drifts slowly around the compass
+    this.wind.dir += Math.sin(RT.time*0.013)*dt*0.05; this.wind.str = clamp(0.5+Math.sin(RT.time*0.031)*0.3+(Weather.kind==='storm'?0.5:0),0.2,1.2);
+    for(const v of this.list){ if(!v.alive) continue; const before=v.pos.clone(), yawBefore=v.yaw;
+      const drv=v.driver; const it = drv ? (drv.ctrlIntent||{}) : v.ai ? v.ai(v,dt) : {};
+      const keys = drv && drv.isPlayer ? { up:Input.down('KeyW')||it.mz && false, down:Input.down('KeyS'), left:Input.down('KeyA'), right:Input.down('KeyD') } : (it.keys||{});
+      if(drv && drv.isPlayer){ const pad=Input.pads[0]; if(pad){ keys.up ||= (pad.axes[1]<-0.3)||pad.buttons[7]?.pressed; keys.down ||= pad.axes[1]>0.3||pad.buttons[6]?.pressed; keys.left ||= pad.axes[0]<-0.3; keys.right ||= pad.axes[0]>0.3; } }
+      const steer=(keys.left?1:0)-(keys.right?1:0), thr=(keys.up?1:0)-(keys.down?1:0); const S=v.stats;
+      if(v.kind==='car') this.drive(v,dt,thr,steer,keys);
+      else if(v.kind==='ship') this.sail(v,dt,thr,steer,keys);
+      else if(v.kind==='star') this.fly(v,dt,thr,steer,keys,true);
+      else this.fly(v,dt,thr,steer,keys,false);
+      v.cool-=dt;
+      if(drv && drv.isPlayer && (Input.mouse.pressed.has(0)||it.fire) && v.cool<=0) this.fire(v);
+      // carry riders and anyone standing on deck
+      const dyaw=v.yaw-yawBefore; for(const f of RT.figures){ if(f.onVehicle!==v || f.vehicle===v) continue; const rel=f.pos.clone().sub(before).applyAxisAngle(_UP,dyaw); f.pos.copy(v.pos).add(rel); f.yaw+=dyaw; }
+      v.group.position.copy(v.pos); v.group.rotation.set(v.pitch, v.yaw, v.roll, 'YXZ');
+      if(drv){ const s=v.seatWorld(); drv.pos.copy(s); drv.yaw=v.yaw+Math.PI; drv.vel.copy(v.vel); drv.onGround=true; drv.emote={name:'sit',t:0,dur:0.2}; }
+    }
+    this.list=this.list.filter(v=>v.alive || v.group.parent);
+  },
+  drive(v,dt,thr,steer,keys){ const S=v.stats; if(v.rolled){ v.speed*=Math.exp(-3*dt); v.roll=lerp(v.roll,Math.PI/2,dt*3); return; }
+    const grip=S.wheels>=4?1:S.wheels>=2?0.7:0.3; v.speed += thr*S.accel*dt*(thr*v.speed<0?2.5:1); if(keys.brake||Input.down('Space')&&v.driver?.isPlayer) v.speed*=Math.exp(-4*dt);
+    v.speed*=Math.exp(-(0.25+(S.wheels<4?0.8:0))*dt); v.speed=clamp(v.speed,-S.top*0.4,S.top);
+    const tr=steer*S.turn*clamp(v.speed/8,-1,1)*grip; v.yaw+=tr*dt;
+    // top-heavy builds roll over in hard turns
+    const lat=Math.abs(tr*v.speed); if(lat>14/Math.max(0.3,S.rollRisk*2.2) && Math.abs(v.speed)>10){ v.rolled=true; toast('It rolled over! Press E next to it to flip it back.'); Audio.impact(true); if(v.driver) Vehicles.exit(v.driver); }
+    const f=v.fwd(); const step=f.multiplyScalar(v.speed*dt); const nx=v.pos.clone().add(step);
+    const front=nx.clone().addScaledVector(v.fwd(), v.half[1]); const gF=groundUnderPoint(front), gC=groundUnderPoint(nx);
+    if(gF > v.pos.y+1.3 || blockedAt(front.x, v.pos.y+1.3, v.pos.y+2.5, front.z, 0.6)!==null){ // hit a wall: rams smash it, everything else bounces
+      if(Math.abs(v.speed)>12 || S.rams){ smashAt(front.clone().setY(v.pos.y+1.5), 1.2+S.mass*0.05, { by:v.driver, noTerrain:true }); v.speed*=0.6; v.hitAt(front,0.8,null); }
+      else { v.speed*=-0.3; Audio.impact(false); } }
+    else { v.pos.copy(nx); }
+    const g=Math.max(gC, groundUnderPoint(v.pos.clone().addScaledVector(v.fwd(),-v.half[1]))); v.vy-=CONFIG.gravity*RT.gravityMul*dt; v.pos.y+=v.vy*dt; if(v.pos.y<=g){ v.pos.y=g; v.vy=0; }
+    const back=v.pos.clone().addScaledVector(v.fwd(),-v.half[1]); v.pitch=lerp(v.pitch, Math.atan2(groundUnderPoint(front)-groundUnderPoint(back), v.half[1]*2)*0.6, dt*5); v.roll=lerp(v.roll,-tr*0.05*Math.abs(v.speed)/10,dt*4);
+    if(v.pos.y<CONFIG.seaLevel*PL-1 && terrainH(Math.floor(v.pos.x),Math.floor(v.pos.z))<CONFIG.seaLevel){ v.speed*=Math.exp(-2*dt); }
+    v.vel.copy(v.fwd()).multiplyScalar(v.speed);
+    // run people over gently: knock them aside
+    if(Math.abs(v.speed)>6) for(const o of RT.figures){ if(o===v.driver||o.ko||o.vehicle) continue; if(o.pos.distanceTo(v.pos)<Math.max(v.half[0],v.half[1])+0.5){ o.vel.addScaledVector(v.fwd(), v.speed*0.6); o.vel.y+=5; if(hostile(v.driver||{team:v.team},o)) damage(o, Math.abs(v.speed)*1.2, v.driver); } } },
+  sail(v,dt,thr,steer,keys){ const S=v.stats; const W=this.wind;
+    if(v.driver?.isPlayer){ if(Input.down('KeyQ')) v.trim=clamp(v.trim-dt*1.2,-1.4,1.4); if(Input.down('KeyE')&&false) v.trim=clamp(v.trim+dt*1.2,-1.4,1.4); if(Input.down('KeyR')) v.trim=clamp(v.trim+dt*1.2,-1.4,1.4); }
+    else if(keys.trim!==undefined) v.trim=keys.trim;
+    // sail force: the sail catches wind when the trimmed sail faces it; dead upwind gives nothing, so you tack
+    const heading=Math.atan2(-Math.sin(v.yaw), -Math.cos(v.yaw)); const windTo=W.dir; let rel=((windTo-heading)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI; const angleOff=Math.abs(rel);
+    const sailAngle = rel - v.trim; const eff = Math.max(0, Math.cos(sailAngle*0.8)) * (angleOff>2.6 ? 0.05 : 1); // 2.6 rad ≈ 150°: into the wind
+    let force = S.sailPower*W.str*eff*0.6 + thr*(S.oars?3.5:0.8);
+    v.speed += force*dt; v.speed*=Math.exp(-0.35*dt); v.speed=clamp(v.speed,-3,S.sailPower*1.3+4);
+    v.yaw += steer*S.shipTurn*clamp(Math.abs(v.speed)/4+0.15,0.15,1.2)*dt;
+    const n=v.pos.clone().addScaledVector(v.fwd(), v.speed*dt); const ahead=n.clone().addScaledVector(v.fwd(),v.half[1]);
+    if(terrainH(Math.floor(ahead.x),Math.floor(ahead.z))>=CONFIG.seaLevel-1 || blockedAt(ahead.x,CONFIG.seaLevel*PL,CONFIG.seaLevel*PL+2,ahead.z,0.5)!==null){ v.speed*=-0.2; if(Math.abs(v.speed)>0.5) Audio.impact(false); } else v.pos.copy(n);
+    const tide = RT.realm==='isles' ? Math.sin(RT.world.day*Math.PI*4)*0.3 : 0; v.pos.y = CONFIG.seaLevel*PL - 0.9 + Math.sin(RT.time*1.3+v.id)*0.12 + tide;
+    v.roll = Math.sin(RT.time*0.9+v.id)*0.04 - steer*0.05*Math.min(1,v.speed/6) + (1-v.hp)*0.2; v.pitch=Math.sin(RT.time*0.7+v.id)*0.025;
+    v.vel.copy(v.fwd()).multiplyScalar(v.speed); if(Math.abs(v.speed)>2 && Math.random()<dt*8){ const b=v.pos.clone().addScaledVector(v.fwd(),v.half[1]); FX.spawn('splash',b.x,b.y+0.8,b.z,(Math.random()-.5)*3,2,(Math.random()-.5)*3); }
+    v.sailEff=eff; },
+  fly(v,dt,thr,steer,keys,space){ const S=v.stats; const pl=v.driver?.isPlayer;
+    const pitchIn = pl ? clamp((Input.down('ArrowUp')?-1:0)+(Input.down('ArrowDown')?1:0) + (Input.locked?Input.mouse.dy*0.03:0), -1,1) : (keys.pitch||0);
+    const yawIn = steer + (pl && Input.locked ? -Input.mouse.dx*0.02 : 0);
+    const boost = pl && Input.down('ShiftLeft') ? 1.8 : 1; const power = space ? S.thrustPower : (S.glide?0:12);
+    v.yaw += yawIn*(space?1.6:1.0)*dt + (space? S.spin*Math.min(1,v.speed/20)*dt : 0); // lopsided thrust spins the ship
+    if(space){ v.pitch = clamp(v.pitch + pitchIn*1.4*dt, -1.2, 1.2); } else v.pitch=lerp(v.pitch, -thr*0.08, dt*2);
+    v.speed += thr*power*boost*dt; v.speed*=Math.exp(-(space?0.15:0.6)*dt); v.speed=clamp(v.speed, space?-10:-4, (space?power*3:22)*boost);
+    const dir=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(v.pitch, v.yaw, 0, 'YXZ'));
+    v.vel.copy(dir).multiplyScalar(v.speed);
+    if(!space){ const up=(pl?((Input.down('Space')?1:0)-(Input.down('KeyC')?1:0)):(keys.climb||0)); v.vy = S.glide ? -2.2+Math.max(0,v.speed)*0.05 : lerp(v.vy, up*8, dt*2); v.vel.y += v.vy; }
+    const n=v.pos.clone().addScaledVector(v.vel,dt); const g=groundUnderPoint(n);
+    if(n.y < g){ n.y=g; if(v.speed>14 && space){ v.hitAt(n,1.2,null); v.speed*=0.4; } else v.speed*=Math.exp(-3*dt); }
+    if(blockedAt(n.x,n.y+0.5,n.y+2,n.z,0.6)!==null){ v.speed*=-0.3; v.hitAt(n,0.6,null); } else v.pos.copy(n);
+    if(space && v.driver?.isPlayer){ v.fuel=Math.max(0,v.fuel-dt*Math.abs(thr)/S.endurance); if(v.fuel<=0) v.speed*=0.98; }
+    v.roll=lerp(v.roll, -yawIn*0.5, dt*3);
+    if(space && thr>0 && Math.random()<dt*20){ const b=v.pos.clone().addScaledVector(dir,-v.half[1]); FX.spawn('fire',b.x,b.y+0.8,b.z,-dir.x*10,-dir.y*10,-dir.z*10); } },
+  fire(v){ // cannons fire broadsides toward the aim side; blasters fire forward
+    const S=v.stats; const aim=RT.camAim||v.fwd(); const right=new THREE.Vector3(-v.fwd().z,0,v.fwd().x); const side = aim.dot(right)>=0 ? 1 : -1;
+    if(v.kind==='ship'){ const cans=v.bricks.filter(b=>VEH_PARTS[b[0]]==='cannon'); const n=Math.max(cans.length, S.cannons, v.fn==='vehicle_ship'?2:0); if(!n){ toast('No cannons aboard.'); v.cool=1; return; }
+      for(let i=0;i<Math.min(n,8);i++){ const off=(i-(n-1)/2)*2.2; const p=v.pos.clone().addScaledVector(v.fwd(),off).addScaledVector(right,side*(v.half[0]+0.5)); p.y+=1.6; const dir=right.clone().multiplyScalar(side); dir.y=0.12; setTimeout(()=>{ Proj.list.push({ src:v.driver||{team:v.team,pos:v.pos,isPlayer:false}, A:CANNON_SHOT, pos:p, vel:dir.normalize().multiplyScalar(42), t:0, life:1.6, mult:1, col:COLORS.black, team:v.team, cannon:true }); FX.burst('smoke',p.x,p.y,p.z,4,3); Audio.impact(true); }, i*70); }
+      v.cool=2.2; return; }
+    if(v.kind==='star'||v.kind==='air'){ const dir=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(v.pitch,v.yaw,0,'YXZ')); for(const s of [-1,1]){ const p=v.pos.clone().addScaledVector(right,s*Math.max(1.5,v.half[0]*0.7)).addScaledVector(dir,v.half[1]); p.y+=0.6; Proj.list.push({ src:v.driver||{team:v.team,pos:v.pos}, A:BLASTER_SHOT, pos:p, vel:dir.clone().multiplyScalar(80).add(v.vel), t:0, life:1.2, mult:1, col:COLORS.trans_red, team:v.team, cannon:true }); } Audio.tone(880,0.08,'square',0.08); v.cool=0.18; return; }
+    Audio.tone(330,0.3,'square',0.12); Audio.tone(415,0.3,'square',0.1,0.05); v.cool=0.5; // the horn
+  },
+};
+const CANNON_SHOT = { id:'cannon', name:'Cannonball', t:'projectile', proj:'ball', effects:[{type:'damage',amount:30},{type:'knockback',force:10},{type:'smash',radius:1.6}], tags:[], range:70 };
+const BLASTER_SHOT = { id:'vblaster', name:'Blaster', t:'projectile', proj:'bolt', effects:[{type:'damage',amount:14},{type:'smash',radius:0.8}], tags:[], range:90 };
+function groundUnderPoint(p){ let g=supportTop(Math.floor(p.x),Math.floor(p.z),(p.y+1.6)/PL)*PL; if(RT.inSpace && terrainH(Math.floor(p.x),Math.floor(p.z))<-900) g=-1e6; return g; }
+// enemy ships and fighters: simple sailing/flying captains that line up a broadside or a firing run
+function shipAI(target){ return (v,dt)=>{ const t=target(); if(!t) return { keys:{} }; const to=t.clone().sub(v.pos); const d=to.length(); const want = d>34 ? Math.atan2(-to.x,-to.z) : Math.atan2(-to.x,-to.z)+Math.PI/2;
+    let dy=((want-v.yaw+Math.PI*3)%(Math.PI*2))-Math.PI; const keys={ left:dy>0.1, right:dy<-0.1, up:true, trim: clamp(dy,-1,1) };
+    if(d<40 && v.cool<=0){ const right=new THREE.Vector3(-v.fwd().z,0,v.fwd().x); if(Math.abs(to.clone().normalize().dot(right))>0.75){ RT.camAimSave=RT.camAim; RT.camAim=to.clone().normalize(); Vehicles.fire(v); RT.camAim=RT.camAimSave; v.cool=3.5; } }
+    return { keys }; }; }
+function fighterAI(target){ return (v,dt)=>{ const t=target(); if(!t) return { keys:{} }; const to=t.clone().sub(v.pos); const d=to.length(); const want=Math.atan2(-to.x,-to.z); const dy=((want-v.yaw+Math.PI*3)%(Math.PI*2))-Math.PI; v.pitch=lerp(v.pitch, clamp(-to.y/Math.max(1,d),-0.8,0.8), dt*2);
+    if(d<60 && Math.abs(dy)<0.25 && v.cool<=0){ RT.camAimSave=RT.camAim; Vehicles.fire(v); RT.camAim=RT.camAimSave; v.cool=0.6+Math.random(); } return { keys:{ left:dy>0.05, right:dy<-0.05, up: d>15 } }; }; }
+// garage: summon kit vehicles and saved player designs at docks, plots and launch pads
+const GARAGE = { land:['kart','car_hatchback','car_sedan','truck_pickup','farm_cart','tractor','race_car','police_car','sand_buggy','bus_town','fire_engine','carriage_royal','rooftop_cruiser','moon_rover','truck_delivery'],
+  ship:['rowboat','raft','fishing_boat','sloop','navy_frigate','pirate_galleon'], star:['fighter_star_legion','hero_jet','cargo_hauler','starter_rocket'], air:['hang_glider','gyrocopter','hot_air_balloon','airship'] };
+function garageAllowed(id){ const P=RT.world.player; const rank=c=>P.careers[c]?.active?P.careers[c].rank:-1;
+  if(id==='navy_frigate') return rank('army_navy')>=4 ? true : 'Royal Navy Commander or higher'; if(id==='pirate_galleon') return rank('pirate')>=3 ? true : 'a Free Captains captain'; if(id==='police_car') return rank('army_watch')>=4 ? true : 'Town Watch Inspector';
+  if(id==='fighter_star_legion') return rank('army_starlegion')>=0 || RT.inSpace ? true : 'the Star Legion'; if(id==='hero_jet') return rank('hero')>=2 ? true : 'a Paragon Champion'; if(id==='airship'||id==='villain_airship') return P.pips>=0; return true; }
+Menu.pages.garage = (ctx)=>{ const kinds = ctx.kinds||['land']; const P=RT.world.player; const list=kinds.flatMap(k=>GARAGE[k]).filter(id=>RT.assets.models[id]);
+  return `<h2>${ctx.title||'Garage'}</h2><p>Summon a vehicle here. Handling comes from the bricks — heavy builds plough through, top-heavy ones roll.</p><div class="row">${list.map(id=>{ const ok=garageAllowed(id); return `<button ${ok===true?'':'disabled'} data-act="summon" data-arg="${id}" title="${ok===true?'':'Needs '+esc(ok)}">${esc(id.replace(/_/g,' '))}${ok===true?'':' 🔒'}</button>`; }).join('')}</div>
+  <h3>Your designs</h3><div class="row">${P.blueprints.map((b,i)=>`<button data-act="summonBp" data-arg="${i}">${esc(b.name)} (${b.bricks.length})</button>`).join('')||'Build something, then save it as a blueprint (Blueprints menu) to summon it here.'}</div>`; };
+Menu.acts.summon = id=>{ const m=RT.assets.models[id]; if(!m) return; const f=RT.players[0].fig; const kind=vehicleKindOf(m,m.bricks); const p=f.pos.clone().add(forward(f).multiplyScalar(8)); if(kind==='ship'){ const w=findWater(f.pos); if(!w) return toast('No open water nearby.'); p.copy(w); } p.y=groundUnderPoint(p)+(kind==='air'||kind==='star'?1:0);
+  const v=Vehicles.spawnModel(m,p,f.yaw+Math.PI,{name:id.replace(/_/g,' ')}); Menu.close(); Vehicles.enter(f,v); };
+Menu.acts.summonBp = i=>{ const bp=RT.world.player.blueprints[+i]; const f=RT.players[0].fig; const kind=vehicleKindOf(null,bp.bricks); const p=f.pos.clone().add(forward(f).multiplyScalar(8)); if(kind==='ship'){ const w=findWater(f.pos); if(w) p.copy(w); } p.y=groundUnderPoint(p);
+  if(!RT.creative){ for(const b of bp.bricks){ if(!BuildMode.cost(b[0],b[5])){ toast('Not enough bricks or pips to summon it.'); return; } } }
+  const v=new Vehicle(bp.bricks.map(b=>b.slice()),{ name:bp.name, pos:p, yaw:f.yaw+Math.PI }); Vehicles.list.push(v); Menu.close(); Vehicles.enter(f,v); };
+function findWater(p){ for(let r=6;r<120;r+=6) for(let a=0;a<Math.PI*2;a+=Math.PI/8){ const x=p.x+Math.cos(a)*r, z=p.z+Math.sin(a)*r; let ok=true; for(const [dx,dz] of [[0,0],[8,0],[-8,0],[0,8],[0,-8]]) if(terrainH(Math.floor(x+dx),Math.floor(z+dz))>=CONFIG.seaLevel-1) ok=false; if(ok) return new THREE.Vector3(x,CONFIG.seaLevel*PL,z); } return null; }
+// player builds become vehicles: everything built within reach that is joined to a seat, helm or cockpit
+function makeVehicleFromBuild(f){
+  const near=[]; for(const s of RT.sectors.values()) for(const r of s.bricks) if(r.player && !r.dead && Math.hypot(r.b[1]-f.pos.x,r.b[3]-f.pos.z)<18) near.push(r);
+  const seat=near.find(r=>VEH_PARTS[r.b[0]]==='seat'); if(!seat){ toast('A vehicle needs a seat, helm or cockpit.'); return; }
+  // flood fill from the seat through touching bricks
+  const box=r=>brickCells(r.b); const touch=(a,b)=>{ const A=box(a),B=box(b); return A.x0<=B.x1&&A.x1>=B.x0&&A.z0<=B.z1&&A.z1>=B.z0&&A.y0<=B.y1&&A.y1>=B.y0; };
+  const set=new Set([seat]); const q=[seat]; while(q.length){ const a=q.pop(); for(const b of near) if(!set.has(b) && touch(a,b)){ set.add(b); q.push(b); } }
+  const bricks=[...set].map(r=>r.b.slice(0,6)); const kind=vehicleKindOf(null,bricks); const c=new THREE.Vector3(); for(const r of set){ c.x+=r.b[1]; c.z+=r.b[3]; } c.divideScalar(set.size); c.y=Math.min(...[...set].map(r=>r.b[2]))*PL;
+  for(const r of set) removeWorldBrick(r);
+  const v=new Vehicle(bricks,{ name:'Your '+({car:'car',ship:'boat',star:'starship',air:'flyer'}[kind]), pos:c, kind }); if(kind==='ship'){ const w=findWater(c); if(w) v.pos.copy(w); } Vehicles.list.push(v);
+  RT.world.player.blueprints.push({ name:v.name+' '+(RT.world.player.blueprints.length+1), kind: kind==='car'?'vehicle':kind==='ship'?'ship':kind==='star'?'starship':'build', bricks:normalizeBricks(bricks) });
+  toast(`${v.name}: ${bricks.length} bricks · top speed ${Math.round(v.stats.top||v.stats.sailPower||v.stats.thrustPower)} · saved as a blueprint.`); BuildMode.toggle(RT.players[0]); Vehicles.enter(f,v); }
+
+// §FUNCTIONAL (runtime) ---------------------------------------------------------
+// Functional pieces do something the moment they are placed. Player fn_* pieces and the kit's func_* models both count.
+const KIT_FN = { sleep_save:'rest', storage:'storage', wardrobe:'wardrobe', cook:'cook', craft_weapons:'craft_forge', craft_tools:'craft_bench', craft_outfits:'craft_loom', bounce:'bounce', auto_defend:'turret',
+  plant:'soil', water:'water', feed:'trough', animals:'pen', honey:'beehive', shop:'counter', till:'till', costume:'booth', signal:'signal', alarm:'alarm', gate:'gate', trapdoor:'trapdoor', jukebox:'jukebox', fireworks:'fireworks', launch:'launchbay', doom:'doomsday', swing:'bounce' };
+function fnRefsNear(p, r=3.2){ const out=[]; const seen=new Set(); for(let x=Math.floor(p.x-r); x<=p.x+r; x++) for(let z=Math.floor(p.z-r); z<=p.z+r; z++){ const s=getSector(x,z); if(!s||!s.occ) continue; const c=s.occ[colIndex(s,x,z)]; if(!c) continue; for(const iv of c){ const ref=iv[2]; if(ref.dead||seen.has(ref)) continue; seen.add(ref); const fn=ref.fn || (ref.owner?.model?.meta?.function && KIT_FN[ref.owner.model.meta.function]); if(fn && Math.abs(iv[0]*PL-p.y)<4) out.push({ref,fn}); } } return out; }
+const FN_LABEL = { rest:'Sleep (save, respawn here)', storage:'Open chest', wardrobe:'Wardrobe (change look)', cook:'Cook', craft_bench:'Workbench', craft_forge:'Forge', craft_loom:'Loom', meditate:'Meditate', training:'Spar with the dummy',
+  maptable:'Map table', soil:'Farm plot', planter:'Farm plot', water:'Fill watering can', pen:'Animal pen', trough:'Feed animals', beehive:'Collect honey', counter:'Run your shop', till:'Empty the till', shelf:'Stock the shelf', shopdoor:'Open/close shop',
+  booth:'Changing booth', signal:'Hero signal', monitors:'Monitor wall (crime alerts)', launchbay:'Launch bay', cell:'Holding cell', doomsday:'Doomsday device', barracks:'Henchman barracks', trapdoor:'Trap door', bounce:'Trampoline', slide:'Slide', seesaw:'See-saw', jukebox:'Jukebox',
+  fireworks:'Fireworks', startline:'Start a race', checkpoint:'Checkpoint', gate:'Open/close gate', turret:'Turret (auto-defends)', catapult:'Fire catapult', cannontower:'Cannon tower', spikes:'Spike trap', alarm:'Ring the alarm', pylon:'Shield pylon', townstone:'Town stone', well:'Well', mailbox:'Mailbox', trophies:'Trophy shelf', display:'Display plate',
+  chassis:'Vehicle part', steer:'Seat (make a vehicle in build mode with V)', cockpit:'Cockpit', helm:'Helm', saddle:'Saddle a mount', saddlebags:'Saddlebags', mountarmor:'Mount armour', lancerest:'Lance rest', banner:'Banner pole' };
+function useFunctional(f, {ref, fn}){
+  const W=RT.world, P=W.player; const key=ref.uid; const at=new THREE.Vector3(ref.b[1]+0.5, ref.b[2]*PL+1, ref.b[3]+0.5);
+  switch(fn){
+    case 'rest': { P.respawn=[at.x,at.y,at.z]; const d=W.day; advanceWorld(W, Math.floor(d)+1.3-d); f.hp=f.maxHp; saveGame(); toast('You slept until morning. Respawn point set; game saved.'); return; }
+    case 'storage': Menu.open('chest',{key}); return;
+    case 'wardrobe': Menu.open('creator'); return;
+    case 'cook': Menu.open('station',{station:'kitchen'}); return;
+    case 'craft_bench': Menu.open('station',{station:'workbench'}); return;
+    case 'craft_forge': Menu.open('station',{station:'forge'}); return;
+    case 'craft_loom': Menu.open('station',{station:'loom'}); return;
+    case 'meditate': f.emote={name:'meditate',t:0,dur:3}; f.buffs.calm={mul:1,time:30}; addCareerXp(W,'lumen',10); addCareerXp(W,'monk',10); if(P.lumen.step==='none') lumenAdvance(W,'spark'); toast('The Lumen settles around you.'); return;
+    case 'training': { const d=spawnFigure({species:'human',colors:{body:'tan',torso:'tan',legs:'tan',accent:'red'},held:'none',hair:'none'},at.clone().add(new THREE.Vector3(1,0,1)),{team:'enemy',brain:'idle',name:'Training dummy',hp:60}); d.temp=60; d.training=true; toast('Practise your combos!'); return; }
+    case 'maptable': Menu.open('map'); return;
+    case 'soil': case 'planter': Farm.use(key, at); return;
+    case 'water': P.wateringCan=10; toast('Watering can filled (10 uses).'); return;
+    case 'pen': case 'trough': case 'beehive': Menu.open('pen',{key, fn}); return;
+    case 'counter': case 'till': case 'shelf': case 'shopdoor': Menu.open('myshop',{key}); return;
+    case 'booth': Identity.booth(f); return;
+    case 'signal': FX.burst('firework',at.x,at.y+30,at.z,40,10,COLORS.yellow); toast('The hero signal lights the sky. Crime alerts on the monitor wall.'); Menu.open('jobs',{site:nearestTown(f.pos).id, heroOnly:true}); return;
+    case 'monitors': Menu.open('jobs',{site:siteById(W,'apex_t0')?'apex_t0':nearestTown(f.pos).id}); return;
+    case 'launchbay': f.vel.y=40; f.buffs.noFall={mul:1,time:6}; toast('Launch!'); return;
+    case 'doomsday': FX.burst('firework',at.x,at.y+4,at.z,50,9,COLORS.trans_green); Audio.tone(110,1,'sawtooth',0.2); toast('The doomsday device… prints a very rude birthday card. Mwa-ha-ha.'); addCareerXp(W,'villain',20); return;
+    case 'cell': { const capt=RT.figures.find(o=>o.captive); if(capt){ capt.alive=false; P.pips+=80; addCareerXp(W,'bounty',60); toast('Bounty delivered alive: +80 pips.'); } else toast('Bring a defeated outlaw here (their bounty pays more alive).'); return; }
+    case 'barracks': for(let i=0;i<3;i++) spawnFigure(randomRecipe(Math.random,'human',{held:'daggers',colors:{torso:'purple',legs:'black'}}), at.clone().add(new THREE.Vector3(i*2,0,2)), { team:'player', brain:'follow', name:'Henchman', hp:50 }).temp=120; toast('Henchmen report for duty!'); return;
+    case 'jukebox': Audio.musicOn=true; Audio.realm=pick(Math.random,REALM_IDS); toast('♪ The jukebox plays a tune from '+REALMS[Audio.realm].name); return;
+    case 'fireworks': for(let i=0;i<5;i++) setTimeout(()=>{ FX.burst('firework',at.x+(Math.random()-.5)*6,at.y+20+Math.random()*10,at.z+(Math.random()-.5)*6,30,9); Audio.noise(0.3,800,1,0.3); }, i*300); return;
+    case 'startline': case 'checkpoint': Jobs.start(makeJob(W,'race',nearestSite(f.pos),'racing',{career:'racer'})); RT.job.pos.copy(at); return;
+    case 'gate': { ref.solid=!ref.solid; toast(ref.solid?'Gate closed.':'Gate open.'); Audio.click(4); return; }
+    case 'catapult': { const fwd=RT.camAim||forward(f); Proj.list.push({ src:f, A:CANNON_SHOT, pos:at.clone().add(new THREE.Vector3(0,3,0)), vel:fwd.clone().multiplyScalar(30).add(new THREE.Vector3(0,14,0)), t:0, life:3, mult:1, col:COLORS.dark_grey, team:f.team }); Audio.whoosh(); return; }
+    case 'alarm': { Audio.tone(1200,0.6,'square',0.2); for(const o of RT.figures) if(o.townsfolk && o.pos.distanceTo(at)<60 && o.controller){ o.controller.brain='wander'; o.controller.o.flee=40; } toast('Ding ding ding! Townsfolk run for cover.'); return; }
+    case 'townstone': Menu.open('foundtown',{at:[at.x,at.z]}); return;
+    case 'well': f.hp=f.maxHp; toast('Fresh well water. Fully healed.'); return;
+    case 'mailbox': Menu.open('news'); return;
+    case 'trophies': case 'display': Menu.open('records'); return;
+    case 'saddle': case 'saddlebags': case 'mountarmor': case 'lancerest': case 'banner': { const m=f.mount||nearestMountable(f); if(!m) return toast('Bring a mount here to fit its gear.'); m.gear=m.gear||{}; m.gear[fn]=true; if(fn==='mountarmor') m.buffs.def={mul:1.6,time:1e9}; if(fn==='saddlebags') P.carryBonus=(P.carryBonus||0)+20; toast(`Fitted ${fn} to your ${m.name}.`); return; }
+    default: toast(FN_LABEL[fn]||fn);
+  }
+}
+const FnPassive = { t:0,
+  update(dt){ this.t+=dt; if(this.t<0.2) return; this.t=0; const W=RT.world; const p0=RT.players[0].fig;
+    for(const s of RT.sectors.values()){ if(!s.group) continue; for(const ref of s.bricks){ if(ref.dead||!ref.fn) continue; const fn=ref.fn; if(!['bounce','turret','cannontower','spikes','pylon','trapdoor','slide','seesaw'].includes(fn)) continue;
+      const c=new THREE.Vector3(ref.b[1]+1, ref.b[2]*PL, ref.b[3]+1); if(c.distanceTo(p0.pos)>90) continue;
+      if(fn==='bounce'||fn==='slide'||fn==='seesaw'){ for(const f of RT.figures){ if(!f.ko && f.onGround && Math.abs(f.pos.x-c.x)<2 && Math.abs(f.pos.z-c.z)<2 && Math.abs(f.pos.y-(c.y+PIECES[ref.b[0]].h*PL))<0.5){ f.vel.y=fn==='bounce'?24:12; f.onGround=false; f.buffs.noFall={mul:1,time:3}; Audio.tone(300,0.2,'sine',0.15); } } }
+      if(fn==='turret'||fn==='cannontower'){ ref.cool=(ref.cool||0)-0.2; if(ref.cool>0) continue; const foe=RT.figures.find(o=>!o.ko && o.team==='enemy' && o.pos.distanceTo(c)<(fn==='turret'?26:40)); if(foe){ ref.cool=fn==='turret'?0.8:2; const src={ team:'player', pos:c, isPlayer:false }; const from=c.clone().add(new THREE.Vector3(0,PIECES[ref.b[0]].h*PL,0)); const dir=foe.pos.clone().add(new THREE.Vector3(0,2,0)).sub(from).normalize();
+          Proj.list.push({ src, A: fn==='turret'?BLASTER_SHOT:CANNON_SHOT, pos:from, vel:dir.multiplyScalar(fn==='turret'?50:36), t:0, life:1.5, mult:1, col:COLORS.trans_red, team:'player' }); Audio.tone(700,0.06,'square',0.05); } }
+      if(fn==='spikes'){ for(const f of RT.figures) if(!f.ko && f.team==='enemy' && Math.abs(f.pos.x-c.x)<1.5 && Math.abs(f.pos.z-c.z)<1.5) damage(f,8,null); }
+      if(fn==='pylon'){ for(const f of RT.figures) if(f.team==='player' && f.pos.distanceTo(c)<12) f.buffs.def={mul:1.5,time:0.5}; }
+      if(fn==='trapdoor'){ for(const f of RT.figures) if(!f.ko && f.team==='enemy' && Math.abs(f.pos.x-c.x)<1.2 && Math.abs(f.pos.z-c.z)<1.2){ f.stun=2; f.vel.y=-5; } }
+    } } },
+};
+Menu.pages.chest = (ctx)=>{ const P=RT.world.player; const st=(P.chests||(P.chests={}))[ctx.key]||(P.chests[ctx.key]={}); return `<h2>Chest</h2><h3>In the chest</h3><div class="row">${Object.entries(st).filter(([k,v])=>v>0).map(([k,v])=>`<button data-act="chestTake" data-arg="${ctx.key}|${k}">${k} ×${v}</button>`).join('')||'Empty.'}</div>
+  <h3>In your bag</h3><div class="row">${Object.entries(P.materials).filter(([k,v])=>v>0).map(([k,v])=>`<button data-act="chestPut" data-arg="${ctx.key}|${k}">${k} ×${v}</button>`).join('')||'Nothing.'}</div>`; };
+Menu.acts.chestPut = a=>{ const [key,k]=a.split('|'); const P=RT.world.player; if(!(P.materials[k]>0)) return; P.materials[k]--; P.chests[key][k]=(P.chests[key][k]||0)+1; };
+Menu.acts.chestTake = a=>{ const [key,k]=a.split('|'); const P=RT.world.player; if(!(P.chests[key][k]>0)) return; P.chests[key][k]--; P.materials[k]=(P.materials[k]||0)+1; };
+Menu.pages.station = (ctx)=>{ const P=RT.world.player; return `<h2>${{kitchen:'Kitchen',workbench:'Workbench',forge:'Forge',loom:'Loom',temple:'Temple forge'}[ctx.station]}</h2><p>Materials: ${Object.entries(P.materials).filter(([k,v])=>v>0).map(([k,v])=>`${k} ×${v}`).join(', ')||'none'}</p>
+  <div class="row">${Object.entries(RECIPES).filter(([k,v])=>v.station===ctx.station).map(([k,v])=>`<button data-act="craftAt" data-arg="${k}|${ctx.station}">${k.replace(/_/g,' ')} (${Object.entries(v.needs).map(([m,q])=>q+' '+m).join(', ')})</button>`).join('')}</div>`; };
+
+// §FARMING (runtime) --------------------------------------------------------------
+const Farm = {
+  use(key, at){ const W=RT.world, P=W.player; const f=P.farms[key];
+    if(f && f.ready){ const c=harvest(W,key); toast(`Harvested ${CROPS[c].name} ×2!`); Pips.burst(at.x,at.y+1,at.z,2); for(let i=0;i<4;i++) Live.spawn('round_1x1',CROPS[c].color,at.x,at.y+1,at.z,(Math.random()-.5)*4,5,(Math.random()-.5)*4); return; }
+    if(f){ if((P.wateringCan||0)>0){ P.wateringCan--; f.watered=true; FX.burst('splash',at.x,at.y+1,at.z,8,3); toast(`Watered the ${CROPS[f.crop].name} (${Math.round(f.growth*100)}% grown).`); } else toast(`${CROPS[f.crop].name}: ${Math.round(f.growth*100)}% grown. ${f.watered?'Watered.':'Needs water — fill a can at a barrel or well.'}`); return; }
+    Menu.open('plant',{key}); },
+  draw(){ // crops grow as brick plants on their plots
+    if(!this.mesh){ this.mesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25,0.35,1,6), new THREE.MeshPhysicalMaterial({roughness:0.4}), 400); this.mesh.count=0; this.mesh.frustumCulled=false; this.mesh.setColorAt(0,new THREE.Color()); scene.add(this.mesh); }
+    let n=0; const M=new THREE.Matrix4(); for(const s of RT.sectors.values()){ if(!s.group) continue; for(const ref of s.bricks){ if(ref.dead||(ref.fn!=='soil'&&ref.fn!=='planter')) continue; const f=RT.world.player.farms[ref.uid]; if(!f||n>=400) continue; const g=clamp(f.growth,0.1,1);
+      for(let i=0;i<2;i++){ M.compose(new THREE.Vector3(ref.b[1]+0.5+i, (ref.b[2]+PIECES[ref.b[0]].h)*PL+g*0.6, ref.b[3]+1), new THREE.Quaternion(), new THREE.Vector3(1,g*1.2,1)); this.mesh.setMatrixAt(n,M); this.mesh.setColorAt(n, f.ready?(COLORS[CROPS[f.crop].color]||COLORS.orange):COLORS.green); n++; } } }
+    this.mesh.count=n; this.mesh.instanceMatrix.needsUpdate=true; if(this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate=true; },
+};
+Menu.pages.plant = (ctx)=>{ const P=RT.world.player; const season=seasonOf(RT.world.day); return `<h2>Plant a crop</h2><p>Season: ${SEASONS[season]}. Crops grow over in-game days when watered and in season.</p><div class="row">${Object.entries(CROPS).map(([k,c])=>`<button ${P.seeds[k]>0?'':'disabled'} data-act="plantIt" data-arg="${ctx.key}|${k}">${esc(c.name)} ×${P.seeds[k]||0} · ${c.days} days · ${c.seasons.map(i=>SEASONS[i][0]).join('')}${c.seasons.includes(season)?'':' (out of season)'}</button>`).join('')}</div><p>Buy seeds at any shop.</p>`; };
+Menu.acts.plantIt = a=>{ const [key,c]=a.split('|'); if(plantCrop(RT.world,key,c)){ toast(`Planted ${CROPS[c].name}.`); Audio.click(2); } Menu.close(); };
+Menu.pages.pen = (ctx)=>{ const P=RT.world.player; let pen=P.pens.find(p=>p.id===ctx.key); if(!pen){ pen={ id:ctx.key, animals:[], trough:false, fed:false }; P.pens.push(pen); }
+  return `<h2>Animal pen</h2><p>${pen.animals.length} animals: ${pen.animals.map(a=>SPECIES[a.kind]?.name).join(', ')||'none'}. ${pen.fed?'Fed.':'Hungry — feed them.'}</p><div class="row">${['chicken','cow','sheep','goat'].map(k=>`<button data-act="buyAnimal" data-arg="${ctx.key}|${k}">Buy a ${SPECIES[k].name} (40)</button>`).join('')}<button data-act="feedPen" data-arg="${ctx.key}">Feed (1 wheat or carrot)</button><button data-act="collectPen" data-arg="${ctx.key}">Collect produce</button></div>`; };
+Menu.acts.buyAnimal = a=>{ const [key,k]=a.split('|'); const P=RT.world.player; if(P.pips<40) return toast('Not enough pips.'); P.pips-=40; P.pens.find(p=>p.id===key).animals.push({kind:k,age:0,store:0}); toast(`A ${SPECIES[k].name} joins the pen.`); };
+Menu.acts.feedPen = key=>{ const P=RT.world.player; const food=['wheat','carrot','pumpkin'].find(c=>P.materials[c]>0); if(!food) return toast('You need wheat, carrots or pumpkins.'); P.materials[food]--; P.pens.find(p=>p.id===key).fed=true; toast('Fed!'); };
+Menu.acts.collectPen = key=>{ const n=collectAnimals(RT.world, RT.world.player.pens.find(p=>p.id===key)); toast(n?`Collected ${n} goods.`:'Nothing to collect yet.'); };
+
+// §SHOPS (runtime) -------------------------------------------------------------
+Menu.pages.myshop = (ctx)=>{ const P=RT.world.player; let shop=P.shops.find(s=>s.id===ctx.key); if(!shop){ shop={ id:ctx.key, stock:[], open:true, keeper:null, till:0, townFolk:8 }; P.shops.push(shop); }
+  return `<h2>Your shop</h2><p>${shop.open?'Open':'Closed'} · till ${shop.till} pips · sold ${shop.sold||0} · walked out ${shop.walkouts||0} · keeper: ${esc(shop.keeper||'none (you must be nearby to sell)')}</p>
+  <div class="row"><button data-act="shopToggle" data-arg="${ctx.key}">${shop.open?'Close':'Open'} shop</button><button data-act="shopTill" data-arg="${ctx.key}">Empty till</button><button data-act="shopHire" data-arg="${ctx.key}">Hire a shopkeeper (100)</button></div>
+  <h3>Stock</h3>${shop.stock.map((s,i)=>`<div class="row">${esc(s.item)} ×${s.qty} at <input type="number" min="1" value="${s.price}" style="width:60px" data-price="${i}"> pips (worth ${itemValue(s.item)})</div>`).join('')||'<p>Nothing on the shelves.</p>'}
+  <div class="row">${Object.entries(P.materials).filter(([k,v])=>v>0).map(([k,v])=>`<button data-act="shopStock" data-arg="${ctx.key}|${k}">Stock ${k} (${v})</button>`).join('')}</div><p>Price too high and customers walk out.</p>`; };
+Menu.acts.shopToggle = k=>{ const s=RT.world.player.shops.find(x=>x.id===k); s.open=!s.open; };
+Menu.acts.shopTill = k=>{ const s=RT.world.player.shops.find(x=>x.id===k); RT.world.player.pips+=s.till; toast(`+${s.till} pips`); s.till=0; };
+Menu.acts.shopHire = k=>{ const P=RT.world.player; if(P.pips<100) return toast('Not enough pips.'); P.pips-=100; P.shops.find(x=>x.id===k).keeper=genName(Math.random); };
+Menu.acts.shopStock = a=>{ const [k,m]=a.split('|'); const P=RT.world.player; const s=P.shops.find(x=>x.id===k); P.materials[m]--; const e=s.stock.find(x=>x.item===m); if(e) e.qty++; else s.stock.push({ item:m, qty:1, price:Math.ceil(itemValue(m)*1.2) }); };
+document.addEventListener('change',e=>{ const i=e.target?.dataset?.price; if(i!==undefined && RT.menuOpen==='myshop'){ const s=RT.world.player.shops.find(x=>x.id===RT.menuCtx.key); if(s?.stock[+i]) s.stock[+i].price=Math.max(1,+e.target.value||1); } });
+const ShopSim = { t:0, update(dt){ this.t+=dt; if(this.t<10) return; const hours=this.t/CONFIG.dayLength*24; this.t=0; const p=RT.players[0].fig.pos; for(const s of RT.world.player.shops){ const [x,,z]=s.id.includes('#')?[0,0,0]:[0,0,0]; shopTick(RT.world, s, hours, true); } } };
+
+// §PLOTS (runtime) --------------------------------------------------------------
+Menu.pages.plot = (ctx)=>{ const W=RT.world, P=W.player; const pl=W.map.plots.find(p=>p.id===ctx.plot); const owned=P.plots.includes(ctx.plot); const price=Math.round(pl.price*(W.prices[pl.realm]||1)*(W.factions[siteById(W,pl.town)?.owner]?.standing<0?1.5:1));
+  return `<h2>Home plot — ${esc(pl.kind)} in ${esc(W.map.towns.find(t=>t.id===pl.town)?.name||'')}</h2>${owned?'<p>This plot is yours. Build here (B), start from a template, or summon a vehicle.</p>':`<p>For sale: ${price} pips.</p><button data-act="buyPlot" data-arg="${ctx.plot}|${price}">Buy plot</button>`}
+  ${owned?`<h3>Start from a template (every template can be remixed)</h3><div class="row">${HOME_TEMPLATES.map(t=>`<button data-act="template" data-arg="${ctx.plot}|${t}">${t.replace(/_/g,' ')}</button>`).join('')}</div><div class="row"><button data-act="go" data-arg="garagePlot">Garage</button></div>`:''}`; };
+Menu.pages.garagePlot = ()=>Menu.pages.garage({kinds:['land','air'],title:'Vehicle pad'});
+Menu.acts.buyPlot = a=>{ const [id,price]=a.split('|'); const P=RT.world.player; if(P.pips<+price) return toast(`You need ${price} pips.`); P.pips-=+price; P.plots.push(id); P.homes.push(id); const pl=RT.world.map.plots.find(p=>p.id===id); P.waystones.push('home_'+id); toast('The plot is yours! It is now a fast-travel point.'); addCareerXp(RT.world,'farmer',5); };
+Menu.acts.template = a=>{ const [id,t]=a.split('|'); const pl=RT.world.map.plots.find(p=>p.id===id); const m=RT.assets.models['home_'+t]||genTemplate(t); const ox=pl.x+6, oz=pl.z+6; const oy=Math.floor(surfaceY(ox,oz)/PL);
+  RT.autoBuild={ queue:m.bricks.slice().sort((a,b)=>a[2]-b[2]).map(b=>[b[0],b[1],b[2],b[3],b[4],b[5]]), ox, oy, oz, t:0 }; RT.creativeFree=true; Menu.close(); toast('Bricks fly into place… (templates are free; edit them in build mode)'); };
+Menu.pages.stable = ()=>{ const P=RT.world.player; const opts=[['horse',150],['boar',120],['ostrich',180],['elk',200],['lizard',220],['tortoise',160],['griffon',900]]; return `<h2>Stable</h2><p>Buy a mount (or tame one in the wild by feeding, calming or besting it).</p><div class="row">${opts.map(([k,p])=>`<button data-act="buyMount" data-arg="${k}|${p}">${SPECIES[k].name} — ${p} · ${SPECIES[k].mount?.special||''}</button>`).join('')}</div><p>Your mounts: ${P.mounts.map(m=>esc(m.name)).join(', ')||'none'}</p>`; };
+Menu.acts.buyMount = a=>{ const [k,p]=a.split('|'); const P=RT.world.player; if(P.pips<+p) return toast('Not enough pips.'); P.pips-=+p; const f=RT.players[0].fig; const m=spawnFigure({species:k},f.pos.clone().add(new THREE.Vector3(3,0,3)),{team:'player',brain:'idle',name:`Your ${SPECIES[k].name}`}); m.tamed=true; P.mounts.push({species:k,name:m.name}); Menu.close(); mountOn(f,m); };
+Menu.pages.launchpad = ()=>`<h2>Launch pad</h2><div class="row"><button data-act="rocket">Rocket to the Frontier</button><button data-act="go" data-arg="garageStar">Starship hangar</button></div>`;
+Menu.pages.garageStar = ()=>Menu.pages.garage({kinds:['star','air'],title:'Starship hangar'});
+Menu.acts.rocket = ()=>{ Menu.close(); launchToSpace(); };
+
+// §TOWNS (runtime): town stones, townsfolk moving in, raids that smash what you built
+Menu.pages.foundtown = (ctx)=>`<h2>Found a town</h2><p>Place a town stone in the wilderness (no faction may hold the land). Townsfolk move in when there are free beds, work and happiness.</p><div class="row">Name: <input id="tname" value="New ${esc(RT.world.player.name)}ton" maxlength="24"> <button data-act="found" data-arg="${ctx.at.join(',')}">Found it (${FUNCTIONAL.fn_townstone.cost} pips)</button></div>`;
+Menu.acts.found = a=>{ const [x,z]=a.split(',').map(Number); const r=foundTown(RT.world, $('tname').value||'New Town', x, z); toast(r.ok?`${r.town.name} is founded!`:r.why); if(r.ok) Menu.close(); };
+const TownLife = { t:0,
+  update(dt){ this.t+=dt; if(this.t<2) return; this.t=0; const W=RT.world; const p0=RT.players[0].fig;
+    for(const t of W.player.towns){ // count what's built inside the town's radius
+      if(Math.hypot(t.x-p0.pos.x,t.z-p0.pos.z) < 200){ const st={beds:0,work:0,deco:0,safety:0,food:0,fun:0}; const seen=new Set();
+        for(const s of RT.sectors.values()) for(const ref of s.bricks){ if(ref.dead||!ref.player||seen.has(ref)) continue; seen.add(ref); if(Math.hypot(ref.b[1]-t.x,ref.b[3]-t.z)>t.radius) continue; const fn=ref.fn;
+          if(fn==='rest') st.beds++; if(['counter','craft_bench','craft_forge','craft_loom','soil','planter','pen','kitchen','cook'].includes(fn)) st.work++; if(['light','display','trophies','banner'].includes(fn)||ref.b[0].startsWith('flower')) st.deco+=0.5; if(['gate','turret','cannontower','catapult','spikes','alarm','pylon'].includes(fn)) st.safety++;
+          if(['soil','planter','pen','beehive','kitchen','cook'].includes(fn)) st.food+=1.5; if(['bounce','slide','seesaw','jukebox','fireworks'].includes(fn)) st.fun++; if(!fn) st.deco+=0.02; }
+        st.deco=Math.min(40,st.deco); t.stats=st; }
+      // a raid in progress: raiders arrive and smash what you built
+      if(t.raid && !t.raidSpawned && Math.hypot(t.x-p0.pos.x,t.z-p0.pos.z)<160){ t.raidSpawned=true; const F=W.factions[t.raid.by]; const n=Math.min(12,4+Math.floor(t.raid.strength/4)); toast(`${F?.name||'Raiders'} attack ${t.name}!`);
+        for(let i=0;i<n;i++){ const a=Math.random()*6.28; const x=t.x+Math.cos(a)*(t.radius+10), z=t.z+Math.sin(a)*(t.radius+10); const e=spawnFigure(randomRecipe(Math.random,pick(Math.random,['human','bear','wolf']),{held:pick(Math.random,['hammer','sword','spear']),colors:{torso:F?.color||'black',legs:'black'}}), new THREE.Vector3(x,surfaceY(x,z),z), { team:'enemy', brain:'goto', ai:{ dest:new THREE.Vector3(t.x,0,t.z), then:'raid', aggro:14 }, name:`${F?.name||'Raider'}`, hp:60 }); e.raider=t.id; } }
+      if(t.raidSpawned && !RT.figures.some(f=>f.raider===t.id && !f.ko && f.alive)){ t.raidSpawned=false; if(t.raid){ resolveTownRaid(W,t,true); toast(`${t.name} is safe — the raiders fled.`); } }
+    }
+    // raiders smash player bricks near them
+    for(const f of RT.figures){ if(!f.raider||f.ko) continue; if(f.controller?.brain==='raid' || (f.controller?.brain==='hold')){ if(Math.random()<0.3){ const p=f.pos.clone().add(forward(f).multiplyScalar(1.6)); p.y+=1.2; smashAt(p,1.4,{ by:f, noTerrain:true, filter:r=>r.player, rubble:false }); f.action={anim:'swing',t:0,dur:0.4,fired:true,A:{effects:[],tags:[],cast:0},cancel:true}; } if(Math.random()<0.05){ f.controller.brain='goto'; f.controller.o.dest=new THREE.Vector3(f.pos.x+(Math.random()-.5)*30,0,f.pos.z+(Math.random()-.5)*30); f.controller.o.then='raid'; } } }
+  },
+};
+// the townsfolk of player towns appear and wander their streets
+const TownFolkSpawner = { done:new Set(), update(){ const W=RT.world; for(const t of W.player.towns){ const key=t.id+':'+t.folk.length; if(this.done.has(key)) continue; const s=getSector(t.x,t.z); if(!s?.group) continue; this.done.add(key);
+  for(const f of RT.figures) if(f.ptown===t.id) f.alive=false; t.folk.slice(0,20).forEach((fo,i)=>{ const x=t.x+(Math.random()-.5)*t.radius, z=t.z+(Math.random()-.5)*t.radius; const g=spawnFigure(randomRecipe(Math.random,SPECIES[fo.species]?.playable?fo.species:'human'),new THREE.Vector3(x,surfaceY(x,z),z),{team:'neutral',brain:'townsfolk',ai:{radius:t.radius*0.6},name:fo.name}); g.ptown=t.id; g.townsfolk=true; g.job=fo.job; g.opinion=fo.opinion; }); } } };
+
+// §COMMISSIONS (runtime) -----------------------------------------------------------
+Menu.pages.commission = ()=>{ const J=RT.job; const brief=COMMISSION_BRIEFS[(J?.briefIdx??0)%COMMISSION_BRIEFS.length]; return `<h2>Builders' Guild commission</h2><p>The client wants: <b>${esc(brief.name)}</b>. Requirements: ${Object.entries(brief.req).map(([k,v])=>`${k}: ${Array.isArray(v)?v.join(', '):v}`).join(' · ')}</p><p>Build it near you (within 30 studs) then submit. You're judged on requirements, size and decoration.</p><button data-act="submitCommission">Submit the build for judging</button>`; };
+Menu.acts.submitCommission = ()=>{ const f=RT.players[0].fig; const bricks=[]; for(const s of RT.sectors.values()) for(const r of s.bricks) if(r.player && !r.dead && Math.hypot(r.b[1]-f.pos.x,r.b[3]-f.pos.z)<30) bricks.push(r.b.slice(0,6));
+  const brief=COMMISSION_BRIEFS[(RT.job?.briefIdx??0)%COMMISSION_BRIEFS.length]; const j=judgeCommission(brief, bricks); RT.world.player.pips+=j.pay; addCareerXp(RT.world,'builder',Math.round(60*j.score+20));
+  toast(`Judged ${Math.round(j.score*100)}%: ${j.pay} pips.${j.notes.length?' Notes: '+j.notes.join(', '):''}`, 6000); if(RT.job && RT.job.obj==='build') Jobs.finish(j.score>0.35); Menu.close(); };
+
+// §BLUEPRINTS / build tools: select, copy/paste, fill, measure, stability ------------
+const BuildTools = {
+  sel:null, clip:null, measureA:null,
+  handle(pl, hitP, pos){ // called from BuildMode.update with the snapped cell under the cursor
+    if(Input.hit('KeyG')){ if(!this.sel||this.sel.b){ this.sel={ a:hitP.solid.slice() }; toast('Select: corner A set — press G again at corner B.'); } else { this.sel.b=hitP.solid.slice(); const n=this.selected().length; toast(`Selected ${n} bricks. Ctrl+C copy, Del deletes all, F fills.`); } }
+    if(Input.hit('KeyC') && (Input.down('ControlLeft')||Input.down('MetaLeft')) && this.sel?.b){ const list=this.selected(); this.clip=normalizeBricks(list.map(r=>r.b.slice(0,6))); toast(`Copied ${this.clip.length} bricks. Ctrl+V pastes at the cursor.`); }
+    if(Input.hit('KeyV') && (Input.down('ControlLeft')||Input.down('MetaLeft')) && this.clip){ let n=0; for(const b of this.clip){ const nb=[b[0],pos[0]+b[1],pos[1]+b[2],pos[2]+b[3],b[4],b[5]]; if(cellsOf(nb).some(c=>{ const [x,y,z]=c.split(',').map(Number); return solidAt(x,y,z); })) continue; if(!BuildMode.cost(nb[0],nb[5])) break; const ref=placeWorldBrick(nb,{silent:n>0}); BuildMode.undo.push({op:'add',ref}); n++; } toast(`Pasted ${n} bricks.`); }
+    if(Input.hit('Delete') && this.sel?.b){ for(const r of this.selected()) BuildMode.remove(r); this.sel=null; }
+    if(Input.hit('KeyF') && this.sel?.b){ const [a,b]=[this.sel.a,this.sel.b]; let n=0; for(let x=Math.min(a[0],b[0]);x<=Math.max(a[0],b[0]);x++) for(let z=Math.min(a[2],b[2]);z<=Math.max(a[2],b[2]);z++) for(let y=Math.min(a[1],b[1]);y<=Math.max(a[1],b[1]);y+=3){ const nb=['brick_1x1',x,y,z,0,BuildMode.color]; if(solidAt(x,y,z)||solidAt(x,y+1,z)||solidAt(x,y+2,z)) continue; if(!BuildMode.cost(nb[0],nb[5])) { toast('Ran out of bricks.'); return; } BuildMode.undo.push({op:'add',ref:placeWorldBrick(nb,{silent:true})}); n++; } Audio.click(n); toast(`Filled ${n} bricks.`); }
+    if(Input.hit('KeyN')){ if(!this.measureA){ this.measureA=hitP.solid.slice(); toast('Measure: point A set — press N at point B.'); } else { const a=this.measureA, b=hitP.solid; toast(`Distance: ${Math.abs(b[0]-a[0])+1} × ${Math.abs(b[2]-a[2])+1} studs, ${Math.abs(b[1]-a[1])} plates high (${(Math.abs(b[1]-a[1])/3).toFixed(1)} bricks).`); this.measureA=null; } }
+    if(Input.hit('KeyK')) this.stability(true);
+    if(Input.hit('Enter') && pl===RT.players[0]) { this.stability(false); } // complete the build: loose bricks fall
+  },
+  selected(){ const [a,b]=[this.sel.a,this.sel.b]; const out=[]; const seen=new Set(); for(let x=Math.min(a[0],b[0]);x<=Math.max(a[0],b[0]);x++) for(let z=Math.min(a[2],b[2]);z<=Math.max(a[2],b[2]);z++){ const s=getSector(x,z); const c=s?.occ?.[colIndex(s,x,z)]; if(!c) continue; for(const iv of c){ const r=iv[2]; if(r.player && !r.dead && !seen.has(r) && iv[0]>=Math.min(a[1],b[1])-3 && iv[0]<=Math.max(a[1],b[1])+3){ seen.add(r); out.push(r); } } } return out; },
+  stability(preview){ const f=RT.players[0].fig; const refs=[]; for(const s of RT.sectors.values()) for(const r of s.bricks) if(r.player && !r.dead && Math.hypot(r.b[1]-f.pos.x,r.b[3]-f.pos.z)<40) refs.push(r);
+    const bad=stabilityCheck(refs.map(r=>r.b), (x,z)=>terrainH(x,z) + (nonPlayerTop(x,z))); if(!bad.length){ toast('Stable! Every brick connects to the ground.'); return; }
+    if(preview){ toast(`${bad.length} loose bricks (shown in red). Press Enter to complete the build — they'll fall.`); for(const i of bad){ const b=refs[i].b; FX.burst('hit',b[1]+0.5,b[2]*PL+0.5,b[3]+0.5,3,1,COLORS.red); } return; }
+    for(const i of bad){ const r=refs[i]; const b=r.b; removeWorldBrick(r); Live.spawn(b[0],b[5],b[1]+0.5,b[2]*PL+0.5,b[3]+0.5,(Math.random()-.5)*2,0,(Math.random()-.5)*2); } toast(`${bad.length} unconnected bricks fell.`); },
+};
+function nonPlayerTop(x,z){ const s=getSector(x,z); const c=s?.occ?.[colIndex(s,x,z)]; let top=0; if(c) for(const iv of c) if(!iv[2].player && iv[2].solid) top=Math.max(top,iv[1]-terrainH(x,z)); return top; }
+
+// boarding: when an enemy ship is battered, step aboard and fight her crew for the prize
+function boardShip(f, v){ toast('Boarding! Defeat her crew to take the ship.'); const n=3+Math.floor(v.stats.mass/10); f.pos.copy(v.toWorld(new THREE.Vector3(0,v.height+0.5,0)));
+  for(let i=0;i<Math.min(8,n);i++){ const p=v.toWorld(new THREE.Vector3((Math.random()-.5)*v.half[0],v.height+0.5,(Math.random()-.5)*v.half[1]*1.4)); const e=spawnFigure(randomRecipe(Math.random,pick(Math.random,['human','frog','cat']),{held:'sword',hat:'hat_tricorn',colors:{torso:'black',legs:'dark_red'}}),p,{team:'enemy',brain:'fight',ai:{aggro:30},name:'Pirate crew',hp:50}); e.controller.target=f; e.crewOf=v; }
+  v.ai=null; v.speed=0; RT.boarding=v; }
+const SeaLife = { t:0,
+  update(dt){ this.t+=dt; if(this.t<3) return; this.t=0; const f=RT.players[0].fig; const v=f.vehicle; const W=RT.world;
+    if(RT.boarding && !RT.figures.some(o=>o.crewOf===RT.boarding && !o.ko && o.alive)){ const b=RT.boarding; RT.boarding=null; b.team='player'; b.name='Captured '+b.name; toast(`You captured the ${b.name}! She's yours.`); addCareerXp(W,'pirate',120); addCareerXp(W,'army_navy',120); W.player.pips+=150; }
+    // pirate ships hunt sailors in the Isles; Void Marauders hunt starships in the Frontier
+    const enemies=Vehicles.list.filter(x=>x.alive && x.team==='enemy');
+    if(v && v.kind==='ship' && enemies.length<2 && (RT.realm==='isles'||Math.random()<0.2) && Math.random()<0.3){ const a=Math.random()*6.28; const p=v.pos.clone().add(new THREE.Vector3(Math.cos(a)*90,0,Math.sin(a)*90)); if(terrainH(Math.floor(p.x),Math.floor(p.z))<CONFIG.seaLevel-1){
+        const m=RT.assets.models[Math.random()<0.6?'pirate_galleon':'sloop']; if(m){ const e=Vehicles.spawnModel(m,p,a,{ team:'enemy', name: m.id==='sloop'?'Pirate sloop':'Pirate galleon' }); e.ai=shipAI(()=>RT.players[0].fig.vehicle?.pos||RT.players[0].fig.pos); toast(`Sails on the horizon! A ${e.name} is coming for you.`); } } }
+    if(v && v.kind==='star' && enemies.length<3 && Math.random()<0.25){ const a=Math.random()*6.28; const p=v.pos.clone().add(new THREE.Vector3(Math.cos(a)*120,10+Math.random()*20,Math.sin(a)*120)); const m=RT.assets.models.fighter_void_marauder; if(m){ const e=Vehicles.spawnModel(m,p,a,{team:'enemy',name:'Void Marauder'}); e.ai=fighterAI(()=>RT.players[0].fig.vehicle?.pos||RT.players[0].fig.pos); } }
+    for(const e of enemies) if(e.pos.distanceTo(f.pos)>400){ e.alive=false; scene.remove(e.group); }
+  },
+};
+// costume creator, changing booths and secret identities
+const Identity = {
+  booth(f){ const P=RT.world.player; if(!P.powers && !P.careers.hero?.active && !P.careers.villain?.active){ toast('A changing booth. (Get powers first — then you can keep a secret identity.)'); return; }
+    P.identity=P.identity||{ exposure:0, exposed:false, civilian:{...P.recipe}, hero:null, mode:'civilian' };
+    if(!P.identity.hero){ Menu.open('costume'); return; }
+    // changing in public risks exposure
+    const watchers=RT.figures.filter(o=>o.townsfolk && !o.ko && o.pos.distanceTo(f.pos)<12).length; if(watchers>2){ identityRisk(RT.world, 0.12*watchers, null); toast(`${watchers} people saw you change! Your secret is at risk.`); }
+    P.identity.mode = P.identity.mode==='hero' ? 'civilian' : 'hero'; applyPlayerRecipe(P.identity.mode==='hero' ? P.identity.hero : P.identity.civilian); toast(P.identity.mode==='hero' ? `${P.heroName||'Your hero'} is here!` : 'Back in your everyday clothes.'); FX.burst('magic',f.pos.x,f.pos.y+2,f.pos.z,20,4); },
+};
+Menu.pages.costume = ()=>{ const P=RT.world.player; const rc=RT.costume||(RT.costume={...P.recipe, cape:'long', hat:'none', colors:{...P.recipe.colors}, emblem:{ shapes:[{shape:'star4',color:'yellow'}] }}); const sw=slot=>COLOR_NAMES.map(c=>`<span class="sw ${rc.colors[slot]===c?'on':''}" style="background:${PALETTE[c]}" data-act="costCol" data-arg="${slot}:${c}"></span>`).join('');
+  const emb=Object.keys(RT.assets.prints?.prints||{}).filter(k=>k.startsWith('emblem_')).slice(0,60);
+  return `<h2>Costume creator</h2><p>Design your hero suit: colours, cape or no cape, and an original emblem.</p><div class="row">Hero name: <input id="hname" value="${esc(P.heroName||'The '+pick(Math.random,['Bright','Bold','Swift','Mighty','Clever'])+' '+pick(Math.random,['Comet','Spark','Badger','Tide','Gear']))}"></div>
+  ${['torso','legs','accent'].map(s=>`<div class="row"><b style="width:60px">${s}</b>${sw(s)}</div>`).join('')}
+  <div class="row">Cape: ${['none','short','long'].map(c=>`<button class="${rc.cape===c?'on':''}" data-act="costCape" data-arg="${c}">${c}</button>`).join('')} Mask/helm: ${['none','hat_hood','helmet_visor','crown'].map(c=>`<button class="${rc.hat===c?'on':''}" data-act="costHat" data-arg="${c}">${c}</button>`).join('')}</div>
+  <h3>Emblem</h3><div class="row" style="max-height:120px;overflow:auto">${emb.length? emb.map(e=>`<button class="${rc.emblemPrint===e?'on':''}" data-act="costEmb" data-arg="${e}">${e.replace('emblem_','').replace(/_/g,' ')}</button>`).join('') : EMBLEM_SHAPES.map(e=>`<button data-act="costShape" data-arg="${e}">${e}</button>`).join('')}</div>
+  <button data-act="costSave">Save costume</button>`; };
+Menu.acts.costCol = a=>{ const [s,c]=a.split(':'); RT.costume.colors[s]=c; }; Menu.acts.costCape = c=>{ RT.costume.cape=c; }; Menu.acts.costHat = c=>{ RT.costume.hat=c; }; Menu.acts.costEmb = e=>{ RT.costume.emblemPrint=e; }; Menu.acts.costShape = e=>{ RT.costume.emblem={ shapes:[{shape:e,color:RT.costume.colors.accent}] }; };
+Menu.acts.costSave = ()=>{ const P=RT.world.player; P.heroName=$('hname').value; P.identity=P.identity||{ exposure:0, exposed:false, civilian:{...P.recipe}, mode:'civilian' }; P.identity.hero={...RT.costume}; P.costumes.push({...RT.costume, name:P.heroName}); toast('Costume saved. Use a changing booth to suit up.'); Menu.close(); };
 
 // §BATTLES --------------------------------------------------------------------
 // 30–40 figure battles with objectives; Sergeants lead a squad, Captains several (orders: 5 follow, 6 hold, 7 charge, 8 regroup).
@@ -3651,8 +4040,8 @@ const BuildMode = {
     // free camera orbiting the build
     const cam=pl.cam; if(Input.mouse.b.has(2)){ cam.yaw-=Input.mouse.dx*0.005; cam.pitch=clamp(cam.pitch+Input.mouse.dy*0.005,-0.2,1.4); } RT.zoom=clamp((RT.zoom||1)+Input.mouse.wheel*0.1,0.4,3);
     const mv=new THREE.Vector3((Input.down('KeyD')?1:0)-(Input.down('KeyA')?1:0),0,(Input.down('KeyS')?1:0)-(Input.down('KeyW')?1:0)).applyAxisAngle(_UP,cam.yaw); f.pos.addScaledVector(mv,dt*14); f.pos.y=surfaceY(f.pos.x,f.pos.z);
-    if(Input.hit('KeyR')) this.rot=(this.rot+1)&3; if(Input.hit('KeyM')) { this.mirror=!this.mirror; this.renderBar(); } if(Input.hit('PageUp')) this.layer++; if(Input.hit('PageDown')) this.layer--;
-    if(Input.hit('KeyZ')) this.doUndo(); if(Input.hit('KeyY')) this.doRedo();
+    if(Input.hit('KeyR')) this.rot=(this.rot+1)&3; if(Input.hit('KeyF') && !BuildTools.sel?.b) this.piece = this.piece.startsWith('plate')?'brick_2x4':'plate_2x4'; if(Input.hit('KeyM')) { this.mirror=!this.mirror; this.renderBar(); } if(Input.hit('PageUp')) this.layer++; if(Input.hit('PageDown')) this.layer--;
+    if(Input.hit('KeyZ')) this.doUndo(); if(Input.hit('KeyY')) this.doRedo(); if(Input.hit('KeyV') && !Input.down('ControlLeft') && !Input.down('MetaLeft')){ makeVehicleFromBuild(f); return; }
     // ghost brick snapped to studs under the mouse
     const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(RT.mouseX/innerWidth*2-1, -(RT.mouseY/innerHeight)*2+1), camera);
     let hitP=null; for(let t=1;t<80;t+=0.25){ const p=ray.ray.at(t,new THREE.Vector3()); if(solidAt(Math.floor(p.x),Math.floor(p.y/PL),Math.floor(p.z))){ const back=ray.ray.at(t-0.25,new THREE.Vector3()); hitP={ cell:[Math.floor(back.x),Math.floor(back.y/PL),Math.floor(back.z)], solid:[Math.floor(p.x),Math.floor(p.y/PL),Math.floor(p.z)] }; break; } }
@@ -3660,8 +4049,9 @@ const BuildMode = {
     if(!hitP){ this.ghost.visible=false; return; } const P=PIECES[this.piece]; const [w,d]=pieceDims(P,this.rot); const y=Math.max(hitP.cell[1]+this.layer, supportTop(hitP.cell[0],hitP.cell[2],hitP.cell[1]+this.layer+0.5));
     const pos=[hitP.cell[0]-Math.floor((w-1)/2), y, hitP.cell[2]-Math.floor((d-1)/2)];
     this.ghost.visible=true; this.ghost.scale.set(w,P.h*PL,d); this.ghost.position.set(pos[0]+w/2,(pos[1]+P.h/2)*PL,pos[2]+d/2); this.ghost.material.color.copy(COLORS[this.color]);
+    BuildTools.handle(pl, hitP, pos);
     if(Input.mouse.pressed.has(0) && !RT.menuOpen && !(RT.mouseX<innerWidth*0.48 && RT.mouseY>innerHeight-200)) this.place(pos);
-    if(Input.hit('Delete')||Input.hit('KeyX')){ const ref=brickSolidAt(...hitP.solid); if(ref && (ref.player||RT.creative)) this.remove(ref); }
+    if((Input.hit('Delete')&&!BuildTools.sel?.b)||Input.hit('KeyX')){ const ref=brickSolidAt(...hitP.solid); if(ref && (ref.player||RT.creative)) this.remove(ref); }
     if(Input.hit('KeyP')){ const ref=brickSolidAt(...hitP.solid); if(ref && ref.player){ const b=ref.b.slice(); this.remove(ref,true); b[5]=this.color; this.placeRaw(b); } }
   },
   cost(pid,color){ if(RT.creative) return true; const P=RT.world.player; if(bankHas(pid,color)>0){ bankAdd(pid,color,-1); return true; } const price = FUNCTIONAL[pid]?.cost || PIECES[pid].w*PIECES[pid].d*Math.max(1,PIECES[pid].h/3)*(RARE_COLORS.has(color)?3:1); if(P.pips>=price){ P.pips-=price; return true; } toast(`Missing ${pid} in ${color} — needs ${price} pips.`); return false; },
@@ -3779,7 +4169,7 @@ function simStep(dt){
   RT.dt=dt; RT.time+=dt; const W=RT.world;
   // global keys
   if(Input.hit('Escape')){ if(RT.menuOpen) Menu.close(); else if(BuildMode.on) BuildMode.toggle(RT.players[0]); else if(RT.mode==='PHOTO') Photo.toggle(); else Menu.open('main'); }
-  if(!RT.menuOpen){ if(Input.hit('F1')) Menu.open('help'); if(Input.hit('KeyM')&&!BuildMode.on) Menu.open('map'); if(Input.hit('KeyJ')) Menu.open('jobs'); if(Input.hit('KeyK')) Menu.open('careers'); if(Input.hit('KeyP')&&!BuildMode.on) Photo.toggle(); if(Input.hit('Enter')) RT.players.length>1?removePlayer2():addPlayer2(); }
+  if(!RT.menuOpen){ if(Input.hit('F1')) Menu.open('help'); if(!BuildMode.on){ if(Input.hit('KeyM')) Menu.open('map'); if(Input.hit('KeyJ')) Menu.open('jobs'); if(Input.hit('KeyK')) Menu.open('careers'); if(Input.hit('KeyP')) Photo.toggle(); if(Input.hit('Enter')) RT.players.length>1?removePlayer2():addPlayer2(); if(Input.hit('KeyO')) Menu.open('companions'); } }
   if(Input.pads.length>1 && RT.players.length<2 && Input.pads[1].buttons[9]?.pressed) addPlayer2();
   if(RT.mode==='PHOTO'){ Photo.update(dt); return; }
   if(RT.menuOpen) return;
@@ -3799,8 +4189,8 @@ function simStep(dt){
     if(!CONFIG.stopMotion || RT.frame%5===0) animateFigure(f, CONFIG.stopMotion?dt*5:dt);
   }
   for(const pl of RT.players) Live.collect(pl.fig);
-  Live.update(dt); Pips.update(dt); FX.update(dt); Proj.update(dt); Rubble.update(dt); Jobs.update(dt); Battles.update(dt); Training.update(dt);
-  if(RT.autoBuild){ const A=RT.autoBuild; A.t+=dt; while(A.t>0.04 && A.queue.length){ A.t-=0.04; const b=A.queue.shift(); if(BuildMode.cost(b[0],b[5])) placeWorldBrick([b[0],A.ox+b[1],A.oy+b[2],A.oz+b[3],b[4],b[5]],{silent:false}); } if(!A.queue.length){ RT.autoBuild=null; toast('Auto-build complete!'); } }
+  Vehicles.update(dt); FnPassive.update(dt); TownLife.update(dt); TownFolkSpawner.update(); SeaLife.update(dt); ShopSim.update(dt); Live.update(dt); Pips.update(dt); FX.update(dt); Proj.update(dt); Rubble.update(dt); Jobs.update(dt); Battles.update(dt); Training.update(dt);
+  if(RT.autoBuild){ const A=RT.autoBuild; A.t+=dt; while(A.t>0.04 && A.queue.length){ A.t-=0.04; const b=A.queue.shift(); if(RT.creativeFree||BuildMode.cost(b[0],b[5])) placeWorldBrick([b[0],A.ox+b[1],A.oy+b[2],A.oz+b[3],b[4],b[5]],{silent:false}); } if(!A.queue.length){ RT.autoBuild=null; RT.creativeFree=false; toast('Auto-build complete!'); } }
   if(RT.heartQuest){ const q=RT.heartQuest; const d=Math.hypot(q.pos.x-p0.fig.pos.x,q.pos.z-p0.fig.pos.z); if(RT.frame%3===0) FX.spawn('lumen',q.pos.x,surfaceY(q.pos.x,q.pos.z)+2,q.pos.z,0,2,0); if(d<4){ lumenAdvance(W,'heartstone',{stone:q.k}); RT.heartQuest=null; toast('You found the heartstone! Return to any temple for the Forging.'); } }
   Stream.update(); Populace.update(); updateWeather(dt); Audio.update(); HUD.update();
   RT.shake=Math.max(0,RT.shake-dt*2.5);
@@ -3811,12 +4201,13 @@ function render(dt){
   if(RT.mode!=='CUTSCENE' && RT.mode!=='PHOTO'){
     for(const pl of P){ const look = pl===p0 ? (Input.locked||RT.mode==='BUILD' ? [Input.mouse.dx*0.0025, Input.mouse.dy*0.0025] : [0,0]) : [0,0]; if(pl.ctrl.padLook){ look[0]+=pl.ctrl.padLook[0]*0.05; look[1]+=pl.ctrl.padLook[1]*0.04; }
       if(!Input.locked && pl===p0 && RT.mode!=='BUILD'){ if(Input.down('ArrowLeft')) look[0]-=0.03; if(Input.down('ArrowRight')) look[0]+=0.03; if(Input.down('ArrowUp')) look[1]+=0.02; if(Input.down('ArrowDown')) look[1]-=0.02; }
-      const aim=pl.cam.update(pl.fig, dt, look); if(pl===p0) RT.camAim=aim; }
+      const tgt = pl.fig.vehicle ? { pos:pl.fig.vehicle.pos, vel:pl.fig.vehicle.vel, height:pl.fig.vehicle.height+3, scale:Math.max(1,Math.max(...pl.fig.vehicle.half)/3), mount:null, lockTarget:null, radius:1 } : pl.fig;
+      const aim=pl.cam.update(tgt, dt, look); if(pl===p0) RT.camAim=aim; }
     RT.focus.copy(p0.fig.pos);
   }
   updateSky(dt);
   for(const sct of RT.sectors.values()) if(sct.meshes?.studs){ const cx=sct.x0+32-camera.position.x, cz=sct.z0+32-camera.position.z; sct.meshes.studs.visible = CONFIG.studNear>0 && Math.hypot(cx,cz) < CONFIG.studNear+12; }
-  GLBLOD.update(); FigR.begin(); for(const f of RT.figures) if(f.alive && !GLBLOD.drawn(f) && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
+  if(RT.frame%10===0) Farm.draw(); GLBLOD.update(); FigR.begin(); for(const f of RT.figures) if(f.alive && !GLBLOD.drawn(f) && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
   renderer.info.reset(); renderer.info.autoReset=false;
   const two = P.length>1 && P[0].fig.pos.distanceTo(P[1].fig.pos)>28;
   if(P.length>1 && !two){ // one shared camera when close
