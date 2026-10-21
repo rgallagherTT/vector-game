@@ -559,7 +559,7 @@ const SIZE_CLASSES = { small:0.75, standard:1, big:1.4, giant:3 };
 // Every ability is data. Effect primitives: damage knockback launch stun pull shield heal dash spawn area buff debuff smash build.
 const ABILITIES = {};
 function A(id, o){ ABILITIES[id] = { id, name:o.name||id, slot:o.slot||'special', cost:o.cost||0, cooldown:o.cd||0, cast:o.cast||0.1,
-  targeting:o.t||'melee', range:o.range||2, radius:o.radius||1.5, effects:o.fx||[], vfx:o.vfx||'hit', anim:o.anim||'attack1', tags:o.tags||[], plans:o.plans||null, ...o }; }
+  targeting:o.t||'melee', range:o.range||2.9, radius:o.radius||1.5, effects:o.fx||[], vfx:o.vfx||'hit', anim:o.anim||'attack1', tags:o.tags||[], plans:o.plans||null, ...o, t:o.t||'melee', range:o.range||2.9, cooldown:o.cd||0 }; }
 const dmg=(n)=>({type:'damage',amount:n}), kb=(n)=>({type:'knockback',force:n}), launch=(n)=>({type:'launch',force:n}), stun=(t)=>({type:'stun',time:t}),
   pull=(n)=>({type:'pull',force:n}), shield=(n,t)=>({type:'shield',amount:n,time:t}), heal=(n)=>({type:'heal',amount:n}), dash=(n)=>({type:'dash',dist:n}),
   spawn=(what,n=1)=>({type:'spawn',what,n}), area=(r,inner)=>({type:'area',radius:r,inner}), buff=(stat,mul,t)=>({type:'buff',stat,mul,time:t}),
@@ -689,6 +689,7 @@ const SPACE_ZONES = ['station','moon','belt','verdant','crystal','ironwind'];
 // §WORLDMAP -------------------------------------------------------------------
 // Deterministic continent: seven wedges around a central sea, joined by a ring road; Frontier zones off-map.
 function realmAt(x,z){
+  if(!(x===x && z===z)) return 'brightharbour';
   if(x > SPACE_ORIGIN.x - 3000) return 'frontier';
   const a = Math.atan2(z,x); const wedge = 2*Math.PI/7;
   let rel = a - REALMS.brightharbour.angle; rel = ((rel % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
@@ -1870,7 +1871,8 @@ const Audio = {
 // §LOOK -----------------------------------------------------------------------
 const canvas = document.createElement('canvas'); document.body.prepend(canvas);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance', preserveDrawingBuffer: QS.has('shot') });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75)); renderer.setSize(innerWidth, innerHeight);
+if(QS.has('low')){ CONFIG.shadows=false; CONFIG.bloom=false; CONFIG.studNear=0; }
+renderer.setPixelRatio(QS.has('low') ? 0.5 : Math.min(devicePixelRatio, 1.5)); renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
 renderer.shadowMap.enabled = CONFIG.shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -1928,7 +1930,7 @@ const studGeo = (()=>{ const g=new THREE.CylinderGeometry(0.3,0.3,0.18,8,1,true)
 const studMat = new THREE.MeshPhysicalMaterial({ roughness:0.3, clearcoat:0.55, clearcoatRoughness:0.18 });
 // post-processing: bloom on glowing things, optional tilt-shift
 const composer = new EffectComposer(renderer); const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass);
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.35, 0.4, 0.97); composer.addPass(bloom);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.35, 0.4, 0.97); bloom.enabled=CONFIG.bloom; composer.addPass(bloom);
 const TiltShift = { uniforms:{ tDiffuse:{value:null}, focus:{value:0.55}, band:{value:0.16}, amount:{value:0.0045}, res:{value:new THREE.Vector2(innerWidth,innerHeight)} },
   vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader:`uniform sampler2D tDiffuse; uniform float focus, band, amount; varying vec2 vUv;
@@ -2345,10 +2347,14 @@ const Scatter = {
   },
   near(x,z,r){ const out=[]; for(const s of RT.sectors.values()) for(const it of s.scatter) if(it.alive && Math.abs(it.x+1-x)<r && Math.abs(it.z+1-z)<r) out.push([it,s]); return out; },
 };
-function modelToGeo(m){ const buf=new MeshBuf(); for(const b of m.bricks){ const P=PIECES[b[0]]; const col=COLORS[b[5]]||COLORS.white; const [w,d]=pieceDims(P,b[4]); const x0=b[1],y0=b[2]*PL,z0=b[3],x1=x0+w,y1=y0+P.h*PL,z1=z0+d;
-    if(P.shape==='box'){ emitQuad(buf,[[x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]],[0,1,0],col,[1,1,1,1],[w,d]); emitQuad(buf,[[x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1]],[1,0,0],col,[.8,.8,1,1],[d,y1-y0]); emitQuad(buf,[[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0]],[-1,0,0],col,[.8,.8,1,1],[d,y1-y0]);
-      emitQuad(buf,[[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],[0,0,1],col,[.8,.8,1,1],[w,y1-y0]); emitQuad(buf,[[x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0]],[0,0,-1],col,[.8,.8,1,1],[w,y1-y0]);
-      if(P.studs) for(let x=x0;x<x1;x++) for(let z=z0;z<z1;z++) if(!m.bricks.some(o=>o!==b && o[2]===b[2]+P.h && x>=o[1]&&x<o[1]+pieceDims(PIECES[o[0]],o[4])[0]&&z>=o[3]&&z<o[3]+pieceDims(PIECES[o[0]],o[4])[1])) studQuads(buf,x+0.5,y1,z+0.5,col); }
+function modelToGeo(m, studs=false){ const buf=new MeshBuf(); const occ=new Set(); for(const b of m.bricks) if(PIECES[b[0]]?.shape==='box') for(const c of cellsOf(b)) occ.add(c);
+  const full=(xs,ys,zs)=>{ for(const x of xs) for(const y of ys) for(const z of zs) if(!occ.has(x+','+y+','+z)) return false; return true; }; const rng=(a,b)=>{ const r=[]; for(let i=a;i<b;i++) r.push(i); return r; };
+  for(const b of m.bricks){ const P=PIECES[b[0]]; if(!P) continue; const col=COLORS[b[5]]||COLORS.white; const [w,d]=pieceDims(P,b[4]); const x0=b[1],y0=b[2]*PL,z0=b[3],x1=x0+w,y1=y0+P.h*PL,z1=z0+d;
+    if(P.shape==='box'){ const X=rng(b[1],b[1]+w), Y=rng(b[2],b[2]+P.h), Z=rng(b[3],b[3]+d);
+      if(!full(X,[b[2]+P.h],Z)) emitQuad(buf,[[x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]],[0,1,0],col,[1,1,1,1],[w,d]);
+      if(!full([b[1]+w],Y,Z)) emitQuad(buf,[[x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1]],[1,0,0],col,[.8,.8,1,1],[d,y1-y0]); if(!full([b[1]-1],Y,Z)) emitQuad(buf,[[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0]],[-1,0,0],col,[.8,.8,1,1],[d,y1-y0]);
+      if(!full(X,Y,[b[3]+d])) emitQuad(buf,[[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],[0,0,1],col,[.8,.8,1,1],[w,y1-y0]); if(!full(X,Y,[b[3]-1])) emitQuad(buf,[[x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0]],[0,0,-1],col,[.8,.8,1,1],[w,y1-y0]);
+      if(studs && P.studs) for(let x=b[1];x<b[1]+w;x++) for(let z=b[3];z<b[3]+d;z++) if(!occ.has(x+','+(b[2]+P.h)+','+z)) studQuads(buf,x+0.5,y1,z+0.5,col); }
     else for(const part of shapeGeom(b[0])){ const pc=part.color?COLORS[part.color]:col; for(let k=0;k<part.pos.length;k+=3) buf.vert(x0+part.pos[k],y0+part.pos[k+1],z0+part.pos[k+2],part.nrm[k],part.nrm[k+1],part.nrm[k+2],pc.r,pc.g,pc.b,1,1,2,2); } }
   return buf.geometry(); }
 function studQuads(buf,x,y,z,col){ const r=0.3,h=0.17,seg=6; for(let i=0;i<seg;i++){ const a0=i/seg*Math.PI*2,a1=(i+1)/seg*Math.PI*2; const c0=Math.cos(a0)*r,s0=Math.sin(a0)*r,c1=Math.cos(a1)*r,s1=Math.sin(a1)*r; const nx=Math.cos((a0+a1)/2), nz=Math.sin((a0+a1)/2);
@@ -2518,7 +2524,7 @@ function removeWorldBrick(ref){ const s=RT.sectors.get(ref.ownerSector) || getSe
 // §FIGURES --------------------------------------------------------------------
 // Figures are rigid brick parts on hinges (no skinning). Every body plan shares the same systems.
 // Rendering: all parts of all figures go through one instanced rounded-box mesh (+ transparent and glowing variants).
-const FIG_GEO = new RoundedBoxGeometry(1,1,1,2,0.12);
+const FIG_GEO = new RoundedBoxGeometry(1,1,1,1,0.1);
 const FigR = {
   cap:9000, mesh:null, tmesh:null, gmesh:null, n:0, tn:0, gn:0,
   init(){ const m=new THREE.MeshPhysicalMaterial({ roughness:0.35, clearcoat:0.3, clearcoatRoughness:0.3, envMapIntensity:0.6 }); this.mesh=new THREE.InstancedMesh(FIG_GEO,m,this.cap); this.mesh.count=0; this.mesh.castShadow=true; this.mesh.receiveShadow=true; this.mesh.frustumCulled=false; this.mesh.setColorAt(0,new THREE.Color()); scene.add(this.mesh);
@@ -2822,7 +2828,7 @@ class AIController {
       case 'fight': { let t=this.target; if(!t||t.ko||!t.alive||(f.team!=='enemy'&&!hostile(f,t))){ t=this.target=nearestFoe(f,30); if(!t){ this.brain=this.prevBrain||'wander'; break; } }
         if(this.o.order==='regroup' && this.prevBrain==='follow'){ this.brain='follow'; break; }
         const d=t.pos.distanceTo(f.pos); f.faceTarget=t;
-        const ranged = f.weapon==='bow'||f.weapon==='blaster'; const reach = ranged ? 16 : 2.4+t.radius+f.radius*0.6;
+        const ranged = f.weapon==='bow'||f.weapon==='blaster'; const reach = ranged ? 16 : 1.6+t.radius+f.radius*0.5;
         if(this.windup>0){ this.windup-=RT.dt; f.tell=true; if(this.windup<=0){ f.tell=false; if(this.next==='heavy') it.heavy=true; else if(this.next==='special') it.special=true; else it.light=true; } break; }
         if(d>reach){ go(t.pos.x,t.pos.z,0.85); it.sprint=d>12; }
         else { it.mx = -(t.pos.z-f.pos.z)/d*this.strafe; it.mz=(t.pos.x-f.pos.x)/d*this.strafe; it.mag=0.3;
@@ -3196,6 +3202,7 @@ function playerUpdate(pl, dt){
   if(it.dodge && f.stamina>12 && !f.ko){ f.stamina-=12; const d=it.mag>0.1?new THREE.Vector3(it.mx,0,it.mz):forward(f).negate(); f.vel.addScaledVector(d,16); f.iframes=0.35; f.action={anim:'dodge',t:0,dur:0.35,fired:true,A:{effects:[],tags:[],cast:0},cancel:true}; Audio.whoosh(); }
   // attacks: light combo, heavy, special, abilities
   const W=WEAPONS[f.weapon]||WEAPONS.natural;
+  if(it.light||it.heavy||it.special){ const t=f.lockTarget||nearestFoe(f,6); if(t) f.yaw=Math.atan2(t.pos.x-f.pos.x,t.pos.z-f.pos.z); } // soft auto-aim
   if(it.light){ if(f.carry){ throwCarry(f); } else { const id=W.light[f.combo%W.light.length]; if(useAbility(f,id)){ f.combo=(f.combo+1); f.comboT=1.2; } } }
   if(it.heavy) useAbility(f, f.carry?'throw':W.heavy);
   const list=abilityList(f); if(it.special) useAbility(f, list[0]); if(it.ab>=0) useAbility(f, list[it.ab+1]); if(it.power) useAbility(f, list[5]||list[list.length-1]);
@@ -3368,7 +3375,7 @@ const dbg = {
   headless(days=100, mode='active'){ const r=runHeadless(days,mode); delete r.world; return r; }, compare(days=100){ const a=runHeadless(days,'passive'), b=runHeadless(days,'pressure'); return { passive:{eras:a.erasCount,wars:a.wars,threats:a.archetypes}, active:{eras:b.erasCount,wars:b.wars,threats:b.archetypes} }; },
   stats(){ return {...RT.stats, figures:RT.figures.length, sectors:RT.sectors.size}; }, validate(){ return RT.assets.validation; }, save(){ return saveGame(); },
 };
-window.dbg=dbg; window.RT=RT;
+window.dbg=dbg; window.RT=RT; if(DEBUG) window.evalIn=src=>eval(src);
 function updateDebugOverlay(){ if(!DEBUG) return; const el=$('debug'); el.style.display='block'; const i=renderer.info; let mb=0, st=0, sc=0; for(const s of RT.sectors.values()){ if(s.group){ mb+=s.mergedBricks||0; st+=s.studCount||0; sc+=s.studCulled||0; } }
   RT.stats.studsVisible=st; RT.stats.studsCulled=sc;
   el.textContent=`FPS ${RT.fps.toFixed(0)}  frame ${RT.frameMs.toFixed(1)}ms\ndraw calls ${RT.drawCalls}  tris ${(RT.tris/1000).toFixed(0)}k\nmerged bricks ${mb}  live bricks ${Live.active}\nstuds ${st} (culled ${sc})  sectors ${[...RT.sectors.values()].filter(s=>s.group).length}/${RT.sectors.size}\nfigures ${RT.figures.length}  mode ${RT.mode}  realm ${RT.realm}\npos ${RT.players[0]?.fig.pos.toArray().map(v=>v.toFixed(0)).join(',')}`; }
@@ -3423,7 +3430,7 @@ const BuildMode = {
   renderBar(){ const P=RT.world.player; const cats=['brick','plate','tile','slope','round','functional'];
     $('buildbar').innerHTML=`<b>Build</b> · bank ${bankCount()} · ${P.pips} pips · ${esc(this.piece)} <span class="sw" style="background:${PALETTE[this.color]}"></span> ${this.mirror?'· mirror':''}<div class="pal">${Object.keys(PIECES).filter(id=>cats.includes(PIECES[id].cat)||PIECES[id].design&&['brick','plate','tile','slope','round','arch','frame','fence'].includes(PIECES[id].kind)).slice(0,90).map(id=>`<span class="pc ${id===this.piece?'on':''}" data-p="${id}">${id.replace('brick_','b').replace('plate_','p').replace('tile_','t').replace('fn_','★')} ${bankHas(id,this.color)||''}</span>`).join('')}</div><div class="pal">${COLOR_NAMES.map(c=>`<span class="sw ${c===this.color?'on':''}" data-c="${c}" style="background:${PALETTE[c]}"></span>`).join('')}</div>`;
     $('buildbar').querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>{ this.piece=el.dataset.p; this.renderBar(); }); $('buildbar').querySelectorAll('[data-c]').forEach(el=>el.onclick=()=>{ this.color=el.dataset.c; this.renderBar(); }); },
-  update(pl,dt){ if(!this.on) return; const f=pl.fig;
+  update(pl,dt){ if(!this.on) return; const f=pl.fig; if(Input.hit('KeyB')){ this.toggle(pl); return; }
     // free camera orbiting the build
     const cam=pl.cam; if(Input.mouse.b.has(2)){ cam.yaw-=Input.mouse.dx*0.005; cam.pitch=clamp(cam.pitch+Input.mouse.dy*0.005,-0.2,1.4); } RT.zoom=clamp((RT.zoom||1)+Input.mouse.wheel*0.1,0.4,3);
     const mv=new THREE.Vector3((Input.down('KeyD')?1:0)-(Input.down('KeyA')?1:0),0,(Input.down('KeyS')?1:0)-(Input.down('KeyW')?1:0)).applyAxisAngle(_UP,cam.yaw); f.pos.addScaledVector(mv,dt*14); f.pos.y=surfaceY(f.pos.x,f.pos.z);
@@ -3547,6 +3554,7 @@ function loop(now){
   if(RT.hitStop>0){ RT.hitStop-=real; }
   else { acc+=real; const step=1/CONFIG.simHz; let n=0; while(acc>=step && n<4){ simStep(step); acc-=step; n++; } if(n===4) acc=0; }
   render(real);
+  AutoQ.update(real);
   Input.endFrame(); RT.frame++; RT.frameMs=performance.now()-fStart; updateDebugOverlay();
 }
 function simStep(dt){
@@ -3589,7 +3597,7 @@ function render(dt){
     RT.focus.copy(p0.fig.pos);
   }
   updateSky(dt);
-  for(const sct of RT.sectors.values()) if(sct.meshes?.studs){ const cx=sct.x0+32-camera.position.x, cz=sct.z0+32-camera.position.z; sct.meshes.studs.visible = Math.hypot(cx,cz) < CONFIG.studNear+12; }
+  for(const sct of RT.sectors.values()) if(sct.meshes?.studs){ const cx=sct.x0+32-camera.position.x, cz=sct.z0+32-camera.position.z; sct.meshes.studs.visible = CONFIG.studNear>0 && Math.hypot(cx,cz) < CONFIG.studNear+12; }
   FigR.begin(); for(const f of RT.figures) if(f.alive && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
   renderer.info.reset(); renderer.info.autoReset=false;
   const two = P.length>1 && P[0].fig.pos.distanceTo(P[1].fig.pos)>28;
@@ -3604,6 +3612,10 @@ function render(dt){
   } else { renderPass.camera=camera; if(CONFIG.bloom||CONFIG.tiltShift||gradePass.enabled) composer.render(dt); else renderer.render(scene,camera); }
   RT.drawCalls=renderer.info.render.calls; RT.tris=renderer.info.render.triangles; RT.stats.drawCalls=RT.drawCalls; RT.stats.tris=RT.tris;
 }
+
+// automatic quality: if frames stay slow, step down bloom → shadows → resolution → 3D studs
+const AutoQ = { t:0, sum:0, n:0, level:0, update(real){ if(QS.has('noauto')) return; this.sum+=real; this.n++; this.t+=real; if(this.t<3) return; const avg=this.sum/this.n; this.t=0; this.sum=0; this.n=0;
+  if(avg>1/40 && this.level<4){ this.level++; if(this.level===1){ CONFIG.bloom=false; bloom.enabled=false; } else if(this.level===2){ CONFIG.shadows=false; renderer.shadowMap.enabled=false; sun.castShadow=false; scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); } else if(this.level===3){ renderer.setPixelRatio(Math.max(0.6,renderer.getPixelRatio()*0.7)); onResize(); } else if(this.level===4){ CONFIG.studNear=0; } console.log('auto quality level',this.level); } } };
 
 // §PHOTO ----------------------------------------------------------------------
 const Photo = {
