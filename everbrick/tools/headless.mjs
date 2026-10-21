@@ -15,7 +15,7 @@ export function loadSim() {
     'REALMS','buildWorldMap','makeTerrain','newWorld','advanceWorld','runHeadless','saveToString','loadFromString','serializeWorld','deserializeWorld','migrateSave','encodeBlueprint','decodeBlueprint',
     'encodeCharacter','decodeCharacter','defaultRecipe','lzwCompress','lzwDecompress','CAREERS','CAREER_IDS','joinCareer','completeJob','generateJobs','lumenAdvance','grantPowers','powerAbilities',
     'MOVE_POWERS','MAIN_POWERS','DEF_POWERS','ELEMENTS','stabilityCheck','blueprintStats','judgeCommission','COMMISSION_BRIEFS','foundTown','craft','RECIPES','plantCrop','harvest','farmTick','shopTick',
-    'hallOfRecords','ARCHETYPES','spawnThreat','declareWar','Bus','WEAPONS','BODY_PLANS','genName','rngFor'];
+    'hallOfRecords','ARCHETYPES','spawnThreat','declareWar','Bus','WEAPONS','BODY_PLANS','genName','rngFor','registerDesignPieces','PRINTS','RUBBLE_BUILDS'];
   // eslint-disable-next-line no-new-func
   return new Function(`${src}\nreturn { ${names.join(',')} };`)();
 }
