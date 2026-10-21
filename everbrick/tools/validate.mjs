@@ -9,7 +9,7 @@ const prints = JSON.parse(readFileSync(root + 'design/prints.json', 'utf8'));
 const extra = new Set(Object.keys(prints.prints || {}));
 let n = 0, bad = 0, errs = [];
 for (const f of readdirSync(root + 'models')) {
-  if (!f.endsWith('.json') || f === 'index.json') continue;
+  if (!f.endsWith('.json') || f === 'index.json' || f.startsWith('bundle_')) continue;
   const m = JSON.parse(readFileSync(root + 'models/' + f, 'utf8')); n++;
   const e = S.validateModel(m, extra); if (e.length) { bad++; errs.push(...e.slice(0, 3)); }
 }

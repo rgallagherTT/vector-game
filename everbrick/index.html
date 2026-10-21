@@ -163,7 +163,8 @@ function weighted(r, items, wf){ let tot=0; for(const it of items) tot+=Math.max
 // §BUS ------------------------------------------------------------------------
 function makeBus(){ const h={}; return {
   on(e,f){ (h[e]||(h[e]=[])).push(f); return ()=>{ h[e]=h[e].filter(x=>x!==f); }; },
-  emit(e,d){ const l=h[e]; if(l) for(const f of l.slice()) f(d); const w=h['*']; if(w) for(const f of w.slice()) f(e,d); },
+  muted:false,
+  emit(e,d){ if(this.muted) return; const l=h[e]; if(l) for(const f of l.slice()) f(d); const w=h['*']; if(w) for(const f of w.slice()) f(e,d); },
   clear(){ for(const k in h) delete h[k]; }
 }; }
 const Bus = makeBus();
@@ -1640,7 +1641,6 @@ function newPlayer(name='Hero'){
     pos:null, respawn:null, battleCallups:true, frontierVisits:0 };
 }
 function newWorld(seed=CONFIG.seed, settings={}){
-  Bus.clear();
   const world = { version:5, seed, day:0, tick:0, settings:{ size:1, warFreq:1, threatFreq:1, archetypes:ARCH_IDS.slice(), maxThreats:2, ...settings },
     map: buildWorldMap(seed), factions:null, player:newPlayer(), news:[], timeline:[], wars:[], threats:[], eras:[{ index:0, name:'The First Age', start:0, end:null }], eraIndex:0, eraThreats:[],
     quietUntil: 20, lastArch:null, archHistory:[], bias:{}, seedNotes:[], scars:[], blight:{}, statues:[], lostSites:[], activeEvents:[], boards:{}, jobLog:[], pendingBattles:[], villains:initVillains(),
@@ -1778,7 +1778,7 @@ function simulatedPlayerDay(world, mode){
 }
 function runHeadless(days, mode='active', seed=CONFIG.seed, settings={}){
   const t0 = (typeof performance!=='undefined'?performance:Date).now();
-  WAR_SEQ=1; THREAT_SEQ=1; JOB_SEQ=1;
+  const seqs=[WAR_SEQ,THREAT_SEQ,JOB_SEQ]; WAR_SEQ=1; THREAT_SEQ=1; JOB_SEQ=1; const wasMuted=Bus.muted; Bus.muted=true;
   const world=newWorld(seed, settings); let emptyBoards=0, minBoard=1e9;
   const archSeq=[];
   for(let d=0; d<days; d++){
@@ -1788,7 +1788,7 @@ function runHeadless(days, mode='active', seed=CONFIG.seed, settings={}){
   }
   for(const t of world.archHistory) archSeq.push(t);
   let backToBack=0; for(let i=1;i<archSeq.length;i++) if(archSeq[i]===archSeq[i-1]) backToBack++;
-  const ms = (typeof performance!=='undefined'?performance:Date).now()-t0;
+  const ms = (typeof performance!=='undefined'?performance:Date).now()-t0; Bus.muted=wasMuted; if(typeof RT!=='undefined' && RT.world){ [WAR_SEQ,THREAT_SEQ,JOB_SEQ]=[Math.max(WAR_SEQ,seqs[0]),Math.max(THREAT_SEQ,seqs[1]),Math.max(JOB_SEQ,seqs[2])]; }
   const F=world.factions;
   return { days, mode, seed, ms:Math.round(ms), eras: world.eras.map(e=>({ name:e.name, start:Math.floor(e.start), end:e.end==null?null:Math.floor(e.end), outcome:e.outcome||'ongoing', seed:(e.seed||[]).join(' ') })),
     erasCount: world.eras.length, archetypes: archSeq, backToBack, emptyBoards, minBoard,
@@ -3210,7 +3210,7 @@ function damage(f, amt, src, opts={}){
     if(sinceBlock<0.2){ src.stun=Math.max(src.stun,1.0); src.flash=0.25; src.tell=false; if(src.controller instanceof AIController) src.controller.windup=0; FX.burst('hit',f.pos.x,f.pos.y+2.5,f.pos.z,10,6); Audio.tone(1400,0.12,'square',0.15); hitStop(0.08); f.stamina=Math.min(100,f.stamina+15); if(f.isPlayer) toast('Parry!'); Bus.emit('parry',{f,src}); return 0; }
     amt*= (1-W.block); f.stamina=Math.max(0,f.stamina-amt*0.8); if(f.stamina<=0){ f.blocking=false; f.stun=0.6; } }
   if(f.shield>0){ const a=Math.min(f.shield,amt); f.shield-=a; amt-=a; FX.burst('lumen',f.pos.x,f.pos.y+2,f.pos.z,4,3); }
-  const def=(f.buffs.def?.mul||1)/(f.debuffs?.def?.mul||1); amt/=def; if(f.species==='robot'&&opts.shock) amt*=0.5; if(f.buffs.phase) amt=0;
+  const def=(f.buffs.def?.mul||1)/(f.debuffs?.def?.mul||1); amt/=def; if(f.resists && opts.ability && f.resists.some(r=>opts.ability.tags?.includes(r)||opts.ability.element===r||opts.ability.id?.includes(r))) amt*=0.4; if(f.species==='robot'&&opts.shock) amt*=0.5; if(f.buffs.phase) amt=0;
   if(f.isPlayer && f.sp && RT.world.player.inventory.some(i=>i.equipped && i.stats.def)) amt*=0.85;
   amt=Math.max(0,Math.round(amt)); if(!amt) return 0;
   f.hp-=amt; f.flash=0.12; f.expr='face_angry'; f.exprT=0.6;
@@ -3390,6 +3390,7 @@ function nearbyFn(f, r=6){ let best=null, bd=r; for(const s of RT.sectors.values
 function interactPrompt(f){
   const p=Rubble.nearest(f,4); if(p) return p.options.length>1 ? `Hold E to build: ${p.options.map((o,i)=>(i===p.choice?'▶':'')+RUBBLE_BUILDS[o].name).join(' / ')} (1/2 to choose)` : `Hold E to build a ${RUBBLE_BUILDS[p.options[0]].name}`;
   const fr=fnRefsNear(f.pos); if(fr.length) return 'E: '+(FN_LABEL[fr[0].fn]||fr[0].fn);
+  const og=Origins.near(f); if(og) return og.text;
   const vv=Vehicles.near(f,3); if(vv) return vv.team==='enemy' ? (vv.hp<0.8?'E: Board her!':'Enemy ship — knock bricks off her hull, then board') : `E: ${vv.rolled?'Flip':'Take'} the ${vv.name}`;
   const fn=nearbyFn(f); if(fn) return { dock:'E: Docks (boats)', plot:'E: Home plot', stable:'E: Stable (mounts)', waystone:'E: Waystone (fast travel)', board:'E: Job board', recruiter:'E: Recruiter', inn:'E: Inn (rest, save)', shop:'E: Shop', bakery:'E: Bakery', temple:'E: Lumen temple', launchpad:'E: Launch to the Frontier', statue:`A statue: ${fn.deed||''}`, colony:'E: Colony (return to the launch pad)' }[fn.kind]||null;
   const m=nearestMountable(f); if(m) return `X: ${m.tamed||m===RT.players[1]?.fig?'Ride':'Tame'} ${m.name}`;
@@ -3400,6 +3401,8 @@ function interact(pl){
   const f=pl.fig; const W=RT.world; const v=Vehicles.near(f,3); if(v && v.team!=='enemy'){ Vehicles.enter(f,v); return true; }
   if(v && v.team==='enemy' && v.hp<0.8){ boardShip(f,v); return true; }
   const fr=fnRefsNear(f.pos); if(fr.length){ useFunctional(f, fr[0]); return true; }
+  const og=Origins.near(f); if(og){ Origins.use(f,og); return true; }
+  const npc=RT.figures.find(o=>o!==f && !o.ko && o.team==='neutral' && o.pos.distanceTo(f.pos)<3.2); if(npc){ if(npc.merchant){ Menu.open('merchant'); return true; } const pool=COMPANION_POOL.find(c=>c.name===npc.name); if(pool){ Menu.open('companions'); return true; } toast(`${npc.name}${npc.job?` the ${npc.job}`:''}: “${npc.opinion||pick(Math.random,['Lovely day for smashing things!','Have you seen my goat?','The job board has work, you know.','Mind the crabs down at the docks.','I hear the Frontier is lovely this time of year.'])}”`); npc.emote={name:'wave',t:0,dur:1}; npc.expr='face_grin'; npc.exprT=1.5; Audio.voice(npc.sp.voice); return true; }
   const fn=nearbyFn(f); if(!fn) return false;
   switch(fn.kind){
     case 'waystone': { const ws=W.map.waystones.find(w=>w.town===fn.town); if(ws && !W.player.waystones.includes(ws.id)){ W.player.waystones.push(ws.id); toast('Waystone unlocked!'); Audio.jingle(4); FX.burst('magic',fn.x,fn.y+4,fn.z,20,4); } Menu.open('travel'); return true; }
@@ -3473,7 +3476,7 @@ Menu.pages.help = ()=>`<h2>${GAME_TITLE} — controls</h2><table>
 <tr><td>Pick up / throw</td><td>G</td></tr><tr><td>Mount / tame / ride a friend</td><td>X</td></tr><tr><td>Lumen blade on/off</td><td>V</td></tr><tr><td>Build mode</td><td>B</td></tr>
 <tr><td>Menus</td><td>Esc menu · M map · J jobs · K careers · P photo mode · F1 help</td></tr><tr><td>Player 2 (drop in)</td><td>Press Enter or a second gamepad's Start. Keys: IJKL move, U jump, O light, P heavy, Y special, ; block, N dodge, H interact</td></tr></table>`;
 Menu.pages.main = ()=>`<h2>${GAME_TITLE}</h2><div class="tabs">
-${[['creator','Character'],['careers','Careers'],['jobs','Jobs'],['map','World map'],['companions','Companions'],['inventory','Bag & crafting'],['blueprints','Blueprints & share'],['records','Hall of records'],['save','Save & settings'],['help','Controls']].map(([k,v])=>`<button data-act="go" data-arg="${k}">${v}</button>`).join('')}</div>
+${[['creator','Character'],['careers','Careers'],['jobs','Jobs'],['map','World map'],['companions','Companions'],['inventory','Bag & crafting'],['blueprints','Blueprints & share'],['records','Hall of records'],['creative','Creative mode'],['newworld','New world'],['costume','Costume'],['save','Save & settings'],['help','Controls']].map(([k,v])=>`<button data-act="go" data-arg="${k}">${v}</button>`).join('')}</div>
 <p>${esc(RT.world.player.name)} the ${SPECIES[RT.world.player.species].name} · ${RT.world.player.pips} pips · ${bankCount()} bricks · titles: ${RT.world.player.titles.map(esc).join(', ')||'none yet'}</p>`;
 Menu.acts.go = a=>{ RT.menuOpen=a; RT.menuCtx={}; };
 
@@ -3580,7 +3583,7 @@ const Jobs = {
 };
 
 // §SAVE (runtime) -------------------------------------------------------------
-const MEM = {}; const SAVE_KEY='everbrick.save';
+const MEM = {}; const SAVE_KEY = QS.has('creative') ? 'everbrick.creative' : 'everbrick.save'; RT.creative = QS.has('creative');
 function storeGet(k){ try{ const v=localStorage.getItem(k); if(v!==null) return v; }catch(e){} return MEM[k]??null; }
 function storeSet(k,v){ MEM[k]=v; try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function saveGame(){ const W=RT.world; const f=RT.players[0]?.fig; if(f) W.player.pos=[+f.pos.x.toFixed(1),+f.pos.y.toFixed(1),+f.pos.z.toFixed(1)]; W.player.inSpace=!!RT.inSpace; const s=saveToString(W); storeSet(SAVE_KEY,s); RT.lastSave=RT.time; return s.length; }
@@ -3715,7 +3718,7 @@ const Vehicles = {
     // sail force: the sail catches wind when the trimmed sail faces it; dead upwind gives nothing, so you tack
     const heading=Math.atan2(-Math.sin(v.yaw), -Math.cos(v.yaw)); const windTo=W.dir; let rel=((windTo-heading)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI; const angleOff=Math.abs(rel);
     const sailAngle = rel - v.trim; const eff = Math.max(0, Math.cos(sailAngle*0.8)) * (angleOff>2.6 ? 0.05 : 1); // 2.6 rad ≈ 150°: into the wind
-    let force = S.sailPower*W.str*eff*0.6 + thr*(S.oars?3.5:0.8);
+    let force = S.sailPower*W.str*eff*1.6 + thr*(S.oars?4.5:1.2);
     v.speed += force*dt; v.speed*=Math.exp(-0.35*dt); v.speed=clamp(v.speed,-3,S.sailPower*1.3+4);
     v.yaw += steer*S.shipTurn*clamp(Math.abs(v.speed)/4+0.15,0.15,1.2)*dt;
     const n=v.pos.clone().addScaledVector(v.fwd(), v.speed*dt); const ahead=n.clone().addScaledVector(v.fwd(),v.half[1]);
@@ -3986,6 +3989,155 @@ Menu.pages.costume = ()=>{ const P=RT.world.player; const rc=RT.costume||(RT.cos
 Menu.acts.costCol = a=>{ const [s,c]=a.split(':'); RT.costume.colors[s]=c; }; Menu.acts.costCape = c=>{ RT.costume.cape=c; }; Menu.acts.costHat = c=>{ RT.costume.hat=c; }; Menu.acts.costEmb = e=>{ RT.costume.emblemPrint=e; }; Menu.acts.costShape = e=>{ RT.costume.emblem={ shapes:[{shape:e,color:RT.costume.colors.accent}] }; };
 Menu.acts.costSave = ()=>{ const P=RT.world.player; P.heroName=$('hname').value; P.identity=P.identity||{ exposure:0, exposed:false, civilian:{...P.recipe}, mode:'civilian' }; P.identity.hero={...RT.costume}; P.costumes.push({...RT.costume, name:P.heroName}); toast('Costume saved. Use a changing booth to suit up.'); Menu.close(); };
 
+// §SIEGE ----------------------------------------------------------------------
+// Sieges smash the actual buildings brick by brick; defenders rebuild between assaults; enlisted players are called up.
+const Siege = { t:0, active:new Map(),
+  update(dt){ this.t+=dt; if(this.t<1.5) return; this.t=0; const W=RT.world; const p0=RT.players[0].fig;
+    for(const s of W.map.sites){ const d=Math.hypot(s.x-p0.pos.x, s.z-p0.pos.z); const A=this.active.get(s.id);
+      if(s.siege && d<170 && !A){ // an assault begins near the player
+        const att=W.factions[s.siege.by]||W.factions[Object.values(W.wars).find?.(w=>w.fronts?.includes(s.id))?.a]; const def=W.factions[s.owner]; if(!att) continue;
+        const mine = Object.keys(W.player.careers).some(c=>W.player.careers[c].active && (CAREERS[c].faction===def?.id||CAREERS[c].faction===att.id));
+        const n=Math.min(16, 6+(s.siege.assaults||1)*2); const list=[];
+        for(let i=0;i<n;i++){ const a=Math.random()*6.28; const x=s.x+Math.cos(a)*90, z=s.z+Math.sin(a)*90; const rc=randomRecipe(Math.random,pick(Math.random,['human','human','bear','wolf']),{ held:pick(Math.random,['hammer','sword','spear']), hat:'helmet_kettle', torso:'outfit_armor' }); rc.colors.torso=att.color;
+          const e=spawnFigure(rc,new THREE.Vector3(x,surfaceY(x,z),z),{ team: mine && W.player.careers[ARMY_IDS.find(c=>CAREERS[c].faction===att.id)]?.active ? 'player':'enemy', brain:'goto', ai:{ dest:new THREE.Vector3(s.x+(Math.random()-.5)*40,0,s.z+(Math.random()-.5)*40), then:'siege', aggro:12 }, name:`${att.name} soldier`, hp:60 }); e.sieger=s.id; list.push(e); }
+        if(def) for(let i=0;i<Math.min(8,n/2);i++){ const x=s.x+(Math.random()-.5)*30, z=s.z+(Math.random()-.5)*30; const rc=randomRecipe(Math.random,'human',{held:'spear',hat:'helmet_kettle',torso:'outfit_armor'}); rc.colors.torso=def.color; const g=spawnFigure(rc,new THREE.Vector3(x,surfaceY(x,z),z),{ team: def.lawful||mine?'player':'neutral', brain:'hold', name:`${def.name} defender`, hp:60 }); g.defenderOf=s.id; list.push(g); }
+        this.active.set(s.id,{ list, t:0 }); toast(`SIEGE! ${att.name} assault ${s.name}${def?` held by ${def.name}`:''}. Buildings are being smashed!`, 5000); news(W,`The siege of ${s.name}: ${att.name} attack.`,s.realm,'war'); }
+      if(A){ A.t+=1.5; for(const e of A.list){ if(!e.alive||e.ko||!e.sieger) continue; if(e.controller.brain==='siege'||e.controller.brain==='hold'){ // smash the walls in front of them
+            const p=e.pos.clone().add(forward(e).multiplyScalar(1.8)); p.y+=1.4; const n=smashAt(p,1.5,{ by:e, noTerrain:true, rubble:false, noPips:true }); if(n) e.action={anim:'slam',t:0,dur:0.6,fired:true,A:{effects:[],tags:[],cast:0},cancel:true};
+            if(Math.random()<0.25){ e.controller.brain='goto'; e.controller.o.dest=new THREE.Vector3(s.x+(Math.random()-.5)*50,0,s.z+(Math.random()-.5)*50); e.controller.o.then='siege'; } } }
+        const left=A.list.filter(e=>e.sieger && e.alive && !e.ko).length; if(!left || d>260 || A.t>180){ for(const e of A.list) e.alive=false; this.active.delete(s.id); if(!left && d<260){ s.siege=null; toast(`The assault on ${s.name} is broken!`); const w=W.wars.find(w=>!w.ended && w.fronts.includes(s.id)); if(w){ w.score += (s.owner===w.a?1:-1)*0.15; w.playerFought=true; } } } }
+    }
+    // defenders rebuild between assaults: smashed bricks come back, a few at a time
+    for(const s of W.map.sites){ if(s.siege||this.active.has(s.id)) continue; const sec=getSector(s.x,s.z); if(!sec||!sec.group) continue; const rec=W.damage[sec.key]; if(!rec||!rec.gone.length) continue; if(Math.random()<0.3){ rec.gone.splice(0, Math.min(rec.gone.length, 25)); regenSector(sec); } }
+    // war call-ups for enlisted soldiers
+    for(const b of W.pendingBattles){ if(b.called) continue; const army=ARMY_IDS.find(c=>W.player.careers[c]?.active && (CAREERS[c].faction===b.att||CAREERS[c].faction===b.def)); if(!army) continue; b.called=true; const site=siteById(W,b.site);
+      toast(`CALL-UP: ${CAREERS[army].name} needs you at ${site.name}!`, 6000); Jobs.start(makeJob(W,'battle',site,CAREERS[army].faction,{ career:army, target: CAREERS[army].faction===b.att?b.def:b.att })); RT.job.pos.set(site.x,0,site.z); break; }
+  },
+};
+function regenSector(sec){ const {sx,sz}=sec; clearDyn(sec); disposeSectorMeshes(sec); RT.sectors.delete(sec.key); Populace.spawned.add(secKey(sx,sz)); genSectorContent(sx,sz); Stream.markDirty(RT.sectors.get(secKey(sx,sz))); }
+
+// §THREATGEN (runtime): threats are visible in their realm — minions by stage, the leader at the final stage
+const THREAT_MINIONS = { darkarmy:{species:['human','troll'],colors:{torso:'black',legs:'dark_grey',accent:'dark_red'},held:'sword',name:'Dark legionnaire'}, beast:{species:['boar','tiger'],name:'Maddened beast'},
+  armada:{species:['human','frog'],colors:{torso:'black',legs:'dark_red'},held:'sword',name:'Armada pirate'}, umbral:{species:['human','cat'],colors:{torso:'black',legs:'black',accent:'dark_red'},held:'umbral',name:'Umbral agent'},
+  machines:{species:['robot'],colors:{body:'dark_grey',torso:'olive',legs:'dark_grey'},held:'hammer',name:'Rogue mining robot'}, invasion:{species:['alien'],colors:{body:'lime',torso:'purple',legs:'black'},held:'blaster',name:'Invader'},
+  blight:{species:['wolf','boar','deer'],colors:{body:'light_grey'},name:'Blighted creature'}, masterplan:{species:['raccoon','human','mole'],colors:{torso:'purple',legs:'black'},held:'daggers',name:'Syndicate henchman'},
+  rogueheroes:{species:['human'],colors:{torso:'gold',legs:'white',accent:'white'},held:'staff',name:'"Hero" enforcer'}, storm:{species:['crab'],colors:{body:'sky_blue'},held:'spear',name:'Storm-tossed raider'} };
+const ThreatLife = { t:0, spawned:new Map(),
+  update(dt){ this.t+=dt; if(this.t<4) return; this.t=0; const W=RT.world; const p0=RT.players[0].fig;
+    for(const t of W.threats){ if(t.resolved){ const L=this.spawned.get(t.id); if(L){ for(const e of L) e.alive=false; this.spawned.delete(t.id); } continue; }
+      if(t.realm!==RT.realm && t.realm!=='*') continue; const list=(this.spawned.get(t.id)||[]).filter(e=>e.alive&&!e.ko); const want=1+t.stage*2;
+      if(t.arch==='beast' && t.stage>=1 && Math.random()<0.3){ RT.shake=Math.min(1,RT.shake+0.3); Audio.tone(50,0.6,'sine',0.3); }
+      if(t.arch==='blight'){ for(let i=0;i<6;i++) FX.spawn('smoke',p0.pos.x+(Math.random()-.5)*40,p0.pos.y+1,p0.pos.z+(Math.random()-.5)*40,0,0.5,0,COLORS.light_grey); }
+      if(list.length<want){ const M=THREAT_MINIONS[t.arch]; const a=Math.random()*6.28; const x=p0.pos.x+Math.cos(a)*45, z=p0.pos.z+Math.sin(a)*45; if(terrainH(Math.floor(x),Math.floor(z))<CONFIG.seaLevel){ this.spawned.set(t.id,list); continue; }
+        const sp=pick(Math.random,M.species); const rc=SPECIES[sp]?.plan==='biped'||!SPECIES[sp]?.plan ? randomRecipe(Math.random,sp,{ held:M.held||'none', colors:{...M.colors} }) : { species:sp, colors:{ body:M.colors?.body||SPECIES[sp].colors[0] } };
+        const leader = t.stage>=3 && !list.some(e=>e.threatLeader);
+        const e=spawnFigure(rc,new THREE.Vector3(x,surfaceY(x,z),z),{ team:'enemy', brain:'wander', ai:{ aggro:22, radius:15 }, name: leader ? t.leader : M.name, hp: leader ? Math.round(t.power*5) : 50+t.stage*15, weapon:M.held&&SPECIES[sp]?.plan==='biped'?M.held:undefined });
+        e.threatId=t.id; if(leader){ e.threatLeader=true; e.scale*=1.6; e.root.scale.setScalar(e.scale); e.maxHp=e.hp; e.boss='threat'; toast(`${t.leader} has come in person! (${t.name})`, 5000); } list.push(e); }
+      this.spawned.set(t.id,list); }
+  },
+};
+Bus.on('ko', e=>{ const f=e.f; if(!RT.world) return; const W=RT.world;
+  if(f.threatId && e.src?.isPlayer){ const t=W.threats.find(x=>x.id===f.threatId); if(t && !t.resolved){ threatHit(W,t, f.threatLeader?0.8: (t.stage<=1?0.03:0.015), true); if(f.threatLeader) toast(`${t.leader} is beaten!`); } }
+  if(f.crook && e.src?.isPlayer){ W.player.stats.crimesStopped=(W.player.stats.crimesStopped||0)+1; W.player.heroRep+=1; if(W.player.powers) W.player.powers.charge=Math.min(100,(W.player.powers.charge||0)+15);
+    if(W.player.stats.crimesStopped===5 && !W.player.careers.hero?.active) toast('The Paragon League has noticed you! A trial awaits at Paragon Tower in Apex City.', 6000); }
+  if(f.nemesis && e.src?.isPlayer){ defeatVillain(W, f.nemesis); toast(`${f.name} is defeated and dragged off to jail — for now.`); }
+  if(f.paragonTrial && e.src?.isPlayer){ const r=joinCareer(W,'hero',{force:true}); toast('You passed the trial! Welcome to the Paragon League, Sidekick.', 5000); }
+  if(f.homeRaider && !RT.figures.some(o=>o.homeRaider && !o.ko && o.alive && o!==f)) toast('Your home is safe — the villain is beaten.');
+});
+
+// §ERAS (runtime): era transitions play a recap on the world map and name the new era
+Bus.on('era', e=>{ RT.eraRecap={ prev:e.prev, next:e.next }; setTimeout(()=>{ if(!RT.menuOpen) Menu.open('era'); }, 600); });
+Menu.pages.era = ()=>{ const E=RT.eraRecap; if(!E) return '<h2>No era change yet</h2>'; const s=E.prev.summary||{};
+  return `<div style="background:linear-gradient(#f2e2b6,#fff8e8);padding:8px;border-radius:12px"><h2>${esc(E.prev.name)} ends</h2><p><b>${esc(E.prev.outcome||'')}</b></p>
+  <p>Rose: ${(s.rose||[]).map(esc).join(', ')||'—'} · Fell: ${(s.fell||[]).map(esc).join(', ')||'—'} · Wars fought: ${s.wars??0}</p>
+  <p>Your part: ${s.player?.jobs??0} jobs, ${s.player?.threatHits??0} blows against the threat${s.player?.titles?.length?`, titles: ${s.player.titles.map(esc).join(', ')}`:''}.</p>
+  <h2>A new era: ${esc(E.next.name)}</h2><p>${(E.next.seed||[]).map(esc).join(' ')}</p>${Menu.pages.map().replace('<h2>World map</h2>','')}</div>`; };
+
+// §EVENTS (runtime): festivals, merchants, meteor showers, migrations, mysteries
+const Events = { t:0, seen:new Set(), fragments:[],
+  update(dt){ this.t+=dt; if(this.t<2) return; this.t=0; const W=RT.world; const p0=RT.players[0].fig;
+    for(const e of W.activeEvents){ const key=e.kind+e.realm+Math.floor(e.start); if(e.realm!==RT.realm || this.seen.has(key)) continue; this.seen.add(key);
+      if(e.kind==='festival'){ toast(`🎉 ${e.name} is on! Games at the job board.`, 5000); const t=nearestTown(p0.pos); for(let i=0;i<12;i++){ const a=i/12*6.28; this.deco(t.x+Math.cos(a)*25, t.z+Math.sin(a)*25); } W.boards[t.id]?.unshift(makeJob(W, {regatta:'race',joust:'joust',lanterns:'map',harvest:'harvest',race:'race',building:'commission'}[e.game]||'race', siteById(W,t.id)||nearestSite(p0.pos), 'townsfolk', { pay:200 })); }
+      if(e.kind==='merchant'){ const x=p0.pos.x+8, z=p0.pos.z+8; const m=spawnFigure(randomRecipe(Math.random,pick(Math.random,['human','frog','raccoon']),{hat:'hat_wrap',colors:{torso:'purple',legs:'gold'}}),new THREE.Vector3(x,surfaceY(x,z),z),{team:'neutral',brain:'wander',ai:{radius:6},name:'Travelling merchant'}); m.merchant=e; m.temp=600; toast('A travelling merchant has arrived with rare pieces!'); }
+      if(e.kind==='meteor'){ toast('☄ A meteor shower! Glowing Frontier bricks are falling — grab them.', 5000); for(let i=0;i<10;i++){ const a=Math.random()*6.28, r=10+Math.random()*60; this.fragments.push({ x:p0.pos.x+Math.cos(a)*r, z:p0.pos.z+Math.sin(a)*r, y:200, t:i*0.6 }); } }
+      if(e.kind==='migration'){ const sp=pick(Math.random,REALMS[e.realm].creatures.filter(c=>SPECIES[c])); for(let i=0;i<8;i++){ const x=p0.pos.x-60+i*3, z=p0.pos.z+30+(Math.random()-.5)*10; const c=spawnFigure({species:sp},new THREE.Vector3(x,surfaceY(x,z),z),{team:'wild',brain:'goto',ai:{dest:new THREE.Vector3(p0.pos.x+200,0,p0.pos.z+30),then:'wander'}}); c.temp=300; } toast(`A herd of ${SPECIES[sp].name} thunders past on its migration.`); }
+      if(e.kind==='mystery'){ toast(`❓ ${e.name}… Investigate the marker.`, 6000); Jobs.start(makeJob(W,'map',nearestSite(p0.pos),'townsfolk',{pay:120})); RT.job.title='Investigate: '+e.name; RT.job.pos.set(p0.pos.x+(Math.random()-.5)*160,0,p0.pos.z+(Math.random()-.5)*160); } }
+    // meteor fragments fall and glow until collected (they are also a superpower origin)
+    for(const fr of this.fragments){ fr.t-=2; if(fr.t>0) continue; if(fr.y>surfaceY(fr.x,fr.z)+1){ fr.y=surfaceY(fr.x,fr.z)+1; FX.burst('fire',fr.x,fr.y,fr.z,20,6); Audio.impact(true); smashAt(new THREE.Vector3(fr.x,fr.y,fr.z),1.5,{rubble:false}); } }
+  },
+  deco(x,z){ const y=Math.floor(surfaceY(x,z)/PL); placeWorldBrick(['round_1x1',Math.floor(x),y,Math.floor(z),0,'dark_brown'],{silent:true,model:'festival'}); placeWorldBrick(['lamp_1x1',Math.floor(x),y+3,Math.floor(z),0,pick(Math.random,['trans_orange','trans_red','trans_green','trans_blue'])],{silent:true,model:'festival'}); },
+  frame(){ for(const fr of this.fragments){ if(fr.t>0||fr.taken) continue; if(RT.frame%3===0) FX.spawn('energy',fr.x,fr.y+0.5,fr.z,0,2,0,COLORS.trans_green); const p0=RT.players[0].fig; if(Math.hypot(fr.x-p0.pos.x,fr.z-p0.pos.z)<2.5){ fr.taken=true; bankAdd('gem','trans_green',3); RT.world.player.materials.alien=(RT.world.player.materials.alien||0)+2; Audio.jingle(4);
+      if(!RT.world.player.powers){ toast('The fragment glows in your hands… power surges through you!', 5000); Origins.grant('meteor'); } else toast('+3 glowing Frontier bricks!'); } } this.fragments=this.fragments.filter(f=>!f.taken); },
+};
+Menu.pages.merchant = ()=>{ const items=[['gem','trans_green',60],['gem','trans_orange',60],['dome_2x2','gold',40],['canopy_4x4','trans_blue',90],['rotor_3blade','silver',50],['flame_cone','trans_orange',30],['sail_cloth','white',40],['cannon_barrel','black',70]];
+  return `<h2>Travelling merchant</h2><p>Rare pieces for your brick bank.</p><div class="row">${items.map(([p,c,pr])=>`<button data-act="mbuy" data-arg="${p}|${c}|${pr}">${p} (${c}) — ${pr}</button>`).join('')}</div>`; };
+Menu.acts.mbuy = a=>{ const [p,c,pr]=a.split('|'); if(RT.world.player.pips<+pr) return toast('Not enough pips.'); RT.world.player.pips-=+pr; bankAdd(p,c,1); Audio.jingle(2); };
+
+// §ORIGINS / §PARAGON / §VILLAINS (runtime) -------------------------------------------
+const Origins = {
+  spots(){ const W=RT.world; const s=id=>siteById(W,id); const z=W.map.spaceZones; return [
+    { id:'lab', at:s('apex_x0'), text:'E: Sneak into the Novagen experiment' }, { id:'relic', at:s('ember_x2'), text:'E: Put on the amulet in the ruins' },
+    { id:'cosmic', at:{x:z[4].x+30,z:z[4].z-20}, text:'E: Help the dying alien' }, { id:'training', at:s('mistpeak_x2'), text:'E: Peak training at the Jade Dojo' },
+    { id:'paragon', at:W.map.landmarks.find(l=>l.realm==='apex'), text:'E: Paragon Tower' }, { id:'syndicate', at:s('apex_x1'), text:'E: The Malice Syndicate lair' } ].filter(o=>o.at); },
+  near(f){ for(const o of this.spots()) if(Math.hypot(o.at.x-f.pos.x,o.at.z-f.pos.z)<14) return o; return null; },
+  use(f,o){ const W=RT.world, P=W.player;
+    if(o.id==='paragon'){ if(P.careers.hero?.active) return Menu.open('heroBase'); if((P.stats.crimesStopped||0)<5) return toast(`The League wants proof: stop ${5-(P.stats.crimesStopped||0)} more street crimes in Apex City (crooks come out at night).`); const v=pick(Math.random,W.villains);
+      const e=spawnFigure({ species:SPECIES[v.species]?.playable?v.species:'human', colors:{torso:'purple',legs:'black',accent:'lime'}, held:'staff' }, f.pos.clone().add(new THREE.Vector3(6,0,6)), { team:'enemy', brain:'fight', name:`Trial: ${v.name} (training sim)`, hp:200 }); e.paragonTrial=true; e.controller.target=f; toast('The trial begins: defeat the simulated villain!'); return; }
+    if(o.id==='syndicate'){ if(P.careers.villain?.active) return toast('The Syndicate welcomes you back, '+CAREERS.villain.ranks[P.careers.villain.rank]+'.'); if(P.careers.hero?.active) return toast('Heroes are not welcome here!'); Menu.open('syndicate'); return; }
+    if(P.powers) return toast('You already have powers.');
+    if(o.id==='training' && (P.careers.monk?.rank||0)<2 && !(P.careers.army_jadeblades?.rank>=3)) return toast('Peak training needs a Cloud Monastery Elder or a Jade Blades Sergeant first.');
+    this.grant(o.id); },
+  grant(origin){ RT.pendingOrigin=origin; FX.burst(origin==='lab'?'energy':origin==='relic'?'fire':'magic', RT.players[0].fig.pos.x, RT.players[0].fig.pos.y+2, RT.players[0].fig.pos.z, 40, 8); Menu.open('powers'); },
+};
+Menu.pages.powers = ()=>{ const c=RT.powerPick||(RT.powerPick={ move:'flight', main:'strength', def:'forcefield', element:'fire', ult:0 }); const o=RT.pendingOrigin||'meteor'; const b=(k,list)=>list.map(v=>`<button class="${c[k]===v?'on':''}" data-act="pp" data-arg="${k}:${v}">${v}</button>`).join('');
+  return `<h2>Origin: ${esc(ORIGINS[o]?.name||o)}</h2><p>${esc(ORIGINS[o]?.how||'')}. Choose one of each — every combination works for every body plan.</p>
+  <div class="row"><b>Movement</b> ${b('move',MOVE_POWERS)}</div><div class="row"><b>Main</b> ${b('main',MAIN_POWERS)}</div>${c.main==='elements'?`<div class="row"><b>Element</b> ${b('element',ELEMENTS)}</div>`:''}
+  <div class="row"><b>Defence</b> ${b('def',DEF_POWERS)}</div><div class="row"><b>Ultimate</b> ${[0,1,2].map(i=>`<button class="${c.ult===i?'on':''}" data-act="pp" data-arg="ult:${i}">${esc(ABILITIES[`ult_${c.main}_${i}`]?.name)}</button>`).join('')}</div>
+  <button data-act="ppGo">Accept these powers</button>`; };
+Menu.acts.pp = a=>{ const [k,v]=a.split(':'); RT.powerPick[k]= k==='ult'?+v:v; };
+Menu.acts.ppGo = ()=>{ const W=RT.world; grantPowers(W, RT.pendingOrigin||'meteor', RT.powerPick); W.player.identity=W.player.identity||{ exposure:0, exposed:false, civilian:{...W.player.recipe}, hero:null, mode:'civilian' }; toast('Powers! R uses your main power, 1–4 the rest. Design a costume at a changing booth.', 6000); Menu.close(); };
+Menu.pages.syndicate = ()=>`<h2>The Malice Syndicate</h2><p>"Rob banks, run schemes, build a lair with a doomsday device. Interested?"</p><button data-act="joinVillain">Join the Syndicate</button>`;
+Menu.acts.joinVillain = ()=>{ const r=joinCareer(RT.world,'villain',{force:true}); toast(r.ok?'Welcome, Henchman. Mwa-ha-ha.':r.why); Menu.close(); };
+Menu.pages.heroBase = ()=>{ const P=RT.world.player; const rk=P.careers.hero?.rank||0; return `<h2>Paragon Tower</h2><p>Rank: ${esc(CAREERS.hero.ranks[rk])}. ${rk>=2?'You have a room here. ':''}${rk>=3?'You may build a hero base with a signal light, monitor wall and launch bay (functional pieces).':''}</p><button data-act="go" data-arg="jobs">Hero work</button>`; };
+// nemeses come back with new tricks; a villain who learns your identity attacks your home
+const Villainy = { t:0,
+  update(dt){ this.t+=dt; if(this.t<5) return; this.t=0; const W=RT.world, P=W.player; const p0=RT.players[0].fig; if(P.powers) P.powers.level=1+(P.careers.hero?.rank||P.careers.villain?.rank||0);
+    const nem=W.villains.find(v=>v.nemesis && v.active); if(nem && RT.realm==='apex' && !RT.figures.some(f=>f.nemesis===nem.id && f.alive && !f.ko) && Math.random()<0.25){
+      const e=spawnFigure({ species:SPECIES[nem.species]?.playable?nem.species:'human', colors:{torso:'purple',legs:'black',accent:'lime'}, held:'staff' }, p0.pos.clone().add(new THREE.Vector3(12,0,12)), { team:'enemy', brain:'fight', name:`${nem.name} (nemesis)`, hp:300 });
+      e.nemesis=nem.id; e.controller.target=p0; e.resists=nem.counters.slice(); toast(`${nem.name} is back — and has a counter for your ${nem.counters.join(', ')||'tricks'}!`, 5000); }
+    if(W.pendingHomeAttack && W.day>=W.pendingHomeAttack.day){ const home = P.plots.length ? W.map.plots.find(p=>p.id===P.plots[0]) : P.towns[0]; if(home && Math.hypot(home.x-p0.pos.x,home.z-p0.pos.z)<120){ const v=W.villains.find(x=>x.id===W.pendingHomeAttack.villain); W.pendingHomeAttack=null;
+        toast(`${v.name} knows who you are — and is attacking your home!`, 6000); for(let i=0;i<5;i++){ const x=home.x+(Math.random()-.5)*20, z=home.z+(Math.random()-.5)*20; const e=spawnFigure(randomRecipe(Math.random,'human',{held:'hammer',colors:{torso:'purple',legs:'black'}}),new THREE.Vector3(x,surfaceY(x,z),z),{team:'enemy',brain:'goto',ai:{dest:new THREE.Vector3(home.x,0,home.z),then:'siege',aggro:16},name: i?`${v.henchmen}`:v.name,hp:i?60:250}); e.homeRaider=true; e.sieger='home'; Siege.active.set('home_'+Date.now(),{list:[e],t:0}); } } }
+  },
+};
+
+// §WILDLIFE (animal players): run with your own kind
+const AnimalKin = { t:0, update(dt){ this.t+=dt; if(this.t<2) return; this.t=0; const f=RT.players[0].fig; if(f.plan==='biped') return;
+  for(const o of RT.figures){ if(!o.wild || o.species!==f.species || o.ko) continue; if(o.pos.distanceTo(f.pos)<14 && o.controller?.brain!=='follow'){ o.controller.brain='follow'; o.controller.target=f; o.team='player'; o.kin=true; toast(`A ${o.name} joins your pack.`); Audio.voice(o.sp.voice||'howl'); } }
+  if(f.species==='fox' && Math.random()<0.15){ const a=Math.random()*6.28; Pips.burst(f.pos.x+Math.cos(a)*6,f.pos.y+0.5,f.pos.z+Math.sin(a)*6,2); toast('Your nose finds hidden pips!'); } } };
+
+// §CREATIVE -------------------------------------------------------------------
+Menu.pages.creative = ()=>`<h2>Creative mode</h2><p>A separate world with unlimited bricks, every piece and functional part unlocked, any figure or creature, and time and weather controls.</p>
+  ${RT.creative?'':'<button data-act="enterCreative">Enter the creative world</button>'}
+  ${RT.creative?`<h3>Spawn</h3><div class="row">${Object.keys(SPECIES).map(k=>`<button data-act="cspawn" data-arg="${k}">${esc(SPECIES[k].name)}</button>`).join('')}</div>
+  <h3>Time</h3><div class="row">${[6,9,12,15,18,21,0].map(h=>`<button data-act="ctime" data-arg="${h}">${h}:00</button>`).join('')}</div><h3>Weather</h3><div class="row">${['clear','rain','fog','snow','storm'].map(w=>`<button data-act="cweather" data-arg="${w}">${w}</button>`).join('')}</div>
+  <h3>Vehicles</h3><div class="row"><button data-act="go" data-arg="garageAll">Any vehicle</button></div><button data-act="leaveCreative">Back to the adventure</button>`:''}`;
+Menu.pages.garageAll = ()=>Menu.pages.garage({kinds:['land','ship','star','air'],title:'Every vehicle'});
+Menu.acts.enterCreative = ()=>{ saveGame(); location.href=location.pathname+'?creative=1'; };
+Menu.acts.leaveCreative = ()=>{ storeSet('everbrick.creative', saveToString(RT.world)); location.href=location.pathname; };
+Menu.acts.cspawn = k=>{ dbg.spawn(k); }; Menu.acts.ctime = h=>{ dbg.time(+h); }; Menu.acts.cweather = w=>{ dbg.weather(w); };
+// new world with custom settings
+Menu.pages.newworld = ()=>{ const s=RT.nw||(RT.nw={ size:1, warFreq:1, threatFreq:1, archetypes:ARCH_IDS.slice() }); const opt=(k,vals)=>vals.map(v=>`<button class="${s[k]===v?'on':''}" data-act="nwset" data-arg="${k}:${v}">${v}</button>`).join('');
+  return `<h2>New world</h2><div class="row">War frequency ${opt('warFreq',[0.5,1,2])}</div><div class="row">Threat frequency ${opt('threatFreq',[0.5,1,2])}</div>
+  <div class="row">Allowed threats: ${ARCH_IDS.map(a=>`<button class="${s.archetypes.includes(a)?'on':''}" data-act="nwarch" data-arg="${a}">${esc(ARCHETYPES[a].name)}</button>`).join('')}</div><button data-act="nwgo">Create the world (replaces your save)</button>`; };
+Menu.acts.nwset = a=>{ const [k,v]=a.split(':'); RT.nw[k]=+v; }; Menu.acts.nwarch = a=>{ const i=RT.nw.archetypes.indexOf(a); if(i>=0){ if(RT.nw.archetypes.length>2) RT.nw.archetypes.splice(i,1); } else RT.nw.archetypes.push(a); };
+Menu.acts.nwgo = ()=>{ storeSet('everbrick.newsettings', JSON.stringify(RT.nw)); storeSet(SAVE_KEY,''); location.href=location.pathname+'?new=1'; };
+// deeper Frontier: each defeated invasion opens a new alien world beyond the known zones
+Bus.on('threat.end', e=>{ const W=RT.world; if(!W || e.threat.arch!=='invasion' || e.threat.outcome!=='defeated') return; const n=W.map.spaceZones.length; const z={ id:`deep${n}`, name:pick(Math.random,['Glimmerdeep','Vexmoor','The Hollow Star','Brinewell','Oddspire'])+` ${n}`, x:SPACE_ORIGIN.x+n*1200, z:0, radius:280, gravity:0.5+Math.random()*0.4, alien:true, deep:true };
+  W.map.spaceZones.push(z); W.map.sites.push({ id:`frontier_${z.id}`, name:z.name, realm:'frontier', kind:'world', x:z.x, z:z.z, owner:'marauders', defense:40, pop:10 }); toast(`New routes lead deeper into the Frontier: ${z.name}.`); });
+// stars in space
+const Stars = { pts:null, update(){ if(!this.pts){ const g=new THREE.BufferGeometry(); const a=new Float32Array(3000*3); for(let i=0;i<3000;i++){ const v=new THREE.Vector3().randomDirection().multiplyScalar(1200); a.set([v.x,v.y,v.z],i*3); } g.setAttribute('position',new THREE.BufferAttribute(a,3)); this.pts=new THREE.Points(g,new THREE.PointsMaterial({ color:0xffffff, size:2, sizeAttenuation:false, fog:false })); scene.add(this.pts); }
+  this.pts.visible=!!RT.inSpace || dayFrac()>0.82 || dayFrac()<0.18; this.pts.position.copy(camera.position); } };
+
 // §BATTLES --------------------------------------------------------------------
 // 30–40 figure battles with objectives; Sergeants lead a squad, Captains several (orders: 5 follow, 6 hold, 7 charge, 8 regroup).
 const Battles = {
@@ -4133,7 +4285,7 @@ async function boot(){
   status('building the world…');
   let world=null; const saved=QS.has('new')?null:storeGet(SAVE_KEY);
   if(saved){ try{ world=loadFromString(saved); }catch(e){ console.warn('save load failed',e); } }
-  const isNew=!world; if(!world){ world=newWorld(CONFIG.seed); world.day=0.3; } if(QS.has('time')) world.day=Math.floor(world.day)+(+QS.get('time'))/24;
+  const isNew=!world; if(!world){ let ns={}; try{ ns=JSON.parse(storeGet('everbrick.newsettings')||'{}')||{}; }catch(e){} world=newWorld(RT.creative?CONFIG.seed+1:(ns.seed||CONFIG.seed), ns); world.day=0.3; if(RT.creative){ world.player.pips=999999; world.player.name='Creator'; } } if(QS.has('time')) world.day=Math.floor(world.day)+(+QS.get('time'))/24;
   RT.world=world; RT.terrain=makeTerrain(world.map);
   if(!world.player.recipe) world.player.recipe={...defaultRecipe('human'), colors:{body:'tan',torso:'red',legs:'dark_blue',accent:'yellow',hair:'brown'}};
   const f=new Figure(world.player.recipe,{team:'player',name:world.player.name}); f.isPlayer=true; RT.figures.push(f);
@@ -4189,7 +4341,7 @@ function simStep(dt){
     if(!CONFIG.stopMotion || RT.frame%5===0) animateFigure(f, CONFIG.stopMotion?dt*5:dt);
   }
   for(const pl of RT.players) Live.collect(pl.fig);
-  Vehicles.update(dt); FnPassive.update(dt); TownLife.update(dt); TownFolkSpawner.update(); SeaLife.update(dt); ShopSim.update(dt); Live.update(dt); Pips.update(dt); FX.update(dt); Proj.update(dt); Rubble.update(dt); Jobs.update(dt); Battles.update(dt); Training.update(dt);
+  Vehicles.update(dt); FnPassive.update(dt); TownLife.update(dt); TownFolkSpawner.update(); SeaLife.update(dt); ShopSim.update(dt); Siege.update(dt); ThreatLife.update(dt); Events.update(dt); Events.frame(); Villainy.update(dt); AnimalKin.update(dt); Live.update(dt); Pips.update(dt); FX.update(dt); Proj.update(dt); Rubble.update(dt); Jobs.update(dt); Battles.update(dt); Training.update(dt);
   if(RT.autoBuild){ const A=RT.autoBuild; A.t+=dt; while(A.t>0.04 && A.queue.length){ A.t-=0.04; const b=A.queue.shift(); if(RT.creativeFree||BuildMode.cost(b[0],b[5])) placeWorldBrick([b[0],A.ox+b[1],A.oy+b[2],A.oz+b[3],b[4],b[5]],{silent:false}); } if(!A.queue.length){ RT.autoBuild=null; RT.creativeFree=false; toast('Auto-build complete!'); } }
   if(RT.heartQuest){ const q=RT.heartQuest; const d=Math.hypot(q.pos.x-p0.fig.pos.x,q.pos.z-p0.fig.pos.z); if(RT.frame%3===0) FX.spawn('lumen',q.pos.x,surfaceY(q.pos.x,q.pos.z)+2,q.pos.z,0,2,0); if(d<4){ lumenAdvance(W,'heartstone',{stone:q.k}); RT.heartQuest=null; toast('You found the heartstone! Return to any temple for the Forging.'); } }
   Stream.update(); Populace.update(); updateWeather(dt); Audio.update(); HUD.update();
@@ -4207,7 +4359,7 @@ function render(dt){
   }
   updateSky(dt);
   for(const sct of RT.sectors.values()) if(sct.meshes?.studs){ const cx=sct.x0+32-camera.position.x, cz=sct.z0+32-camera.position.z; sct.meshes.studs.visible = CONFIG.studNear>0 && Math.hypot(cx,cz) < CONFIG.studNear+12; }
-  if(RT.frame%10===0) Farm.draw(); GLBLOD.update(); FigR.begin(); for(const f of RT.figures) if(f.alive && !GLBLOD.drawn(f) && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
+  if(RT.frame%10===0) Farm.draw(); Stars.update(); GLBLOD.update(); FigR.begin(); for(const f of RT.figures) if(f.alive && !GLBLOD.drawn(f) && Math.abs(f.pos.x-RT.focus.x)<160 && Math.abs(f.pos.z-RT.focus.z)<160) drawFigure(f); FigR.end();
   renderer.info.reset(); renderer.info.autoReset=false;
   const two = P.length>1 && P[0].fig.pos.distanceTo(P[1].fig.pos)>28;
   if(P.length>1 && !two){ // one shared camera when close

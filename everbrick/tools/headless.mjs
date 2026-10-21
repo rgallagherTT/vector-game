@@ -60,5 +60,17 @@ if (isMain) {
     ];
     for (const [name, pass, v] of checks) { console.log(`${pass ? 'PASS' : 'FAIL'}  ${name} (${v})`); if (!pass) ok = false; }
   }
+  if (!arg) {
+    console.log('\n=== save migration ===');
+    const v1 = { version: 1, pips: 321, bank: { 'brick_2x4:red': 7 }, character: { species: 'fox', colors: { body: 'orange' } }, player: { name: 'Old Timer' }, world: { seed: 20261021 } };
+    const w = S.deserializeWorld(v1);
+    const checks = [['v1 → v5', w.version === 5], ['pips kept', w.player.pips === 321], ['bank kept', w.player.bank['brick_2x4:red'] === 7], ['name kept', w.player.name === 'Old Timer'], ['character kept', w.player.recipe?.species === 'fox'], ['migration path', JSON.stringify(w._migrated) === JSON.stringify(['1→2','2→3','3→4','4→5'])]];
+    const r = S.runHeadless(60, 'active'); const str = S.saveToString(r.world); const back = S.loadFromString(str);
+    checks.push(['round trip keeps eras', back.eras.length === r.world.eras.length], ['round trip keeps titles', JSON.stringify(back.player.titles) === JSON.stringify(r.world.player.titles)], ['round trip keeps wars', back.wars.length === r.world.wars.filter(w=>!w.ended || r.world.day-w.endDay<30).length]);
+    const v4 = JSON.parse(JSON.stringify(S.serializeWorld(r.world))); v4.version = 4; delete v4.wars; delete v4.threats; delete v4.eras; const m4 = S.deserializeWorld(v4);
+    checks.push(['v4 → v5 keeps towns and builds', m4.player.towns.length === r.world.player.towns.length && Object.keys(m4.builds).length === Object.keys(r.world.builds).length]);
+    console.log('save size after 60 days:', str.length, 'chars');
+    for (const [n, pass] of checks) { console.log(`${pass ? 'PASS' : 'FAIL'}  ${n}`); if (!pass) ok = false; }
+  }
   process.exit(ok ? 0 : 1);
 }
