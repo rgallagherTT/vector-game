@@ -1915,7 +1915,7 @@ function plasticPatch(shader, opts={}){
       if(uSnow>0.0 && vWNrm.y>0.8){ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95), uSnow*0.85); }`);
 }
 function makePlastic(opts={}){
-  const m = new THREE.MeshPhysicalMaterial({ vertexColors:true, roughness:0.32, metalness:0.0, clearcoat:0.55, clearcoatRoughness:0.18, envMapIntensity:0.9, ...opts });
+  const m = new THREE.MeshPhysicalMaterial({ vertexColors:true, roughness:0.4, metalness:0.0, clearcoat:0.25, clearcoatRoughness:0.35, envMapIntensity:0.7, ...opts });
   m.onBeforeCompile = s=>plasticPatch(s); m.customProgramCacheKey=()=> 'plastic'+(opts.transparent?'t':'')+(opts.emissive?'e':''); return m;
 }
 const MAT = {
@@ -2195,39 +2195,89 @@ function collapseBrick(s, uid){ // hide a merged brick instantly by collapsing i
 // §STREAM ---------------------------------------------------------------------
 // Sectors stream around the players; content is generated deterministically; meshing runs in budgeted slices.
 const TownLayouts = new Map();
+// Realm kits (models/<realm>_*.json from the design kit) build every town; procedural generators are the fallback.
+const KIT_REALM = r => r==='isles' ? 'saltspray' : r;
+function kit(R, name){ return RT.assets.models[`${KIT_REALM(R)}_${name}`] || null; }
+function kitList(R, prefix){ const p=`${KIT_REALM(R)}_${prefix}`; return Object.keys(RT.assets.models).filter(k=>k.startsWith(p)).sort().map(k=>RT.assets.models[k]); }
+const KIT_FACTION = { watch:'town_watch', police:'town_watch', traders:'harbour_guild', racing:'harbour_guild', raccoons:'gull_gang', paragon:'paragon_league', syndicate:'malice_syndicate', novagen:'paragon_league',
+  royalguard:'royal_guard', gildedspur:'royal_guard', greenhood:'thornwood_bandits', blacktower:'thornwood_bandits', navy:'royal_navy', freecaptains:'crimson_gulls', reefwardens:'royal_navy',
+  oakcouncil:'lumen_order', pack:'lumen_order', hollowroot:'bramble_raiders', monastery:'jade_blades', jadeblades:'jade_blades', bandits:'umbral_court', nomads:'caravan_guard', cinderdrill:'caravan_guard', ashraiders:'dune_jackals',
+  starlegion:'star_legion', prospectors:'star_legion', marauders:'void_marauders', lumen:'lumen_order', umbral:'umbral_court' };
+function kitFactionProps(R, fid){ const F=RT.world.factions[fid]; let name=KIT_FACTION[fid]; let list=name?['banner','guard_post','barricade','decoration'].map(k=>kit(R,`${name}_${k}`)).filter(Boolean):[];
+  if(!list.length){ // fall back to the realm's lawful / outlaw faction kit
+    const all=Object.keys(RT.assets.models).filter(k=>k.startsWith(KIT_REALM(R)+'_') && k.endsWith('_banner')).map(k=>k.slice(KIT_REALM(R).length+1,-7)); const pickName = F?.lawful===false ? all[all.length-1] : all[0]; if(pickName) list=['banner','guard_post','barricade','decoration'].map(k=>kit(R,`${pickName}_${k}`)).filter(Boolean); }
+  return list; }
+const StackCache = new Map();
+function stackedBuilding(R, size, style, floors){ // ground + middle×n + roof modules, joined at their connect_up empties
+  const key=`${R}|${size}|${style}|${floors}`; if(StackCache.has(key)) return StackCache.get(key);
+  const g=kit(R,`bld_ground_${size}_s${style}`), mid=kit(R,`bld_middle_${size}_s${style}`), roof=kit(R,`bld_roof_${size}_s${style}`); if(!g||!roof) return null;
+  const bricks=[]; let y=0; const add=(m)=>{ for(const b of m.bricks) bricks.push([b[0],b[1],b[2]+y,b[3],b[4],b[5],b[6]].filter((v,i)=>i<6||v!=null)); y += (m.empties?.connect_up?.[1]) ?? bboxOf(m).h; };
+  add(g); for(let i=0;i<floors && mid;i++) add(mid); add(roof);
+  const m={ id:`stack_${key}`, version:1, bricks, groups:{}, empties:{ door_front:g.empties?.door_front||[2,1,-1,2] }, meta:{ tags:['building','stack',R], destructible:true, function:null } }; StackCache.set(key,m); return m; }
+function modelBox(m){ if(m._box) return m._box; let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9,h=0; for(const b of m.bricks){ const P=PIECES[b[0]]; if(!P) continue; const c=brickCells(b); x0=Math.min(x0,c.x0); z0=Math.min(z0,c.z0); x1=Math.max(x1,c.x1); z1=Math.max(z1,c.z1); h=Math.max(h,c.y1); } m._box={x0,z0,w:x1-x0,d:z1-z0,h}; return m._box; }
 function townLayout(t){
   if(TownLayouts.has(t.id)) return TownLayouts.get(t.id);
-  const r=rngFor(RT.world.seed,'layout',t.id); const out=[]; const R=t.realm; const step = R==='apex'?26:20;
-  const occupied=[];
-  const fits=(x,z,w,d)=>{ const [sa,sb]=sectorOf(x,z), [sc,sd]=sectorOf(x+w-1,z+d-1); if(sa!==sc||sb!==sd) return false; for(const o of occupied) if(x<o[0]+o[2]+2&&x+w+2>o[0]&&z<o[1]+o[3]+2&&z+d+2>o[1]) return false; return true; };
-  const place=(model,x,z,kind,extra={})=>{ const w=model.meta.w||bboxOf(model).w, d=model.meta.d||bboxOf(model).d; for(const dx of [0,4,-4,8,-8,12,-12]) for(const dz of [0,4,-4,8,-8]){ if(fits(x+dx,z+dz,w,d)){ occupied.push([x+dx,z+dz,w,d]); out.push({ model, x:x+dx, z:z+dz, kind, ...extra }); return true; } } return false; };
-  // plaza: waystone, job board, recruiter, market stalls, lamps
+  const r=rngFor(RT.world.seed,'layout',t.id); const out=[]; const R=t.realm; const W=RT.world; const occupied=[];
+  const hasKit = !!kit(R,'house');
+  const fits=(x,z,w,d)=>{ const [sa,sb]=sectorOf(x,z), [sc,sd]=sectorOf(x+w-1,z+d-1); if(sa!==sc||sb!==sd) return false; for(const o of occupied) if(x<o[0]+o[2]+3&&x+w+3>o[0]&&z<o[1]+o[3]+3&&z+d+3>o[1]) return false;
+    for(const rd of W.map.roads) if(distToSeg(x+w/2,z+d/2,rd[0],rd[1],rd[2],rd[3])<Math.max(w,d)/2+4) return false; return true; };
+  const place=(model,x,z,kind,extra={})=>{ if(!model) return false; const bx=modelBox(model); const w=bx.w, d=bx.d; for(const dx of [0,4,-4,8,-8,12,-12,16,-16]) for(const dz of [0,4,-4,8,-8,12,-12]){ const X=x+dx, Z=z+dz; if(fits(X+bx.x0,Z+bx.z0,w,d)){ occupied.push([X+bx.x0,Z+bx.z0,w,d]); out.push({ model, x:X, z:Z, kind, ...extra }); return true; } } return false; };
   const cx=Math.round(t.x), cz=Math.round(t.z);
+  // the plaza: waystone, job board (signpost), well, market stalls, lamps, benches
   place(modelFor('prop_waystone',()=>genProp('waystone',1,R)), cx+10, cz+10, 'waystone');
-  place(modelFor('prop_board',()=>genProp('board',1,R)), cx-8, cz+6, 'board');
-  place(modelFor(`recruiter_${R}`,()=>genProp('stall',hashStr(R),R)), cx+6, cz-12, 'recruiter');
-  for(let i=0;i<3;i++) place(modelFor(`prop_stall`,()=>genProp('stall',i,R)), cx-14+i*7, cz-6, 'stall');
-  for(let i=0;i<4;i++) place(genProp('lamp',i,R), cx+(i%2?14:-14), cz+(i<2?14:-14), 'lamp');
-  // buildings in rings
-  const kinds = R==='apex' ? ['skyscraper','skyscraper','shop','skyscraper','tower'] : ['house','house','shop','inn','house','bakery','tower','house'];
-  let k=0; const rad=t.radius; for(let gx=-rad; gx<=rad; gx+=step) for(let gz=-rad; gz<=rad; gz+=step){ const dd=Math.hypot(gx,gz); if(dd<24||dd>rad) continue; if(r()<0.25) continue;
-    let kind = kinds[(k++)%kinds.length]; if(R==='isles'||R==='mistpeak'&&r()<0.4) kind = r()<0.5?'hut':'house'; if(t.id.endsWith('_t0') && k===2) kind='inn'; if(R==='brightharbour'&&t.capital&&k===1) kind='bakery';
-    const m=modelFor(`building_${R}_${kind}`,()=>genBuilding(R,kind,hashStr(t.id)+k)); place(m, cx+gx, cz+gz, kind); }
-  if(t.capital || R==='apex'){ const lm=RT.world.map.landmarks.find(l=>l.realm===R); if(lm && Math.hypot(lm.x-t.x,lm.z-t.z)<t.radius+80) {} }
+  place(kit(R,'prop_signpost_a')||genProp('board',1,R), cx-8, cz+6, 'board');
+  if(hasKit){ place(kit(R,'prop_well_a'), cx-3, cz-3, 'prop');
+    for(let i=0;i<3;i++) place(kit(R,i%2?'prop_market_stall_b':'prop_market_stall_a'), cx-16+i*8, cz-10, 'stall');
+    for(let i=0;i<4;i++) place(kit(R,i%2?'prop_lamp_post_b':'prop_lamp_post_a'), cx+(i%2?15:-15), cz+(i<2?15:-15), 'lamp');
+    for(const p of ['prop_bench_a','prop_barrel_a','prop_crate_a','prop_pot_plant_a','prop_cart_a','prop_statue_small_a','prop_mailbox_a','prop_chest_a']) if(r()<0.7) place(kit(R,p), cx+Math.round((r()-.5)*36), cz+Math.round((r()-.5)*36), 'prop');
+  } else { for(let i=0;i<3;i++) place(genProp('stall',i,R), cx-14+i*7, cz-6, 'stall'); for(let i=0;i<4;i++) place(genProp('lamp',i,R), cx+(i%2?14:-14), cz+(i<2?14:-14), 'lamp'); }
+  // civic buildings: recruiter hall, inn, shops, stable
+  if(hasKit){ place(kit(R,'recruiter_hall'), cx+18, cz-36, 'recruiter'); place(kit(R,'inn'), cx-36, cz+18, 'inn'); place(kit(R,'shop'), cx+22, cz+22, 'shop'); if(t.capital) place(kit(R,'shop'), cx-30, cz-30, 'shop'); if(r()<0.6) place(kit(R,'stable'), cx-20, cz+42, 'stable'); }
+  else { place(genProp('stall',hashStr(R),R), cx+6, cz-12, 'recruiter'); place(genBuilding(R,'inn',hashStr(t.id)), cx-30, cz+16, 'inn'); place(genBuilding(R,'shop',hashStr(t.id)+1), cx+22, cz+22, 'shop'); }
+  // homes and stacked module buildings in rings
+  const sizes = R==='apex' ? ['16x16','16x24','8x16','16x16'] : ['8x8','8x16','16x16','8x8','16x24'];
+  const step = R==='apex'?30:24; let k=0; const rad=t.radius;
+  for(let gx=-rad; gx<=rad; gx+=step) for(let gz=-rad; gz<=rad; gz+=step){ const dd=Math.hypot(gx,gz); if(dd<34||dd>rad) continue; if(r()<0.2) continue; k++;
+    let m=null, kind='house';
+    if(hasKit){ if(R!=='apex' && r()<0.45) m=kit(R,'house'); else { const floors = R==='apex' ? 3+Math.floor(r()*9) : Math.floor(r()*2); m=stackedBuilding(R, pick(r,sizes), 1+Math.floor(r()*3), floors); kind = R==='apex'?'tower':'building'; } }
+    if(!m) m=genBuilding(R, R==='apex'?'skyscraper':'house', hashStr(t.id)+k);
+    place(m, cx+gx+Math.round((r()-.5)*6), cz+gz+Math.round((r()-.5)*6), kind); }
+  // the owning faction's banner, guard post, barricade and decoration at the town edge
+  const site=siteById(W,t.id); if(site && hasKit){ const fp=kitFactionProps(R, site.owner); fp.forEach((m,i)=>{ const a=i*Math.PI/2+0.4; place(m, cx+Math.round(Math.cos(a)*(rad*0.75)), cz+Math.round(Math.sin(a)*(rad*0.75)), 'faction', { faction:site.owner }); }); }
+  // docks on the water's edge
+  const dock=kit(R,'dock'); if(dock){ for(let a=0;a<Math.PI*2;a+=Math.PI/8){ const x=cx+Math.round(Math.cos(a)*(rad+20)), z=cz+Math.round(Math.sin(a)*(rad+20)); if(RT.terrain.height(x,z)<CONFIG.seaLevel && RT.terrain.height(cx+Math.round(Math.cos(a)*(rad)),cz+Math.round(Math.sin(a)*(rad)))>=CONFIG.seaLevel-1){ place(dock, x, z, 'dock'); break; } } }
   TownLayouts.set(t.id,out); return out;
 }
-function bboxOf(m){ let w=1,d=1,h=1; for(const b of m.bricks){ const c=brickCells(b); w=Math.max(w,c.x1); d=Math.max(d,c.z1); h=Math.max(h,c.y1); } return {w,d,h}; }
+function bboxOf(m){ const b=modelBox(m); return { w:Math.max(1,b.x0+b.w), d:Math.max(1,b.z0+b.d), h:Math.max(1,b.h) }; }
+const KIT_LANDMARKS = { brightharbour:['landmark_lighthouse_harbour'], apex:['landmark_paragon_tower','landmark_villain_lair'], kingsreach:['landmark_royal_castle'], isles:['landmark_sunken_galleon','landmark_pirate_fort'],
+  wildwood:['landmark_great_tree'], mistpeak:['landmark_cloud_temple'], ember:['landmark_ruined_city'], frontier:['landmark_orbital_station','landmark_moon_base'] };
 function sectorPlacements(sx,sz){ // models whose origin is inside this sector
   const out=[]; const x0=sx*SEC, z0=sz*SEC, x1=x0+SEC, z1=z0+SEC; const W=RT.world; const inside=(x,z)=>x>=x0&&x<x1&&z>=z0&&z<z1;
+  const fit=(m,x,z)=>{ const b=modelBox(m); return [clampIn(x,x0,b.w,b.x0), clampIn(z,z0,b.d,b.z0)]; };
   for(const t of W.map.towns){ if(Math.abs(t.x-(x0+32))>t.radius+100 || Math.abs(t.z-(z0+32))>t.radius+100) continue; for(const p of townLayout(t)) if(inside(p.x,p.z)) out.push({...p, town:t.id}); }
-  for(const lm of W.map.landmarks) if(inside(lm.x,lm.z)) out.push({ model:modelFor(`landmark_${lm.realm}`,()=>genLandmark(lm.realm)), x:clampIn(lm.x,x0,40), z:clampIn(lm.z,z0,40), kind:'landmark', realm:lm.realm });
-  for(const tp of W.map.temples) if(inside(tp.x,tp.z)) out.push({ model:modelFor(`temple_${tp.realm}`,()=>genTemple(tp.realm)), x:clampIn(tp.x,x0,18), z:clampIn(tp.z,z0,18), kind:'temple', realm:tp.realm });
-  if(inside(W.map.launchPad.x,W.map.launchPad.z)) out.push({ model:launchPadModel(), x:clampIn(W.map.launchPad.x,x0,20), z:clampIn(W.map.launchPad.z,z0,20), kind:'launchpad' });
-  for(const st of W.statues){ const t=W.map.towns.find(x=>x.id===st.town); if(t && inside(t.x-4,t.z+4)) out.push({ model:genProp('statue',hashStr(st.deed)), x:clampIn(t.x-4,x0,4), z:clampIn(t.z+4,z0,6), kind:'statue', deed:st.deed }); }
-  for(const z of W.map.spaceZones){ if(!inside(z.x,z.z)) continue; out.push({ model:spaceBaseModel(z), x:clampIn(z.x-10,x0,24), z:clampIn(z.z-10,z0,24), kind:'colony', zone:z.id }); }
+  for(const lm of W.map.landmarks) if(inside(lm.x,lm.z)){ const m=kit(lm.realm,KIT_LANDMARKS[lm.realm][0])||modelFor(`landmark_${lm.realm}`,()=>genLandmark(lm.realm)); const [x,z]=fit(m,lm.x,lm.z); out.push({ model:m, x, z, kind:'landmark', realm:lm.realm }); }
+  // second landmarks: the villain lair in the Docklands, the pirate fort on Skull Shoal
+  for(const [R,site] of [['apex','apex_x1'],['isles','isles_x0']]){ const s=siteById(W,site); const name=KIT_LANDMARKS[R][1]; const m=name&&kit(R,name); if(s && m && inside(s.x,s.z)){ const [x,z]=fit(m,s.x,s.z); out.push({ model:m, x, z, kind:'landmark', realm:R }); } }
+  for(const tp of W.map.temples) if(inside(tp.x,tp.z)){ const m=kit(tp.realm,'lumen_temple')||modelFor(`temple_${tp.realm}`,()=>genTemple(tp.realm)); const [x,z]=fit(m,tp.x,tp.z); out.push({ model:m, x, z, kind:'temple', realm:tp.realm }); }
+  for(const pl of W.map.plots) if(inside(pl.x,pl.z)){ const m=kit(pl.realm,'home_plot'); if(m){ const [x,z]=fit(m,pl.x,pl.z); out.push({ model:m, x, z, kind:'plot', plot:pl.id }); } }
+  if(inside(W.map.launchPad.x,W.map.launchPad.z)){ const m=launchPadModel(); const [x,z]=fit(m,W.map.launchPad.x,W.map.launchPad.z); out.push({ model:m, x, z, kind:'launchpad' }); }
+  for(const st of W.statues){ const t=W.map.towns.find(x=>x.id===st.town); if(t && inside(t.x-4,t.z+4)){ const m=kit(t.realm,'prop_statue_small_a')||genProp('statue',hashStr(st.deed)); const [x,z]=fit(m,t.x-4,t.z+4); out.push({ model:m, x, z, kind:'statue', deed:st.deed }); } }
+  for(const zn of W.map.spaceZones){ if(!inside(zn.x,zn.z)) continue; const m = zn.id==='station'?kit('frontier','landmark_orbital_station'): zn.id==='moon'?kit('frontier','landmark_moon_base'): null; const mm=m||spaceBaseModel(zn); const [x,z]=fit(mm,zn.x-10,zn.z-10); out.push({ model:mm, x, z, kind:'colony', zone:zn.id }); }
   return out;
 }
-function clampIn(v,x0,size){ return clamp(Math.round(v), x0+1, x0+SEC-size-1); }
+function clampIn(v,x0,size,off=0){ if(size>=SEC-2) return x0-off; return clamp(Math.round(v), x0+1-off, x0+SEC-size-1-off); }
+// functional points from a model's empties (doors, recruiter spots, shrines, vendor spots)
+function modelFnPoint(pl){ const e=pl.model.empties||{}; const p = e.recruiter_spot||e.lumen_shrine||e.ground_door_front||e.door_front||e.vendor_spot||e.ground_vendor_spot; const b=modelBox(pl.model);
+  if(p) return [pl.x+p[0], pl.z+p[2]+(p===e.ground_door_front||p===e.door_front?-1:0)]; return [pl.x+b.x0+b.w/2, pl.z+b.z0-1]; }
+// nature scatter per realm from the kit: <realm>_nature_<type>_<1..4>
+function kitNatureTypes(R){ const pre=`${KIT_REALM(R)}_nature_`; const set=new Set(Object.keys(RT.assets.models).filter(k=>k.startsWith(pre)).map(k=>k.slice(pre.length).replace(/_\d+$/,''))); return [...set]; }
+function scatterKitModel(kind, v, R){ const types=kitNatureTypes(R); if(!types.length) return null;
+  const trees=types.filter(t=>/tree|palm|bamboo|cactus|alien_plant|antenna|coral|mushroom|hydrant/.test(t)), rocks=types.filter(t=>/rock|crystal|shell/.test(t)), small=types.filter(t=>/flower|bush|reed|grass|planter|crop|lantern/.test(t));
+  const list = kind==='tree'?trees : kind==='grass'?small : kind==='crystal'||kind==='ore'? (types.filter(t=>/crystal/.test(t)).length?types.filter(t=>/crystal/.test(t)):rocks) : rocks;
+  const t=(list.length?list:types)[v%(list.length||types.length)]; return RT.assets.models[`${KIT_REALM(R)}_nature_${t}_${1+(v%4)}`] || null; }
+// rubble builds from the realm kit's buildables
+function kitBuildables(R){ const pre=`${KIT_REALM(R)}_buildable_`; return Object.keys(RT.assets.models).filter(k=>k.startsWith(pre)).map(k=>{ const id='kit:'+k; if(!RUBBLE_BUILDS[id]){ const m=RT.assets.models[k]; const name=k.slice(pre.length).replace(/_/g,' '); RUBBLE_BUILDS[id]={ name:name[0].toUpperCase()+name.slice(1), bricks:m.bricks, effect: /springboard/.test(k)?'bounce': /catapult/.test(k)?'catapult': /boat|raft/.test(k)?'boat': /lever/.test(k)?'lever':null }; } return id; }); }
+
 function launchPadModel(){ const b=[]; for(let x=0;x<16;x+=4) for(let z=0;z<16;z+=4) b.push(['plate_4x4',x,0,z,0,(x+z)%8?'dark_grey':'yellow']); for(let y=0;y<12;y++) b.push(['round_2x2',7,1+y*3,7,0,y>9?'red':'white']); b.push(['cone_2x2',7,37,7,0,'red']); for(const [x,z] of [[5,7],[9,7],[7,5],[7,9]]) b.push(['flame_1x1',x,1,z,0,'trans_orange']); return { id:'launchpad', version:1, bricks:dedupe(b), groups:{}, empties:{}, meta:{ tags:['launchpad'], destructible:false, function:'launch' } }; }
 function spaceBaseModel(z){ const b=[]; const r=rngFor('base',z.id); const col = z.alien?pick(r,['lavender','sand_green','tan']):'white';
   for(let a=0;a<40;a++){ const x=Math.round(10+Math.cos(a/40*Math.PI*2)*9), zz=Math.round(10+Math.sin(a/40*Math.PI*2)*9); for(let y=0;y<3;y++) b.push(['brick_1x1',x,y*3,zz,0,col]); }
@@ -2249,8 +2299,8 @@ function genSectorContent(sx,sz){
     pl.model.bricks.forEach((b,i)=>{ const uid=`${pl.model.id}@${pl.x},${pl.z}#${i}`; if(gone.has(uid)) return;
       const nb=[b[0], pl.x+b[1], gy+b[2], pl.z+b[3], b[4]||0, b[5], b[6]]; const ref={ uid, b:nb, solid: !PIECES[b[0]].nonSolid, model:pl.kind, fn:FUNCTIONAL[b[0]]?.fn||null, owner:pl, ownerSector:key };
       s.bricks.push(ref); });
-    if(pl.kind==='waystone'||pl.kind==='board'||pl.kind==='recruiter'||pl.kind==='temple'||pl.kind==='launchpad'||pl.kind==='statue'||pl.kind==='inn'||pl.kind==='shop'||pl.kind==='bakery'||pl.kind==='colony')
-      s.fn.push({ kind:pl.kind, x:pl.x+(pl.model.meta.w||4)/2, y:gy*PL, z:pl.z-1, town:pl.town, realm:pl.realm||s.realm, zone:pl.zone, deed:pl.deed });
+    if(['waystone','board','recruiter','temple','launchpad','statue','inn','shop','bakery','colony','plot','stable','dock'].includes(pl.kind)){ const [fx,fz]=modelFnPoint(pl);
+      s.fn.push({ kind:pl.kind, x:fx, y:gy*PL, z:fz, town:pl.town, realm:pl.realm||s.realm, zone:pl.zone, deed:pl.deed, plot:pl.plot }); }
   }
   // doors are walk-through
   for(const ref of s.bricks){ const sh=PIECES[ref.b[0]].shape; if(sh==='door'||sh==='panel'&&false) ref.solid=false; if(sh==='flame'||sh==='lamp'&&ref.model==='lamp'&&false) ref.solid=false; }
@@ -2265,7 +2315,7 @@ function genSectorContent(sx,sz){
     const n=fbm(W.seed+3,x/80,z/80); const roll=r();
     let kind=null; if(roll < dens*(0.5+n)) kind='tree'; else if(roll<dens+0.05) kind='rock'; else if(roll<dens+0.07) kind= R==='mistpeak'||R==='frontier'?'crystal':'ore'; else if(roll<dens+0.25 && R!=='ember' && R!=='apex' && R!=='frontier') kind='grass';
     if(!kind) continue; const id=`${kind}@${x},${z}`; if(gone.has(id)) continue;
-    s.scatter.push({ id, kind, x, z, y:h, v: Math.floor(r()*3), realm:R, alive:true });
+    s.scatter.push({ id, kind, x, z, y:h, v: Math.floor(r()*4), realm:R, alive:true });
   }
   return s;
 }
@@ -2335,7 +2385,7 @@ const Scatter = {
   geom(kind, v, realm){ const key=kind+v+realm; if(this.meshes[key]) return this.meshes[key];
     let geo;
     if(kind==='grass'){ const g=GB(); const p=g.part('o',null); for(let i=0;i<3;i++){ const a=i*2.1; g.box(p,0.4+Math.cos(a)*0.2,0,0.4+Math.sin(a)*0.2,0.55+Math.cos(a)*0.2,0.5+i*0.15,0.55+Math.sin(a)*0.2); } geo=partsToGeo(g.out(), realm==='mistpeak'?'sand_green':realm==='wildwood'?'lime':'green'); }
-    else { const m=genProp(kind==='tree'?'tree':kind, v, realm); geo=modelToGeo(m); }
+    else { const km=scatterKitModel(kind, v, realm); geo=modelToGeo(km||genProp(kind==='tree'?'tree':kind, v, realm)); }
     const im=new THREE.InstancedMesh(geo, MAT.opaque, 1024); im.count=0; im.castShadow=kind!=='grass'; im.receiveShadow=true; im.frustumCulled=false; scene.add(im);
     this.meshes[key]={ im, kind, v, realm, items:[] }; return this.meshes[key]; },
   sync(){ // rebuilt only when sectors load/unload or a scatter item is smashed
@@ -2477,8 +2527,8 @@ function smashAt(pt, radius, opts={}){
       const col=s.colCol[ci]; for(let i=0;i<2;i++) Live.spawn('brick_2x2',col,x+1,h*PL-0.6,z+1,(Math.random()-.5)*6,4+Math.random()*5,(Math.random()-.5)*6); count+=2; if(W.player) W.metrics.miningDepth+=0.002; } }
   // scatter (trees fall apart into brown bricks; rocks into stone; ore into rare pieces)
   for(const [it,s] of Scatter.near(pt.x,pt.z,R+1.5)){ if(Math.abs(it.y*PL-pt.y)>8 && it.kind!=='tree') continue; if(it.kind==='tree' && pt.y>it.y*PL+14) continue; it.alive=false; damageRec(s).gone.push(it.id); Scatter.dirty=true;
-    const m=genProp(it.kind==='grass'?'rock':it.kind, it.v, it.realm); const lim = it.kind==='grass'?2:Math.min(m.bricks.length,40);
-    for(let i=0;i<lim;i++){ const b=m.bricks[i]; Live.spawn(b[0], it.kind==='grass'?'green':b[5], it.x+b[1], it.y*PL+b[2]*PL, it.z+b[3], (Math.random()-.5)*6, 3+Math.random()*6, (Math.random()-.5)*6); }
+    const m=scatterKitModel(it.kind,it.v,it.realm)||genProp(it.kind==='grass'?'rock':it.kind, it.v, it.realm); const lim = it.kind==='grass'?Math.min(4,m.bricks.length):Math.min(m.bricks.length,40);
+    for(let i=0;i<lim;i++){ const b=m.bricks[i]; Live.spawn(b[0], b[5], it.x+b[1], it.y*PL+b[2]*PL, it.z+b[3], (Math.random()-.5)*6, 3+Math.random()*6, (Math.random()-.5)*6); }
     const mat = it.kind==='tree'?'wood': it.kind==='rock'?'stone': it.kind==='ore'?'ore': it.kind==='crystal'?'crystal':null;
     if(mat && W){ W.player.materials[mat]=(W.player.materials[mat]||0)+(it.kind==='tree'?4:2); if(it.kind==='ore'&&it.realm==='isles') W.player.materials.gold=(W.player.materials.gold||0)+1; if(it.realm==='frontier') W.player.materials.alien=(W.player.materials.alien||0)+1; if(it.kind==='tree') W.metrics.forestCut+=0.2; }
     count+=lim; }
@@ -2495,7 +2545,7 @@ function cutLine(from, dir, len, by){ let n=0; for(let t=0;t<len;t+=0.6){ const 
 // Some rubble piles bounce and sparkle: hold build and the bricks leap up and click into place one by one.
 const Rubble = {
   piles:[],
-  make(pt, count){ const ch=pick(Math.random, RUBBLE_CHOICES); const ground=supportTop(Math.floor(pt.x),Math.floor(pt.z),pt.y/PL+2); if(this.piles.length>8) this.piles.shift();
+  make(pt, count){ const kb=kitBuildables(RT.realm||'brightharbour'); const ch = kb.length ? (Math.random()<0.4 ? [pick(Math.random,kb),pick(Math.random,kb)].filter((v,i,a)=>a.indexOf(v)===i) : [pick(Math.random,kb)]) : pick(Math.random, RUBBLE_CHOICES); const ground=supportTop(Math.floor(pt.x),Math.floor(pt.z),pt.y/PL+2); if(this.piles.length>8) this.piles.shift();
     this.piles.push({ x:Math.floor(pt.x), z:Math.floor(pt.z), y:ground, options:ch, choice:0, progress:0, building:null, done:false, t:0, rot: Math.floor(Math.random()*4) }); },
   nearest(fig, r=4){ let best=null, bd=r; for(const p of this.piles){ if(p.done) continue; const d=Math.hypot(p.x-fig.pos.x,p.z-fig.pos.z); if(d<bd){ bd=d; best=p; } } return best; },
   update(dt){
@@ -3521,6 +3571,7 @@ async function boot(){
   status('reading the design kit…');
   const t0=performance.now();
   await Promise.race([loadAssets(), new Promise(r=>setTimeout(r,4000))]); // never block start-up on slow assets
+  status('unpacking the realm kits…'); await Promise.race([RT.assets.modelsReady||Promise.resolve(), new Promise(r=>setTimeout(r,8000))]);
   Input.init(); FX.init(); Live.init(); Pips.init(); FigR.init();
   status('building the world…');
   let world=null; const saved=QS.has('new')?null:storeGet(SAVE_KEY);
