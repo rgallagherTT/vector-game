@@ -70,6 +70,14 @@
   .pplay.new .thumb{background:#fff3c4}
   @media (max-width:720px){ .cre{grid-template-columns:1fr} .cleft{position:static} #cprevSlot{height:300px} .cright{max-height:none} }
   #buildbar{position:absolute;left:12px;bottom:12px;background:var(--panel);border:3px solid var(--ink);border-radius:12px;padding:8px;display:none;max-width:46vw;pointer-events:auto;font-size:12px}
+  #buildbar{width:min(560px,60vw);max-width:none!important}
+  #buildbar .bbh{display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px}#buildbar .bbh .bbr{margin-left:auto;font-weight:800}#buildbar .bbc{opacity:.7}
+  #buildbar .bbt{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}#buildbar .bbt button{font-size:11px;padding:2px 7px;box-shadow:0 2px 0 var(--ink)}
+  #buildbar .bbp{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:5px;max-height:168px;overflow:auto;padding:2px}
+  #buildbar .pcard{position:relative;display:flex;flex-direction:column;align-items:center;background:#fff;padding:3px 2px;font-size:10px;line-height:1.1;box-shadow:0 2px 0 var(--ink);border-width:2px}
+  #buildbar .pcard.on{background:#ffd9a6;outline:3px solid #fe8a18}#buildbar .pcard i{position:absolute;top:1px;right:3px;font-style:normal;font-weight:900;font-size:10px;color:#4b9f4a}
+  .pthumb{width:52px;height:52px;object-fit:contain}img.pthumb:not([src]){animation:pulse 1s infinite alternate;background:#eef3f7;border-radius:6px}
+  #buildbar .bbcol{display:flex;flex-wrap:wrap;gap:3px;margin:6px 0 4px}#buildbar .bbcol .sw{width:18px;height:18px}
   #buildbar .pal{display:flex;flex-wrap:wrap;gap:3px;max-height:96px;overflow:auto}
   #buildbar .pc{padding:2px 5px;border:2px solid var(--ink);border-radius:6px;background:#fff;cursor:pointer}
   #buildbar .pc.on{background:#fe8a18}
@@ -3066,7 +3074,8 @@ const Input = { keys:new Set(), pressed:new Set(), mouse:{ dx:0, dy:0, b:new Set
     addEventListener('wheel',e=>{ this.mouse.wheel+=Math.sign(e.deltaY); },{passive:true});
     document.addEventListener('pointerlockchange',()=>{ this.locked = document.pointerLockElement===canvas; }); },
   down(c){ return this.keys.has(c); }, hit(c){ return this.pressed.has(c); },
-  endFrame(){ this.pressed.clear(); this.mouse.pressed.clear(); this.mouse.dx=0; this.mouse.dy=0; this.mouse.wheel=0; },
+  consume(){ this.pressed.clear(); this.mouse.pressed.clear(); this.consumed=true; },
+  endFrame(){ if(this.consumed||RT.menuOpen){ this.pressed.clear(); this.mouse.pressed.clear(); } this.consumed=false; this.mouse.dx=0; this.mouse.dy=0; this.mouse.wheel=0; },
   poll(){ this.pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; },
 };
 const KEYMAP = [
@@ -3473,7 +3482,7 @@ const HUD = {
 const Keys = { shown:true, last:'', init(){ try{ this.shown = storeGet('everbrick.keys')!=='off'; }catch(e){} },
   toggle(){ this.shown=!this.shown; storeSet('everbrick.keys', this.shown?'on':'off'); this.last=''; toast(this.shown?'Controls shown (F1 to hide)':'Controls hidden (F1 to show)'); },
   sets(f){ const v=f.vehicle;
-    if(RT.mode==='BUILD') return ['Building',[['Click','Place brick'],['X','Remove'],['P','Paint'],['R','Rotate'],['Wheel','Zoom'],['Right-drag','Turn view'],['Z','Undo'],['Enter','Finish'],['B','Stop building']]];
+    if(RT.mode==='BUILD') return ['Building',[['Click','Place piece'],['X','Remove'],['R','Rotate'],['P','Paint'],['Z','Undo'],['WASD','Move around'],['Right-drag','Turn view'],['Wheel','Zoom'],['B','Done building']]];
     if(RT.mode==='PHOTO') return ['Photo mode',[['WASD','Move camera'],['Q / E','Down / up'],['Shift','Faster'],['P','Exit']]];
     if(v){ if(v.kind==='ship') return ['Sailing',[['W / S','Sail / slow'],['A / D','Steer'],['Click','Fire cannons'],['Q / R','Trim sail (optional)'],['E','Leave the helm']]];
       if(v.kind==='star') return ['Starship',[['W / S','Thrust'],['Mouse','Steer'],['Shift','Boost'],['Click','Fire'],['E','Get out']]];
@@ -3605,7 +3614,7 @@ function previewModel(rc){ // { root, f, glb } — the design-kit figure when lo
   for(const p of f.parts){ if(p.tag==='blade') continue; const m=new THREE.Mesh(FIG_GEO, Bodies.colorMaterial(p.col)); m.position.copy(p.off); if(p.rot) m.rotation.z=p.rot; m.scale.copy(p.size); p.joint.add(m); }
   f.root.rotation.y=f.yaw; return { root:f.root, f, glb:null }; }
 function frameModel(cam, root, mode, aspect=1){ root.updateMatrixWorld(true); const bb=new THREE.Box3().setFromObject(root); const sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
-  let h=Math.max(sz.y, Math.max(sz.x,sz.z)/aspect*0.9), cy=c.y; if(mode==='head' && sz.y>sz.x*1.2){ h=sz.y*0.34; cy=bb.max.y-h*0.5; } if(mode==='fixed'){ h=Math.max(8, sz.y*1.05); cy=h*0.45; }
+  let h=Math.max(sz.y, Math.max(sz.x,sz.z)/aspect*0.9), cy=c.y; if(mode==='head' && sz.y>sz.x*1.2){ h=sz.y*0.34; cy=bb.max.y-h*0.5; } if(mode==='fixed'){ h=Math.max(8, sz.y*1.05); cy=h*0.45; } if(mode==='piece'){ h=Math.max(sz.x,sz.y,sz.z)*1.15; cy=c.y; }
   const dist=(h*0.62)/Math.tan(THREE.MathUtils.degToRad(cam.fov/2)); cam.position.set(dist*0.38, cy+h*0.12, dist); cam.lookAt(0,cy,0); cam.near=0.1; cam.far=dist*4; cam.updateProjectionMatrix(); }
 const Preview = {
   r:null, stage:null, cam:null, canvas:null, model:null, key:null, yaw:0.5, spin:true, t:0, hop:0, raf:0, pose:0,
@@ -3634,13 +3643,22 @@ const Thumbs = { r:null, stage:null, cam:null, canvas:null, cache:new Map(), que
   init(){ if(this.r) return true; try{ this.canvas=document.createElement('canvas'); this.canvas.width=this.canvas.height=128; this.r=new THREE.WebGLRenderer({ canvas:this.canvas, antialias:true, alpha:true, preserveDrawingBuffer:true }); }catch(e){ this.r=null; return false; }
     this.r.setSize(128,128,false); this.r.outputColorSpace=THREE.SRGBColorSpace; this.r.toneMapping=THREE.ACESFilmicToneMapping; this.stage=previewStage(this.r); this.stage.plate.visible=false; this.stage.scene.children.filter(o=>o.isMesh&&o!==this.stage.plate).forEach(o=>o.visible=false); this.cam=new THREE.PerspectiveCamera(28,1,0.1,200); return true; },
   key(rc,mode){ return 't'+hashStr(JSON.stringify(rc)+mode+Bodies.ready).toString(36); },
+  piece(pid,color){ const k='p'+hashStr(pid+'|'+color+PieceGLB.ready).toString(36); const src=this.cache.get(k); if(!src && !this.pending.has(k)){ this.pending.set(k,{pid,color}); this.queue.push(k); this.pump(); } return `<img class="pthumb" data-tk="${k}" alt="" ${src?`src="${src}"`:''}>`; },
   img(rc, mode='full', cls=''){ const k=this.key(rc,mode); const src=this.cache.get(k); if(!src && !this.pending.has(k)){ this.pending.set(k,{rc,mode}); this.queue.push(k); this.pump(); }
     return `<img class="thumb ${cls}" data-tk="${k}" alt="" ${src?`src="${src}"`:''}>`; },
   pump(){ if(this.busy) return; this.busy=true; const step=()=>{ const t0=performance.now(); while(this.queue.length && performance.now()-t0<14){ const k=this.queue.shift(); const job=this.pending.get(k); this.pending.delete(k); if(job) this.render(k,job); } if(this.queue.length) requestAnimationFrame(step); else this.busy=false; }; requestAnimationFrame(step); },
-  render(k,{rc,mode}){ if(!this.init()) return; let M; try{ M=previewModel(rc); }catch(e){ return; } M.f.yaw=0.45; if(M.glb) syncGLB(M.f); else M.root.rotation.y=0.45;
+  render(k,{rc,mode,pid,color}){ if(!this.init()) return; if(pid){ let g; try{ g=pieceModel(pid,color); }catch(e){ return; } this.stage.scene.add(g); frameModel(this.cam,g,'piece'); this.cam.position.set(this.cam.position.z*0.75, this.cam.position.z*0.7, this.cam.position.z*0.85); const c=new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3()); this.cam.lookAt(c); this.r.render(this.stage.scene,this.cam); const url=this.canvas.toDataURL('image/png'); this.stage.scene.remove(g); this.cache.set(k,url); document.querySelectorAll(`img[data-tk="${k}"]`).forEach(i=>i.src=url); return; }
+    let M; try{ M=previewModel(rc); }catch(e){ return; } M.f.yaw=0.45; if(M.glb) syncGLB(M.f); else M.root.rotation.y=0.45;
     this.stage.scene.add(M.root); frameModel(this.cam, M.root, mode); this.r.render(this.stage.scene,this.cam); const url=this.canvas.toDataURL('image/png'); this.stage.scene.remove(M.root);
     this.cache.set(k,url); document.querySelectorAll(`img[data-tk="${k}"]`).forEach(i=>i.src=url); },
 };
+function pieceModel(pid,color){ // a single piece as a mesh group, for build-bar pictures
+  const P=PIECES[pid]; const g=new THREE.Group(); const parts=shapeGeom(pid)||[]; const glassy=P.kind==='glass'||isTrans(color);
+  for(const pt of parts){ const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pt.pos,3)); geo.setAttribute('normal',new THREE.BufferAttribute(pt.nrm,3));
+    const cname = pt.color || (pt.mat==='g' ? (FUNCTIONAL[pid]?'trans_orange':color) : pt.mat==='t' && !glassy ? 'trans_clear' : (FUNCTIONAL[pid]?.color && pt.mat==='o' ? FUNCTIONAL[pid].color : color));
+    g.add(new THREE.Mesh(geo, pt.mat==='g'?Bodies.colorMaterial('glow_'+cname.replace(/^trans_/,'')):Bodies.colorMaterial(cname))); }
+  if(P.studs && P.shape==='box'){ const H=P.h*CONFIG.plate; const sg=new THREE.CylinderGeometry(0.3,0.3,0.2,12); for(let i=0;i<P.w;i++) for(let k=0;k<P.d;k++){ const m=new THREE.Mesh(sg,Bodies.colorMaterial(color)); m.position.set(i+0.5,H+0.1,k+0.5); g.add(m); } }
+  const bb=new THREE.Box3().setFromObject(g); const c=bb.getCenter(new THREE.Vector3()); g.position.set(-c.x,-bb.min.y,-c.z); const w=new THREE.Group(); w.add(g); return w; }
 const QUICK_SCHEMES = [ ['Harbour',{torso:'blue',legs:'dark_blue',accent:'yellow',hair:'dark_brown'}], ['Ember',{torso:'red',legs:'black',accent:'orange',hair:'black'}], ['Forest',{torso:'green',legs:'brown',accent:'tan',hair:'dark_brown'}],
   ['Royal',{torso:'purple',legs:'dark_blue',accent:'gold',hair:'yellow'}], ['Snow',{torso:'white',legs:'light_grey',accent:'sky_blue',hair:'white'}], ['Desert',{torso:'tan',legs:'brown',accent:'dark_red',hair:'black'}],
   ['Candy',{torso:'pink',legs:'lavender',accent:'magenta',hair:'yellow'}], ['Night',{torso:'black',legs:'dark_grey',accent:'silver',hair:'dark_grey'}], ['Sunny',{torso:'yellow',legs:'orange',accent:'red',hair:'brown'}], ['Sea',{torso:'light_blue',legs:'blue',accent:'white',hair:'sand_green'}] ];
@@ -4422,10 +4440,29 @@ Menu.acts.flyTo = a=>{ Menu.close(); if(a==='home'){ RT.inSpace=false; RT.gravit
 // §BUILDMODE (core) -------------------------------------------------------------
 const BuildMode = {
   on:false, piece:'brick_2x4', color:'red', rot:0, ghost:null, layer:0, mirror:false, undo:[], redo:[],
-  toggle(pl){ this.on=!this.on; Modes.set(this.on?'BUILD':'ON_FOOT'); $('buildbar').style.display=this.on?'block':'none'; if(this.on){ if(document.pointerLockElement) document.exitPointerLock(); this.renderBar(); toast('Build mode: click to place, right-drag to orbit, R rotate, Del/X remove, P paint, M mirror, Z undo, Y redo, B exit'); } if(this.ghost) this.ghost.visible=this.on; },
-  renderBar(){ const P=RT.world.player; const cats=['brick','plate','tile','slope','round','functional'];
-    $('buildbar').innerHTML=`<b>Build</b> · bank ${bankCount()} · ${P.pips} pips · ${esc(this.piece)} <span class="sw" style="background:${PALETTE[this.color]}"></span> ${this.mirror?'· mirror':''}<div class="pal">${Object.keys(PIECES).filter(id=>cats.includes(PIECES[id].cat)||PIECES[id].design&&['brick','plate','tile','slope','round','arch','frame','fence'].includes(PIECES[id].kind)).slice(0,90).map(id=>`<span class="pc ${id===this.piece?'on':''}" data-p="${id}">${id.replace('brick_','b').replace('plate_','p').replace('tile_','t').replace('fn_','★')} ${bankHas(id,this.color)||''}</span>`).join('')}</div><div class="pal">${COLOR_NAMES.map(c=>`<span class="sw ${c===this.color?'on':''}" data-c="${c}" style="background:${PALETTE[c]}"></span>`).join('')}</div>`;
-    $('buildbar').querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>{ this.piece=el.dataset.p; this.renderBar(); }); $('buildbar').querySelectorAll('[data-c]').forEach(el=>el.onclick=()=>{ this.color=el.dataset.c; this.renderBar(); }); },
+  tab:'brick',
+  toggle(pl){ this.on=!this.on; Modes.set(this.on?'BUILD':'ON_FOOT'); $('buildbar').style.display=this.on?'block':'none'; $('slots').style.display=this.on?'none':'flex'; const cam=pl.cam;
+    if(this.on){ if(document.pointerLockElement) document.exitPointerLock(); this.saved={ pitch:cam.pitch, zoom:RT.zoom||1 }; cam.pitch=Math.max(cam.pitch,0.85); RT.zoom=Math.max(RT.zoom||1,1.7); this.renderBar(); toast('Build mode — pick a piece and a colour, then click to place. B to finish.'); }
+    else { if(this.saved){ cam.pitch=this.saved.pitch; RT.zoom=this.saved.zoom; } }
+    if(this.ghost) this.ghost.visible=this.on; },
+  TABS:[['brick','Bricks'],['plate','Plates'],['tile','Tiles'],['shape','Slopes & curves'],['frame','Windows & doors'],['parts','Vehicle parts'],['nature','Nature & lights'],['functional','★ Useful']],
+  tabOf(P){ const k=P.kind||P.cat; if(P.cat==='functional') return 'functional'; if(k==='brick') return 'brick'; if(k==='plate') return 'plate'; if(k==='tile'||k==='tile_round') return 'tile';
+    if(['slope','slope_inv','slopeInv','curve','wedge','round','dome','cone','arch'].includes(k)) return 'shape'; if(['frame','glass','fence','ladder','bar','hinge','canopy','screen'].includes(k)) return 'frame';
+    if(['wheel','tyre','axle','steering','seat','rotor','sail','cannon','turntable','chain','rope_bridge','dish'].includes(k)) return 'parts'; return 'nature'; },
+  pname(id){ const P=PIECES[id]; if(FUNCTIONAL[id]) return (FUNCTIONAL[id].name||id.slice(3).replace(/_/g,' ')).replace(/^./,c=>c.toUpperCase());
+    const m=id.match(/(\d+)x(\d+)/); const dims=m?`${m[1]}×${m[2]}`:''; const base=id.replace(/_?\d+x\d+.*$/,'').replace(/(brick|plate|tile)$/,'').replace(/_/g,' ').trim();
+    return (base?base.replace(/^./,c=>c.toUpperCase())+' ':'')+dims+(id.includes('tall')?' tall':'')+(/_L$/.test(id)?' L':/_R$/.test(id)?' R':''); },
+  price(pid,color){ return FUNCTIONAL[pid]?.cost || Math.max(1, Math.round(PIECES[pid].w*PIECES[pid].d*Math.max(1,PIECES[pid].h/3)/4))*(RARE_COLORS.has(color)?3:1); },
+  renderBar(){ const P=RT.world.player; const ids=Object.keys(PIECES).filter(id=>this.tabOf(PIECES[id])===this.tab && !PIECES[id].hidden).slice(0,60);
+    if(!PIECES[this.piece]) this.piece='brick_2x4'; const have=bankHas(this.piece,this.color), pr=this.price(this.piece,this.color);
+    $('buildbar').innerHTML=`<div class="bbh"><b>${esc(this.pname(this.piece))}</b> <span class="sw" style="background:${PALETTE[this.color]}"></span> <span class="bbc">${RT.creative?'free (creative)':have?`from your bank (${have} left)`:`${pr} pip${pr>1?'s':''} each`}</span>${this.mirror?' <span class="bbc">· mirror on</span>':''}<span class="bbr">🧱 ${bankCount()} · ● ${P.pips}</span></div>
+      <div class="bbt">${this.TABS.map(([k,l])=>`<button class="${this.tab===k?'on':''}" data-t="${k}">${l}</button>`).join('')}</div>
+      <div class="bbp">${ids.map(id=>`<button class="pcard ${id===this.piece?'on':''}" data-p="${id}" title="${esc(this.pname(id))}">${Thumbs.piece(id, FUNCTIONAL[id]?FUNCTIONAL[id].color:this.color)}<span>${esc(this.pname(id))}</span>${bankHas(id,this.color)?`<i>${bankHas(id,this.color)}</i>`:''}</button>`).join('')||'<p class="hint">No pieces in this group yet.</p>'}</div>
+      <div class="bbcol">${COLOR_NAMES.map(c=>`<span class="sw ${c===this.color?'on':''}" title="${c.replace(/_/g,' ')}" style="background:${PALETTE[c]}" data-c="${c}"></span>`).join('')}</div>
+      <div class="hint">Smash things to fill your brick bank — banked bricks are free. Right-drag turns the view, wheel zooms.</div>`;
+    $('buildbar').querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>{ this.piece=el.dataset.p; this.renderBar(); });
+    $('buildbar').querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{ this.tab=el.dataset.t; const first=Object.keys(PIECES).find(id=>this.tabOf(PIECES[id])===this.tab); if(first && this.tabOf(PIECES[this.piece])!==this.tab) this.piece=first; this.renderBar(); });
+    $('buildbar').querySelectorAll('[data-c]').forEach(el=>el.onclick=()=>{ this.color=el.dataset.c; this.renderBar(); }); },
   update(pl,dt){ if(!this.on) return; const f=pl.fig; if(Input.hit('KeyB')){ this.toggle(pl); return; }
     // free camera orbiting the build
     const cam=pl.cam; if(Input.mouse.b.has(2)){ cam.yaw-=Input.mouse.dx*0.005; cam.pitch=clamp(cam.pitch+Input.mouse.dy*0.005,-0.2,1.4); } RT.zoom=clamp((RT.zoom||1)+Input.mouse.wheel*0.1,0.4,3);
@@ -4438,13 +4475,14 @@ const BuildMode = {
     if(!this.ghost){ this.ghost=new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.45, depthWrite:false })); scene.add(this.ghost); }
     if(!hitP){ this.ghost.visible=false; return; } const P=PIECES[this.piece]; const [w,d]=pieceDims(P,this.rot); const y=Math.max(hitP.cell[1]+this.layer, supportTop(hitP.cell[0],hitP.cell[2],hitP.cell[1]+this.layer+0.5));
     const pos=[hitP.cell[0]-Math.floor((w-1)/2), y, hitP.cell[2]-Math.floor((d-1)/2)];
-    this.ghost.visible=true; this.ghost.scale.set(w,P.h*PL,d); this.ghost.position.set(pos[0]+w/2,(pos[1]+P.h/2)*PL,pos[2]+d/2); this.ghost.material.color.copy(COLORS[this.color]);
+    this.ghost.visible=true; this.ghost.scale.set(w,P.h*PL,d); this.ghost.position.set(pos[0]+w/2,(pos[1]+P.h/2)*PL,pos[2]+d/2); const blocked=cellsOf([this.piece,pos[0],pos[1],pos[2],this.rot,this.color]).some(c=>{ const [x,y,z]=c.split(',').map(Number); return solidAt(x,y,z); }); const broke=!RT.creative && !bankHas(this.piece,this.color) && RT.world.player.pips<this.price(this.piece,this.color);
+    this.ghost.material.color.copy(blocked||broke ? COLORS.red : COLORS[this.color]); this.ghost.material.opacity = blocked||broke ? 0.35 : 0.55 + Math.sin(RT.time*6)*0.1; this.ghostBad = blocked?'blocked':broke?'broke':null;
     BuildTools.handle(pl, hitP, pos);
-    if(Input.mouse.pressed.has(0) && !RT.menuOpen && !(RT.mouseX<innerWidth*0.48 && RT.mouseY>innerHeight-200)) this.place(pos);
+    if(Input.mouse.pressed.has(0) && !RT.menuOpen){ if(this.ghostBad==='broke') toast(`Not enough pips for a ${this.pname(this.piece)} — smash things to collect bricks, or pick a cheaper piece.`); else this.place(pos); }
     if((Input.hit('Delete')&&!BuildTools.sel?.b)||Input.hit('KeyX')){ const ref=brickSolidAt(...hitP.solid); if(ref && (ref.player||RT.creative)) this.remove(ref); }
     if(Input.hit('KeyP')){ const ref=brickSolidAt(...hitP.solid); if(ref && ref.player){ const b=ref.b.slice(); this.remove(ref,true); b[5]=this.color; this.placeRaw(b); } }
   },
-  cost(pid,color){ if(RT.creative) return true; const P=RT.world.player; if(bankHas(pid,color)>0){ bankAdd(pid,color,-1); return true; } const price = FUNCTIONAL[pid]?.cost || PIECES[pid].w*PIECES[pid].d*Math.max(1,PIECES[pid].h/3)*(RARE_COLORS.has(color)?3:1); if(P.pips>=price){ P.pips-=price; return true; } toast(`Missing ${pid} in ${color} — needs ${price} pips.`); return false; },
+  cost(pid,color){ if(RT.creative) return true; const P=RT.world.player; if(bankHas(pid,color)>0){ bankAdd(pid,color,-1); return true; } const price = this.price(pid,color); if(P.pips>=price){ P.pips-=price; return true; } toast(`Missing ${pid} in ${color} — needs ${price} pips.`); return false; },
   place(pos){ const bs=[[this.piece,pos[0],pos[1],pos[2],this.rot,this.color]]; if(this.mirror){ const cx=Math.floor(RT.players[0].fig.pos.x); const P=PIECES[this.piece]; const [w]=pieceDims(P,this.rot); bs.push([this.piece,2*cx-pos[0]-w,pos[1],pos[2],this.rot,this.color]); }
     for(const b of bs){ const cells=cellsOf(b); if(cells.some(c=>{ const [x,y,z]=c.split(',').map(Number); return solidAt(x,y,z); })) continue; if(!this.cost(b[0],b[5])) return; const ref=this.placeRaw(b); if(ref){ this.undo.push({op:'add',ref}); this.redo=[]; if(this.undo.length>CONFIG.maxUndo) this.undo.shift(); } }
     RT.world.player.stats.built++; this.renderBar(); },
@@ -4564,7 +4602,7 @@ function loop(now){
   const real=Math.min(0.1,(now-lastT)/1000); lastT=now; fpsAcc+=real; fpsN++; if(fpsAcc>0.5){ RT.fps=fpsN/fpsAcc; fpsAcc=0; fpsN=0; } const fStart=performance.now();
   Input.poll();
   if(RT.hitStop>0){ RT.hitStop-=real; }
-  else { acc+=real; const step=1/CONFIG.simHz; let n=0; while(acc>=step && n<4){ simStep(step); acc-=step; n++; } if(n===4) acc=0; }
+  else { acc+=real; const step=1/CONFIG.simHz; let n=0; while(acc>=step && n<4){ simStep(step); acc-=step; n++; Input.consume(); } if(n===4) acc=0; } // each key press is handled by exactly one sim step
   render(real);
   AutoQ.update(real);
   Input.endFrame(); RT.frame++; RT.frameMs=performance.now()-fStart; updateDebugOverlay();
