@@ -243,7 +243,10 @@ const Store = {
   init() {
     this.readyP = (async () => {
       try {
-        if (!window.claude || !window.claude.use) { try { localStorage.getItem('somo-state'); this.mode = 'local'; const k = localStorage.getItem('somo-key'); if (k) { AI.key = k; AI.keyStatus = 'remembered on this device'; } } catch (e) { } return; }
+        if (!window.claude || !window.claude.use) { try { localStorage.getItem('somo-state'); this.mode = 'local';
+          /* one-time setup link: …/somo/#key=sk-ant-… (the part after # never reaches the server); saved on this device, then removed from the address bar */
+          const hk = (location.hash.match(/[#&]key=([^&]+)/) || [])[1]; if (hk) { localStorage.setItem('somo-key', decodeURIComponent(hk)); history.replaceState(null, '', location.pathname + location.search); }
+          const k = localStorage.getItem('somo-key'); if (k) { AI.key = k; AI.keyStatus = 'remembered on this device'; } } catch (e) { } return; }
         const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
         if (!db || !user) return; const id = await user.id(); if (!id) return;
         this.db = db; this.uid = id; this.mode = 'account';
