@@ -312,13 +312,13 @@ const Speech = {
   say(text, opt = {}) {
     if (!text) return; if (this.log) this.log.push(String(text));
     if (!opt.queue) this.stop(); const tok = this.tok; const prev = this.chain || Promise.resolve();
-    this.chain = (opt.queue ? prev : Promise.resolve()).then(async () => { if (tok !== this.tok) return; const ok = await this.clips(String(text), tok, opt); if (!ok && tok === this.tok) await this.synth(String(text), opt, tok); });
+    this.chain = (opt.queue ? prev : Promise.resolve()).then(async () => { if (tok !== this.tok) return; const ok = await this.clips(String(text), tok, opt); if (!ok && tok === this.tok && !(await this.playLive(String(text), tok))) await this.synth(String(text), opt, tok); });
   },
   async clips(text, tok, opt) {
     if (!this.pack) return false; const parts = chunk(text); if (!parts.length) return false; const data = parts.map(p => this.pack[p.k]);
     if (data.some(d => !d)) { if (this.miss) this.miss.push({ text, missing: parts.filter((p, i) => !data[i]).map(p => p.k) }); return false; }
     Sfx.unlock(); const ctx = Sfx.ctx; if (!ctx) return false; const bufs = [];
-    if (ctx.state !== 'running') { try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 300))]); } catch (e) { } if (ctx.state !== 'running') return false; }
+    if (ctx.state !== 'running') { try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 300))]); } catch (e) { } if (ctx.state !== 'running') { this.pending = text; return true; } }
     for (let i = 0; i < parts.length; i++) { let b = this.cache.get(parts[i].k); if (!b) { try { b = await ctx.decodeAudioData(b64ToBuf(data[i])); this.cache.set(parts[i].k, b); } catch (e) { if (this.fmt === 'ogg') { this.pack = null; this.load('mp3'); } return false; } } bufs.push(b); }
     if (tok !== this.tok) return true; let t = ctx.currentTime + .03; this.srcs = []; const slow = opt.rate && opt.rate < .8;
     for (let i = 0; i < bufs.length; i++) { const s = ctx.createBufferSource(); s.buffer = bufs[i]; s.connect(Sfx.voiceG || ctx.destination); s.start(t); this.srcs.push(s); t += bufs[i].duration + (slow ? .3 : parts[i].brk ? .22 : .05); }
@@ -330,6 +330,30 @@ const Speech = {
       if (!('speechSynthesis' in window)) return res(); let done = false; const fin = () => { if (done) return; done = true; clearTimeout(this.timer); this.waitR = null; res(); };
       try { const u = new SpeechSynthesisUtterance(text); const v = this.voice(); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-GB'; const nat = v && /Natural|Neural|Online|Google/i.test(v.name); u.rate = (opt.rate || .92) * (nat ? 1.04 : 1); u.pitch = 1.05; u.onend = fin; u.onerror = fin; this.waitR = fin; this.timer = setTimeout(fin, 2500 + text.length * 110); speechSynthesis.speak(u); } catch (e) { fin(); }
     });
+  },
+  /* Kidi's own replies (written live by Claude): recorded clips when every piece exists, otherwise the same Edge
+     voice made on the fly by the Somo relay, otherwise the device voice */
+  live: new Map(),
+  async sayKidi(text) {
+    if (!text) return; if (this.log) this.log.push(String(text));
+    if (this.pack && chunk(text).every(p => this.pack[p.k])) return this.say(text);
+    this.stop(); const tok = this.tok;
+    if (await this.playLive(String(text), tok)) return;
+    if (tok === this.tok) this.say(text);
+  },
+  /* a line without recorded clips: the same Edge voice, made live by the relay; false if unavailable */
+  async playLive(text, tok) {
+    let b = null; try { b = await this.liveBuf(text); } catch (e) { } if (!b || tok !== this.tok) return !!b;
+    const ctx = Sfx.ctx, s = ctx.createBufferSource(); s.buffer = b; s.connect(Sfx.voiceG || ctx.destination); s.start(ctx.currentTime + .03); this.srcs = [s];
+    await new Promise(r => { this.waitR = r; this.timer = setTimeout(r, (b.duration + .1) * 1000); }); this.waitR = null; return true;
+  },
+  async liveBuf(text) {
+    if (this.live.has(text)) return this.live.get(text);
+    if (!(Store.mode === 'local' || /github\.io$/.test(location.hostname))) return null;
+    Sfx.unlock(); const ctx = Sfx.ctx; if (!ctx || ctx.state !== 'running') return null;
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(AI.RELAY, { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tts: text }) }); if (!r.ok) return null; const b = await ctx.decodeAudioData(await r.arrayBuffer()); this.live.set(text, b); if (this.live.size > 60) this.live.delete(this.live.keys().next().value); return b; }
+    catch (e) { return null; } finally { clearTimeout(tm); }
   },
   stop() { this.tok++; this.chain = null; try { speechSynthesis.cancel(); } catch (e) { } for (const s of this.srcs) { try { s.stop(); } catch (e) { } } this.srcs = []; clearTimeout(this.timer); if (this.waitR) { const r = this.waitR; this.waitR = null; r(); } },
 };
@@ -349,7 +373,8 @@ const Sfx = {
         this.musicG = this.ctx.createGain(); this.musicG.gain.value = S.music ? .22 : 0; this.musicG.connect(this.musicLP);
         const len = this.ctx.sampleRate; this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate); const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       }
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      const flush = () => { if (Speech.pending && this.ctx.state === 'running') { const t = Speech.pending; Speech.pending = null; Speech.say(t); } };
+      if (this.ctx.state === 'suspended') this.ctx.resume().then(flush).catch(() => { }); else flush();
     } catch (e) { }
   },
   t() { return this.ctx.currentTime; },
@@ -1028,7 +1053,7 @@ const Tutor = {
   pq: null, onPracticeDone: null,
   show(it, onClose) {
     if (!it) return; this.mode = 'help'; this.it = it; this.onClose = onClose; this.open = true; this.busy = false; this.level = 0; this.turns = []; this.chips = START_CHIPS.slice();
-    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! I’m here to help. What do you need?` }]; this.render(); Speech.say(this.msgs[0].text);
+    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! I’m here to help. What do you need?` }]; this.render(); Speech.sayKidi(this.msgs[0].text);
   },
   close() { this.open = false; const el = $('#tutor'); el.hidden = true; el.classList.remove('full'); Speech.stop(); if (this.rec) { try { this.rec.abort(); } catch (e) { } } const f = this.onClose; this.onClose = null; if (f) f(); },
   ctx() {
@@ -1091,7 +1116,7 @@ The question she is working on: ${JSON.stringify(this.ctx())}`;
   /* free chat: the bottom Help button, no question on screen */
   free(onClose, topic) {
     this.mode = 'free'; this.it = null; this.topic = topic || ''; this.onClose = onClose; this.open = true; this.busy = false; this.turns = []; this.chips = [];
-    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! I’m Kidi. Ask me anything about reading or numbers.` }]; this.render(); Speech.say(this.msgs[0].text);
+    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! I’m Kidi. Ask me anything about reading or numbers.` }]; this.render(); Speech.sayKidi(this.msgs[0].text);
   },
   freeRules() {
     return `You are Kidi, a warm, playful tutor (a friendly baby goat) for ${LEARNER}, an 8-year-old in Grade 3 in western Kenya who is learning English and reads below grade level. She opened a chat to ask you something about reading, letters, sounds, words or numbers.${this.topic ? ' She is working on: ' + this.topic + '.' : ''}
@@ -1109,7 +1134,7 @@ Reply with ONLY JSON: {"say": "...", "question": "one short question ending with
     this.busy = false; if (!this.open) return;
     if (!rep) rep = { say: 'I can’t think right now. Let’s try again in a little while!', q: '', choices: [] };
     this.msgs.push({ who: 'kidi', text: rep.say, q: rep.q }); this.chips = (rep.choices || []).map(x => ({ t: x, k: 'free' }));
-    this.render(); Speech.say(rep.say + (rep.q ? ' ' + rep.q : ''));
+    this.render(); Speech.sayKidi(rep.say + (rep.q ? ' ' + rep.q : ''));
   },
   async chip(c) {
     if (this.busy) return; if (this.mode === 'free') return this.freeSend(c.t); if (!this.it) return; const it = this.it;
@@ -1127,7 +1152,7 @@ Reply with ONLY JSON: {"say": "...", "question": "one short question ending with
     this.chips = this.mode === 'practice' && this.pq && !this.pq.done ? this.optionChips(r && r.choices) : [...((r && r.choices) || []).map(t => ({ t, k: 'free' })), { t: 'Another hint', k: 'hint' }, { t: 'Show me', k: 'show' }, { t: 'Read it to me', k: 'read' }].slice(0, 4);
     if (this.mode === 'practice' && this.pq && this.pq.done) this.chips = [...((r && r.choices) || []).map(t => ({ t, k: 'free' })).slice(0, 2), { t: 'Next question', k: 'next' }];
     S.log.push({ g: 'tutor', s: it.skill, q: it.display || it.spoken, a: c.t, ok: true, tag: r ? 'Claude' : 'rules' }); if (S.log.length > 60) S.log.shift();
-    this.render(); Speech.say(rep.say + (rep.q ? ' ' + rep.q : ''));
+    this.render(); Speech.sayKidi(rep.say + (rep.q ? ' ' + rep.q : ''));
   },
   visual(it) {
     const x = it.ex || {}; const tag = (S.skills[it.skill] || {}).lastTag;
@@ -1149,7 +1174,7 @@ Reply with ONLY JSON: {"say": "...", "question": "one short question ending with
   /* ---- practice mode ---- */
   practice(skill, onClose) {
     this.mode = 'practice'; this.onClose = onClose; this.open = true; this.busy = false; this.pq = { skill, total: 5, results: [], n: 0 };
-    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! Let's practise together. Tap your answer, or tell me what you think.` }]; Speech.say(this.msgs[0].text); this.nextPractice(true);
+    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! Let's practise together. Tap your answer, or tell me what you think.` }]; Speech.sayKidi(this.msgs[0].text); this.nextPractice(true);
   },
   optionChips(extra) { const p = this.pq; return [...this.it.options.filter(o => !p.tried.includes(String(o.v))).map(o => ({ o })), { t: 'Give me a hint', k: 'hint' }]; },
   nextPractice(first) {
@@ -1168,26 +1193,26 @@ Reply with ONLY JSON: {"say": "...", "question": "one short question ending with
       this.busy = false; if (!this.open) return;
       const rep = r || { say: pick(R, ['Yes! Well done.', 'You got it!', 'Super thinking!']), q: it.mode === 'num' ? 'How did you work it out?' : 'How did you know?', choices: it.mode === 'num' ? ['I counted', 'I used tens', 'I just knew'] : ['I sounded it out', 'I looked at the letters', 'I just knew'] };
       this.msgs.push({ who: 'kidi', text: rep.say, q: rep.q }); this.chips = [...(rep.choices || []).slice(0, 2).map(t => ({ t, k: 'free' })), { t: 'Next question', k: 'next' }];
-      this.render(); Speech.say(rep.say + (rep.q ? ' ' + rep.q : '')); return;
+      this.render(); Speech.sayKidi(rep.say + (rep.q ? ' ' + rep.q : '')); return;
     }
     p.tried.push(String(o.v)); Sfx.play('bump'); const tag = o.tag || 'other';
     if (p.tried.length >= 2) {
       p.done = true; const vis = this.visual(it);
       this.msgs.push({ who: 'kidi', text: it.explain, svg: vis.svg || '' }); this.chips = [{ t: 'I see!', k: 'free' }, { t: 'Next question', k: 'next' }];
-      this.render(); Speech.say(it.explain); return;
+      this.render(); Speech.sayKidi(it.explain); return;
     }
     this.busy = true; this.render();
     const r = await this.claude(`I chose ${o.label}. The game says that is not it (the mistake looks like: ${TAGS[tag] || 'a slip'}). Do not tell me the answer. Help me see my mistake with one small step and a question, so I can try again.`);
     this.busy = false; if (!this.open) return;
     const rep = r || { say: Coach.FALLBACK[tag] || 'Let’s look again together.', q: 'Try again?' }; const vis = r && r.picture ? this.visual(it) : null;
     this.msgs.push({ who: 'kidi', text: rep.say, q: rep.q, svg: vis && vis.svg ? vis.svg : '' }); this.chips = this.optionChips();
-    this.render(); Speech.say(rep.say + (rep.q ? ' ' + rep.q : ''));
+    this.render(); Speech.sayKidi(rep.say + (rep.q ? ' ' + rep.q : ''));
   },
   finishPractice() {
     const p = this.pq, n = p.results.filter(r => r === 'ok').length; S.coins += 5 + n * 2; Store.save(); if (this.onPracticeDone) this.onPracticeDone(n);
     const say = n >= 4 ? `Amazing, ${LEARNER}! ${n} out of ${p.total} first time.` : n >= 2 ? `Good work! ${n} out of ${p.total} first time. Practice makes you strong.` : `You kept trying. That is how we learn! Let's practise again soon.`;
     this.msgs.push({ who: 'kidi', text: say }); this.chips = [{ t: 'Practise again', k: 'again' }]; p.n = p.total; this.it = null;
-    this.chips = []; this.render(); Speech.say(say); Sfx.play('fanfare');
+    this.chips = []; this.render(); Speech.sayKidi(say); Sfx.play('fanfare');
     const el = $('#tutor .asks'); if (el) el.innerHTML = `<button data-act="tutorAgain">Practise again</button><button data-act="tutorClose">Done</button>`;
   },
 };
