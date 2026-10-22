@@ -67,7 +67,7 @@ button:focus-visible{outline:calc(var(--u)*3) solid var(--sun);outline-offset:ca
 /* screens */
 #screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y}
 #screen:empty{display:none}
-.scr{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--u)*12);padding:calc(var(--u)*16) calc(var(--u)*14) calc(var(--u)*20);background:linear-gradient(180deg,rgba(26,17,12,.25),rgba(26,17,12,.82) 38%,rgba(26,17,12,.95))}
+.scr{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--u)*12);padding:calc(var(--u)*16) calc(var(--u)*14) calc(var(--u)*84);background:linear-gradient(180deg,rgba(26,17,12,.25),rgba(26,17,12,.82) 38%,rgba(26,17,12,.95))}
 .scr.dim{background:rgba(26,17,12,.86);justify-content:center}
 .logo{font-weight:800;font-size:calc(var(--u)*44);line-height:.95;color:var(--sun);text-shadow:0 calc(var(--u)*4) 0 #9A3B17;letter-spacing:.01em}
 .logo small{display:block;font-size:calc(var(--u)*17);color:var(--paper);text-shadow:none;font-weight:700;letter-spacing:.02em;margin-top:calc(var(--u)*4)}
@@ -160,6 +160,10 @@ button:focus-visible{outline:calc(var(--u)*3) solid var(--sun);outline-offset:ca
 #tutor .tmic>svg,#tutor .tsend>svg{width:60%;height:60%}
 #tutor .pdots{display:flex;gap:calc(var(--u)*3)}#tutor .pdots i{width:calc(var(--u)*10);height:calc(var(--u)*10);border-radius:50%;background:#E6D7C3}#tutor .pdots i.ok{background:var(--leaf)}#tutor .pdots i.miss{background:var(--mango)}
 @keyframes tdot{0%,80%,100%{opacity:.25}40%{opacity:1}}
+/* the Kidi Help button, always at the bottom (hidden during play: games have their own Help) */
+.kidifab{position:absolute;right:calc(var(--u)*12);bottom:calc(var(--u)*12);z-index:12;display:flex;align-items:center;gap:calc(var(--u)*6);height:calc(var(--u)*58);padding:0 calc(var(--u)*18) 0 calc(var(--u)*8);border-radius:calc(var(--u)*29);background:var(--sky);color:#fff;font-weight:800;font-size:calc(var(--u)*22);box-shadow:0 calc(var(--u)*5) 0 #2D7FB3,0 calc(var(--u)*8) calc(var(--u)*20) rgba(0,0,0,.35)}
+.kidifab>svg{width:calc(var(--u)*44);height:calc(var(--u)*44);background:#fff;border-radius:50%}
+.kidifab:active{transform:translateY(calc(var(--u)*3))}
 /* grown-ups panel */
 #parent{position:absolute;inset:0;background:#FFFDF8;color:var(--ink);overflow-y:auto;padding:calc(var(--u)*14);font-size:calc(var(--u)*14);line-height:1.35;z-index:20;touch-action:pan-y;-webkit-user-select:text;user-select:text}
 #parent h3{margin:calc(var(--u)*10) 0 calc(var(--u)*4);font-size:calc(var(--u)*17)}
@@ -189,6 +193,7 @@ button:focus-visible{outline:calc(var(--u)*3) solid var(--sun);outline-offset:ca
   <div id="banner" aria-live="polite"></div>
   <div id="screen"></div>
   <div id="tip"></div>
+  <button id="kidiFab" class="kidifab" aria-label="Help from Kidi" hidden><svg viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><path d="M10 5q-2-4 0-5q1 3 2 4zM20 5q2-4 0-5q-1 3-2 4z" fill="#C9A77E"/><ellipse cx="5" cy="11" rx="5" ry="2.6" transform="rotate(-20 5 11)" fill="#E9D9C2"/><ellipse cx="25" cy="11" rx="5" ry="2.6" transform="rotate(20 25 11)" fill="#E9D9C2"/><circle cx="15" cy="14" r="10" fill="#FBF5EC" stroke="#D8C7AE"/><ellipse cx="15" cy="19" rx="5" ry="3.4" fill="#F3E3CF"/><path d="M9 12q2-2.4 4 0M17 12q2-2.4 4 0" stroke="#2B1B12" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M12.5 19q2.5 3 5 0" stroke="#2B1B12" stroke-width="1.4" fill="#A82A20"/></svg><span>Help</span></button>
   <div id="tutor" hidden></div>
   <div id="parent" hidden></div>
 </div></div>
@@ -1039,9 +1044,9 @@ The question she is working on: ${JSON.stringify(this.ctx())}`;
   },
   render() {
     const el = $('#tutor'); el.hidden = !this.open; if (!this.open) return; const it = this.it;
-    el.classList.toggle('full', this.mode === 'practice');
+    el.classList.toggle('full', this.mode === 'practice' || this.mode === 'free');
     const qhtml = it ? (it.dkind === 'visual' && it.visual ? visualSVG(it.visual) : it.dkind === 'pic' && it.pic ? iconSVG(it.pic).replace('<svg ', '<svg width="48" height="48" ') : '') + esc(it.display || (it.dkind === 'listen' ? '🔊' : it.spoken) || '') : '';
-    el.innerHTML = `<div class="th">${kidiMini(this.busy ? 'think' : 'happy', 40)}<span>${this.mode === 'practice' ? 'Practise with Kidi' : 'Kidi helps'}</span>${this.mode === 'practice' && this.pq ? `<span class="pdots">${this.pq.results.map(r => `<i class="${r}"></i>`).join('')}${'<i></i>'.repeat(Math.max(0, this.pq.total - this.pq.results.length))}</span>` : ''}<button class="btn ghost" style="min-height:calc(var(--u)*44);font-size:calc(var(--u)*16);background:#2B1B12;color:#fff" data-act="tutorClose">${this.mode === 'practice' ? 'Done' : 'Back'}</button></div>
+    el.innerHTML = `<div class="th">${kidiMini(this.busy ? 'think' : 'happy', 40)}<span>${this.mode === 'practice' ? 'Practise with Kidi' : this.mode === 'free' ? 'Ask Kidi' : 'Kidi helps'}</span>${this.mode === 'practice' && this.pq ? `<span class="pdots">${this.pq.results.map(r => `<i class="${r}"></i>`).join('')}${'<i></i>'.repeat(Math.max(0, this.pq.total - this.pq.results.length))}</span>` : ''}<button class="btn ghost" style="min-height:calc(var(--u)*44);font-size:calc(var(--u)*16);background:#2B1B12;color:#fff" data-act="tutorClose">${this.mode === 'help' ? 'Back' : 'Done'}</button></div>
       ${qhtml ? `<div class="q"><button class="tspk" data-act="tutorRead" aria-label="Hear the question">${SPEAKER_SVG}</button><span>${qhtml}</span></div>` : ''}
       <div class="msgs" id="tmsgs" aria-live="polite">${this.msgs.map(m => `<div class="m ${m.who}">${m.who === 'kidi' ? kidiMini('idle', 28) : ''}<div class="b">${m.html || esc(m.text)}${m.q ? `<b>${esc(m.q)}</b>` : ''}${m.svg || ''}</div></div>`).join('')}${this.busy ? `<div class="m">${kidiMini('think', 28)}<div class="b"><span class="dots"><i></i><i></i><i></i></span></div></div>` : ''}</div>
       <div class="asks${this.chips.some(c => c.o) ? ' opts' : ''}">${this.chips.map((c, i) => `<button data-act="tutorChip" data-i="${i}" ${this.busy ? 'disabled' : ''} class="${c.o ? 'opt ' + c.o.lk : ''}" aria-label="${esc(c.o ? c.o.label : c.t)}">${c.o ? labelHTML(c.o) : esc(c.t)}</button>`).join('')}</div>
@@ -1058,8 +1063,31 @@ The question she is working on: ${JSON.stringify(this.ctx())}`;
     this.listening = true; this.render(); try { r.start(); } catch (e) { this.listening = false; this.micOff = true; this.render(); }
   },
   /* one tap or one typed/spoken message */
+  /* free chat: the bottom Help button, no question on screen */
+  free(onClose, topic) {
+    this.mode = 'free'; this.it = null; this.topic = topic || ''; this.onClose = onClose; this.open = true; this.busy = false; this.turns = []; this.chips = [];
+    this.msgs = [{ who: 'kidi', text: `Hi ${LEARNER}! I’m Kidi. Ask me anything about reading or numbers.` }]; this.render(); Speech.say(this.msgs[0].text);
+  },
+  freeRules() {
+    return `You are Kidi, a warm, playful tutor (a friendly baby goat) for ${LEARNER}, an 8-year-old in Grade 3 in western Kenya who is learning English and reads below grade level. She opened a chat to ask you something about reading, letters, sounds, words or numbers.${this.topic ? ' She is working on: ' + this.topic + '.' : ''}
+Teach Socratically: one small step at a time, a little to do or notice, then one guiding question. For a sum or a word to read, help her work it out with things from her life (mangoes, bottle caps, sticks in bundles of ten, beans) instead of just telling her; once she has tried, you may tell her whether she is right and explain. If she asks about something else, kindly bring her back to reading or numbers. Never ask about her family, home, body or feelings. Very short everyday words; "say" is 1-2 short sentences, at most 30 words, numbers as digits.
+Reply with ONLY JSON: {"say": "...", "question": "one short question ending with ?, or empty", "choices": ["2 or 3 very short replies she could tap"], "picture": "none"}`;
+  },
+  async freeSend(t) {
+    this.msgs.push({ who: 'me', text: t }); this.busy = true; this.chips = []; this.render();
+    let rep = null;
+    if (this.calls < TUTOR_CAP) {
+      this.turns.push({ role: 'user', content: (this.turns.length ? '' : this.freeRules() + '\n\n') + `${LEARNER} says: "${t}"` }); this.calls++; this.status = 'thinking…';
+      try { const v = await AI.json(this.turns.length > 13 ? [this.turns[0], ...this.turns.slice(-12)] : this.turns, { timeout: 15000 }); const ok = this.check(v, true); if (typeof ok === 'string') { this.turns.pop(); this.status = 'reply rejected (' + ok + ')'; } else { rep = ok; this.turns.push({ role: 'assistant', content: JSON.stringify({ say: ok.say, question: ok.q, choices: ok.choices }) }); this.ok++; this.status = 'answered by ' + AI.route; } }
+      catch (e) { this.turns.pop(); this.status = (e && e.message) || 'failed'; }
+    }
+    this.busy = false; if (!this.open) return;
+    if (!rep) rep = { say: Store.mode === 'local' && !AI.key ? 'I need a grown-up to switch me on first. Ask a grown-up to help!' : 'I can’t think right now. Let’s try again in a little while!', q: '', choices: [] };
+    this.msgs.push({ who: 'kidi', text: rep.say, q: rep.q }); this.chips = (rep.choices || []).map(x => ({ t: x, k: 'free' }));
+    this.render(); Speech.say(rep.say + (rep.q ? ' ' + rep.q : ''));
+  },
   async chip(c) {
-    if (this.busy || !this.it) return; const it = this.it;
+    if (this.busy) return; if (this.mode === 'free') return this.freeSend(c.t); if (!this.it) return; const it = this.it;
     if (c.o) return this.pick(c.o);
     if (c.k === 'next') return this.nextPractice();
     this.msgs.push({ who: 'me', text: c.t });
@@ -1140,6 +1168,13 @@ The question she is working on: ${JSON.stringify(this.ctx())}`;
 };
 
 function kidiMini(mood = 'idle', size = 34) { const eye = mood === 'happy' ? `<path d="M9 12q2-2.4 4 0M17 12q2-2.4 4 0" stroke="#2B1B12" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : `<circle cx="11" cy="12" r="1.8" fill="#2B1B12"/><circle cx="19" cy="12" r="1.8" fill="#2B1B12"/>`; return `<svg viewBox="0 0 30 30" width="${size}" height="${size}" aria-hidden="true"><path d="M10 5q-2-4 0-5q1 3 2 4zM20 5q2-4 0-5q-1 3-2 4z" fill="#C9A77E"/><ellipse cx="5" cy="11" rx="5" ry="2.6" transform="rotate(-20 5 11)" fill="#E9D9C2"/><ellipse cx="25" cy="11" rx="5" ry="2.6" transform="rotate(20 25 11)" fill="#E9D9C2"/><circle cx="15" cy="14" r="10" fill="#FBF5EC" stroke="#D8C7AE"/><ellipse cx="15" cy="19" rx="5" ry="3.4" fill="#F3E3CF"/>${eye}${mood === 'think' ? '<path d="M13 20.5q2-1 4 0" stroke="#2B1B12" stroke-width="1.4" fill="none"/>' : '<path d="M12.5 19q2.5 3 5 0" stroke="#2B1B12" stroke-width="1.4" fill="#A82A20"/>'}</svg>`; }
+function kidiFab() {
+  if (Tutor.open) return; Sfx.unlock(); Speech.stop();
+  if (App.state === 'play') return helpInGame();
+  if (App.state === 'lesson' && typeof L !== 'undefined') return L.help();
+  const prev = App.state; App.state = 'tutor'; Tutor.free(() => { App.state = prev; }, App.sheet && prev === 'sheet' && typeof SHORT !== 'undefined' ? SHORT[App.sheet] : '');
+}
+function fabSync() { const b = $('#kidiFab'); if (!b) return; const hide = Tutor.open || !$('#parent').hidden || ['play', 'countdown', 'paused', 'tip', 'lesson', 'place', 'placeintro', 'boot'].includes(App.state); if (b.hidden !== hide) b.hidden = hide; }
 function helpInGame() {
   if (App.state !== 'play' || !Round.game || !Round.game.cur) return; const it = Round.game.cur(); if (!it) { Speech.say('Help comes when there is a question on the screen.'); return; }
   App.state = 'tutor'; Speech.stop(); Sfx.engineOn(false); Sfx.muffle(true); Tutor.show(it, () => { Sfx.muffle(false); App.state = 'play'; if (Round.game.resume) Round.game.resume(); });
@@ -1249,6 +1284,7 @@ function boot() {
   window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKeyUp);
   $('#stage').addEventListener('click', onClick); $('#stage').addEventListener('pointerdown', holdStart); window.addEventListener('pointerup', holdEnd); window.addEventListener('pointercancel', holdEnd);
   $('#stage').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.id === 'grown') { e.preventDefault(); showParent(); } });
+  $('#kidiFab').addEventListener('click', kidiFab); setInterval(fabSync, 250);
   $('#hPause').addEventListener('click', () => pause(true)); $('#hHelp').addEventListener('click', helpInGame); $('#replay').innerHTML = SPEAKER_SVG; $('#replay').addEventListener('click', () => { if (Card.cur) Speech.say(Card.cur); });
   $('#hMusic').addEventListener('click', () => { Sfx.unlock(); Sfx.setMusic(!S.music); HUD.music(); if (S.music) Music.start(Round.game ? Round.game.music : 'menu'); Store.save(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(true); Music.stop(); Speech.stop(); } });
@@ -4193,7 +4229,7 @@ function skillIcon(id, size = 40) {
 .kb .bub{flex:1;background:var(--paper);color:var(--ink);border-radius:${u(16)} ${u(16)} ${u(16)} ${u(4)};padding:${u(8)} ${u(12)};font-weight:700;font-size:${u(17)};line-height:1.25}
 .spk2{width:${u(40)};height:${u(40)};border-radius:${u(12)};background:var(--sky);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 ${u(3)} 0 #2D7FB3}
 .spk2>svg{width:62%;height:62%}
-.quick{display:grid;grid-template-columns:1fr 1fr;gap:${u(10)}}
+.quick{display:grid;grid-template-columns:1fr;gap:${u(10)}}
 .qbtn{min-height:${u(68)};border-radius:${u(18)};display:flex;align-items:center;gap:${u(8)};padding:0 ${u(10)};font-weight:800;font-size:${u(19)};text-align:left;line-height:1.05;box-shadow:0 ${u(5)} 0 rgba(0,0,0,.45)}
 .qbtn small{display:block;font-size:${u(13)};font-weight:700;opacity:.85}
 .qbtn>svg{width:${u(40)};height:${u(40)};flex:none}
@@ -4405,7 +4441,7 @@ function showHome() {
   const j = J(), m = j.strand, nx = nextStep(m); const g = greeting(); const s = unitSteps(nx.id)[nx.i];
   setScreen(`<div class="scr jr"><div class="toprow"><div class="logo" style="flex:1">Somo<small>Learn it. Play it.</small></div>${coinsHTML()}</div>
     <div class="kb">${kidiMini('happy', 48)}<div class="bub">${esc(g)}</div><button class="spk2" data-j="say" data-t="${esc(g)}" aria-label="Hear it">${SPEAKER_SVG}</button></div>
-    <div class="quick"><button class="qbtn cont" data-j="continue"><span class="disc">${stepDisc(nx.id, s)}</span><span>${nx.review ? 'Review' : 'Continue'}<small>${esc(SHORT[nx.id])}: ${esc(stepLabel(nx.id, nx.i))}</small></span></button><button class="qbtn kidi" data-j="kidi" data-id="${nx.id}">${kidiMini('happy', 40)}<span>Talk with Kidi<small>practise together</small></span></button></div>
+    <div class="quick"><button class="qbtn cont" data-j="continue"><span class="disc">${stepDisc(nx.id, s)}</span><span>${nx.review ? 'Review' : 'Continue'}<small>${esc(SHORT[nx.id])}: ${esc(stepLabel(nx.id, nx.i))}</small></span></button></div>
     <div class="seg" role="group" aria-label="Path"><button data-j="strand" data-m="num" aria-pressed="${m === 'num'}"><span class="mini">${skillIcon('rec', 30)}</span>Numbers</button><button data-j="strand" data-m="lit" aria-pressed="${m === 'lit'}"><span class="mini">${skillIcon('cvc', 30)}</span>Reading</button></div>
     ${mapHTML(m)}
     <div class="row"><button class="btn ghost" data-j="arcade">${PAD_SVG}Free play</button><button class="btn ghost" data-j="finish">${MOON_SVG}Finish</button></div>${grownBtn()}</div>`);
@@ -4420,7 +4456,6 @@ function showSheet(id) {
     <div class="logo" style="text-align:center;font-size:calc(var(--u)*38)">${esc(SHORT[id])}<small>${esc(DESC[id])}</small></div>
     <div style="align-self:center">${starsHTML(stars(id))}</div>
     <button class="btn go" data-j="learn" data-id="${id}">${kidiMini('happy', 40)} Learn${learned ? ' <span class="done-tick">✓</span>' : ''}</button>
-    <button class="btn" data-j="kidi" data-id="${id}">${kidiMini('happy', 36)} Practise with Kidi</button>
     <div class="sect">Play</div>
     <div class="grid">${gs.map(g => { if (!THUMBS[g.id]) THUMBS[g.id] = thumb(g); return `<button class="gcard" data-j="playfor" data-g="${g.id}" data-id="${id}" aria-label="${esc(g.name)}"><img src="${THUMBS[g.id]}" alt="" style="width:100%;aspect-ratio:16/10;display:block"><b>${esc(g.name)}</b><span>${esc(g.tag)}</span></button>`; }).join('')}</div>${grownBtn()}</div>`);
   Speech.say(`${SHORT[id]}. ${DESC[id]} ${learned ? 'Pick a game!' : 'Learn it first, then play!'}`);
@@ -4481,8 +4516,9 @@ const L = {
   },
   help() {
     const s = this.step; if (!s) return;
-    if (s.q && s.q.item) { App.state = 'tutor'; Speech.stop(); Tutor.show(s.q.item, () => { App.state = 'lesson'; }); return; }
-    if (s.helpSay) return this.say(s.helpSay); this.say(s.frames ? s.frames[s.fi].say : s.say);
+    App.state = 'tutor'; Speech.stop();
+    if (s.q && s.q.item) return Tutor.show(s.q.item, () => { App.state = 'lesson'; });
+    Tutor.free(() => { App.state = 'lesson'; }, `${SHORT[this.id]}. Kidi just said: "${(this.bub || '').replace(/"/g, '')}"`);
   },
   finish() {
     const id = this.id, first = !J().learned[id]; J().learned[id] = true; markStep(id, { k: 'learn' }); today().lessons.push(id); const coins = first ? 15 : 5; S.coins += coins; Store.save();
