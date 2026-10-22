@@ -75,6 +75,7 @@
   #buildbar .bbt{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}#buildbar .bbt button{font-size:11px;padding:2px 7px;box-shadow:0 2px 0 var(--ink)}
   #buildbar .bbp{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:5px;max-height:168px;overflow:auto;padding:2px}
   #buildbar .pcard{position:relative;display:flex;flex-direction:column;align-items:center;background:#fff;padding:3px 2px;font-size:10px;line-height:1.1;box-shadow:0 2px 0 var(--ink);border-width:2px}
+  #buildbar .pcard i.lk{color:#c9252c;font-size:9px}
   #buildbar .pcard.on{background:#ffd9a6;outline:3px solid #fe8a18}#buildbar .pcard i{position:absolute;top:1px;right:3px;font-style:normal;font-weight:900;font-size:10px;color:#4b9f4a}
   .pthumb{width:52px;height:52px;object-fit:contain}img.pthumb:not([src]){animation:pulse 1s infinite alternate;background:#eef3f7;border-radius:6px}
   #buildbar .bbcol{display:flex;flex-wrap:wrap;gap:3px;margin:6px 0 4px}#buildbar .bbcol .sw{width:18px;height:18px}
@@ -742,6 +743,15 @@ function realmBlend(x,z){ // 0 at a border, 1 deep in a realm
   const a=Math.atan2(z,x), wedge=2*Math.PI/7; let rel=a-REALMS.brightharbour.angle; rel=((rel%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
   const f=((rel+wedge/2)/wedge)%1; const dEdge=Math.min(f,1-f)*wedge*Math.hypot(x,z); return clamp(dEdge/60,0,1);
 }
+const VILLAGES_PER_REALM = 5;
+const VILLAGE_PARTS = {
+  brightharbour:[['Sand','Shell','Kelp','Salt','Tide','Gull','Rope','Pebble','Crab','Lobster'],['wick','combe',' End','haven','stead','mouth','ford',' Cove',' Point']],
+  apex:[['Iron','Neon','Glass','Volt','Chrome','Signal','Copper','Rivet'],['ville',' Heights',' Park',' Junction',' Yards',' Square',' Terrace']],
+  kingsreach:[['Ash','Bram','Cole','Elm','Hay','Mill','Wheat','Barley','Oat','Stone'],['ley','ton','bury','wick','field','ham','stead','by']],
+  isles:[['Coral','Palm','Rum','Lagoon','Parrot','Conch','Drift','Mango'],[' Cay',' Key',' Atoll','port',' Reef',' Landing',' Shoals']],
+  wildwood:[['Fern','Moss','Root','Bark','Thorn','Willow','Acorn','Hazel','Bramble'],['dell','den','glen','hollow','brook','wood','burrow','grove']],
+  mistpeak:[['Cloud','Pine','Crane','Snow','Mist','Lotus','Tea','Jade'],[' Terrace',' Steps','reach',' Ridge',' Spring','fall',' Shrine',' Vale']],
+  ember:[['Dust','Sun','Cinder','Ochre','Mirage','Salt','Copper','Scorch'],['well',' Oasis',' Rest','stone',' Bluff','dune',' Gulch',' Crossing']] };
 function buildWorldMap(seed){
   const map = { seed, towns:[], sites:[], roads:[], rivers:[], waystones:[], plots:[], temples:[], landmarks:[], spaceZones:[] };
   const R = rngFor(seed,'map');
@@ -754,12 +764,20 @@ function buildWorldMap(seed){
       if(id==='brightharbour' && i===0) rad = 1500;
       if(id==='isles') rad = 1550 + i*520;
       const x=Math.round(Math.cos(a)*rad), z=Math.round(Math.sin(a)*rad);
-      const town = { id:`${id}_t${i}`, name, realm:id, x, z, radius: id==='apex'?150: i===0?110:80, capital:i===0, h:0 };
+      const town = { id:`${id}_t${i}`, name, realm:id, x, z, radius: id==='apex'?(i===0?210:170): i===0?175:140, capital:i===0, size:'city', h:0 };
       map.towns.push(town);
       map.sites.push({ id:town.id, name, realm:id, kind: id==='isles'?'island':'town', x, z, owner:null, defense:20+(i===0?20:0), pop:100 });
       map.waystones.push({ id:`ws_${town.id}`, town:town.id, x:x+12, z:z+12 });
       map.plots.push({ id:`plot_${town.id}`, town:town.id, realm:id, x:x-40, z:z+30, w:24, d:24, price: 400 + i*100 + (id==='apex'?600:0), kind: ['cottage lot','hillside','island','treehouse branch','mountain ledge','moon crater'][({brightharbour:0,apex:0,kingsreach:1,isles:2,wildwood:3,mistpeak:4,ember:1})[id]] });
     });
+    // villages: several per realm between the cities, each with its own plaza and markets
+    const VN=VILLAGE_PARTS[id]; const used=new Set(map.towns.map(t=>t.name)); let made=0, tries=0;
+    while(made<VILLAGES_PER_REALM && tries++<400){ const a=realm.angle+(R()-.5)*wedge*0.78; const rad=(id==='apex'?1650:1450)+R()*(id==='apex'?1500:2300); const x=Math.round(Math.cos(a)*rad), z=Math.round(Math.sin(a)*rad); const vr=85+Math.round(R()*30);
+      if(map.towns.some(t=>Math.hypot(t.x-x,t.z-z)<t.radius+vr+140)) continue; if(map.sites.some(st=>Math.hypot(st.x-x,st.z-z)<vr+160)) continue;
+      let name; for(let k=0;k<12;k++){ name=VN[0][Math.floor(R()*VN[0].length)]+VN[1][Math.floor(R()*VN[1].length)]; if(!used.has(name)) break; } used.add(name);
+      const town={ id:`${id}_v${made}`, name, realm:id, x, z, radius:vr, capital:false, size:'village', h:0 }; map.towns.push(town);
+      map.sites.push({ id:town.id, name, realm:id, kind: id==='isles'?'island':'town', size:'village', x, z, owner:null, defense:12, pop:40 });
+      map.waystones.push({ id:`ws_${town.id}`, town:town.id, x:x+10, z:z+10 }); made++; }
     // extra sites: forts, passes, mines, outposts
     const extras = { brightharbour:['Harbour Fort','Smugglers Cove'], apex:['Novagen Campus','Docklands','Power Station'], kingsreach:['Black Tower','Greenhood Camp','Border Fort'],
       isles:['Skull Shoal','Navy Bastion','Reef Spire'], wildwood:['Pack Den','Thornwall','Old Ruins'], mistpeak:['High Pass','Bandit Ridge','Jade Dojo'],
@@ -778,7 +796,8 @@ function buildWorldMap(seed){
   // roads: within realm chain towns; ring road joins every capital
   const caps = REALM_IDS.map(id=>map.towns.find(t=>t.realm===id && t.capital));
   for(let i=0;i<caps.length;i++){ const a=caps[i], b=caps[(i+1)%caps.length]; if(a.realm==='isles'||b.realm==='isles') continue; map.roads.push([a.x,a.z,b.x,b.z]); }
-  for(const id of REALM_IDS){ if(id==='isles') continue; const ts=map.towns.filter(t=>t.realm===id); for(let i=1;i<ts.length;i++) map.roads.push([ts[i-1].x,ts[i-1].z,ts[i].x,ts[i].z]); }
+  for(const id of REALM_IDS){ if(id==='isles') continue; const ts=map.towns.filter(t=>t.realm===id && t.size==='city'); for(let i=1;i<ts.length;i++) map.roads.push([ts[i-1].x,ts[i-1].z,ts[i].x,ts[i].z]);
+    for(const v of map.towns.filter(t=>t.realm===id && t.size==='village')){ let best=null,bd=1e9; for(const t of ts){ const d=Math.hypot(t.x-v.x,t.z-v.z); if(d<bd){ bd=d; best=t; } } if(best) map.roads.push([v.x,v.z,best.x,best.z]); } }
   // frontier zones
   SPACE_ZONES.forEach((z,i)=>{ const zone={ id:z, name:REALMS.frontier.towns[i], x:SPACE_ORIGIN.x + i*1200, z:0, radius: z==='station'?160:z==='belt'?260:300, gravity: z==='moon'?1/3: z==='station'?0.5: z==='belt'?0.4: 0.8, alien: i>=3 };
     map.spaceZones.push(zone); map.sites.push({ id:`frontier_${z}`, name:zone.name, realm:'frontier', kind: i<3?'colony':'world', x:zone.x, z:zone.z, owner:null, defense:25, pop:40 }); });
@@ -1675,7 +1694,7 @@ function hallOfRecords(world){ return world.eras.map(e=>({ name:e.name, start:Ma
 
 // §WORLDSIM -------------------------------------------------------------------
 function newPlayer(name='Hero'){
-  return { name, species:'human', recipe:null, characters:[], pips:50, bank:{}, materials:{wood:4,stone:4}, seeds:{carrot:4,wheat:2}, inventory:[], functional:{}, hiltParts:[],
+  return { name, species:'human', recipe:null, characters:[], pips:50, bank:{}, brickDust:300, fnBlueprints:[], materials:{wood:4,stone:4}, seeds:{carrot:4,wheat:2}, inventory:[], functional:{}, hiltParts:[],
     careers:{}, abilities:[], gearUnlocks:['sword'], lumen:{ step:'none', trials:{}, choices:{}, heartstone:null, hilt:null, color:null, mentor:null }, corruption:0,
     powers:null, identity:null, heroName:null, costumes:[], heroRep:0, civRep:0, fame:{}, wanted:{}, companions:[], titles:[], towns:[], plots:[], homes:[], blueprints:[],
     farms:{}, pens:[], shops:[], stats:{ jobs:0, smashed:0, built:0, crafted:0, crimesStopped:0, kos:0, threatHits:0 }, waystones:['ws_brightharbour_t0'], mounts:[], eraRewards:[], mastery:[], statues:[],
@@ -2303,35 +2322,58 @@ function stackedBuilding(R, size, style, floors){ // ground + middle×n + roof m
   add(g); for(let i=0;i<floors && mid;i++) add(mid); add(roof);
   const m={ id:`stack_${key}`, version:1, bricks, groups:{}, empties:{ door_front:g.empties?.door_front||[2,1,-1,2] }, meta:{ tags:['building','stack',R], destructible:true, function:null } }; StackCache.set(key,m); return m; }
 function modelBox(m){ if(m._box) return m._box; let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9,h=0; for(const b of m.bricks){ const P=PIECES[b[0]]; if(!P) continue; const c=brickCells(b); x0=Math.min(x0,c.x0); z0=Math.min(z0,c.z0); x1=Math.max(x1,c.x1); z1=Math.max(z1,c.z1); h=Math.max(h,c.y1); } m._box={x0,z0,w:x1-x0,d:z1-z0,h}; return m._box; }
+// colour variants of kit buildings so streets aren't copies: swap the main wall and roof colours
+const WALLS = { default:['white','cream','tan','light_blue','yellow','sand_green','light_grey','pink','lavender','orange'], apex:['light_grey','white','dark_grey','sky_blue','black','silver','cream'],
+  ember:['tan','cream','sand_green','orange','yellow','white'], mistpeak:['white','cream','dark_red','tan','light_grey'], wildwood:['brown','tan','sand_green','olive','cream','dark_brown'] };
+const ROOFS = { default:['red','dark_red','dark_blue','dark_green','brown','dark_grey','blue'], apex:['dark_grey','black','blue','dark_blue'], ember:['dark_red','brown','orange','tan'], mistpeak:['dark_green','dark_red','black','dark_blue'], wildwood:['dark_green','green','brown','olive'] };
+const VariantCache = new Map();
+function colourVariant(m, R, v){
+  if(!m || !v) return m; const key=m.id+'|'+v; if(VariantCache.has(key)) return VariantCache.get(key);
+  const bx=modelBox(m); const wall={}, roof={}; for(const b of m.bricks){ if(isTrans(b[5])) continue; const top = b[2] > bx.h*0.7; (top?roof:wall)[b[5]]=((top?roof:wall)[b[5]]||0)+1; }
+  const main=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0]?.[0]; const w0=main(wall), r0=main(roof); const r=mulberry32(hashStr(key));
+  const W=WALLS[R]||WALLS.default, RF=ROOFS[R]||ROOFS.default; const w1=W[Math.floor(r()*W.length)], r1=RF[Math.floor(r()*RF.length)];
+  const out={ ...m, id:m.id+'~'+v, bricks:m.bricks.map(b=>{ const c=b[5]; if(c===w0 && w0!==r0) return [...b.slice(0,5), w1, ...b.slice(6)]; if(c===r0) return [...b.slice(0,5), r1, ...b.slice(6)]; return b; }) };
+  delete out._box; VariantCache.set(key,out); return out; }
 function townLayout(t){
   if(TownLayouts.has(t.id)) return TownLayouts.get(t.id);
-  const r=rngFor(RT.world.seed,'layout',t.id); const out=[]; const R=t.realm; const W=RT.world; const occupied=[];
+  const r=rngFor(RT.world.seed,'layout',t.id); const out=[]; const R=t.realm; const W=RT.world; const occupied=[]; const village=t.size==='village';
   const hasKit = !!kit(R,'house');
   const fits=(x,z,w,d)=>{ const [sa,sb]=sectorOf(x,z), [sc,sd]=sectorOf(x+w-1,z+d-1); if(sa!==sc||sb!==sd) return false; for(const o of occupied) if(x<o[0]+o[2]+3&&x+w+3>o[0]&&z<o[1]+o[3]+3&&z+d+3>o[1]) return false;
     for(const rd of W.map.roads) if(distToSeg(x+w/2,z+d/2,rd[0],rd[1],rd[2],rd[3])<Math.max(w,d)/2+4) return false; return true; };
   const place=(model,x,z,kind,extra={})=>{ if(!model) return false; const bx=modelBox(model); const w=bx.w, d=bx.d; for(const dx of [0,4,-4,8,-8,12,-12,16,-16]) for(const dz of [0,4,-4,8,-8,12,-12]){ const X=x+dx, Z=z+dz; if(fits(X+bx.x0,Z+bx.z0,w,d)){ occupied.push([X+bx.x0,Z+bx.z0,w,d]); out.push({ model, x:X, z:Z, kind, ...extra }); return true; } } return false; };
-  const cx=Math.round(t.x), cz=Math.round(t.z);
-  // the plaza: waystone, job board (signpost), well, market stalls, lamps, benches
+  const cx=Math.round(t.x), cz=Math.round(t.z); const rad=t.radius;
+  // a market square: stalls in a ring (one of them trades), a well or statue, lamps, crates and carts
+  const market=(mx,mz,n)=>{ if(hasKit){ for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+r(); place(kit(R,i%2?'prop_market_stall_b':'prop_market_stall_a'), mx+Math.round(Math.cos(a)*11), mz+Math.round(Math.sin(a)*11), i===0?'shop':'stall'); }
+      place(kit(R,r()<0.5?'prop_well_a':'prop_statue_small_a'), mx-2, mz-2, 'prop'); for(const p of ['prop_lamp_post_a','prop_crate_a','prop_barrel_a','prop_cart_a','prop_table_a','prop_crate_b','prop_barrel_b','prop_bench_a']) if(r()<0.75) place(kit(R,p), mx+Math.round((r()-.5)*30), mz+Math.round((r()-.5)*30), 'prop'); }
+    else { for(let i=0;i<n;i++) place(genProp('stall',i,R), mx-12+i*7, mz-6, i===0?'shop':'stall'); } };
+  // the plaza: waystone, job board, the main market
   place(modelFor('prop_waystone',()=>genProp('waystone',1,R)), cx+10, cz+10, 'waystone');
   place(kit(R,'prop_signpost_a')||genProp('board',1,R), cx-8, cz+6, 'board');
-  if(hasKit){ place(kit(R,'prop_well_a'), cx-3, cz-3, 'prop');
-    for(let i=0;i<3;i++) place(kit(R,i%2?'prop_market_stall_b':'prop_market_stall_a'), cx-16+i*8, cz-10, 'stall');
-    for(let i=0;i<4;i++) place(kit(R,i%2?'prop_lamp_post_b':'prop_lamp_post_a'), cx+(i%2?15:-15), cz+(i<2?15:-15), 'lamp');
-    for(const p of ['prop_bench_a','prop_barrel_a','prop_crate_a','prop_pot_plant_a','prop_cart_a','prop_statue_small_a','prop_mailbox_a','prop_chest_a']) if(r()<0.7) place(kit(R,p), cx+Math.round((r()-.5)*36), cz+Math.round((r()-.5)*36), 'prop');
-  } else { for(let i=0;i<3;i++) place(genProp('stall',i,R), cx-14+i*7, cz-6, 'stall'); for(let i=0;i<4;i++) place(genProp('lamp',i,R), cx+(i%2?14:-14), cz+(i<2?14:-14), 'lamp'); }
-  // civic buildings: recruiter hall, inn, shops, stable
-  if(hasKit){ place(kit(R,'recruiter_hall'), cx+18, cz-36, 'recruiter'); place(kit(R,'inn'), cx-36, cz+18, 'inn'); place(kit(R,'shop'), cx+22, cz+22, 'shop'); if(t.capital) place(kit(R,'shop'), cx-30, cz-30, 'shop'); if(r()<0.6) place(kit(R,'stable'), cx-20, cz+42, 'stable'); }
+  market(cx-4, cz-6, village?3:5);
+  if(hasKit){ for(let i=0;i<4;i++) place(kit(R,i%2?'prop_lamp_post_b':'prop_lamp_post_a'), cx+(i%2?17:-17), cz+(i<2?17:-17), 'lamp'); }
+  else for(let i=0;i<4;i++) place(genProp('lamp',i,R), cx+(i%2?14:-14), cz+(i<2?14:-14), 'lamp');
+  // more market squares out in the districts, not just the middle
+  const nm = village ? 1+Math.floor(r()*2) : 3+Math.floor(r()*2); for(let i=0;i<nm;i++){ const a=i/nm*Math.PI*2+r()*0.8; const d=rad*(0.45+r()*0.2); market(cx+Math.round(Math.cos(a)*d), cz+Math.round(Math.sin(a)*d), 3+Math.floor(r()*3)); }
+  // civic buildings: inn and shop everywhere; cities add recruiters, more shops and a stable
+  if(hasKit){ place(kit(R,'inn'), cx-40, cz+20, 'inn'); place(colourVariant(kit(R,'shop'),R,1), cx+26, cz+24, 'shop');
+    if(!village){ place(kit(R,'recruiter_hall'), cx+20, cz-40, 'recruiter'); place(colourVariant(kit(R,'shop'),R,2), cx-34, cz-34, 'shop'); place(colourVariant(kit(R,'inn'),R,3), cx+Math.round(rad*0.6), cz-Math.round(rad*0.3), 'inn'); if(t.capital) place(colourVariant(kit(R,'shop'),R,4), cx-Math.round(rad*0.55), cz+Math.round(rad*0.5), 'shop'); }
+    if(r()<(village?0.8:0.6)) place(kit(R,'stable'), cx-22, cz+48, 'stable'); }
   else { place(genProp('stall',hashStr(R),R), cx+6, cz-12, 'recruiter'); place(genBuilding(R,'inn',hashStr(t.id)), cx-30, cz+16, 'inn'); place(genBuilding(R,'shop',hashStr(t.id)+1), cx+22, cz+22, 'shop'); }
-  // homes and stacked module buildings in rings
-  const sizes = R==='apex' ? ['16x16','16x24','8x16','16x16'] : ['8x8','8x16','16x16','8x8','16x24'];
-  const step = R==='apex'?30:24; let k=0; const rad=t.radius;
-  for(let gx=-rad; gx<=rad; gx+=step) for(let gz=-rad; gz<=rad; gz+=step){ const dd=Math.hypot(gx,gz); if(dd<34||dd>rad) continue; if(r()<0.2) continue; k++;
+  // homes and buildings in rings: cities are dense and tall, villages spread out with yards, farms and fences
+  const sizes = R==='apex' ? ['16x16','16x24','8x16','16x16'] : village ? ['8x8','8x8','8x16'] : ['8x8','8x16','16x16','8x8','16x24','16x16'];
+  const step = R==='apex'?28: village?26:21; let k=0;
+  for(let gx=-rad; gx<=rad; gx+=step) for(let gz=-rad; gz<=rad; gz+=step){ const dd=Math.hypot(gx,gz); if(dd<36||dd>rad) continue; if(r()<(village?0.3:0.12)) continue; k++;
     let m=null, kind='house';
-    if(hasKit){ if(R!=='apex' && r()<0.45) m=kit(R,'house'); else { const floors = R==='apex' ? 3+Math.floor(r()*9) : Math.floor(r()*2); m=stackedBuilding(R, pick(r,sizes), 1+Math.floor(r()*3), floors); kind = R==='apex'?'tower':'building'; } }
+    if(hasKit){ if(R!=='apex' && r()<(village?0.65:0.35)) m=colourVariant(kit(R,'house'),R,Math.floor(r()*6));
+      else { const floors = R==='apex' ? 3+Math.floor(r()*10) : village ? Math.floor(r()*2) : Math.floor(r()*(dd<rad*0.5?4:3)); m=colourVariant(stackedBuilding(R, pick(r,sizes), 1+Math.floor(r()*3), floors),R,Math.floor(r()*5)); kind = R==='apex'?'tower':'building'; } }
     if(!m) m=genBuilding(R, R==='apex'?'skyscraper':'house', hashStr(t.id)+k);
-    place(m, cx+gx+Math.round((r()-.5)*6), cz+gz+Math.round((r()-.5)*6), kind); }
+    const ox=cx+gx+Math.round((r()-.5)*6), oz=cz+gz+Math.round((r()-.5)*6);
+    if(place(m, ox, oz, kind) && hasKit && village && r()<0.5){ // a yard: fence, haystack or cart, a pot plant
+      for(const p of [r()<0.5?'prop_fence_a':'prop_fence_b', r()<0.5?'prop_haystack_a':'prop_cart_b', 'prop_pot_plant_a']) if(r()<0.7) place(kit(R,p), ox+Math.round((r()-.5)*20), oz+Math.round((r()-.5)*20), 'prop'); } }
+  // street life between buildings: benches, lamps, bins, mailboxes, barrels
+  if(hasKit) for(let i=0;i<(village?10:22);i++){ const a=r()*Math.PI*2, d=40+r()*(rad-40); place(kit(R,pick(r,['prop_bench_a','prop_lamp_post_a','prop_lantern_post_a','prop_bin_a','prop_mailbox_a','prop_barrel_a','prop_pot_plant_b','prop_chair_a'])), cx+Math.round(Math.cos(a)*d), cz+Math.round(Math.sin(a)*d), 'prop'); }
   // the owning faction's banner, guard post, barricade and decoration at the town edge
-  const site=siteById(W,t.id); if(site && hasKit){ const fp=kitFactionProps(R, site.owner); fp.forEach((m,i)=>{ const a=i*Math.PI/2+0.4; place(m, cx+Math.round(Math.cos(a)*(rad*0.75)), cz+Math.round(Math.sin(a)*(rad*0.75)), 'faction', { faction:site.owner }); }); }
+  const site=siteById(W,t.id); if(site && hasKit){ const fp=kitFactionProps(R, site.owner); fp.forEach((m,i)=>{ const a=i*Math.PI/2+0.4; place(m, cx+Math.round(Math.cos(a)*(rad*0.8)), cz+Math.round(Math.sin(a)*(rad*0.8)), 'faction', { faction:site.owner }); }); }
   // docks on the water's edge
   const dock=kit(R,'dock'); if(dock){ for(let a=0;a<Math.PI*2;a+=Math.PI/8){ const x=cx+Math.round(Math.cos(a)*(rad+20)), z=cz+Math.round(Math.sin(a)*(rad+20)); if(RT.terrain.height(x,z)<CONFIG.seaLevel && RT.terrain.height(cx+Math.round(Math.cos(a)*(rad)),cz+Math.round(Math.sin(a)*(rad)))>=CONFIG.seaLevel-1){ place(dock, x, z, 'dock'); break; } } }
   TownLayouts.set(t.id,out); return out;
@@ -2576,7 +2618,13 @@ const Live = {
   },
 };
 function bankAdd(pid,color,n){ const k=pid+':'+color; const B=RT.world.player.bank; B[k]=(B[k]||0)+n; if(B[k]<=0) delete B[k]; }
-function bankCount(){ let n=0; for(const v of Object.values(RT.world.player.bank)) n+=v; return n; }
+// the brick bank is measured in bricks (1×1 brick = 1; a 2×4 brick = 8; plates are a third of a brick). Loose bricks ("dust") come from breaking pieces down.
+function brickUnits(pid){ const P=PIECES[pid]; return P ? Math.max(1, Math.ceil(P.w*P.d*Math.max(1,P.h)/3)) : 1; }
+function bankCount(){ const P=RT.world.player; let n=Math.floor(P.brickDust||0); for(const [k,v] of Object.entries(P.bank)) n+=v*brickUnits(k.split(':')[0]); return n; }
+function bankSpend(n, pid, color){ const P=RT.world.player; if(pid && bankHas(pid,color)>0){ bankAdd(pid,color,-1); return true; } if(bankCount()<n) return false;
+  const ks=Object.keys(P.bank).sort((a,b)=>brickUnits(a.split(':')[0])-brickUnits(b.split(':')[0])); // break the smallest pieces down first
+  for(const k of ks){ if((P.brickDust||0)>=n) break; const [id,c]=k.split(':'); while(P.bank[k]>0 && (P.brickDust||0)<n){ bankAdd(id,c,-1); P.brickDust=(P.brickDust||0)+brickUnits(id); } }
+  P.brickDust-=n; return true; }
 function bankHas(pid,color){ return RT.world.player.bank[pid+':'+color]||0; }
 const Pips = {
   items:[], mesh:null, cap:400,
@@ -4452,15 +4500,18 @@ const BuildMode = {
   pname(id){ const P=PIECES[id]; if(FUNCTIONAL[id]) return (FUNCTIONAL[id].name||id.slice(3).replace(/_/g,' ')).replace(/^./,c=>c.toUpperCase());
     const m=id.match(/(\d+)x(\d+)/); const dims=m?`${m[1]}×${m[2]}`:''; const base=id.replace(/_?\d+x\d+.*$/,'').replace(/(brick|plate|tile)$/,'').replace(/_/g,' ').trim();
     return (base?base.replace(/^./,c=>c.toUpperCase())+' ':'')+dims+(id.includes('tall')?' tall':'')+(/_L$/.test(id)?' L':/_R$/.test(id)?' R':''); },
-  price(pid,color){ return FUNCTIONAL[pid]?.cost || Math.max(1, Math.round(PIECES[pid].w*PIECES[pid].d*Math.max(1,PIECES[pid].h/3)/4))*(RARE_COLORS.has(color)?3:1); },
+  price(pid,color){ return brickUnits(pid)*(RARE_COLORS.has(color)&&!FUNCTIONAL[pid]?2:1); }, // in bricks from the bank
+  locked(pid){ return !!FUNCTIONAL[pid] && pid!=='fn_townstone' && !RT.creative && !RT.world.player.fnBlueprints.includes(pid); },
+  canAfford(pid,color){ return RT.creative || (!this.locked(pid) && (bankHas(pid,color)>0 || bankCount()>=this.price(pid,color))); },
+  buyBlueprint(pid){ const P=RT.world.player, F=FUNCTIONAL[pid]; if(P.pips<F.cost){ toast(`The ${this.pname(pid)} blueprint costs ${F.cost} pips — you have ${P.pips}.`); return; } P.pips-=F.cost; P.fnBlueprints.push(pid); Audio.jingle(3); toast(`Blueprint learned: ${this.pname(pid)}! Now build as many as you like from your brick bank.`); },
   renderBar(){ const P=RT.world.player; const ids=Object.keys(PIECES).filter(id=>this.tabOf(PIECES[id])===this.tab && !PIECES[id].hidden).slice(0,60);
-    if(!PIECES[this.piece]) this.piece='brick_2x4'; const have=bankHas(this.piece,this.color), pr=this.price(this.piece,this.color);
-    $('buildbar').innerHTML=`<div class="bbh"><b>${esc(this.pname(this.piece))}</b> <span class="sw" style="background:${PALETTE[this.color]}"></span> <span class="bbc">${RT.creative?'free (creative)':have?`from your bank (${have} left)`:`${pr} pip${pr>1?'s':''} each`}</span>${this.mirror?' <span class="bbc">· mirror on</span>':''}<span class="bbr">🧱 ${bankCount()} · ● ${P.pips}</span></div>
+    if(!PIECES[this.piece]) this.piece='brick_2x4'; const have=bankHas(this.piece,this.color), pr=this.price(this.piece,this.color), lk=this.locked(this.piece);
+    $('buildbar').innerHTML=`<div class="bbh"><b>${esc(this.pname(this.piece))}</b> <span class="sw" style="background:${PALETTE[this.color]}"></span> <span class="bbc">${RT.creative?'free (creative)':lk?`🔒 blueprint ${FUNCTIONAL[this.piece].cost} pips — click the card to buy`:have?`you have ${have} ready-made`:`${pr} brick${pr>1?'s':''} from your bank`}</span>${this.mirror?' <span class="bbc">· mirror on</span>':''}<span class="bbr">🧱 ${bankCount()} bricks · ● ${P.pips} pips</span></div>
       <div class="bbt">${this.TABS.map(([k,l])=>`<button class="${this.tab===k?'on':''}" data-t="${k}">${l}</button>`).join('')}</div>
-      <div class="bbp">${ids.map(id=>`<button class="pcard ${id===this.piece?'on':''}" data-p="${id}" title="${esc(this.pname(id))}">${Thumbs.piece(id, FUNCTIONAL[id]?FUNCTIONAL[id].color:this.color)}<span>${esc(this.pname(id))}</span>${bankHas(id,this.color)?`<i>${bankHas(id,this.color)}</i>`:''}</button>`).join('')||'<p class="hint">No pieces in this group yet.</p>'}</div>
+      <div class="bbp">${ids.map(id=>`<button class="pcard ${id===this.piece?'on':''}" data-p="${id}" title="${esc(this.pname(id))}">${Thumbs.piece(id, FUNCTIONAL[id]?FUNCTIONAL[id].color:this.color)}<span>${esc(this.pname(id))}</span>${this.locked(id)?`<i class="lk">🔒${FUNCTIONAL[id].cost}</i>`:bankHas(id,this.color)?`<i>${bankHas(id,this.color)}</i>`:''}</button>`).join('')||'<p class="hint">No pieces in this group yet.</p>'}</div>
       <div class="bbcol">${COLOR_NAMES.map(c=>`<span class="sw ${c===this.color?'on':''}" title="${c.replace(/_/g,' ')}" style="background:${PALETTE[c]}" data-c="${c}"></span>`).join('')}</div>
-      <div class="hint">Smash things to fill your brick bank — banked bricks are free. Right-drag turns the view, wheel zooms.</div>`;
-    $('buildbar').querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>{ this.piece=el.dataset.p; this.renderBar(); });
+      <div class="hint">Building uses bricks from your bank — smash things to collect more. Useful pieces (★) need a blueprint once, bought with pips.</div>`;
+    $('buildbar').querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>{ const id=el.dataset.p; if(this.locked(id) && this.piece===id) this.buyBlueprint(id); else if(this.locked(id)) toast(`${this.pname(id)}: blueprint costs ${FUNCTIONAL[id].cost} pips. Click again to buy it.`); this.piece=id; this.renderBar(); });
     $('buildbar').querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{ this.tab=el.dataset.t; const first=Object.keys(PIECES).find(id=>this.tabOf(PIECES[id])===this.tab); if(first && this.tabOf(PIECES[this.piece])!==this.tab) this.piece=first; this.renderBar(); });
     $('buildbar').querySelectorAll('[data-c]').forEach(el=>el.onclick=()=>{ this.color=el.dataset.c; this.renderBar(); }); },
   update(pl,dt){ if(!this.on) return; const f=pl.fig; if(Input.hit('KeyB')){ this.toggle(pl); return; }
@@ -4475,14 +4526,14 @@ const BuildMode = {
     if(!this.ghost){ this.ghost=new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.45, depthWrite:false })); scene.add(this.ghost); }
     if(!hitP){ this.ghost.visible=false; return; } const P=PIECES[this.piece]; const [w,d]=pieceDims(P,this.rot); const y=Math.max(hitP.cell[1]+this.layer, supportTop(hitP.cell[0],hitP.cell[2],hitP.cell[1]+this.layer+0.5));
     const pos=[hitP.cell[0]-Math.floor((w-1)/2), y, hitP.cell[2]-Math.floor((d-1)/2)];
-    this.ghost.visible=true; this.ghost.scale.set(w,P.h*PL,d); this.ghost.position.set(pos[0]+w/2,(pos[1]+P.h/2)*PL,pos[2]+d/2); const blocked=cellsOf([this.piece,pos[0],pos[1],pos[2],this.rot,this.color]).some(c=>{ const [x,y,z]=c.split(',').map(Number); return solidAt(x,y,z); }); const broke=!RT.creative && !bankHas(this.piece,this.color) && RT.world.player.pips<this.price(this.piece,this.color);
+    this.ghost.visible=true; this.ghost.scale.set(w,P.h*PL,d); this.ghost.position.set(pos[0]+w/2,(pos[1]+P.h/2)*PL,pos[2]+d/2); const blocked=cellsOf([this.piece,pos[0],pos[1],pos[2],this.rot,this.color]).some(c=>{ const [x,y,z]=c.split(',').map(Number); return solidAt(x,y,z); }); const broke=!this.canAfford(this.piece,this.color);
     this.ghost.material.color.copy(blocked||broke ? COLORS.red : COLORS[this.color]); this.ghost.material.opacity = blocked||broke ? 0.35 : 0.55 + Math.sin(RT.time*6)*0.1; this.ghostBad = blocked?'blocked':broke?'broke':null;
     BuildTools.handle(pl, hitP, pos);
-    if(Input.mouse.pressed.has(0) && !RT.menuOpen){ if(this.ghostBad==='broke') toast(`Not enough pips for a ${this.pname(this.piece)} — smash things to collect bricks, or pick a cheaper piece.`); else this.place(pos); }
+    if(Input.mouse.pressed.has(0) && !RT.menuOpen){ if(this.ghostBad==='broke') this.cost(this.piece,this.color); else this.place(pos); }
     if((Input.hit('Delete')&&!BuildTools.sel?.b)||Input.hit('KeyX')){ const ref=brickSolidAt(...hitP.solid); if(ref && (ref.player||RT.creative)) this.remove(ref); }
     if(Input.hit('KeyP')){ const ref=brickSolidAt(...hitP.solid); if(ref && ref.player){ const b=ref.b.slice(); this.remove(ref,true); b[5]=this.color; this.placeRaw(b); } }
   },
-  cost(pid,color){ if(RT.creative) return true; const P=RT.world.player; if(bankHas(pid,color)>0){ bankAdd(pid,color,-1); return true; } const price = this.price(pid,color); if(P.pips>=price){ P.pips-=price; return true; } toast(`Missing ${pid} in ${color} — needs ${price} pips.`); return false; },
+  cost(pid,color){ if(RT.creative) return true; if(this.locked(pid)){ toast(`You need the ${this.pname(pid)} blueprint first — click it in the ★ Useful tab to buy it.`); return false; } if(bankSpend(this.price(pid,color),pid,color)) return true; toast(`Not enough bricks: a ${this.pname(pid)} needs ${this.price(pid,color)}, your bank has ${bankCount()}. Smash things to collect more.`); return false; },
   place(pos){ const bs=[[this.piece,pos[0],pos[1],pos[2],this.rot,this.color]]; if(this.mirror){ const cx=Math.floor(RT.players[0].fig.pos.x); const P=PIECES[this.piece]; const [w]=pieceDims(P,this.rot); bs.push([this.piece,2*cx-pos[0]-w,pos[1],pos[2],this.rot,this.color]); }
     for(const b of bs){ const cells=cellsOf(b); if(cells.some(c=>{ const [x,y,z]=c.split(',').map(Number); return solidAt(x,y,z); })) continue; if(!this.cost(b[0],b[5])) return; const ref=this.placeRaw(b); if(ref){ this.undo.push({op:'add',ref}); this.redo=[]; if(this.undo.length>CONFIG.maxUndo) this.undo.shift(); } }
     RT.world.player.stats.built++; this.renderBar(); },
