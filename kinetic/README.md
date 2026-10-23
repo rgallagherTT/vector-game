@@ -8,7 +8,39 @@ Third-person superhero sandbox in a rain-soaked neon city. One self-contained `i
 - **VELOCITY — the speedster.** Look roughly at an enemy and a ring locks on; left click blitzes them with a flurry of punches, and holding left click chains through a whole group (combo damage builds). The faster you run the slower the world (down to 2% in Overdrive): rain hangs in the air and bursts as you run through it. Run up skyscrapers (the camera pulls back over the frozen city), run on the harbour, blitz, pluck bullets out of the air and flick them back, disarm, sonic boom, whirlwind, relay, phase step. Carry people out of slow-motion disasters to build Hope. The MRA answers with spike strips, foam, nets, caltrop drones, chrono-dampeners and Pacer.
 - **MIMIC — the shapeshifter.** Hold E on an animal, object or person to learn its form; hold Q for the form wheel. Six generated heists (bank, museum, casino, lab, penthouse, MRA evidence locker): case them, get in (front door, loading bay, roof hatch, vents), take the prize, get out. Guards notice things that are out of place; hold still as an object while they walk past for a close call. Ghost / Clean / Loud ratings are saved.
 
+- **THREADRUNNER — the ninja.** Swings the city on glowing silver-cyan nanofibre threads fired from spools in armoured forearm bracers.
+  - **Threads.** Each thread is a Verlet rope. It is taut while swinging, then goes slack and ripples when released before detaching. Threads wrap around corners, bead with rain, and pick up the colour of nearby neon.
+  - **Swinging (hold right click).** Swinging is a pendulum. You reel in with Space and let out with Ctrl. Release on the way up to fling yourself, and release in the gold window for a perfect release. Every release throws a trick (flips, corkscrews, cartwheels, a spread-eagle dive), and you can chain the next swing mid-flip.
+  - **Anchors.** Threads only attach to real buildings, lampposts and the elevated rail. There are no sky hooks, so over plazas and the harbour you have to sprint, glide or zip.
+  - **Moves.** Zip (`Q`), snare in a woven thread net (`E`; snared enemies get hung from lampposts or pinned to walls), tether pull or swing (`R`), and thread spike (`R` on debris). Unlockable: zip line (`Z`), slingshot (`G`), tripwire (`3`), hang drop from a perch, and Storm of Threads (`4`).
+  - **Focus (hold `F`).** The world slows to 20% while you move at 50%. Click enemies to mark them, then let go of `F` to thread-dash between them. In Focus, `E` threads incoming shots aside.
+  - **Ninja combat.** Blade combos, flying kicks and dive strikes; shuriken (`1`) and smoke bombs (`2`); silent takedowns from behind or while crouched (`C`).
+  - **Traversal courses** with rings, rated gold, silver or bronze. A style meter tracks combos.
+
 Phone booths around the city switch heroes mid-run (Tag Team, `F`).
+
+## The living city (career)
+
+- **Factions.** The MRA, Vantablack Holdings, the Hollow Lanterns, the Dock Rats, the Underline Saints, Tower Watch, and rival runners.
+- **Territory.** Every city block has an owner. A background tick runs on its own: factions mass on their neighbours, raid each other, buy blocks out, bribe the MRA and retaliate against whoever the player keeps hitting. The tick is deterministic from the save seed plus the player's actions. Ownership shows on the phone map and in the streets through banners, graffiti and guards. A news feed reports every change.
+- **Jobs.** Jobs are generated from what the factions want right now:
+  - retake a block
+  - hold a block
+  - snare-and-deliver a lieutenant (pays more if they arrive wrapped)
+  - infiltrate a stash house
+  - protect a witness
+  - stop a heist
+  - topple a leader
+
+  Finishing a job flips blocks and changes standing with both the client and the target. Rival runners take jobs you leave on the board, and sometimes work for the other side of yours.
+- **Incidents.**
+  - **Rooftop fires:** lower people off the roof on a thread.
+  - **Collapsing scaffolds:** net them with a snare.
+  - **Car crashes:** rip the door off with a tether. Any hero can also press `T` to help someone out.
+- **Reputation.** Public reputation is tracked per district and changes separately from faction standing and MRA heat.
+- **Lieutenants.** Powered lieutenants remember how you beat them and come back adapted: blades that cut threads, an anchor jammer, or armour. When one is down you choose: hand them to the MRA (`J`), leave them (`K`), or turn them informant (`L`). Each faction's leader is a three-phase boss fight once the faction is down to a few blocks.
+- **Counters.** Factions adapt to a runner who keeps hitting them: cutters that free snared friends, thread-cutter drones, laser grids on Vantablack rooftops, and anchor jammers.
+- **Hideouts.** You can buy a rooftop loft, a clock tower or a water tower. Each has a workbench for gear, a training rig, a map table and a launch perch. Hostile factions can raid them.
 
 ## Career (free roam)
 
