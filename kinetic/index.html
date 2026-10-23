@@ -138,6 +138,39 @@ table.rec td:last-child{text-align:right;color:var(--tk)}
 select{background:#0b1220;color:var(--ink);border:1px solid var(--line);padding:6px 8px;font:inherit}
 label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:8px 0;font-size:13px}
 .swatch{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;margin-right:6px;box-shadow:0 0 8px currentColor}
+/* ---- dashboard v2: glass panels, bigger type ---- */
+#hud{font-size:14px}
+#heatbox{width:340px;padding:12px 16px 12px 14px;background:linear-gradient(90deg,rgba(6,10,20,.78),rgba(6,10,20,.25));border-left:3px solid var(--heat);backdrop-filter:blur(3px)}
+.hicon{width:54px;height:34px}
+#heatname{font-size:13px;font-weight:700}
+#status{font-size:13px;font-weight:700}
+#district{font-size:12px;color:#c8d6e6}
+#scorebox{padding:10px 14px;background:linear-gradient(270deg,rgba(6,10,20,.78),rgba(6,10,20,.2));border-right:3px solid var(--tk)}
+#score{font-size:34px}
+#mult{font-size:17px;font-weight:700}
+#vitals{width:300px;padding:12px 16px 4px 14px;background:linear-gradient(90deg,rgba(6,10,20,.8),rgba(6,10,20,.25));border-left:3px solid var(--tk);backdrop-filter:blur(3px)}
+.bar{height:12px}
+.lbl{font-size:12px;color:#c8d6e6;font-weight:700}
+.slot{width:68px;height:68px;background:rgba(6,10,20,.78)}
+.slot .g{font-size:24px}
+.slot .n{font-size:10.5px;font-weight:700}
+.slot .k{font-size:11px;color:#fff}
+#reticle{width:76px;height:76px}
+#hint{top:calc(50% + 56px);font-size:14px;font-weight:700;padding:7px 14px;background:rgba(4,8,14,.78);border:1px solid currentColor;border-radius:3px}
+#hint:empty{display:none}
+#tut{position:absolute;left:50%;top:96px;transform:translateX(-50%);width:min(640px,92vw);padding:12px 18px;background:rgba(10,6,20,.84);border:1px solid var(--mag);box-shadow:0 0 24px rgba(255,60,172,.25);text-align:center}
+#tut .tt{font-family:var(--mono);font-size:12px;letter-spacing:.24em;color:var(--mag);font-weight:800}
+#tut .tb{font-size:17px;margin-top:6px;color:#fff;line-height:1.4}
+#tut .tb b{color:var(--tk)}
+#tut .tp{display:flex;gap:5px;justify-content:center;margin-top:8px}
+#tut .tp i{width:22px;height:4px;background:rgba(255,255,255,.15)}
+#tut .tp i.on{background:var(--ok)}
+#tut.pop{animation:tin .25s ease-out}
+#keys{position:absolute;right:22px;bottom:30px;font-family:var(--mono);font-size:11.5px;line-height:1.75;text-align:right;color:#c8d6e6;padding:8px 12px;background:rgba(6,10,20,.66);border-right:3px solid var(--tk)}
+#keys b{color:var(--tk);font-weight:800}
+#bossbar{top:14px}
+@media (max-width:1100px){#keys{display:none}}
+@media (max-width:1400px){#slots{bottom:118px}}
 @media (max-width:760px){#minimap{width:120px;height:120px}#heatbox{width:220px}.hicon{width:32px;height:22px}#slots{transform:translateX(-50%) scale(.72);transform-origin:bottom center}#bossbar{width:80vw}}
 </style>
 <script type="importmap">
@@ -181,6 +214,8 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
     <circle id="ret-grip" r="20" fill="none" stroke="#46f0ff" stroke-width="2.2" stroke-dasharray="0 200" transform="rotate(-90)" opacity=".7"/>
   </svg></div>
   <div id="hint"></div>
+  <div id="tut" class="hidden"></div>
+  <div id="keys"><b>HOLD LMB</b> lift · <b>RELEASE</b> throw · <b>RMB</b> drop<br><b>Q</b> push · <b>CTRL</b> dodge / slam in air<br><b>SPACE ×2</b> telekinetic jump · <b>SHIFT</b> sprint<br><b>E</b> catch · <b>1–4</b> powers · <b>H</b> help · <b>ESC</b> pause</div>
   <div id="toasts"></div>
   <div id="banner"></div>
   <div id="vitals">
@@ -300,7 +335,7 @@ const CONFIG = {
   camera: { fov: 64, aimFov: 54, dist: 4.9, aimDist: 3.3, height: 1.65, shoulder: 0.95, aimShoulder: 1.15, sens: 0.0023, padSens: 3.1, follow: 14 },
   tk: {
     range: 26, pullRange: 70, liftBase: 1800, gripMax: 100, gripRegen: 34, gripDrainK: 26,
-    holdDist: 3.6, holdHeight: 1.6, stiffBase: 9, throwBase: 30, chargeTime: 0.9, chargeMin: 0.45, chargeMax: 1.35,
+    holdDist: 3.6, holdHeight: 1.6, stiffBase: 9, throwBase: 38, chargeTime: 0.8, chargeMin: 0.75, chargeMax: 1.35,
     slowmoMass: 900, slowmoForce: 0.85, slowmoScale: 0.2, slowmoTime: 0.4, grabCost: 4, pullCost: 9,
     snapImpulse: 6,
   },
@@ -327,21 +362,22 @@ const CONFIG = {
     rifle: { hp: 34, speed: 4.6, mass: 90 },
     sniper: { hp: 30, speed: 0, mass: 88 },
     containment: { hp: 80, speed: 3.4, mass: 210 },
+    civilian: { hp: 14, speed: 5.6, mass: 75 },
   },
   dmg: { stun: 4, bullet: 6, rifle: 8, baton: 9, sniper: 34, heli: 6, rocket: 22, cannon: 28, ram: 28, shock: 24, explosion: 36, containment: 9 },
   score: {
     glass: 20, lamppost: 40, prop: 10, carSmash: 90, carExplode: 320, officer: 160, mraVehicle: 420,
     heli: 2600, sniper: 320, drone: 140, dampener: 260, containment: 420, warden: 25000, sign: 60, hydrant: 50,
-    bigThrow: 200, multiHit: 120, plate: 400, pylon: 1500, container: 120, ship: 4000, bank: 900,
+    bigThrow: 200, multiHit: 120, civilian: 60, breach: 90, plate: 400, pylon: 1500, container: 120, ship: 4000, bank: 900,
   },
   heatGain: {
     glass: 4, lamppost: 8, prop: 1.5, carSmash: 14, carExplode: 40, officer: 34, mraVehicle: 64, heli: 160,
-    unit: 30, fear: 0.5, sign: 6, hydrant: 6, ship: 120, bank: 80,
+    unit: 30, fear: 0.5, civilian: 40, breach: 6, sign: 6, hydrant: 6, ship: 120, bank: 80,
   },
   music: { bpm: 104 },
   quality: {
     low:    { pr: 0.7, refl: 0.25, reflEvery: 2, bloom: false, lights: 4, rain: 3500, particles: 1500, shadows: false, shafts: true, grain: false },
-    medium: { pr: 1.0, refl: 0.5, reflEvery: 1, bloom: true, lights: 8, rain: 9000, particles: 3000, shadows: false, shafts: true, grain: true },
+    medium: { pr: 1.0, refl: 0.5, reflEvery: 1, bloom: true, lights: 10, rain: 9000, particles: 3000, shadows: false, shafts: true, grain: true },
     high:   { pr: 1.5, refl: 0.5, reflEvery: 1, bloom: true, lights: 12, rain: 15000, particles: 4500, shadows: true, shafts: true, grain: true },
   },
   warden: { hp: 100, plates: 8, knees: 4, kneeHp: 3, pylons: 3, pylonHp: 4, spawnAfter: 35, respawn: 50, height: 17, speed: 5.5, chargeSpeed: 16 },
@@ -397,7 +433,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'h
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, Q.pr));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.75;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -415,9 +451,10 @@ scene.add(camera);
 const LAYER_NOREFLECT = 1;
 camera.layers.enable(LAYER_NOREFLECT);
 
-const hemi = new THREE.HemisphereLight(0x2a3a66, 0x120a18, 0.55);
+const hemi = new THREE.HemisphereLight(0x7a8cc0, 0x342a3a, 1.6);
+const HEMI_I = 1.6;
 scene.add(hemi);
-const moon = new THREE.DirectionalLight(0x6f86c9, 0.35);
+const moon = new THREE.DirectionalLight(0x9fb2ea, 1.0);
 moon.position.set(-120, 200, 80);
 scene.add(moon);
 const shadowSpot = new THREE.SpotLight(0xffd6a0, 0, 46, 0.9, 0.5, 1.6);
@@ -634,7 +671,7 @@ function makeNeonAtlas(seed) {
   return { tex: t, slots };
 }
 function makeDecalAtlas() {
-  const c = canvas(512, 256), g = c.getContext('2d'); const r = mulberry32(77);
+  const c = canvas(768, 256), g = c.getContext('2d'); const r = mulberry32(77);
   g.clearRect(0, 0, 512, 256);
   // crack
   g.strokeStyle = 'rgba(0,0,0,.95)'; g.lineCap = 'round';
@@ -643,6 +680,11 @@ function makeDecalAtlas() {
   const gr0 = g.createRadialGradient(128, 128, 0, 128, 128, 40); gr0.addColorStop(0, 'rgba(0,0,0,.7)'); gr0.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr0; g.fillRect(0, 0, 256, 256);
   // scorch
   for (let i = 0; i < 40; i++) { const x = 384 + (r() - .5) * 120, y = 128 + (r() - .5) * 120, rad = 20 + r() * 50; const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(256, 0, 256, 256); }
+  // hole: a jagged dark breach
+  g.save(); g.translate(640, 128); g.beginPath();
+  for (let i = 0; i <= 24; i++) { const a = i / 24 * TAU; const rad = 70 + r() * 45; i ? g.lineTo(Math.cos(a) * rad, Math.sin(a) * rad) : g.moveTo(Math.cos(a) * rad, Math.sin(a) * rad); }
+  g.closePath(); const gh = g.createRadialGradient(0, 0, 10, 0, 0, 115); gh.addColorStop(0, 'rgba(0,0,0,1)'); gh.addColorStop(0.75, 'rgba(8,6,6,.97)'); gh.addColorStop(1, 'rgba(40,36,34,.9)'); g.fillStyle = gh; g.fill();
+  g.strokeStyle = 'rgba(90,85,80,.9)'; g.lineWidth = 5; g.stroke(); g.restore();
   const t = texFrom(c, false); return t;
 }
 
@@ -1058,10 +1100,10 @@ function poseRig(rig, st, dt) {
 // §DISTRICTS ---------------------------------------------------------------------------
 // Four districts joined into one city (2x2 of 3x2 blocks). Each has its own look, hiding and heat behaviour.
 const DISTRICTS = [
-  { id: 0, key: 'neon', name: 'NEON ROW', fog: 0.0098, fogColor: 0x150d26, styles: [4, 0, 4, 1], hmin: 14, hmax: 44, neon: 1.0, heatMul: 1.0, security: 0, lamp: 0xff9a5a, hiding: 'alleys, the garage, the underpass, rooftops' },
-  { id: 1, key: 'core', name: 'THE FINANCIAL CORE', fog: 0.0072, fogColor: 0x0b1222, styles: [2, 2, 1, 2], hmin: 44, hmax: 128, neon: 0.3, heatMul: 1.35, security: 1, lamp: 0xd8ecff, hiding: 'few — plazas are open, security is heavy' },
-  { id: 2, key: 'harbour', name: 'THE HARBOUR', fog: 0.02, fogColor: 0x0f1a24, styles: [3, 3, 0], hmin: 8, hmax: 19, neon: 0.22, heatMul: 1.0, security: 0, lamp: 0xffc070, hiding: 'container stacks, the fog' },
-  { id: 3, key: 'under', name: 'THE UNDERWORKS', fog: 0.013, fogColor: 0x14100e, styles: [3, 0, 1], hmin: 10, hmax: 26, neon: 0.5, heatMul: 0.9, security: 0, lamp: 0xffa040, hiding: 'the subway — the best hiding in the city' },
+  { id: 0, key: 'neon', name: 'NEON ROW', fog: 0.0062, fogColor: 0x2a2044, styles: [4, 0, 4, 1], hmin: 14, hmax: 44, neon: 1.0, heatMul: 1.0, security: 0, lamp: 0xff9a5a, hiding: 'alleys, the garage, the underpass, rooftops' },
+  { id: 1, key: 'core', name: 'THE FINANCIAL CORE', fog: 0.005, fogColor: 0x1c2a44, styles: [2, 2, 1, 2], hmin: 44, hmax: 128, neon: 0.3, heatMul: 1.35, security: 1, lamp: 0xd8ecff, hiding: 'few — plazas are open, security is heavy' },
+  { id: 2, key: 'harbour', name: 'THE HARBOUR', fog: 0.012, fogColor: 0x24323e, styles: [3, 3, 0], hmin: 8, hmax: 19, neon: 0.22, heatMul: 1.0, security: 0, lamp: 0xffc070, hiding: 'container stacks, the fog' },
+  { id: 3, key: 'under', name: 'THE UNDERWORKS', fog: 0.0085, fogColor: 0x2c2420, styles: [3, 0, 1], hmin: 10, hmax: 26, neon: 0.5, heatMul: 0.9, security: 0, lamp: 0xffa040, hiding: 'the subway — the best hiding in the city' },
 ];
 function districtAt(x, z) { const c = x < 240 ? 0 : 1, r = z < 164 ? 0 : 1; return DISTRICTS[[0, 1, 2, 3][r * 2 + c]]; }
 
@@ -1157,7 +1199,7 @@ function initMaterials() {
     };
   };
   MAT.facade = FACADES.map((f, i) => {
-    const m = new THREE.MeshStandardMaterial({ map: f.map, emissiveMap: f.emissive, emissive: 0xffffff, emissiveIntensity: i === 2 ? 1.6 : 1.35, roughness: i === 2 ? 0.22 : 0.86, metalness: i === 2 ? 0.75 : 0.05, vertexColors: true });
+    const m = new THREE.MeshStandardMaterial({ map: f.map, emissiveMap: f.emissive, emissive: 0xffffff, emissiveIntensity: i === 2 ? 2.0 : 1.9, roughness: i === 2 ? 0.22 : 0.86, metalness: i === 2 ? 0.75 : 0.05, vertexColors: true });
     return m;
   });
   MAT.roof = new THREE.MeshStandardMaterial({ color: 0x1b1d22, roughness: 0.95, vertexColors: true });
@@ -1187,7 +1229,7 @@ function makeSky() {
     uniforms: { uTime: Mirror.uniforms.uTime, uFlash: { value: 0 } },
     vertexShader: 'varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `varying vec3 vP; uniform float uTime, uFlash;
-      void main(){ float h=vP.y; vec3 top=vec3(0.010,0.012,0.028); vec3 hor=vec3(0.085,0.055,0.11);
+      void main(){ float h=vP.y; vec3 top=vec3(0.03,0.035,0.07); vec3 hor=vec3(0.2,0.13,0.24);
         vec3 c=mix(hor,top,smoothstep(-0.02,0.45,h));
         c+=vec3(0.18,0.07,0.16)*exp(-max(h,0.0)*9.0)*0.7;
         float cl=sin(vP.x*6.0+uTime*0.02)*sin(vP.z*5.0-uTime*0.015)*0.5+0.5; c+=vec3(0.02,0.02,0.035)*cl*smoothstep(0.05,0.4,h);
@@ -1412,7 +1454,7 @@ City.dressFacade = function (bld, f, B) {
       center = P(s + w / 2, y + hh / 2, 0.12);
     }
     const sign = { kind: 'sign', start: st, count: 6, center, n: fr.n.clone(), t: fr.t.clone(), blade, w, h: hh, slot, alive: true, bld };
-    sign.light = LightPool.add({ pos: center.clone().addScaledVector(fr.n, 2.2), color: S.color.clone(), intensity: blade ? 42 : 60, range: 20, flicker: fl > 0, kind: 'neon', priority: 1.4 });
+    sign.light = LightPool.add({ pos: center.clone().addScaledVector(fr.n, 2.2), color: S.color.clone(), intensity: blade ? 80 : 110, range: 24, flicker: fl > 0, kind: 'neon', priority: 1.4 });
     City.signs.push(sign);
   }
   // lit strip along roofline for neon row
@@ -1686,7 +1728,7 @@ City.makeGround = function () {
   const cw = 2048, chh = Math.round(2048 * H / W);
   const c = canvas(cw, chh), g = c.getContext('2d');
   const sx = cw / W, sz = chh / H; const X = x => (x - gx0) * sx, Z = z => (z - gz0) * sz;
-  g.fillStyle = '#16181d'; g.fillRect(0, 0, cw, chh);
+  g.fillStyle = '#2c303a'; g.fillRect(0, 0, cw, chh);
   const r = mulberry32(31);
   for (let i = 0; i < 30000; i++) { g.fillStyle = `rgba(${r() < .5 ? '0,0,0' : '160,170,190'},${r() * 0.07})`; g.fillRect(r() * cw, r() * chh, 1 + r() * 3, 1 + r() * 3); }
   // blocks: sidewalks + lot surfaces
@@ -1726,7 +1768,7 @@ City.makeGround = function () {
   // intersections: clear markings + zebra crossings
   for (let i = 0; i <= nI; i++) for (let j = 0; j <= nJ; j++) {
     const x = i * PITCH, z = j * PITCH;
-    g.fillStyle = '#16181d'; g.fillRect(X(x - 8), Z(z - 8), 16 * sx, 16 * sz);
+    g.fillStyle = '#2c303a'; g.fillRect(X(x - 8), Z(z - 8), 16 * sx, 16 * sz);
     g.fillStyle = 'rgba(235,235,235,.6)';
     for (let k = -7; k < 7; k += 1.4) {
       g.fillRect(X(x + k), Z(z - 11), 0.7 * sx, 2.6 * sz); g.fillRect(X(x + k), Z(z + 8.4), 0.7 * sx, 2.6 * sz);
@@ -1900,6 +1942,8 @@ const PROP_TYPES = {
   crate: { mass: 35, hx: 0.5, hy: 0.5, hz: 0.5, cap: 250, boxes: [[-0.5, 0, -0.5, 0.5, 1, 0.5, '#7a5a30'], [-0.52, 0.45, -0.52, 0.52, 0.55, 0.52, '#5a4020']], oy: -0.5, breaks: true },
   barrier: { mass: 70, hx: 1.1, hy: 0.5, hz: 0.25, cap: 160, boxes: [[-1.1, 0, -0.25, 1.1, 1.0, 0.25, '#e8e8e8'], [-1.1, 0.6, -0.26, 1.1, 0.8, 0.26, '#1fe0c4', 0.8], [-1.1, 0.2, -0.26, 1.1, 0.35, 0.26, '#e04040', 0.3]], oy: -0.5 },
   debris: { mass: 40, hx: 0.35, hy: 0.25, hz: 0.3, cap: 400, boxes: [[-0.35, 0, -0.3, 0.35, 0.5, 0.3, '#55575c']], oy: -0.25 },
+  rubble: { mass: 260, hx: 0.55, hy: 0.4, hz: 0.5, cap: 320, boxes: [[-0.55, 0, -0.5, 0.55, 0.8, 0.5, '#8a8c92'], [-0.3, 0.6, -0.4, 0.4, 0.95, 0.2, '#6c6e74']], oy: -0.4 },
+  chunk: { mass: 1400, hx: 0.95, hy: 0.7, hz: 0.5, cap: 90, boxes: [[-0.95, 0, -0.5, 0.95, 1.4, 0.5, '#9a9ca2'], [-0.9, 0.1, 0.45, 0.6, 1.2, 0.52, '#3a3836'], [-0.6, 1.3, -0.1, 0.8, 1.55, 0.1, '#7a4a32']], oy: -0.7 },
   plank: { mass: 6, hx: 0.5, hy: 0.06, hz: 0.12, cap: 300, boxes: [[-0.5, 0, -0.12, 0.5, 0.12, 0.12, '#7a5a30']], oy: -0.06 },
   shield: { mass: 9, hx: 0.38, hy: 0.6, hz: 0.06, cap: 60, boxes: [[-0.38, 0, -0.04, 0.38, 1.2, 0.04, '#9fc7e8'], [-0.38, 0.75, -0.05, 0.38, 0.85, 0.05, '#e8cf4a', 0.6]], oy: -0.6 },
   watertank: { mass: 1500, hx: 1.2, hy: 1.6, hz: 1.2, cap: 120, cyl: true, boxes: [[-1.15, 0.6, -1.15, 1.15, 3.0, 1.15, '#5a4a3a'], [-1.2, 3.0, -1.2, 1.2, 3.2, 1.2, '#3a2a1a'], [-1.0, 0, -1.0, -0.8, 0.6, -0.8, '#222'], [0.8, 0, 0.8, 1.0, 0.6, 1.0, '#222'], [-1.0, 0, 0.8, -0.8, 0.6, 1.0, '#222'], [0.8, 0, -1.0, 1.0, 0.6, -0.8, '#222']], oy: -1.6, water: true },
@@ -2000,7 +2044,7 @@ const Lamps = (() => {
     const body = world.createRigidBody(bd);
     const c = world.createCollider(RAPIER.ColliderDesc.cuboid(0.16, 3.6, 0.16).setMass(220).setCollisionGroups(GROUPS.prop).setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS).setContactForceEventThreshold(26000), body);
     const head = V3(x, 6.7, z).add(V3(Math.sin(rotY) * 2.2, 0, Math.cos(rotY) * 2.2));
-    const light = LightPool.add({ pos: head.clone().add(V3(0, -0.4, 0)), color: new THREE.Color(color), intensity: 75, range: 24, kind: 'street', flicker: rng() < 0.06 });
+    const light = LightPool.add({ pos: head.clone().add(V3(0, -0.4, 0)), color: new THREE.Color(color), intensity: 160, range: 30, kind: 'street', flicker: rng() < 0.06 });
     const o = makeObj('lamp', body, c, { type: 'lamp', mass: 220, radius: 3.6, half: V3(0.16, 3.6, 0.16), fixed: true, idx, light, head, lit: true, outlineGeo: geo });
     o.onKnock = snap;
     list.push(o);
@@ -2235,10 +2279,10 @@ const Vehicles = (() => {
     _q1.setFromAxisAngle(UP, rotY); bd.setRotation({ x: _q1.x, y: _q1.y, z: _q1.z, w: _q1.w });
     const body = world.createRigidBody(bd);
     const cd = RAPIER.ColliderDesc.cuboid(tpl.hx, tpl.hy * 0.92, tpl.hz).setTranslation(0, 0.02, 0).setMass(T.mass).setFriction(0.85).setRestitution(0.08)
-      .setCollisionGroups(GROUPS.prop).setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS).setContactForceEventThreshold(T.mass * 60);
+      .setCollisionGroups(GROUPS.prop).setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS).setContactForceEventThreshold(T.mass * 18);
     const collider = world.createCollider(cd, body);
     const o = makeObj('car', body, collider, {
-      type, mass: T.mass, mesh, tpl, T, hp: T.mass > 5000 ? 260 : T.mass > 2000 ? 150 : 100, maxHp: 0, fire: 0, burnt: false, radius: Math.max(tpl.hx, tpl.hz), half: V3(tpl.hx, tpl.hy, tpl.hz),
+      type, mass: T.mass, mesh, tpl, T, hp: T.mass > 5000 ? 150 : T.mass > 2000 ? 90 : 55, maxHp: 0, fire: 0, burnt: false, radius: Math.max(tpl.hx, tpl.hz), half: V3(tpl.hx, tpl.hy, tpl.hz),
       state: kin ? 'drive' : 'parked', kinematic: !!kin, speed: 0, yaw: rotY, partsGone: {}, mra: !!T.mra, outlineGeo: tpl.geo,
     });
     o.maxHp = o.hp;
@@ -2556,7 +2600,7 @@ const Vehicles = (() => {
         if (Math.random() < dt * 40 * v.fire) FX.fire(hood, v.burnt ? 0.8 : 1.0);
         if (v.fireLight) v.fireLight.pos.copy(hood).y += 1;
         if (v.explodeT != null) { v.explodeT -= dt; if (v.explodeT <= 0) { v.explodeT = null; explode(v); } }
-        else if (!v.burnt && v.fireT > 7) { v.explodeT = 0.01; }
+        else if (!v.burnt && v.fireT > 4) { v.explodeT = 0.01; }
         if (v.burnt && v.fireT > 40) { v.fire = 0; if (v.fireLight) { LightPool.remove(v.fireLight); v.fireLight = null; } }
       }
       // sirens
@@ -2838,7 +2882,7 @@ const Decals = (() => {
     const g = new THREE.PlaneGeometry(1, 1);
     tiles = new Float32Array(MAX); const at = new THREE.InstancedBufferAttribute(tiles, 1); at.setUsage(THREE.DynamicDrawUsage); g.setAttribute('aTile', at);
     const m = new THREE.MeshBasicMaterial({ map: DECAL_TEX, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, color: 0xffffff });
-    m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aTile;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = vec2(uv.x*0.5 + aTile*0.5, uv.y);'); };
+    m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aTile;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = vec2(uv.x/3.0 + aTile/3.0, uv.y);'); };
     im = new THREE.InstancedMesh(g, m, MAX); im.count = 0; im.frustumCulled = false; scene.add(im);
   }
   function reset() { idx = 0; im.count = 0; }
@@ -2928,7 +2972,7 @@ const Explosions = {
     Timers.after(0.35, () => LightPool.remove(fl));
     if (p.y < 1.5) Decals.add(V3(p.x, 0.03, p.z), V3(0, 1, 0), radius * 0.9, 1);
     // nearby walls get scorched
-    for (const b of City.buildings) { if (p.x < b.x0 - 6 || p.x > b.x1 + 6 || p.z < b.z0 - 6 || p.z > b.z1 + 6) continue; const cx = clamp(p.x, b.x0, b.x1), cz = clamp(p.z, b.z0, b.z1); const d = Math.hypot(cx - p.x, cz - p.z); if (d < 6 && d > 0.01) { const n = V3(p.x - cx, 0, p.z - cz).normalize(); Decals.add(V3(cx, Math.max(1.5, p.y), cz), n, radius * 0.7, 1); Destruction.wallGlass(b, V3(cx, clamp(p.y + 2, 4, b.h - 1), cz), n, 18); } }
+    for (const b of City.buildings) { if (p.x < b.x0 - 6 || p.x > b.x1 + 6 || p.z < b.z0 - 6 || p.z > b.z1 + 6) continue; const cx = clamp(p.x, b.x0, b.x1), cz = clamp(p.z, b.z0, b.z1); const d = Math.hypot(cx - p.x, cz - p.z); if (d < 6 && d > 0.01) { const n = V3(p.x - cx, 0, p.z - cz).normalize(); Decals.add(V3(cx, Math.max(1.5, p.y), cz), n, radius * 0.7, 1); Destruction.wallGlass(b, V3(cx, clamp(p.y + 2, 4, b.h - 1), cz), n, 18); Destruction.breach(b, V3(cx, clamp(p.y + 1, 1, b.h - 1.5), cz), n, 1.6 * scale); } }
     for (const pane of City.glassPanes) if (pane.alive && pane.center.distanceTo(p) < radius * 1.1) Destruction.shatter(pane, p, 12);
     for (const sg of City.signs) if (sg.alive && sg.center.distanceTo(p) < radius * 0.8) Destruction.dropSign(sg);
     const shape = new RAPIER.Ball(radius);
@@ -2937,7 +2981,7 @@ const Explosions = {
     for (const o of hits) {
       const t = o.body.translation(); const d = V3(t.x - p.x, t.y - p.y + 1, t.z - p.z); const dist = Math.max(0.5, d.length()); d.normalize();
       const k = clamp(1 - dist / radius, 0, 1); if (k <= 0) continue;
-      if (o.kind === 'unit') { Units.hit(o, 40 * k * scale + 10, d.clone().multiplyScalar(14 * k + 4).add(V3(0, 8 * k, 0)), 'explosion'); continue; }
+      if (o.kind === 'unit') { Units.hit(o, 90 * k * scale + 20, d.clone().multiplyScalar(14 * k + 4).add(V3(0, 8 * k, 0)), 'explosion'); continue; }
       if (o.kind === 'lamp' && o.fixed) Lamps.snap(o);
       if (o.kind === 'hydrant') Lamps.burst(o);
       if (o.kind === 'car' && o !== source) { Vehicles.damage(o, 70 * k * scale, p); Vehicles.crumple(o, p, 0.4 * k); }
@@ -2959,7 +3003,7 @@ const Explosions = {
 // small helper: delayed callbacks in game time
 const Timers = (() => { const list = []; return { after(t, f) { list.push({ t, f }); }, update(dt) { for (let i = list.length - 1; i >= 0; i--) { list[i].t -= dt; if (list[i].t <= 0) { const f = list[i].f; list.splice(i, 1); try { f(); } catch (e) { console.error(e); } } } }, clear() { list.length = 0; } }; })();
 // loose debris lifetime management
-const Debris = (() => { const list = []; return { track(o) { list.push(o); if (list.length > 70) { const old = list.shift(); removeObj(old); } }, reset() { list.length = 0; } }; })();
+const Debris = (() => { const list = []; return { track(o) { list.push(o); if (list.length > 140) { const old = list.shift(); removeObj(old); } }, reset() { list.length = 0; } }; })();
 
 // §DESTRUCTION -------------------------------------------------------------------------
 const Destruction = {
@@ -2987,6 +3031,33 @@ const Destruction = {
     FX.dust(p, 8, 2); FX.sparks(p, 8, 0.6);
     Shake.at(p, 0.15 * Math.min(3, strength), 40);
     for (const sg of City.signs) if (sg.alive && sg.bld === b && sg.center.distanceTo(p) < 4) this.dropSign(sg);
+  },
+  // a heavy hit punches a hole in the façade and throws rubble out
+  breach(b, p, n, power = 1) {
+    if (!b || (b._brT || 0) > G.time) return; b._brT = G.time + 0.2;
+    power = clamp(power, 0.6, 4);
+    const at = p.clone(); at.y = clamp(at.y, 0.8, b.h - 1);
+    Decals.add(at, n, 1.8 + power * 1.1, 2);
+    Decals.add(at, n, 3 + power * 1.6, 0);
+    const k = Math.round(2 + power * 1.6);
+    for (let i = 0; i < k; i++) {
+      const o = Props.spawn(i === 0 && power > 2 ? 'chunk' : 'rubble', at.x + n.x * 1.2 + frnd(-0.8, 0.8), at.y + frnd(-0.6, 0.6), at.z + n.z * 1.2 + frnd(-0.8, 0.8), frnd(0, TAU), { awake: true });
+      if (!o) continue; const s = frnd(4, 10) * Math.min(2, power);
+      o.body.setLinvel({ x: n.x * s + frnd(-3, 3), y: frnd(1, 5), z: n.z * s + frnd(-3, 3) }, true); o.body.setAngvel({ x: frnd(-5, 5), y: frnd(-5, 5), z: frnd(-5, 5) }, true);
+      o.chaosT = G.time + 5; Debris.track(o);
+    }
+    FX.dust(at, 22, 3 + power); FX.sparks(at, 10, 0.8); if (at.y > 4) this.wallGlass(b, at, n, 10);
+    Audio.thud(at, 1); Audio.metal(at, 0.6); Shake.at(at, 0.25 * power, 50);
+    Score.event('breach', at); Heat.add(CONFIG.heatGain.breach, at);
+  },
+  ripChunk(b, p, n) {
+    const at = p.clone().addScaledVector(n, 1.0);
+    const o = Props.spawn('chunk', at.x, at.y, at.z, Math.atan2(n.x, n.z), { awake: true });
+    Decals.add(p.clone(), n, 2.6, 2); Decals.add(p.clone(), n, 4.2, 0);
+    FX.dust(p, 26, 4); FX.sparks(p, 16, 1); if (p.y > 4) this.wallGlass(b, p, n, 8);
+    Audio.metalTear(p); Shake.add(0.35); Hud.ca(0.015);
+    Score.event('breach', p); Heat.add(CONFIG.heatGain.breach, p); Tut.done('wall');
+    if (o) { Debris.track(o); o.chaosT = G.time + 8; TK.grab(o); }
   },
   dropSign(sg) {
     if (!sg.alive) return; sg.alive = false;
@@ -3054,14 +3125,28 @@ const Peds = (() => {
   }
   function scare(src, r) {
     const r2 = r * r; let n = 0;
+    for (const u of Units.list) if (u.type === 'civilian' && u.alive && u.pos.distanceToSquared(src) < r2) u.scaredT = G.time + 8;
     for (const p of P) { const d2 = p.pos.distanceToSquared(src); if (d2 < r2) { if (p.mode !== 'flee') { n++; if (Math.random() < 0.15) Audio.scream(p.pos); } p.mode = 'flee'; p.flee = frnd(5, 9); p.src = src.clone(); } }
     if (n && G.mode === 'play') Heat.add(n * CONFIG.heatGain.fear, src, true);
   }
   function spawnFleeing(pos) { let far = null, fd = -1; for (const p of P) { const d = p.pos.distanceTo(Player.pos); if (d > fd) { fd = d; far = p; } } if (!far) return; far.pos.copy(pos).setY(0); far.mode = 'run'; far.flee = 5; far.src = Player.pos.clone(); far.umb = false; }
   const _d = V3();
+  const CIV_PALS = ['#3a3f4a', '#5a2a2a', '#2a3a5a', '#4a4a3a', '#6a5a4a', '#7a6a8a', '#2a5a4a', '#8a6a2a'].map(c => ({ torso: c, arms: c, legs: '#1a1a22', boots: '#111', skin: fpick(['#c58c6a', '#8a5a3a', '#e0b090', '#a87050']) }));
+  let promoT = 0;
   function update(dt) {
     const near = Player.pos; let k = 0;
+    promoT -= dt;
+    if (G.mode === 'play' && promoT <= 0) {
+      promoT = 0.4;
+      let n = Units.list.filter(u => u.alive && u.type === 'civilian' && !u.ko).length;
+      if (n < 12) {
+        const c = P.filter(p => !p.promoted && p.mode !== 'run' && p.pos.distanceToSquared(near) < 30 * 30).sort((a, b) => a.pos.distanceToSquared(near) - b.pos.distanceToSquared(near));
+        for (const p of c) { if (n >= 12) break; const u = Units.spawn('civilian', p.pos.x, 0.03, p.pos.z, { force: true, pal: CIV_PALS[p.i % CIV_PALS.length], state: 'civ' }); if (!u) break; u.ped = p; u.yaw = p.yaw; p.promoted = true; p.unit = u; if (p.mode === 'flee') u.scaredT = G.time + 6; n++; }
+      }
+    }
     for (const p of P) {
+      if (p.needsPlace) { p.needsPlace = false; placeRandom(p, near, 60, 115); }
+      if (p.promoted) { _m1.makeScale(0, 0, 0); im.setMatrixAt(p.i, _m1); um.setMatrixAt(p.i, _m1); continue; }
       p.ph += dt * (p.mode === 'walk' ? 5 : 11);
       if (p.mode === 'walk' || p.mode === 'flee') {
         if (!p.L) { placeRandom(p, near); continue; }
@@ -3222,7 +3307,7 @@ const Player = {
       if (this.levitating) { }
       else if (this.grounded || this.coyote > 0) { this.vel.y = C.jump * (G.modifier === 'lowgrav' ? 0.8 : 1); this.grounded = false; this.coyote = 0; Audio.step(1.4); }
       else if (this.tkJumps < 2 && this.spend(C.tkJumpCost * (this.tkJumps ? 1.4 : 1))) {
-        this.vel.y = C.tkJump * (this.tkJumps ? 0.8 : 1); this.tkJumps++;
+        this.vel.y = C.tkJump * (this.tkJumps ? 0.8 : 1); this.tkJumps++; Tut.done('jump');
         const h = V3(this.vel.x, 0, this.vel.z); if (h.length() < 6 && wish.lengthSq() > 0.01) { this.vel.x += wish.x * 6; this.vel.z += wish.z * 6; }
         FX.ring(V3(this.pos.x, this.pos.y + 0.1, this.pos.z), 2, TK_COLOR, 40); FX.tkBurst(this.pos.clone(), V3(0, -1, 0), 30); Audio.tkJump(); Hud.ca(0.008);
       }
@@ -3416,6 +3501,13 @@ const Tether = (() => {
     hideExtras(from = 0) { for (let i = from; i < extra.length; i++) if (extra[i]) extra[i].m.visible = false; },
   };
 })();
+// aiming at a building lets you tear a chunk out of its wall
+const WallTarget = {
+  kind: 'wall', alive: true, grabbable: true, tugOnly: true, tugTime: 0.4, mass: 1400, radius: 1.1, outlineGeo: new THREE.BoxGeometry(1.9, 1.4, 1.0),
+  p: V3(), n: V3(), q: new THREE.Quaternion(), bld: null,
+  body: { translation() { return WallTarget.p; }, rotation() { return WallTarget.q; } },
+  onTug() { Destruction.ripChunk(WallTarget.bld, WallTarget.p.clone(), WallTarget.n.clone()); },
+};
 const TK = {
   target: null, targetOk: false, held: null, holding: false, pulling: false, tugging: false, tugT: 0, charge: 0, charging: false, chargeT: 0, holdT: 0, lastThrowT: -9,
   canGrab(o) { return o && o.alive && o.body && o.grabbable !== false && o.kind !== 'player' && !o.inOrbit && !o.inVortex && !(o.kind === 'unit' && o.ko && false); },
@@ -3424,7 +3516,7 @@ const TK = {
     if (!CamRig.fwd) return null;
     const cp = camera.position, f = CamRig.fwd;
     const range = CONFIG.tk.pullRange;
-    const ball = TK._ball || (TK._ball = new RAPIER.Ball(0.55));
+    const ball = TK._ball || (TK._ball = new RAPIER.Ball(1.0));
     const hit = world.castShape({ x: cp.x + f.x * 1.5, y: cp.y + f.y * 1.5, z: cp.z + f.z * 1.5 }, { x: 0, y: 0, z: 0, w: 1 }, { x: f.x, y: f.y, z: f.z }, ball, range, true, undefined, ig(0xffff, GRP.PROP | GRP.UNIT | GRP.DEBRIS | GRP.WALKER), undefined, Player.body);
     let o = null;
     if (hit) {
@@ -3437,10 +3529,28 @@ const TK = {
     // aim assist toward units and specials
     if (!o || !this.canGrab(o)) {
       o = null; let best = 0.06;
+      // generous aim assist: anything liftable near the reticle
+      for (const c of objs) {
+        if (!c.body || c.heldBy || c.grabbable === false || c.special || c.inOrbit || c.inVortex || c.kind === 'unit') continue;
+        const t = c.body.translation(); const dx = t.x - cp.x, dy = t.y - cp.y, dz = t.z - cp.z; const dist = Math.hypot(dx, dy, dz); if (dist > 32 || dist < 1.5) continue;
+        const ang = 1 - (dx * f.x + dy * f.y + dz * f.z) / dist; const score = ang * (1 + dist * 0.02) * (c.mass > 50 ? 0.8 : 1.2);
+        if (score < best * 0.5 && losClear(cp, _v2.set(t.x, t.y, t.z), c.radius + 0.4)) { best = score * 2; o = c; }
+      }
       for (const c of Assist.list()) {
         if (!c.alive || !c.body) continue; const t = c.body.translation(); const d = _v1.set(t.x - cp.x, t.y - cp.y, t.z - cp.z); const dist = d.length(); if (dist > range || dist < 2) continue;
         const ang = 1 - d.dot(f) / dist; const score = ang * (1 + dist * 0.01);
         if (score < best && losClear(cp, _v2.set(t.x, t.y, t.z), 0.6)) { best = score; o = c; }
+      }
+    }
+    if (!o || !this.canGrab(o)) {
+      const ah = CamRig.aimHit; const tag = ah && objByCollider.get(ah.collider.handle);
+      if (tag && tag.kind === 'building' && ah.toi < 34) {
+        const B = tag.bld; const pt = _v3.copy(cp).addScaledVector(f, ah.toi);
+        if (pt.y < B.h - 0.8 && pt.y > 0.3) {
+          const dd = [[Math.abs(pt.x - B.x0), V3(-1, 0, 0)], [Math.abs(pt.x - B.x1), V3(1, 0, 0)], [Math.abs(pt.z - B.z0), V3(0, 0, -1)], [Math.abs(pt.z - B.z1), V3(0, 0, 1)]].sort((a, b) => a[0] - b[0]);
+          WallTarget.n.copy(dd[0][1]); WallTarget.p.copy(pt).addScaledVector(WallTarget.n, 0.3); WallTarget.q.setFromUnitVectors(V3(0, 0, 1), WallTarget.n); WallTarget.bld = B;
+          return WallTarget;
+        }
       }
     }
     return this.canGrab(o) ? o : null;
@@ -3453,7 +3563,8 @@ const TK = {
       this.targetOk = o ? (this.weightOf(o) <= cap && (o.liftReq == null || o.liftReq <= cap)) : false;
       if (o && o.tugOnly) this.targetOk = true;
       Outline.show(o, this.targetOk);
-      Hud.hint(o ? (this.targetOk ? (o.tugOnly ? 'HOLD TO TEAR FREE' : Math.round(o.mass) + ' kg') : 'TOO HEAVY · ' + Math.round(o.mass) + ' kg / ' + Math.round(cap)) : '', this.targetOk ? 'ok' : 'bad');
+      const nm = o ? (o === WallTarget ? 'A CHUNK OF WALL' : o.kind === 'unit' ? (o.type === 'civilian' ? 'A CIVILIAN' : 'AN OFFICER') : o.kind === 'car' ? (o.type || 'car').toUpperCase() : (o.type || o.kind).toUpperCase()) : '';
+      Hud.hint(o ? (this.targetOk ? (o.tugOnly ? 'HOLD LEFT CLICK — RIP OUT ' + (o === WallTarget ? 'A CHUNK OF WALL' : 'THE PLATE') : 'HOLD LEFT CLICK — LIFT ' + nm + ' · ' + fmt(o.mass) + ' kg') : 'TOO HEAVY · ' + fmt(o.mass) + ' kg — UPGRADE LIFT (' + fmt(cap) + ' kg)') : '', this.targetOk ? 'ok' : 'bad');
     }
     // grab / pull
     if (Input.down('grab') && !Shield.firingLock) {
@@ -3463,7 +3574,7 @@ const TK = {
         else if (d <= CONFIG.tk.range * (1 + Prog.level('grip') * 0.06)) { if (Player.spend(CONFIG.tk.grabCost)) this.grab(this.target); }
         else this.pull(this.target, dt, d);
       } else if (!this.held) { this.pulling = false; }
-    } else { if (this.held) this.release(false); this.pulling = false; this.tugging = false; this.tugT = 0; }
+    } else { if (this.held) this.throw(); this.pulling = false; this.tugging = false; this.tugT = 0; }
     if (this.held) this.hold(dt, rdt);
     else if (!this.pulling && !this.tugging) Tether.hide();
   },
@@ -3508,6 +3619,7 @@ const TK = {
     Audio.grab(o.mass); Shake.add(Math.min(0.35, o.mass / 8000));
     Outline.show(null); Hud.hint('');
     if (o.mass > 9000) Challenges.flag('heavy');
+    Tut.done('lift');
   },
   hold(dt, rdt) {
     const o = this.held;
@@ -3540,8 +3652,10 @@ const TK = {
     o.body.setAngvel({ x: lerp(av.x, Math.sin(tt * 1.3 + o.id) * spin, 0.05), y: lerp(av.y, Math.cos(tt * 0.9) * spin * 0.6, 0.05), z: lerp(av.z, Math.sin(tt * 1.7) * spin * 0.5, 0.05) }, true);
     if (o.kind === 'unit') o.flailing = true;
     // charge throw
-    if (Input.down('throw')) { if (!this.charging) { this.charging = true; this.chargeT = 0; } this.chargeT += rdt; this.charge = clamp(C.chargeMin + this.chargeT / C.chargeTime * (C.chargeMax - C.chargeMin), C.chargeMin, C.chargeMax); }
-    if (this.charging && Input.up('throw')) this.throw();
+    // the longer you hold, the harder it flies (release left click to throw, right click to drop)
+    this.charging = true; this.chargeT += rdt; this.charge = clamp(C.chargeMin + this.chargeT / C.chargeTime * (C.chargeMax - C.chargeMin), C.chargeMin, C.chargeMax);
+    Hud.hint('RELEASE LEFT CLICK — THROW · RIGHT CLICK — DROP', 'ok');
+    if (Input.tap('throw')) { this.release(false); Hud.hint(''); return; }
     const hp = Player.handPos(V3());
     Tether.show(hp, _v1.set(t.x, t.y, t.z), clamp(heavy + (this.charging ? this.charge - 0.4 : 0), 0, 1.4), tt);
     Audio.tkHum(true, 0.5 + heavy * 0.5 + (this.charging ? this.charge * 0.3 : 0));
@@ -3565,7 +3679,7 @@ const TK = {
     o.body.setAngvel({ x: frnd(-3, 3), y: frnd(-2, 2), z: frnd(-3, 3) }, true);
     o.thrownT = G.time; o.chaosT = G.time + 10; o.throwHits = new Set(); o.thrownBy = 'player'; o.friendly = true; o.throwSpeed = speed; o.flyT = G.time + 4;
     Flyers.add(o);
-    this.lastThrowT = G.time;
+    this.lastThrowT = G.time; Tut.done('throw'); Hud.hint('');
     const big = o.mass >= C.slowmoMass && this.charge >= C.slowmoForce;
     if (big) { TimeFX.slowmo(C.slowmoScale, C.slowmoTime * clamp(o.mass / 2500, 0.8, 1.6)); Hud.ca(0.02); Score.bigThrow(o); }
     Hud.blur(clamp(speed / 60, 0.05, 0.3), 0.35);
@@ -3636,7 +3750,7 @@ const Push = {
     if (!Input.tap('push') || this.cd > 0 || TK.held) return;
     const P = CONFIG.powers.push; if (!Player.spend(P.cost)) return;
     this.cd = P.cd * (1 - Prog.level('cooldown') * 0.1);
-    Player.action = 'push'; Player.actionT = 0; Player.combatT = G.time;
+    Player.action = 'push'; Player.actionT = 0; Player.combatT = G.time; Tut.done('push');
     const origin = Player.chest(); const dir = CamRig.fwd.clone(); dir.y = clamp(dir.y, -0.3, 0.6); dir.normalize();
     FX.tkBurst(origin.clone().addScaledVector(dir, 1), dir, 60); Audio.push(); Hud.ca(0.012); Shake.add(0.12);
     const cap = liftCap();
@@ -3648,10 +3762,11 @@ const Push = {
       const t = o.body.translation(); const d = _v1.set(t.x - origin.x, t.y - origin.y, t.z - origin.z); const dist = d.length(); if (dist < 0.01) continue; d.divideScalar(dist);
       if (d.dot(dir) < Math.cos(P.angle)) continue;
       const k = clamp(1 - dist / P.range, 0.15, 1);
-      if (o.kind === 'unit') { Units.hit(o, 14 * k, dir.clone().multiplyScalar(P.force * k + 4).add(V3(0, 4, 0)), 'push'); continue; }
+      if (o.kind === 'unit') { Units.hit(o, 32 * k + 6, dir.clone().multiplyScalar(P.force * k * 1.4 + 6).add(V3(0, 4, 0)), 'push'); continue; }
       if (o.special && o.onPush) { o.onPush(o, dir, k); continue; }
       if (o.fixed && o.onKnock && o.mass < cap) { o.onKnock(o); }
       if (o.kind === 'car' && o.kinematic) Vehicles.wake(o);
+      if (o.kind === 'car') { Vehicles.damage(o, 24 * k, o.mesh.position); Vehicles.crumple(o, origin.clone().lerp(o.mesh.position, 0.85), 0.3 * k); o.chaosT = G.time + 6; }
       const m = Math.min(o.mass, cap * 0.8);
       const J = m * P.force * k * (1 + Prog.level('throw') * 0.06);
       impulse(o, dir.x * J, (dir.y + 0.35) * J, dir.z * J);
@@ -3669,7 +3784,7 @@ const Slam = {
     Player.slamming = true; Player.vel.x *= 0.3; Player.vel.z *= 0.3; Audio.whoosh(1); return true;
   },
   impact() {
-    Player.slamming = false; this.cd = CONFIG.powers.slam.cd * (1 - Prog.level('cooldown') * 0.1);
+    Player.slamming = false; Tut.done('slam'); this.cd = CONFIG.powers.slam.cd * (1 - Prog.level('cooldown') * 0.1);
     const S = CONFIG.powers.slam; const p = Player.pos.clone(); const h = Math.max(0, Player.fallStartY - p.y);
     const R = S.radius * (1 + clamp(h / 30, 0, 0.8));
     FX.dust(p, 40, 6); FX.ring(p, R * 0.4, TK_COLOR, 90); Rings.spawn(p, R * 1.2, '#46f0ff', 0.45); Rings.spawn(p, R * 0.8, '#ffffff', 0.3);
@@ -3682,10 +3797,11 @@ const Slam = {
       if (o.kind === 'player' || o.heldBy) continue;
       const t = o.body.translation(); const d = _v1.set(t.x - p.x, 0, t.z - p.z); const dist = Math.max(0.5, d.length()); d.normalize();
       const k = clamp(1 - dist / R, 0.2, 1);
-      if (o.kind === 'unit') { Units.hit(o, 20 * k + 6, d.clone().multiplyScalar(S.force * k).add(V3(0, 9 * k + 3, 0)), 'slam', S.stun); continue; }
+      if (o.kind === 'unit') { Units.hit(o, 45 * k + 15, d.clone().multiplyScalar(S.force * k).add(V3(0, 9 * k + 3, 0)), 'slam', S.stun); continue; }
       if (o.special && o.onSlam) { o.onSlam(o, k); continue; }
       if (o.fixed && o.onKnock) o.onKnock(o);
       if (o.kind === 'car' && o.kinematic) Vehicles.wake(o);
+      if (o.kind === 'car') { Vehicles.damage(o, 35 * k, o.mesh.position); Vehicles.crumple(o, p.clone().lerp(o.mesh.position, 0.8).setY(o.mesh.position.y + 0.6), 0.4 * k); }
       const m = Math.min(o.mass, cap); const J = m * S.force * k;
       impulse(o, d.x * J * 0.8, J * 0.9, d.z * J * 0.8);
       o.chaosT = G.time + 6; o.thrownT = G.time; o.friendly = true; o.flyT = G.time + 2; Flyers.add(o);
@@ -4037,11 +4153,11 @@ const Units = (() => {
   const list = []; let ctl = null; let uid = 1;
   const DEFS = CONFIG.units;
   function reset() { for (const u of list) cleanup(u); list.length = 0; ctl = null; }
-  function cleanup(u) { if (u.rig) scene.remove(u.rig.mesh); if (u.laser) scene.remove(u.laser); }
+  function cleanup(u) { if (u.rig) scene.remove(u.rig.mesh); if (u.laser) scene.remove(u.laser); if (u.ped) { u.ped.promoted = false; u.ped.unit = null; if (u.ko || u.knocked) u.ped.needsPlace = true; else u.ped.pos.copy(u.pos).setY(0); } }
   function ensureCtl() { if (!ctl) { ctl = world.createCharacterController(0.05); ctl.enableAutostep(0.5, 0.2, false); ctl.enableSnapToGround(0.5); ctl.setMaxSlopeClimbAngle(50 * Math.PI / 180); ctl.setApplyImpulsesToDynamicBodies(true); } return ctl; }
   function spawn(type, x, y, z, opts = {}) {
-    if (list.filter(u => u.alive && !u.ko).length >= CONFIG.heat.maxUnits && !opts.force) return null;
-    const def = DEFS[type]; const rig = makeCharacter(type === 'containment' ? 'containment' : 'unit', PALETTES[type]);
+    if (type !== 'civilian' && list.filter(u => u.alive && !u.ko && u.type !== 'civilian').length >= CONFIG.heat.maxUnits && !opts.force) return null;
+    const def = DEFS[type]; const rig = makeCharacter(type === 'containment' ? 'containment' : type === 'civilian' ? 'ped' : 'unit', opts.pal || PALETTES[type]);
     rig.id = uid; rig.mesh.castShadow = true; scene.add(rig.mesh);
     const bd = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x, y + 0.95, z).setCanSleep(true).setAngularDamping(1.2).setLinearDamping(0.2);
     const body = world.createRigidBody(bd);
@@ -4099,6 +4215,7 @@ const Units = (() => {
   }
   function knockOut(u, cause) {
     u.ko = true; u.hp = 0; u.state = 'down'; u.groanT = frnd(2, 5);
+    if (u.type === 'civilian') { Score.event('civilian', u.pos); Heat.add(CONFIG.heatGain.civilian, u.pos); Stats.civs = (Stats.civs || 0) + 1; Audio.scream(u.pos); Peds.scare(u.pos, 25); if (u.laser) u.laser.visible = false; return; }
     Score.event(u.type === 'containment' ? 'containment' : u.type === 'sniper' ? 'sniper' : 'officer', u.pos);
     Heat.add(CONFIG.heatGain.officer, u.pos);
     Stats.kos++; Records.bump('mostKOs', Stats.kos);
@@ -4119,7 +4236,7 @@ const Units = (() => {
     if (u.nullField && !u.knocked && front && !u.ko) { // null field: everything bounces
       o.body.setLinvel({ x: -vel.x * 0.5, y: Math.abs(vel.y) * 0.3 + 3, z: -vel.z * 0.5 }, true); nullBounce(u); return;
     }
-    const dmg = clamp(mom / 140, 6, 140);
+    const dmg = clamp(mom / 45, 15, 400);
     const kv = vdir.multiplyScalar(clamp(mom / (u.mass * 2.2), 3, 26)).add(V3(0, clamp(mom / (u.mass * 5), 2, 10), 0));
     hit(u, dmg, kv, 'impact');
     // a car knocks the whole shield line down
@@ -4194,7 +4311,7 @@ const Units = (() => {
       if (dyn) {
         // ragdoll: follow the body; check for hard landings; get up when settled
         const bt = u.body.translation(); const lv = u.body.linvel(); const sp = Math.hypot(lv.x, lv.y, lv.z);
-        if (u.flying && u.prevSpeed - sp > 9 && !u.heldBy) { hit(u, (u.prevSpeed - sp) * 2.2, null, 'land'); Audio.bodyHit(u.pos, 0.6); if (u.roof && bt.y < 4) { u.roof = false; } }
+        if (u.flying && u.prevSpeed - sp > 9 && !u.heldBy) { hit(u, (u.prevSpeed - sp) * 5, null, 'land'); Audio.bodyHit(u.pos, 0.6); if (u.roof && bt.y < 4) { u.roof = false; } }
         u.prevSpeed = sp; u.ragT += dt;
         u.pos.set(bt.x, bt.y - 0.95, bt.z);
         if (!u.heldBy && !u.inVortex && sp < 0.6 && u.ragT > 1) {
@@ -4206,15 +4323,16 @@ const Units = (() => {
       } else if (!u.ko) {
         // vision (staggered)
         u.losT -= dt;
-        if (u.losT <= 0) { u.losT = CONFIG.units.losEvery; u.sees = G.mode === 'play' && !Player.detained && canSee(u); }
+        if (u.losT <= 0) { u.losT = CONFIG.units.losEvery; u.sees = u.type !== 'civilian' && G.mode === 'play' && !Player.detained && canSee(u); }
         if (u.sees) { anySee = true; u.lastSeenT = t; Heat.seenBy(u); }
         const dist = Math.hypot(pp.x - u.pos.x, pp.z - u.pos.z);
         let speed = 0; const def = u.def;
         if (u.stunT > 0) { /* dazed */ }
+        else if (u.type === 'civilian') { if (dist > 48) { removeObj(u); continue; } speed = civAI(u, dt, dist); }
         else if (u.type === 'sniper') SniperAI.update(u, dt, t, dist);
         else if (u.state === 'leave') { speed = moveTo(u, u.leavePt || u.pos, def.speed, dt); if (dist > 70 || (u.leavePt && u.pos.distanceTo(u.leavePt) < 3)) { removeObj(u); continue; } }
         else {
-          if (Heat.level === 0) { u.state = 'leave'; u.leavePt = pickLeave(u); }
+          if (Heat.level === 0 && u.type !== 'civilian') { u.state = 'leave'; u.leavePt = pickLeave(u); }
           else if (Heat.status === 'search' && G.time - Heat.lastSeenT > 4) { if (u.state !== 'search') { u.state = 'search'; u.searchPt = null; } }
           else if (u.sees || G.time - Heat.lastSeenT < 3) u.state = 'engage';
           if (u.state === 'search') {
@@ -4234,6 +4352,17 @@ const Units = (() => {
       animate(u, dt, t);
     }
     Heat.setSeen(anySee);
+  }
+  function civAI(u, dt, dist) {
+    const pp = Player.pos; u.action = null;
+    const scared = dist < 16 || (Heat.level > 0 && dist < 45) || (u.scaredT || 0) > G.time;
+    if (scared) {
+      u.fleeT = (u.fleeT || 0) - dt;
+      if (!u.fleePt || u.fleeT <= 0 || u.pos.distanceTo(u.fleePt) < 3) { u.fleeT = 3; const a = Math.atan2(u.pos.z - pp.z, u.pos.x - pp.x) + frnd(-0.6, 0.6); u.fleePt = V3(u.pos.x + Math.cos(a) * 25, 0, u.pos.z + Math.sin(a) * 25); if (!Nav.free(u.fleePt.x, u.fleePt.z)) u.fleePt = V3(u.pos.x - Math.sin(a) * 12, 0, u.pos.z + Math.cos(a) * 12); if (Math.random() < 0.2) Audio.scream(u.pos); }
+      return moveTo(u, u.fleePt, u.def.speed, dt);
+    }
+    if (!u.walkPt || u.pos.distanceTo(u.walkPt) < 2) { const a = frnd(0, TAU); u.walkPt = V3(u.pos.x + Math.cos(a) * 14, 0, u.pos.z + Math.sin(a) * 14); if (!Nav.free(u.walkPt.x, u.walkPt.z)) u.walkPt = u.pos.clone(); }
+    return moveTo(u, u.walkPt, 1.4, dt);
   }
   function engage(u, dt, t, dist) {
     const def = u.def; const pp = Player.pos; let speed = 0;
@@ -4371,7 +4500,7 @@ const Director = {
     if (D.t > 0) return; D.t = 1;
     const L = Heat.level; const dist = districtAt(Player.pos.x, Player.pos.z); const sec = dist.security;
     const eff = Math.min(5, L + (sec && L < 5 ? 1 : 0)); const mul = sec ? 1.3 : 1;
-    const active = Units.list.filter(u => u.alive && !u.ko && u.state !== 'leave');
+    const active = Units.list.filter(u => u.alive && !u.ko && u.state !== 'leave' && u.type !== 'civilian');
     const count = type => active.filter(u => u.type === type).length;
     const vcount = type => Vehicles.list.filter(v => v.alive && v.type === type && !v.burnt && v.mra && (v.state === 'drive' || G.time - (v.spawnT || 0) < 40)).length;
     const can = (k, cd) => { if ((D.cd[k] || 0) > 0) return false; D.cd[k] = cd; return true; };
@@ -5023,6 +5152,8 @@ const Score = {
       case 'dampener': label = 'DAMPENER DESTROYED'; break;
       case 'plate': label = 'ARMOUR TORN'; break;
       case 'pylon': label = 'PYLON DESTROYED'; break;
+      case 'civilian': label = 'CIVILIAN DOWN'; break;
+      case 'breach': label = 'WALL SMASHED'; break;
       case 'bank': label = 'BANK TRUCK CRACKED'; break;
       case 'ship': label = 'CARGO SHIP WRECKED'; break;
     }
@@ -5216,6 +5347,7 @@ function impactOne(o, other, J) {
       const cx = clamp(t.x, B.x0, B.x1), cz = clamp(t.z, B.z0, B.z1); const n = V3(t.x - cx, 0, t.z - cz); if (n.lengthSq() < 1e-4) return; n.normalize();
       if (t.y > B.h - 0.3) return; // landed on the roof
       Destruction.hitWall(B, V3(cx, t.y, cz), n, dv * other.mass / 400);
+      if (J > 7000) Destruction.breach(B, V3(cx, t.y, cz), n, J / 7000);
       if (chaos && dv > 8) { Heat.add(2, V3(cx, t.y, cz)); }
       return;
     }
@@ -5226,11 +5358,11 @@ function impactOne(o, other, J) {
   // sounds
   if (dv > 2.5 && (o.sndT || 0) < G.time) { o.sndT = G.time + 0.18; const p = bodyPos(o, V3()); if (o.kind === 'car' || o.type === 'container' || o.type === 'freight' || o.type === 'traincar' || o.type === 'dumpster' || o.type === 'vending') Audio.metal(p, clamp(dv / 12, 0.2, 1) * clamp(o.mass / 1500, 0.4, 1.4)); else Audio.thud(p, clamp(dv / 12, 0.15, 1)); if (dv > 6 && o.mass > 500) { FX.sparks(p, Math.round(dv), 0.6); Shake.at(p, Math.min(0.4, o.mass * dv / 60000), 50); } }
   if (o.kind === 'car') {
-    if (dv > 2.2) {
+    if (dv > 1.2) {
       const p = bodyPos(o, V3()); const dir = otherPos ? V3().subVectors(otherPos, p).normalize() : V3(frnd(-1, 1), -0.3, frnd(-1, 1)).normalize();
       const pt = p.clone().addScaledVector(dir, o.radius * 0.9);
-      Vehicles.crumple(o, pt, (dv - 2.2) * 0.055);
-      const dmg = (dv - 2.2) * 7.5;
+      Vehicles.crumple(o, pt, (dv - 1.2) * 0.09);
+      const dmg = (dv - 1.2) * 14;
       if (chaos) Vehicles.damage(o, dmg, pt); else if (dmg > 25) Vehicles.damage(o, dmg * 0.4, pt);
       if (chaos && dv > 4) Heat.add(CONFIG.heatGain.carSmash * clamp(dv / 12, 0.3, 1), pt);
       if (o.kinematic) Vehicles.wake(o);
@@ -5444,6 +5576,28 @@ const Music = (() => {
 })();
 
 // §HUD ---------------------------------------------------------------------------------
+// first-run tutorial: one step at a time, ticks off as you do it
+const TUT_STEPS = [
+  ['lift', 'LIFT', 'Aim at anything that glows blue — a car, a bin, a person — and <b>HOLD LEFT CLICK</b>'],
+  ['throw', 'THROW', '<b>Let go of LEFT CLICK</b> to hurl it where the reticle points. Hold longer = harder'],
+  ['push', 'PUSH', 'Tap <b>Q</b> to blast everything in front of you'],
+  ['wall', 'WRECK BUILDINGS', 'Aim at a building wall and <b>HOLD LEFT CLICK</b> to rip a chunk out — then throw it'],
+  ['jump', 'TK JUMP', 'Press <b>SPACE</b>, then <b>SPACE</b> again in the air to leap onto rooftops'],
+  ['slam', 'SLAM', 'While in the air press <b>CTRL</b> to slam down with a shockwave'],
+];
+const Tut = {
+  st: null,
+  load() { this.st = Store.get('tut', {}); },
+  done(id) { if (!this.st || this.st[id]) return; this.st[id] = 1; Store.set('tut', this.st); Audio.ui(1.6); this.render(true); },
+  reset() { this.st = {}; Store.set('tut', this.st); this.render(); },
+  render(flash) {
+    const el = $('tut'); if (!el) return; const next = TUT_STEPS.find(s => !this.st[s[0]]);
+    if (!next || G.mode !== 'play') { el.classList.add('hidden'); return; }
+    const i = TUT_STEPS.indexOf(next);
+    el.innerHTML = `<div class="tt">HOW TO PLAY · ${i + 1}/${TUT_STEPS.length} — ${next[1]}</div><div class="tb">${next[2]}</div><div class="tp">${TUT_STEPS.map(s => `<i class="${this.st[s[0]] ? 'on' : ''}"></i>`).join('')}</div>`;
+    el.classList.remove('hidden'); if (flash) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  },
+};
 const Toast = {
   show(html, cls = '') { const el = document.createElement('div'); el.className = 'toast ' + cls; el.innerHTML = html; const box = $('toasts'); box.prepend(el); while (box.children.length > 7) box.lastChild.remove(); setTimeout(() => el.remove(), 2200); },
 };
@@ -5667,14 +5821,14 @@ const Menus = (() => {
   function renderHelp() {
     const rows = [
       ['<kbd>W A S D</kbd> move · <kbd>Shift</kbd> sprint · <kbd>Space</kbd> jump', 'Press <kbd>Space</kbd> again in the air for a <b>telekinetic jump</b> (twice) — reach the rooftops'],
-      ['<kbd>Mouse</kbd> aim · objects glow <span style="color:#46f0ff">blue</span> (liftable) or <span style="color:#ff3b4f">red</span> (too heavy)', '<kbd>Hold LMB</kbd> grab — far objects are <b>pulled</b> to you'],
-      ['While holding: <kbd>hold RMB</kbd> charge, <kbd>release RMB</kbd> throw', 'Release <kbd>LMB</kbd> to drop · heavy throws slow time'],
+      ['<kbd>Mouse</kbd> aim · objects glow <span style="color:#46f0ff">blue</span> (liftable) or <span style="color:#ff3b4f">red</span> (too heavy)', '<kbd>Hold LMB</kbd> lift it — cars, people, signs, officers. Far objects are <b>pulled</b> to you'],
+      ['<kbd>Release LMB</kbd> throw where you aim — hold longer for more force', '<kbd>RMB</kbd> while holding: drop it gently · aim at a <b>building</b> and hold LMB to rip a chunk out'],
       ['<kbd>Q</kbd> push · <kbd>Ctrl</kbd> dodge (on ground) / <b>slam</b> (in the air)', '<kbd>E</kbd> hold: <b>Catch</b> bullets & rockets, release to send them back'],
       ['<kbd>1</kbd> debris shield · <kbd>F</kbd> fire a piece · <kbd>2</kbd> levitate', '<kbd>3</kbd> hold: vortex · <kbd>4</kbd> overload (when charged)'],
       ['<kbd>Esc</kbd> pause · <kbd>P</kbd> photo mode · <kbd>H</kbd> this help', 'Gamepad: sticks move/aim · RT grab · RB throw · LB push · A jump · B dodge/slam · X catch · Y shield · D-pad powers'],
       ['<b>Heat</b> rises with chaos. Break line of sight and hide — alleys, the garage, the underpass, rooftops, the subway — and it cools.', 'Staying in the fight keeps the <b>multiplier</b> climbing. Officers are knocked out, never killed.'],
     ];
-    panel.innerHTML = '<h2>CONTROLS</h2><table id="help">' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' + closeBtn; wireClose();
+    panel.innerHTML = '<h2>CONTROLS</h2><table id="help">' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table><div class="row"><button id="tut-reset">REPLAY THE TUTORIAL</button></div>' + closeBtn; wireClose(); $('tut-reset').onclick = () => { Tut.reset(); Toast.show('TUTORIAL RESET'); };
   }
   function showTitle() {
     $('title').classList.remove('hidden');
@@ -5917,6 +6071,7 @@ const Game = {
         if (daily) Hud.banner('DAILY RUN', daily.name + ' — ' + daily.desc); else Hud.banner(GAME_TITLE, 'WRECK IT. THEY WILL COME.');
         setLoadVisible(false);
         try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch { }
+        Tut.render();
         if (BENCH) Debug.startBench(BENCH);
       } catch (e) { fatal(e); }
     }, 30);
@@ -5969,7 +6124,7 @@ function environment(rdt, t) {
   scene.fog.density = damp(scene.fog.density, fogTarget.d, 1.2, rdt); scene.fog.color.lerp(fogTarget.c, 1 - Math.exp(-1.2 * rdt)); FOG_COLOR.copy(scene.fog.color);
   // lightning + thunder
   G.lightT -= rdt;
-  if (G.lightT <= 0) { G.lightT = frnd(14, 40) * (G.modifier === 'storm' ? 0.4 : 1); const flashes = [0, 0.09, 0.22]; for (const f of flashes) setTimeout(() => { hemi.intensity = 2.8; SKY.material.uniforms.uFlash.value = 1; setTimeout(() => { hemi.intensity = 0.55; SKY.material.uniforms.uFlash.value = 0; }, 60); }, f * 1000); setTimeout(() => Audio.thunder(), frnd(700, 2600)); }
+  if (G.lightT <= 0) { G.lightT = frnd(14, 40) * (G.modifier === 'storm' ? 0.4 : 1); const flashes = [0, 0.09, 0.22]; for (const f of flashes) setTimeout(() => { hemi.intensity = 4.5; SKY.material.uniforms.uFlash.value = 1; setTimeout(() => { hemi.intensity = HEMI_I; SKY.material.uniforms.uFlash.value = 0; }, 60); }, f * 1000); setTimeout(() => Audio.thunder(), frnd(700, 2600)); }
   SKY.position.copy(cp);
 }
 function headlights() {
@@ -6063,7 +6218,7 @@ async function boot() {
   setLoad(0.25, 'TEXTURES');
   initMaterials(); SKY = makeSky(); scene.add(SKY);
   FX.init(); Shards.init(); Shafts.init(); Decals.init(); Rain.init(); Splashes.init(); Peds.init(); Catch.init();
-  Prog.load(); Records.load(); Challenges.load(); Cosmetics.load();
+  Prog.load(); Records.load(); Challenges.load(); Cosmetics.load(); Tut.load();
   Player.init();
   applyQuality();
   setLoad(0.45, 'BUILDING THE CITY');
@@ -6075,7 +6230,7 @@ async function boot() {
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Projectiles, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
