@@ -170,6 +170,13 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
 #keys b{color:var(--tk);font-weight:800}
 #bossbar{top:14px}
 @media (max-width:1100px){#keys{display:none}}
+.bar.hope i{background:linear-gradient(90deg,#3cff9a,#d8ffe8)}
+.dmark{position:absolute;transform:translate(-50%,-100%);text-align:center;font-family:var(--mono);font-size:12px;padding:6px 10px;background:rgba(40,6,10,.82);border:1px solid #ff3b4f;color:#fff;white-space:nowrap;pointer-events:none}
+.dmark b{display:block;color:#ff7a8a;letter-spacing:.12em;font-size:11px}
+.dmark span{display:block;font-size:20px;font-weight:800;color:#fff}
+.dmark small{display:block;color:#6dffb0;font-size:11px}
+.dmark.urgent span{color:#ff3b4f;animation:hflash .25s infinite alternate}
+.dmark.done{opacity:.4!important}
 @media (max-width:1400px){#slots{bottom:118px}}
 @media (max-width:760px){#minimap{width:120px;height:120px}#heatbox{width:220px}.hicon{width:32px;height:22px}#slots{transform:translateX(-50%) scale(.72);transform-origin:bottom center}#bossbar{width:80vw}}
 </style>
@@ -220,8 +227,9 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
   <div id="banner"></div>
   <div id="vitals">
     <div class="lbl"><span>HEALTH</span><span id="hpv">100</span></div><div class="bar hp"><i id="hpbar" style="width:100%"></i></div>
-    <div class="lbl"><span>MIND</span><span id="mindv">100</span></div><div class="bar mind"><i id="mindbar" style="width:100%"></i></div>
-    <div class="lbl"><span>OVERLOAD</span><span id="ovlv">0%</span></div><div class="bar ovl" id="ovlwrap"><i id="ovlbar" style="width:0%"></i></div>
+    <div class="lbl"><span id="lbl-mind">MIND</span><span id="mindv">100</span></div><div class="bar mind"><i id="mindbar" style="width:100%"></i></div>
+    <div class="lbl"><span id="lbl-ovl">OVERLOAD</span><span id="ovlv">0%</span></div><div class="bar ovl" id="ovlwrap"><i id="ovlbar" style="width:0%"></i></div>
+    <div id="hoperow" class="hidden"><div class="lbl"><span>HOPE</span><span id="hopev">0</span></div><div class="bar hope"><i id="hopebar" style="width:0%"></i></div></div>
   </div>
   <div id="slots"></div>
   <div id="ticker"><div class="tag">MRA&nbsp;NEWS</div><div class="run" id="tickrun"></div></div>
@@ -246,7 +254,7 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
   </div>
 </div>
 
-<div id="sub" class="screen hidden"><div class="panel" id="subpanel"></div></div>
+<div id="sub" class="screen hidden" style="flex-direction:column;gap:10px"><div id="herotabs" class="row" style="margin:0"></div><div class="panel" id="subpanel"></div></div>
 <div id="pause" class="screen hidden"><div class="panel">
   <h2>PAUSED</h2>
   <div class="row" style="flex-direction:column;align-items:stretch">
@@ -475,11 +483,11 @@ composer.addPass(bloomPass);
 const FinalShader = {
   uniforms: {
     tDiffuse: { value: null }, uTime: { value: 0 }, uCA: { value: 0 }, uBlur: { value: 0 }, uBlurC: { value: new THREE.Vector2(0.5, 0.5) },
-    uGrain: { value: 0.045 }, uVig: { value: 0.32 }, uDamp: { value: 0 }, uSlow: { value: 0 }, uHurt: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) },
+    uGrain: { value: 0.045 }, uVig: { value: 0.32 }, uDamp: { value: 0 }, uSlow: { value: 0 }, uHurt: { value: 0 }, uCool: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float uTime,uCA,uBlur,uGrain,uVig,uDamp,uSlow,uHurt; uniform vec2 uBlurC,uRes; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float uTime,uCA,uBlur,uGrain,uVig,uDamp,uSlow,uHurt,uCool; uniform vec2 uBlurC,uRes; varying vec2 vUv;
     float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
     void main(){
       vec2 uv=vUv; vec2 dc=uv-0.5;
@@ -493,6 +501,7 @@ const FinalShader = {
       float l=dot(col,vec3(0.299,0.587,0.114));
       col=mix(col,vec3(l)*vec3(0.85,0.95,1.1),uSlow*0.55);
       col=mix(col,col*vec3(0.85,0.6,1.25)+vec3(0.03,0.0,0.06),uDamp);
+      col=mix(col,col*vec3(0.74,0.9,1.22)+vec3(0.0,0.012,0.035),uCool);
       col+=vec3(0.35,0.0,0.03)*uHurt*smoothstep(0.25,0.75,length(dc));
       float v=1.0-uVig*smoothstep(0.35,0.85,length(dc*vec2(1.15,1.0)));
       col*=v;
@@ -1668,7 +1677,7 @@ City.makeQuay = function (B) {
   bucketBox(B.concrete, -48, -3, zq - 0.5, 528, 0.02, zq, c);
   addStaticBox(240, -1.5, zq + 0.3, 300, 1.5, 0.3);
   for (let x = -40; x < 520; x += 9) bucketBox(B.metal, x - 0.25, 0, zq - 1.2, x + 0.25, 0.8, zq - 0.7, new THREE.Color(0.9, 0.75, 0.2));
-  const wall = world.createCollider(RAPIER.ColliderDesc.cuboid(300, 3, 0.25).setTranslation(240, 2.5, zq - 0.6).setCollisionGroups(ig(GRP.STATIC, GRP.PLAYER | GRP.UNIT)), world.createRigidBody(RAPIER.RigidBodyDesc.fixed()));
+  const wall = City.quayWall = world.createCollider(RAPIER.ColliderDesc.cuboid(300, 3, 0.25).setTranslation(240, 2.5, zq - 0.6).setCollisionGroups(ig(GRP.STATIC, GRP.PLAYER | GRP.UNIT)), world.createRigidBody(RAPIER.RigidBodyDesc.fixed()));
   // sea floor (catch everything that falls in)
   addStaticBox(240, -14, zq + 200, 400, 1, 200);
   // the cargo ship (wreckable)
@@ -2908,8 +2917,8 @@ const Rain = (() => {
     g.setAttribute('aOff', new THREE.InstancedBufferAttribute(off, 4)); g.instanceCount = Q.rain;
     const lp = []; const lc = []; for (let i = 0; i < 12; i++) { lp.push(V3(0, -999, 0)); lc.push(new THREE.Color(0, 0, 0)); }
     mat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uCam: { value: V3() }, uBox: { value: V3(46, 30, 46) }, uSpeed: { value: 26 }, uWind: { value: new THREE.Vector2(2.2, 0.8) }, uLP: { value: lp }, uLC: { value: lc }, uAmt: { value: 1 } },
-      vertexShader: `attribute vec4 aOff; uniform float uTime, uSpeed, uAmt; uniform vec3 uCam, uBox; uniform vec2 uWind; uniform vec3 uLP[12]; uniform vec3 uLC[12]; varying float vA; varying vec3 vC;
+      uniforms: { uTime: { value: 0 }, uCam: { value: V3() }, uBox: { value: V3(46, 30, 46) }, uSpeed: { value: 26 }, uWind: { value: new THREE.Vector2(2.2, 0.8) }, uLP: { value: lp }, uLC: { value: lc }, uAmt: { value: 1 }, uTrail: { value: Array.from({ length: 24 }, () => new THREE.Vector4(0, -999, 0, 0)) } },
+      vertexShader: `attribute vec4 aOff; uniform vec4 uTrail[24]; uniform float uTime, uSpeed, uAmt; uniform vec3 uCam, uBox; uniform vec2 uWind; uniform vec3 uLP[12]; uniform vec3 uLC[12]; varying float vA; varying vec3 vC;
         void main(){
           vec3 o=vec3(aOff.x, aOff.z, aOff.y)*uBox;
           float fall=uTime*uSpeed*aOff.w;
@@ -2923,6 +2932,7 @@ const Rain = (() => {
           for(int i=0;i<12;i++){ vec3 d=uLP[i]-p; float dd=dot(d,d); lit+=uLC[i]*(6.0/(1.0+dd*0.08)); }
           vC=lit; float dist=length(p-uCam); vA=(0.35+0.4*aOff.w)*smoothstep(uBox.x*0.5,uBox.x*0.25,dist)*smoothstep(0.6,2.5,dist)*uAmt;
           if(p.y<0.0) vA=0.0;
+          for(int i=0;i<24;i++){ vec3 dq=p-uTrail[i].xyz; if(dot(dq,dq)<uTrail[i].w) vA=0.0; }
           gl_Position=projectionMatrix*viewMatrix*vec4(wp,1.0);
         }`,
       fragmentShader: `varying float vA; varying vec3 vC; void main(){ gl_FragColor=vec4(vC*vA*0.5,1.0); }`,
@@ -2943,7 +2953,7 @@ const Rain = (() => {
     Mirror.uniforms.uRain.value = clamp(amt, 0.2, 1.4);
     Splashes.update(dt, amt);
   }
-  return { init, update, setCount, get mesh() { return mesh; }, get amount() { return amt; } };
+  return { init, update, setCount, get mesh() { return mesh; }, get amount() { return amt; }, get trail() { return mat.uniforms.uTrail.value; } };
 })();
 const Splashes = (() => {
   const MAX = 260; let im = null; const s = [];
@@ -3129,7 +3139,7 @@ const Peds = (() => {
     const r2 = r * r; let n = 0;
     for (const u of Units.list) if (u.type === 'civilian' && u.alive && u.pos.distanceToSquared(src) < r2) u.scaredT = G.time + 8;
     for (const p of P) { const d2 = p.pos.distanceToSquared(src); if (d2 < r2) { if (p.mode !== 'flee') { n++; if (Math.random() < 0.15) Audio.scream(p.pos); } p.mode = 'flee'; p.flee = frnd(5, 9); p.src = src.clone(); } }
-    if (n && G.mode === 'play') Heat.add(n * CONFIG.heatGain.fear, src, true);
+    if (n && G.mode === 'play' && !(G.hero === 'speed' && Speed.hope > 50)) Heat.add(n * CONFIG.heatGain.fear, src, true);
   }
   function spawnFleeing(pos) { let far = null, fd = -1; for (const p of P) { const d = p.pos.distanceTo(Player.pos); if (d > fd) { fd = d; far = p; } } if (!far) return; far.pos.copy(pos).setY(0); far.mode = 'run'; far.flee = 5; far.src = Player.pos.clone(); far.umb = false; }
   const _d = V3();
@@ -3231,7 +3241,7 @@ const Player = {
     if (!this.rig) {
       this.rig = makeCharacter('player', this.palette());
       this.rig.mesh.castShadow = true; scene.add(this.rig.mesh);
-      HeroModels.attach(this.rig, 'hero_telekinetic.glb');
+      Hero.load('kinetic');
       this.handGlow = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ color: TK_COLOR })); scene.add(this.handGlow);
     }
   },
@@ -3274,6 +3284,7 @@ const Player = {
   update(dt, rdt) {
     const C = CONFIG.player;
     if (this.detained) { this.rig.mesh.visible = true; this.animate(dt); return; }
+    if (G.hero !== 'kinetic') { HeroMove(dt, rdt); return; }
     // look
     const sens = CONFIG.camera.sens * settings.sens * (TK.holding && TK.charging ? 0.75 : 1);
     this.yaw -= Input.mouse.dx * sens; this.pitch -= Input.mouse.dy * sens * (settings.invertY ? -1 : 1);
@@ -3394,7 +3405,7 @@ const CamRig = {
     const targetDist = (aiming ? C.aimDist : C.dist) * (TK.held && TK.held.mass > 6000 ? 1.6 : TK.held && TK.held.mass > 2500 ? 1.25 : 1);
     this.dist = damp(this.dist, targetDist, 7, dt);
     this.shoulder = damp(this.shoulder, aiming ? C.aimShoulder : C.shoulder, 7, dt);
-    let fovT = aiming ? C.aimFov : C.fov; if (TK.charging) fovT -= TK.charge * 6; if (Player.dodgeT > 0) fovT += 8; if (Math.sqrt(Player.speed2) > 11) fovT += 4;
+    let fovT = aiming ? C.aimFov : C.fov; if (TK.charging) fovT -= TK.charge * 6; if (Player.dodgeT > 0) fovT += 8; if (Math.sqrt(Player.speed2) > 11) fovT += 4; if (G.hero === 'speed') fovT += Speed.v * 20 - (Speed.v > 0.3 ? 4 : 0);
     this.fov = damp(this.fov, fovT, 6, dt);
     if (Math.abs(camera.fov - this.fov) > 0.01) { camera.fov = this.fov; camera.updateProjectionMatrix(); }
     const p = Player.pos; const yaw = Player.yaw, pitch = Player.pitch;
@@ -3737,6 +3748,8 @@ const TimeFX = {
   update(rdt) {
     let s = 1; for (let i = this.effects.length - 1; i >= 0; i--) { const e = this.effects[i]; e.t -= rdt; if (e.t <= 0) { this.effects.splice(i, 1); continue; } s = Math.min(s, e.scale); }
     if (Catch.active) s = Math.min(s, CONFIG.powers.catch.slow);
+    if (G.hero === 'speed' && (G.mode === 'play' || G.mode === 'detained')) s = Math.min(s, Speed.ws);
+    if (G.hero === 'speed') { this.scale = s; finalPass.uniforms.uSlow.value = 0; return s; }
     this.scale = damp(this.scale, s, s < this.scale ? 40 : 9, rdt);
     if (Math.abs(this.scale - s) < 0.01) this.scale = s;
     finalPass.uniforms.uSlow.value = clamp((1 - this.scale) * 1.1, 0, 1);
@@ -3877,7 +3890,7 @@ const HeroModels = (() => {
     return m;
   }
   function sync(rig) { if (!rig || !rig.model) return; rig.model.root.visible = rig.mesh.visible; if (rig.mesh.visible) pose(rig.model, rig); }
-  return { load, attach, pose, sync };
+  return { load, attach, pose, sync, build };
 })();
 // §POWERS2 -----------------------------------------------------------------------------
 // Debris shield: up to eight small objects orbit the player and soak up bullets; F fires them one by one.
@@ -4121,13 +4134,16 @@ const PROJ = {
   heli: { speed: 100, dmg: CONFIG.dmg.heli, col: new THREE.Color(3, 2.2, 0.8), size: 0.08, stretch: 0.03 },
   pulse: { speed: 58, dmg: CONFIG.dmg.containment, col: new THREE.Color(2.2, 0.6, 3.5), size: 0.2, stretch: 0.02 },
   rocket: { speed: 34, dmg: CONFIG.dmg.rocket, col: new THREE.Color(3, 1.4, 0.4), size: 0.45, stretch: 0.0, explode: 6.5 },
+  foam: { speed: 24, dmg: 2, col: new THREE.Color(2.5, 2.4, 2.8), size: 0.35, stretch: 0.0, grav: 14 },
+  net: { speed: 42, dmg: 3, col: new THREE.Color(1.6, 2.6, 2.2), size: 0.5, stretch: 0.01 },
   cannon: { speed: 42, dmg: CONFIG.dmg.cannon, col: new THREE.Color(3.5, 0.8, 0.3), size: 0.9, stretch: 0.0, explode: 8.5 },
 };
 const Projectiles = (() => {
   const list = []; let id = 1;
   function fire(type, from, dir, owner, opts = {}) {
     const D = PROJ[type]; const sp = D.speed * (opts.speedMul || 1);
-    const p = { id: id++, type, D, pos: from.clone(), vel: dir.clone().normalize().multiplyScalar(sp), speed: sp, dmg: D.dmg * (opts.dmgMul || 1), owner, friendly: !!opts.friendly, caught: false, life: opts.life || 3, homing: null };
+    const dd = dir.clone().normalize(); if (D.grav) { dd.y += 0.35; dd.normalize(); }
+    const p = { id: id++, type, D, pos: from.clone(), vel: dd.multiplyScalar(sp), speed: sp, dmg: D.dmg * (opts.dmgMul || 1), owner, friendly: !!opts.friendly, caught: false, life: opts.life || 3, homing: null };
     list.push(p);
     FX.muzzle(from, D.col);
     return p;
@@ -4138,8 +4154,10 @@ const Projectiles = (() => {
     for (let i = list.length - 1; i >= 0; i--) {
       const p = list[i]; p.life -= dt;
       if (p.life <= 0) { list.splice(i, 1); continue; }
+      if (p.plucked) { FX.glow(p.pos, 0.5, 2.5, 2, 1, 0.03); continue; }
       if (p.caught) { FX.glow(p.pos, p.D.size * 3 + 0.25, p.D.col.r * 0.6, p.D.col.g * 0.6, p.D.col.b * 0.6, 0.03); continue; }
       if (p.homing && p.homing.alive && p.homing.body) { const t = p.homing.body.translation(); const want = _a.set(t.x - p.pos.x, t.y + 0.3 - p.pos.y, t.z - p.pos.z).normalize().multiplyScalar(p.vel.length()); p.vel.lerp(want, Math.min(1, dt * 6)); }
+      if (p.D.grav) p.vel.y -= p.D.grav * dt;
       _a.copy(p.pos); _b.copy(p.pos).addScaledVector(p.vel, dt);
       // trail
       if (p.type === 'rocket' || p.type === 'cannon') { FX.glow(_b, p.D.size * 2.2, p.D.col.r, p.D.col.g, p.D.col.b, 0.04); if (Math.random() < 0.8) FX.smoke(_a, p.type === 'cannon' ? 0.6 : 0.35, 0.7); }
@@ -4153,6 +4171,8 @@ const Projectiles = (() => {
         const r = p.D.explode ? 1.2 : 0.55;
         if (segPointDist2(_a.x, _a.y, _a.z, _b.x, _b.y, _b.z, pp.x, pp.y + 1.0, pp.z) < r * r) {
           if (p.D.explode) { explodeP(p, _b); list.splice(i, 1); continue; }
+          if (p.type === 'foam') { Hazards.add('foam', V3(pp.x, 0, pp.z)); list.splice(i, 1); continue; }
+          if (p.type === 'net') { Speed.netted(); list.splice(i, 1); continue; }
           Player.hurt(p.dmg, _a.clone(), p.type); FX.sparks(_b, 4, 0.4, new THREE.Color(1, 0.3, 0.3)); list.splice(i, 1); continue;
         }
       }
@@ -4179,6 +4199,7 @@ const Projectiles = (() => {
           const hp = _a.clone().addScaledVector(d, hit.toi);
           const o = objByCollider.get(hit.collider.handle);
           if (p.D.explode) { explodeP(p, hp); list.splice(i, 1); continue; }
+          if (p.type === 'foam') { Hazards.add('foam', V3(hp.x, 0, hp.z)); list.splice(i, 1); continue; }
           if (o && o.kind === 'glass') Destruction.shatter(o, _a, 6);
           else if (o && o.kind === 'car') { Vehicles.damage(o, p.dmg * 0.6, hp); FX.sparks(hp, 6, 0.5); if (o.kinematic && Math.random() < 0.08) Vehicles.wake(o); }
           else if (o && o.kind === 'building') { FX.sparks(hp, 4, 0.4); if (Math.random() < 0.15) Decals.add(hp, V3().copy(d).negate(), 0.35, 0); if (Math.random() < 0.08) Destruction.wallGlass(o.bld, hp, d.clone().negate(), 3); }
@@ -4360,6 +4381,8 @@ const Units = (() => {
     u.pos.set(t.x + m.x, t.y + m.y - 0.95, t.z + m.z);
   }
   function shoot(u, type, spread, dmgMul = 1) {
+    if (u.disarmed) return;
+    if (G.hero === 'speed' && type !== 'pulse' && Math.random() < (Heat.level <= 2 ? 0.28 : 0.18)) type = Heat.level >= 3 && u.type === 'rifle' ? 'net' : 'foam';
     const pp = Player.pos; const from = u.rig.bones.laR.getWorldPosition(V3()); from.y += 0.05;
     const tgt = V3(pp.x + Player.vel.x * 0.15, pp.y + 1.1, pp.z + Player.vel.z * 0.15);
     const dir = tgt.sub(from).normalize(); const sp = spread * (1 + Math.min(1.5, Math.sqrt(Player.speed2) / 8)) * (Player.dodgeT > 0 ? 3 : 1) * (G.modifier === 'storm' ? 1.3 : 1);
@@ -4373,6 +4396,7 @@ const Units = (() => {
     for (let i = list.length - 1; i >= 0; i--) {
       const u = list[i];
       if (!u.alive || !u.body) { cleanup(u); list.splice(i, 1); Assist.rebuild(); continue; }
+      if (u.carried) continue;
       u.actionT += dt; u.stunT -= dt;
       const dyn = isDyn(u);
       if (dyn) {
@@ -4395,7 +4419,7 @@ const Units = (() => {
         const dist = Math.hypot(pp.x - u.pos.x, pp.z - u.pos.z);
         let speed = 0; const def = u.def;
         if (u.stunT > 0) { /* dazed */ }
-        else if (u.type === 'civilian') { if (dist > 48) { removeObj(u); continue; } speed = civAI(u, dt, dist); }
+        else if (u.type === 'civilian') { if (dist > 48 && !u.trapped && !u.saved) { removeObj(u); continue; } speed = civAI(u, dt, dist); }
         else if (u.type === 'sniper') SniperAI.update(u, dt, t, dist);
         else if (u.state === 'leave') { speed = moveTo(u, u.leavePt || u.pos, def.speed, dt); if (dist > 70 || (u.leavePt && u.pos.distanceTo(u.leavePt) < 3)) { removeObj(u); continue; } }
         else {
@@ -4422,6 +4446,7 @@ const Units = (() => {
   }
   function civAI(u, dt, dist) {
     const pp = Player.pos; u.action = null;
+    if (u.trapped) { u.action = 'hold'; u.faceYaw = Math.atan2(u.trapped.pos.x - u.pos.x, u.trapped.pos.z - u.pos.z) + Math.PI; return 0; }
     const scared = dist < 16 || (Heat.level > 0 && dist < 45) || (u.scaredT || 0) > G.time;
     if (scared) {
       u.fleeT = (u.fleeT || 0) - dt;
@@ -4505,7 +4530,7 @@ const Units = (() => {
     } else {
       rig.mesh.position.copy(u.pos); rig.mesh.rotation.set(0, u.yaw, 0); rig.mesh.quaternion.setFromAxisAngle(UP, u.yaw);
       const pp = Player.pos; const dy = pp.y + 1.2 - (u.pos.y + 1.4); const dd = Math.hypot(pp.x - u.pos.x, pp.z - u.pos.z);
-      poseRig(rig, { t, speed: u.speedNow, action: u.stunT > 0 ? 'hold' : u.action, at: u.actionT, aimPitch: Math.atan2(dy, dd) * (u.action ? 1 : 0), crouch: u.coverPt && u.pos.distanceTo(u.coverPt) < 1.5 ? 0.6 : (u.type === 'sniper' ? 0.45 : 0) }, dt);
+      poseRig(rig, { t, speed: u.speedNow, action: u.stunT > 0 ? 'hold' : u.action, at: u.actionT, aimPitch: Math.atan2(dy, dd) * (u.action ? 1 : 0), crouch: u.trapped ? 0.85 : u.coverPt && u.pos.distanceTo(u.coverPt) < 1.5 ? 0.6 : (u.type === 'sniper' ? 0.45 : 0) }, dt);
       if (u.stunT > 0 && Math.random() < 0.2) FX.add.emit(u.pos.x + frnd(-0.3, 0.3), u.pos.y + 2.0, u.pos.z + frnd(-0.3, 0.3), 0, 0.3, 0, 0.5, 0.1, 0.05, 0.6, 1.2, 3, 1, 0.3, 0.6, 2, 0, 0, 0, 0, 0);
     }
   }
@@ -4520,7 +4545,7 @@ const Heat = {
   add(p, pos, quiet) {
     if (G.mode !== 'play' || Player.detained) return;
     const d = districtAt(Player.pos.x, Player.pos.z);
-    this.points += p * d.heatMul * (G.modifier === 'hot' ? 1.5 : 1);
+    this.points += p * d.heatMul * (G.modifier === 'hot' ? 1.5 : 1) * (G.hero === 'speed' ? Speed.heatMul() : 1);
     if (!quiet || this.level > 0) { if (pos && (this.status !== 'seen')) this.lastKnown.copy(pos); }
     if (this.level === 0 && this.points >= CONFIG.heat.thresholds[1]) { this.lastKnown.copy(Player.pos); this.lastSeenT = G.time; }
     this.points = Math.min(this.points, CONFIG.heat.thresholds[5] * 1.5);
@@ -4585,6 +4610,7 @@ const Director = {
       if (vcount('armor') < (eff >= 4 ? 1 : 2) && can('armor', 20)) { const v = this.vehicle('armor', []); if (v) { v.ramOnArrive = true; } }
     }
     if (eff >= 4) { Air.direct(eff, mul); }
+    if (G.hero === 'speed') SpeedMRA.direct(eff);
     if (eff >= 5) {
       if (count('containment') < 6 && can('containment', 18)) { const sq = { center: null, null: true }; this.vehicle('tacvan', [{ type: 'containment', squad: sq }, { type: 'containment', squad: sq }, { type: 'containment', squad: sq }]); Squads.add(sq); }
       Dampen.direct(); Walker.direct(dt);
@@ -4717,7 +4743,7 @@ const Air = (() => {
       }
     } else {
       // orbit the last known position; the searchlight sweeps toward it
-      const focus = G.time - Heat.lastSeenT < 4 ? pp : Heat.lastKnown;
+      const focus = G.time - Heat.lastSeenT < 4 ? (G.hero === 'speed' ? pp.clone().addScaledVector(Player.vel, 1.1) : pp) : Heat.lastKnown;
       h.orbitA += dt * 0.22;
       const tx = focus.x + Math.cos(h.orbitA) * h.orbitR, tz = focus.z + Math.sin(h.orbitA) * h.orbitR;
       const tgt = V3(tx, Math.max(h.alt, (City.buildingAt(tx, tz)?.h || 0) + 18), tz);
@@ -4900,7 +4926,7 @@ const Dampen = {
     this.k = damp(this.k, this.inField ? 1 : 0, 5, dt);
     finalPass.uniforms.uDamp.value = this.k * 0.55;
     $('damp').style.boxShadow = `0 0 160px 40px rgba(170,60,255,${(this.k * 0.45).toFixed(3)}) inset`;
-    if (this.inField && !this.wasIn) { Toast.show('DAMPENING FIELD — <b>GRIP WEAKENED</b>', 'heat'); Audio.dampOn(); }
+    if (this.inField && !this.wasIn) { Toast.show(G.hero === 'speed' ? 'CHRONO-DAMPENER — <b>TIME SPEEDS BACK UP</b>' : 'DAMPENING FIELD — <b>GRIP WEAKENED</b>', 'heat'); Audio.dampOn(); }
     this.wasIn = this.inField;
   },
   direct() {
@@ -5014,7 +5040,7 @@ const Walker = (() => {
     Debris.track(o);
     FX.sparks(wp, 40, 1.3); Audio.metalTear(wp); Shake.add(0.4); Hud.ca(0.02);
     Score.event('plate', wp);
-    if (!TK.held) TK.grab(o);
+    if (!TK.held && G.hero === 'kinetic') TK.grab(o);
     const left = W.plates.filter(p => p.alive).length;
     Toast.show('PLATE TORN — <b>' + left + '</b> LEFT', 'big');
     if (left === 0) setPhase(2);
@@ -5177,8 +5203,23 @@ const Walker = (() => {
     return false;
   }
   function slamCheck(p, R) { if (!W || W.phase !== 3) return; for (const pl of W.pylons) if (pl.alive) { const wp = pl.mesh.getWorldPosition(_v2); if (wp.distanceTo(p) < 5) hitPylon(pl, 2); } }
+  // the speedster tears plates, hits joints and smashes pylons at close range
+  function blitzAt(p, r = 5) {
+    if (!W || W.dying) return false;
+    if (W.phase === 1) { let best = null, bd = r; for (const pl of W.plates) if (pl.alive) { const d = pl.mesh.getWorldPosition(_v2).distanceTo(p); if (d < bd) { bd = d; best = pl; } } if (best) { tearPlate(best); return true; } }
+    if (W.phase === 2) for (const l of W.legs) if (!l.broken && l.kneeP.distanceTo(p) < r) { hitKnee(l, 1); return true; }
+    if (W.phase === 3) for (const pl of W.pylons) if (pl.alive && pl.top.getWorldPosition(_v2).distanceTo(p) < r + 1) { hitPylon(pl, 2); return true; }
+    return false;
+  }
+  function nearPart(p, r = 6) {
+    if (!W || W.dying) return null;
+    if (W.phase === 1) for (const pl of W.plates) if (pl.alive) { const q = pl.mesh.getWorldPosition(V3()); if (q.distanceTo(p) < r) return q; }
+    if (W.phase === 2) for (const l of W.legs) if (!l.broken && l.kneeP.distanceTo(p) < r) return l.kneeP.clone();
+    if (W.phase === 3) for (const pl of W.pylons) if (pl.alive) { const q = pl.top.getWorldPosition(V3()); if (q.distanceTo(p) < r + 1) return q; }
+    return null;
+  }
   return {
-    reset, update, direct, flyerCheck, projCheck, slamCheck, spawn, get W() { return W; },
+    reset, update, direct, flyerCheck, projCheck, slamCheck, spawn, get W() { return W; }, blitzAt, nearPart,
     assistList() { if (!W || W.phase !== 1) return []; return W.plates.filter(p => p.alive).map(p => p.obj); },
     targets() { if (!W || W.dying) return []; if (W.phase === 3) return W.pylons.filter(p => p.alive).map(p => ({ alive: true, pos: p.top.getWorldPosition(V3()), kind: 'pylon' })); if (W.phase === 2) return W.legs.filter(l => !l.broken).map(l => ({ alive: true, pos: l.kneeP.clone(), kind: 'knee' })); return [{ alive: true, pos: W.group.position.clone(), kind: 'walker' }]; },
     noteHit() { if (W && !W.dying) W.hitDuringFight = true; },
@@ -5193,11 +5234,12 @@ const Stats = { reset() { Object.assign(this, { kos: 0, glass: 0, helis: 0, ward
 Stats.reset();
 const Score = {
   total: 0, combo: 0, comboT: 0, best: 0,
-  reset() { this.total = 0; this.combo = 0; this.comboT = 0; },
+  byHero: {},
+  reset() { this.total = 0; this.combo = 0; this.comboT = 0; this.byHero = {}; },
   add(pts, pos, label, cls) {
     if (G.mode !== 'play' || Player.detained) return;
     const m = Heat.mult * (1 + Math.min(this.combo, 20) * 0.05);
-    const v = Math.round(pts * m); this.total += v;
+    const v = Math.round(pts * m); this.total += v; this.byHero[G.hero] = (this.byHero[G.hero] || 0) + v;
     this.combo++; this.comboT = 2.6;
     Player.ovl = Math.min(100, Player.ovl + pts / 90);
     if (label) Toast.show(label + ' <b>+' + fmt(v) + '</b>', cls || (pts >= 1000 ? 'big' : ''));
@@ -5250,17 +5292,23 @@ const UPGRADES = [
   { id: 'health', name: 'HEALTH', base: 120, max: 5, desc: '+20 health and less damage taken.' },
   { id: 'cooldown', name: 'POWER COOLDOWNS', base: 150, max: 5, desc: 'Faster cooldowns, cheaper powers.' },
 ];
+// every hero has its own kinesis, power tree, records and cosmetics; the city and daily run are shared
+const HERO_IDS = ['kinetic', 'speed', 'shift'];
+const TREES = { kinetic: { powers: POWER_TREE, upgrades: UPGRADES } };
 const Prog = {
-  data: null,
-  load() { this.data = Object.assign({ kinesis: 0, unlocked: {}, levels: {}, total: 0 }, Store.get('prog', {})); },
-  save() { Store.set('prog', this.data); },
+  all: {},
+  key(h) { return h === 'kinetic' ? 'prog' : 'prog.' + h; },
+  load() { for (const h of HERO_IDS) this.all[h] = Object.assign({ kinesis: 0, unlocked: {}, levels: {}, total: 0 }, Store.get(this.key(h), {})); },
+  get data() { return this.all[G.hero] || this.all.kinetic; },
+  tree() { return TREES[G.hero] || TREES.kinetic; },
+  save() { Store.set(this.key(G.hero), this.data); },
   has(id) { return !!this.data.unlocked[id] || G.allUnlocked; },
-  level(id) { return G.allUnlocked ? (UPGRADES.find(u => u.id === id) || { max: 5 }).max : (this.data.levels[id] || 0); },
+  level(id) { return G.allUnlocked ? (this.tree().upgrades.find(u => u.id === id) || { max: 5 }).max : (this.data.levels[id] || 0); },
   upCost(u) { return Math.round(u.base * Math.pow(this.level(u.id) + 1, 1.55)); },
   canUnlock(p) { return !this.data.unlocked[p.id] && this.data.kinesis >= p.cost && p.req.every(r => this.data.unlocked[r]) && (!p.reqLift || (this.data.levels.lift || 0) >= p.reqLift); },
   unlock(p) { if (!this.canUnlock(p)) return false; this.data.kinesis -= p.cost; this.data.unlocked[p.id] = true; this.save(); Audio.ui(2); return true; },
   upgrade(u) { const c = this.upCost(u); if (this.level(u.id) >= u.max || this.data.kinesis < c) return false; this.data.kinesis -= c; this.data.levels[u.id] = this.level(u.id) + 1; this.save(); Audio.ui(1.5); return true; },
-  earn(n) { this.data.kinesis += n; this.data.total += n; this.save(); },
+  earn(n, h = G.hero) { const d = this.all[h] || this.data; d.kinesis += n; d.total += n; Store.set(this.key(h), d); },
 };
 const CHALLENGES = [
   { id: 'heliRocket', name: 'Take down a helicopter with its own rocket', reward: 600 },
@@ -5284,13 +5332,14 @@ const Challenges = {
   load() { this.done = Store.get('challenges', {}); },
   flag(id) {
     if (G.mode !== 'play' && G.mode !== 'detained') return;
-    const c = CHALLENGES.find(x => x.id === id); if (!c || this.done[id]) return;
+    let c = null, owner = G.hero; for (const h of HERO_IDS) { const f = (CHALLENGES_BY[h] || []).find(x => x.id === id); if (f) { c = f; owner = h; } } if (!c || this.done[id]) return;
     this.done[id] = Date.now(); Store.set('challenges', this.done); this.runDone.push(c);
-    Prog.earn(c.reward);
+    Prog.earn(c.reward, owner);
     Hud.challenge('CHALLENGE COMPLETE — ' + c.name.toUpperCase() + ' · +' + c.reward + ' KINESIS');
     Audio.heatUp(2);
   },
 };
+const CHALLENGES_BY = { kinetic: CHALLENGES };
 const MODIFIERS = [
   { id: 'lowgrav', name: 'LOW GRAVITY', desc: 'Everything flies further. So do you.' },
   { id: 'storm', name: 'ENDLESS RAIN', desc: 'A storm that never stops. Harder to see, harder to be seen.' },
@@ -5311,12 +5360,15 @@ const RECORD_DEFS = [
   ['biggestThrow', 'Biggest object thrown', v => fmt(v || 0) + ' kg'], ['catchChain', 'Longest catch chain', v => v || 0], ['mostKOs', 'Most units knocked out (one run)', v => v || 0],
   ['survived1', 'Longest at Heat 1', v => fmtTime(v)], ['survived2', 'Longest at Heat 2', v => fmtTime(v)], ['survived3', 'Longest at Heat 3', v => fmtTime(v)], ['survived4', 'Longest at Heat 4', v => fmtTime(v)], ['survived5', 'Longest at Heat 5', v => fmtTime(v)],
 ];
+const RECORD_DEFS_BY = { kinetic: RECORD_DEFS };
 const Records = {
-  all: {}, run: {}, broken: new Set(),
-  load() { this.all = Store.get('records', {}); },
+  allBy: {}, run: {}, broken: new Set(),
+  key(h) { return h === 'kinetic' ? 'records' : 'records.' + h; },
+  load() { for (const h of HERO_IDS) this.allBy[h] = Store.get(this.key(h), {}); },
+  get all() { return this.allBy[G.hero] || this.allBy.kinetic; },
   startRun() { this.run = {}; this.broken = new Set(); this.base = Object.assign({}, this.all); },
   bump(k, v) { if (G.mode !== 'play' && G.mode !== 'detained') return; if (!(v > (this.run[k] || 0))) return; this.run[k] = v; if (v > (this.all[k] || 0)) { this.all[k] = v; if ((this.base[k] || 0) > 0 || k === 'highestHeat' || k === 'wardens') this.broken.add(k); } },
-  endRun() { this.all.wardensTotal = (this.all.wardensTotal || 0) + (Stats.wardens || 0); this.all.helisTotal = (this.all.helisTotal || 0) + (Stats.helis || 0); Store.set('records', this.all); },
+  endRun() { this.all.wardensTotal = (this.all.wardensTotal || 0) + (Stats.wardens || 0); this.all.helisTotal = (this.all.helisTotal || 0) + (Stats.helis || 0); for (const h of HERO_IDS) Store.set(this.key(h), this.allBy[h]); },
 };
 const COSMETICS = {
   outfits: [
@@ -5452,16 +5504,19 @@ function breakProp(o) {
 // §AUDIO -------------------------------------------------------------------------------
 // Everything is synthesised with the Web Audio API: no sound files.
 const Audio = (() => {
-  let ctx = null, master, sfx, mus, amb, comp, noise = null, unlocked = false;
+  let ctx = null, master, sfx, mus, amb, comp, noise = null, unlocked = false, wlp = null, pl = null, hum = null, humG = null;
   const loops = {};
   function init() {
     if (ctx) return;
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { ctx = null; return; }
     comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = settings.volume; master.connect(comp);
-    sfx = ctx.createGain(); sfx.gain.value = 0.9; sfx.connect(master);
-    mus = ctx.createGain(); mus.gain.value = settings.music * 0.55; mus.connect(master);
-    amb = ctx.createGain(); amb.gain.value = 0.7; amb.connect(master);
+    wlp = ctx.createBiquadFilter(); wlp.type = 'lowpass'; wlp.frequency.value = 20000; wlp.Q.value = 0.8; wlp.connect(master);
+    pl = ctx.createGain(); pl.gain.value = 0.9; pl.connect(master);
+    sfx = ctx.createGain(); sfx.gain.value = 0.9; sfx.connect(wlp);
+    mus = ctx.createGain(); mus.gain.value = settings.music * 0.55; mus.connect(wlp);
+    amb = ctx.createGain(); amb.gain.value = 0.7; amb.connect(wlp);
+    hum = ctx.createOscillator(); hum.type = 'sine'; hum.frequency.value = 42; humG = ctx.createGain(); humG.gain.value = 0; hum.connect(humG); humG.connect(pl); hum.start();
     const len = ctx.sampleRate * 2; noise = ctx.createBuffer(1, len, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     startLoops();
     Music.init(ctx, mus, noise);
@@ -5585,13 +5640,21 @@ const Audio = (() => {
     sniperCharge(pos) { if (!ok()) return; const g = out(pos, 0.6); if (!g) return; tone(g, T(), 0.8, 'sine', 600, 2400, 0.12, 0.6); },
     hurt() { if (!ok() || !limit('hurt', 0.15)) return; const g = out(null, 0.5); const t = T(); tone(g, t, 0.2, 'sine', 160, 60, 0.6); nz(g, t, 0.12, 'lowpass', 900, 300, 1, 0.001, 0.4); },
     thunder() { if (!ok()) return; const g = out(null, 0.9); const t = T(); nz(g, t, 3.5 + Math.random() * 2, 'lowpass', 300, 50, 0.6, 0.15, 1); nz(g, t, 0.4, 'lowpass', 2000, 300, 0.6, 0.005, 0.4); },
+    setWorldScale(s) { if (!ctx || !wlp) return; const t = T(); wlp.frequency.setTargetAtTime(lerp(320, 20000, Math.pow(clamp(s, 0, 1), 0.7)), t, 0.08); humG.gain.setTargetAtTime((1 - clamp(s, 0, 1)) * 0.22, t, 0.1); },
+    sharpStep(k = 1) { if (!ok() || !limit('sstep', 0.05)) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.22 * k; g.connect(pl); nz(g, t, 0.06, 'bandpass', 2400, 1200, 1.2, 0.001, 0.8); tone(g, t, 0.07, 'sine', 140, 60, 0.4); },
+    riser() { if (!ok()) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.5; g.connect(pl); nz(g, t, 2.2, 'bandpass', 200, 3000, 2, 1.5, 0.6); tone(g, t, 2.2, 'sawtooth', 55, 220, 0.12, 1.2); },
+    punch(n = 1) { if (!ok()) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.6; g.connect(pl); for (let i = 0; i < n; i++) { tone(g, t + i * 0.035, 0.12, 'sine', 160, 50, 0.7); nz(g, t + i * 0.035, 0.06, 'lowpass', 2000, 500, 1, 0.001, 0.5); } },
+    sonic() { if (!ok()) return; const t = T(); const g = ctx.createGain(); g.gain.value = 1.3; g.connect(pl); tone(g, t, 1.6, 'sine', 70, 20, 1.5, 0.005); nz(g, t, 1.4, 'lowpass', 4000, 60, 0.6, 0.002, 1.2); },
+    pluck() { if (!ok()) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.3; g.connect(pl); tone(g, t, 0.25, 'triangle', 1800, 2400, 0.3); },
+    cheer() { if (!ok() || !limit('cheer', 2)) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.18; g.connect(sfx); for (let i = 0; i < 9; i++) tone(g, t + Math.random() * 0.4, 0.9, 'sawtooth', 300 + Math.random() * 500, 400 + Math.random() * 500, 0.06, 0.1); nz(g, t, 1.4, 'bandpass', 1500, 1200, 0.5, 0.2, 0.4); },
+    skid() { if (!ok() || !limit('skid', 0.25)) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.3; g.connect(pl); nz(g, t, 0.4, 'bandpass', 3000, 1500, 2, 0.01, 0.6); },
     ui(k = 1) { if (!ok()) return; const g = out(null, 0.2); tone(g, T(), 0.12, 'square', 700 * k, 900 * k, 0.15); },
   };
   return api;
 })();
 // §MUSIC — synthwave that adds a heavier layer with every heat level; the Warden has its own theme
 const Music = (() => {
-  let ctx = null, out = null, noise = null, level = 0, warden = false, next = 0, step = 0, timer = null, delay = null, dist = null, on = false;
+  let swell = false, ctx = null, out = null, noise = null, level = 0, warden = false, next = 0, step = 0, timer = null, delay = null, dist = null, on = false;
   const PROG = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];     // Am F C G
   const WPROG = [[50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52]];    // Dm Bb Gm A
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -5618,6 +5681,7 @@ const Music = (() => {
   function play(s, t, spb) {
     const L = G.mode === 'play' || G.mode === 'detained' ? level : 0; const W = warden;
     const bar = Math.floor(s / 16) % 4, st = s % 16; const P = W ? WPROG : PROG; const ch = P[bar];
+    if (swell && st % 8 === 0) { const f = filt('lowpass', 4200, 0.5, out); for (const m of ch) { osc('sawtooth', mtof(m + 12), t, spb * 8, f, 0.05, 0.3, 6); osc('sawtooth', mtof(m + 24), t, spb * 8, f, 0.03, 0.4, -6); } if (st === 0) { kick(t, 1.3); crash(t); } }
     // pad (every bar)
     if (st === 0) { const f = filt('lowpass', W ? 900 : 1300 + L * 250, 0.6, out); for (const m of ch) { osc('sawtooth', mtof(m), t, spb * 16, f, 0.035, 0.5, -8); osc('sawtooth', mtof(m), t, spb * 16, f, 0.035, 0.5, 8); } if (W) osc('sine', mtof(ch[0] - 24), t, spb * 16, out, 0.25, 0.3); }
     // bass
@@ -5639,7 +5703,7 @@ const Music = (() => {
       }
     }
   }
-  return { init, setLevel(l) { level = l; }, warden(v) { warden = v; } };
+  return { init, setLevel(l) { level = l; }, warden(v) { warden = v; }, swell(v) { swell = v; } };
 })();
 
 // §HUD ---------------------------------------------------------------------------------
@@ -5652,16 +5716,24 @@ const TUT_STEPS = [
   ['jump', 'TK JUMP', 'Press <b>SPACE</b>, then <b>SPACE</b> again in the air to leap onto rooftops'],
   ['slam', 'SLAM', 'While in the air press <b>CTRL</b> to slam down with a shockwave'],
 ];
+const TUT_BY = {
+  speed: [
+    ['run', 'RUN', 'Hold <b>W</b> and keep running straight — <b>VELOCITY</b> builds and the world slows down around you'],
+    ['wallrun', 'WALL RUN', 'Run straight at a building at speed — you\'ll <b>run right up it</b>. <b>SPACE</b> leaps off'],
+    ['blitz', 'BLITZ', 'Aim at an officer and <b>LEFT CLICK</b> — a flurry of hits in an instant'],
+    ['rescue', 'RESCUE', 'When a ⚠ disaster appears, run in, <b>LEFT CLICK</b> a trapped person and carry them out of the red circle'],
+  ],
+};
 const Tut = {
   st: null,
   load() { this.st = Store.get('tut', {}); },
   done(id) { if (!this.st || this.st[id]) return; this.st[id] = 1; Store.set('tut', this.st); Audio.ui(1.6); this.render(true); },
   reset() { this.st = {}; Store.set('tut', this.st); this.render(); },
   render(flash) {
-    const el = $('tut'); if (!el) return; const next = TUT_STEPS.find(s => !this.st[s[0]]);
+    const el = $('tut'); if (!el) return; const STEPS = TUT_BY[G.hero] || TUT_STEPS; const next = STEPS.find(s => !this.st[s[0]]);
     if (!next || G.mode !== 'play') { el.classList.add('hidden'); return; }
-    const i = TUT_STEPS.indexOf(next);
-    el.innerHTML = `<div class="tt">HOW TO PLAY · ${i + 1}/${TUT_STEPS.length} — ${next[1]}</div><div class="tb">${next[2]}</div><div class="tp">${TUT_STEPS.map(s => `<i class="${this.st[s[0]] ? 'on' : ''}"></i>`).join('')}</div>`;
+    const i = STEPS.indexOf(next);
+    el.innerHTML = `<div class="tt">HOW TO PLAY · ${i + 1}/${STEPS.length} — ${next[1]}</div><div class="tb">${next[2]}</div><div class="tp">${STEPS.map(s => `<i class="${this.st[s[0]] ? 'on' : ''}"></i>`).join('')}</div>`;
     el.classList.remove('hidden'); if (flash) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
   },
 };
@@ -5678,7 +5750,8 @@ const Hud = (() => {
   const slots = {};
   function build() {
     const box = $('slots'); box.innerHTML = '';
-    for (const s of SLOT_DEFS) { const el = document.createElement('div'); el.className = 'slot'; el.innerHTML = `<span class="k">${s.key}</span><span class="g">${s.g}</span><span class="n">${s.name}</span><div class="cd" style="height:0"></div>`; box.appendChild(el); slots[s.id] = el; }
+    box.className = ''; for (const k in slots) delete slots[k];
+    for (const s of (HERO_SLOTS[G.hero] || SLOT_DEFS)) { const el = document.createElement('div'); el.className = 'slot'; el.innerHTML = `<span class="k">${s.key}</span><span class="g">${s.g}</span><span class="n">${s.name}</span><div class="cd" style="height:0"></div>`; box.appendChild(el); slots[s.id] = el; }
   }
   function buildMinimap() {
     const W = 512, H = 400; const c = canvas(W, H), g = c.getContext('2d'); const sx = W / 560, sz = H / 400;
@@ -5732,13 +5805,15 @@ const Hud = (() => {
     const d = districtAt(Player.pos.x, Player.pos.z); $('district').textContent = (Player.inCover || d.name) + (Player.inCover ? ' · HIDDEN' : '');
     $('score').textContent = fmt(Score.total); $('mult').textContent = 'x' + (Heat.mult * (1 + Math.min(Score.combo, 20) * 0.05)).toFixed(1);
     $('combo').textContent = Score.combo > 2 ? 'COMBO ×' + Score.combo : '';
-    for (const s of SLOT_DEFS) {
-      const el = slots[s.id]; if (!el) continue; const locked = s.lock && !Prog.has(s.lock); el.classList.toggle('locked', !!locked);
+    for (const s of (HERO_SLOTS[G.hero] || SLOT_DEFS)) {
+      const el = slots[s.id]; if (!el) continue;
+      if (G.hero !== 'kinetic') { const st = HeroHud.slot(s); el.classList.toggle('locked', !!st.locked); el.classList.toggle('active', !!st.active); el.lastChild.style.height = (clamp(st.cd || 0, 0, 1) * 100) + '%'; continue; } const locked = s.lock && !Prog.has(s.lock); el.classList.toggle('locked', !!locked);
       let cd = 0, active = false;
       if (s.id === 'push') cd = Push.cd / CONFIG.powers.push.cd; if (s.id === 'slam') cd = Slam.cd / CONFIG.powers.slam.cd; if (s.id === 'dodge') cd = Player.dodgeCd / CONFIG.player.dodgeCd;
       if (s.id === 'shield') active = Shield.active; if (s.id === 'catch') active = Catch.active; if (s.id === 'levitate') active = Player.levitating; if (s.id === 'vortex') active = Vortex.active; if (s.id === 'overload') { cd = 1 - Player.ovl / 100; active = Player.ovl >= 100; }
       el.classList.toggle('active', active); el.lastChild.style.height = (clamp(cd, 0, 1) * 100) + '%';
     }
+    HeroHud.vitals();
     drawMinimap();
     if (Walker.W) bossUpdate(Walker.W);
   }
@@ -5818,7 +5893,8 @@ const Menus = (() => {
   let back = 'title';
   function open(which, from = 'title') {
     back = from; sub.classList.remove('hidden'); Audio.ui();
-    if (which === 'tree') renderTree(); else if (which === 'chal') renderChal(); else if (which === 'rec') renderRec(); else if (which === 'cos') renderCos(); else if (which === 'set') renderSet(); else if (which === 'help') renderHelp();
+    const R = { tree: renderTree, chal: renderChal, rec: renderRec, cos: renderCos, set: renderSet, help: renderHelp }[which]; R();
+    if (['tree', 'chal', 'rec', 'cos'].includes(which) && G.mode !== 'paused') HeroSelect.tabs(R); else $('herotabs').innerHTML = '';
   }
   function close() { sub.classList.add('hidden'); Audio.ui(0.8); if (back === 'title') showTitle(); }
   const closeBtn = '<div class="row"><button id="sub-close" class="primary">BACK</button></div>';
@@ -5828,32 +5904,37 @@ const Menus = (() => {
     let h = `<h2>POWER TREE</h2><div class="mono" style="color:var(--mag);margin-bottom:6px">${fmt(k)} KINESIS · destruction earns it every run</div>`;
     h += `<div class="mono" style="font-size:12px;color:var(--dim)">Lift capacity now: <b style="color:var(--tk)">${fmt(liftCapacityPreview())} kg</b> — ${liftCapacityPreview() >= 28000 ? 'a train car or a helicopter' : liftCapacityPreview() >= 12000 ? 'a bus' : liftCapacityPreview() >= 6000 ? 'an armoured truck' : liftCapacityPreview() >= 2500 ? 'a van' : 'a car'}.</div>`;
     h += '<div class="sect">POWERS</div><div class="grid">';
-    for (const p of POWER_TREE) {
+    if (G.hero !== 'kinetic') h = h.replace(/<div class="mono" style="font-size:12px;color:var\(--dim\)">Lift capacity[\s\S]*?<\/div>/, '');
+    for (const p of Prog.tree().powers) {
       const own = Prog.data.unlocked[p.id]; const can = Prog.canUnlock(p);
-      const req = p.req.length ? 'Needs ' + p.req.map(r => POWER_TREE.find(x => x.id === r).name).join(' + ') : ''; const rl = p.reqLift ? (req ? ' · ' : 'Needs ') + 'Lift ' + p.reqLift : '';
+      const req = p.req.length ? 'Needs ' + p.req.map(r => Prog.tree().powers.find(x => x.id === r).name).join(' + ') : ''; const rl = p.reqLift ? (req ? ' · ' : 'Needs ') + 'Lift ' + p.reqLift : '';
       h += `<div class="card ${own ? 'owned' : ''}"><h3>${p.name} <span style="color:var(--dim);font-weight:400">[${p.key}]</span></h3><p>${p.desc}</p><p style="color:var(--faint)">${req}${rl}</p>${own ? '<span class="cost" style="color:var(--tk)">UNLOCKED</span>' : `<button data-u="${p.id}" ${can ? '' : 'disabled'}>UNLOCK · ${p.cost}</button>`}</div>`;
     }
     h += '</div><div class="sect">UPGRADES</div><div class="grid">';
-    for (const u of UPGRADES) {
+    for (const u of Prog.tree().upgrades) {
       const lv = Prog.level(u.id); const c = Prog.upCost(u);
       h += `<div class="card"><h3>${u.name}</h3><p>${u.desc}</p><div class="lv">${Array.from({ length: u.max }, (_, i) => `<span class="${i < lv ? 'on' : ''}"></span>`).join('')}</div>${lv >= u.max ? '<span class="cost" style="color:var(--tk)">MAX</span>' : `<button data-g="${u.id}" ${k >= c ? '' : 'disabled'}>UPGRADE · ${c}</button>`}</div>`;
     }
     h += '</div>' + closeBtn; panel.innerHTML = h; wireClose();
-    panel.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { Prog.unlock(POWER_TREE.find(p => p.id === b.dataset.u)); renderTree(); });
-    panel.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { Prog.upgrade(UPGRADES.find(p => p.id === b.dataset.g)); renderTree(); });
+    panel.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { Prog.unlock(Prog.tree().powers.find(p => p.id === b.dataset.u)); renderTree(); });
+    panel.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { Prog.upgrade(Prog.tree().upgrades.find(p => p.id === b.dataset.g)); renderTree(); });
   }
   function liftCapacityPreview() { const L = Prog.data.levels.lift || 0; let cap = CONFIG.lift.levels[L]; if (Prog.data.unlocked.heavy) cap *= 1 + CONFIG.lift.heavyBonus[L]; return Math.round(cap); }
   function renderChal() {
     let h = '<h2>CHALLENGES</h2><div class="grid">';
-    for (const c of CHALLENGES) { const d = Challenges.done[c.id]; h += `<div class="card ${d ? 'done' : ''}"><h3>${d ? '✓ ' : ''}${c.name}</h3><span class="cost">+${c.reward} KINESIS</span></div>`; }
+    for (const c of (CHALLENGES_BY[G.hero] || CHALLENGES)) { const d = Challenges.done[c.id]; h += `<div class="card ${d ? 'done' : ''}"><h3>${d ? '✓ ' : ''}${c.name}</h3><span class="cost">+${c.reward} KINESIS</span></div>`; }
     h += '</div>' + closeBtn; panel.innerHTML = h; wireClose();
   }
   function renderRec() {
     let h = '<h2>RECORDS</h2><table class="rec">';
-    for (const [k, n, f] of RECORD_DEFS) h += `<tr><td>${n}</td><td>${f(Records.all[k] || 0)}</td></tr>`;
+    for (const [k, n, f] of (RECORD_DEFS_BY[G.hero] || RECORD_DEFS)) h += `<tr><td>${n}</td><td>${f(Records.all[k] || 0)}</td></tr>`;
+    h += '</table><div class="sect">ALL HEROES</div><table class="rec"><tr><td></td>' + HERO_IDS.filter(heroReady).map(x => `<td style="color:${HEROES[x].color}">${HEROES[x].name}</td>`).join('') + '</tr>';
+    for (const [k, n] of [['bestScore', 'Best score'], ['highestHeat', 'Highest heat'], ['timeAtHeat5', 'Time at Heat 5']]) h += `<tr><td>${n}</td>` + HERO_IDS.filter(heroReady).map(x => `<td>${k === 'timeAtHeat5' ? fmtTime((Records.allBy[x] || {})[k] || 0) : fmt((Records.allBy[x] || {})[k] || 0)}</td>`).join('') + '</tr>';
+    h += `<tr><td>Kinesis earned</td>` + HERO_IDS.filter(heroReady).map(x => `<td>${fmt(Prog.all[x].total)}</td>`).join('') + '</tr>';
     h += `<tr><td>Daily run personal best (today)</td><td>${fmt(Daily.best())}</td></tr></table>` + closeBtn; panel.innerHTML = h; wireClose();
   }
   function renderCos() {
+    if (G.hero !== 'kinetic') { panel.innerHTML = HeroCos.html() + closeBtn; HeroCos.wire(panel, renderCos); wireClose(); return; }
     let h = '<h2>COSMETICS</h2><div class="sect">OUTFIT</div><div class="grid">';
     for (const o of COSMETICS.outfits) { const u = Cosmetics.unlocked(o); h += `<div class="card ${Cosmetics.sel.outfit === o.id ? 'owned' : ''}"><h3><span class="swatch" style="background:${o.torso};color:${o.stripe || o.band || o.torso}"></span>${o.name}</h3><p>${u ? 'Unlocked' : 'Locked — ' + o.req[2]}</p><button data-o="${o.id}" ${u ? '' : 'disabled'}>WEAR</button></div>`; }
     h += '</div><div class="sect">TETHER COLOUR</div><div class="grid">';
@@ -5899,12 +5980,12 @@ const Menus = (() => {
   }
   function showTitle() {
     $('title').classList.remove('hidden');
-    $('kbal').textContent = fmt(Prog.data.kinesis) + ' KINESIS';
+    $('kbal').innerHTML = HERO_IDS.filter(heroReady).map(h => `<span style="color:${HEROES[h].color}">${HEROES[h].name} ${fmt(Prog.all[h].kinesis)}</span>`).join(' · ') + ' KINESIS';
     const m = Daily.modifier(); $('daily-info').innerHTML = `DAILY RUN · ${m.name} — ${m.desc}<br>Today's best: ${fmt(Daily.best())}`;
   }
   function wire() {
-    $('b-play').onclick = () => { Audio.unlock(); Game.start({}); };
-    $('b-daily').onclick = () => { Audio.unlock(); Game.start({ daily: true }); };
+    $('b-play').onclick = () => { Audio.unlock(); HeroSelect.open(false); };
+    $('b-daily').onclick = () => { Audio.unlock(); HeroSelect.open(true); };
     $('b-tree').onclick = () => { $('title').classList.add('hidden'); open('tree'); };
     $('b-chal').onclick = () => { $('title').classList.add('hidden'); open('chal'); };
     $('b-rec').onclick = () => { $('title').classList.add('hidden'); open('rec'); };
@@ -5925,13 +6006,14 @@ const Menus = (() => {
       <table class="rec" style="margin-top:12px">
         <tr><td>Highest heat</td><td>${res.heat}</td></tr><tr><td>Time survived</td><td>${fmtTime(res.time)}</td></tr>
         <tr><td>Units knocked out</td><td>${Stats.kos}</td></tr><tr><td>Vehicles wrecked</td><td>${Stats.carsWrecked}</td></tr><tr><td>Helicopters down</td><td>${Stats.helis}</td></tr><tr><td>Wardens brought down</td><td>${Stats.wardens}</td></tr>
+        ${Stats.rescues ? `<tr><td>Rescues</td><td>${Stats.rescues} (${Stats.perfect || 0} perfect)</td></tr>` : ''}${Stats.plucks ? `<tr><td>Bullets plucked</td><td>${Stats.plucks}</td></tr>` : ''}
         <tr><td>Kinesis earned</td><td style="color:var(--mag)">+${fmt(res.kinesis)}</td></tr>
       </table>
       ${br.length ? `<div class="sect">RECORDS BROKEN</div><div class="mono" style="color:var(--mag);font-size:13px;line-height:1.6">${br.join('<br>')}</div>` : ''}
       ${Challenges.runDone.length ? `<div class="sect">CHALLENGES</div><div class="mono" style="color:var(--ok);font-size:13px;line-height:1.6">${Challenges.runDone.map(c => '✓ ' + c.name).join('<br>')}</div>` : ''}
       <div class="row"><button class="primary" id="s-again">PLAY AGAIN [ENTER]</button><button id="s-replay">WATCH HIGHLIGHT</button><button id="s-tree">POWER TREE</button><button id="s-menu">MENU</button></div>`;
     $('summary').classList.remove('hidden');
-    $('s-again').onclick = () => { $('summary').classList.add('hidden'); Game.start({ daily: !!res.daily }); };
+    $('s-again').onclick = () => { $('summary').classList.add('hidden'); Game.start({ daily: !!res.daily, hero: G.hero }); };
     $('s-replay').onclick = () => { $('summary').classList.add('hidden'); Replay.play(() => Menus.summary(res)); };
     $('s-tree').onclick = () => { $('summary').classList.add('hidden'); open('tree', 'summary'); back = 'summaryBack'; Menus._res = res; };
     $('s-menu').onclick = () => { $('summary').classList.add('hidden'); Game.toTitle(); };
@@ -6098,8 +6180,834 @@ const Debug = {
   },
 };
 
+// §HEROSELECT --------------------------------------------------------------------------
+// Three heroes share one city. Each has its own power tree, kinesis, records and cosmetics.
+const HEROES = {
+  kinetic: { id: 'kinetic', name: 'KINETIC', title: 'The Telekinetic', model: 'hero_telekinetic.glb', color: '#46f0ff', blurb: 'Lift anything — cars, buses, officers, chunks of buildings — and throw it. Loud, heavy, devastating.' },
+  speed: { id: 'speed', name: 'VELOCITY', title: 'The Speedster', model: 'hero_speedster.glb', color: '#ffb347', blurb: 'The faster you run, the slower the world. Run up skyscrapers, pluck bullets from the air, save everyone.' },
+  shift: { id: 'shift', name: 'MIMIC', title: 'The Shapeshifter', model: 'hero_shapeshifter.glb', color: '#c58cff', blurb: 'Become anything you touch. A cat, a pigeon, a lamp, a guard. Quiet heists in plain sight.' },
+};
+const heroReady = h => h !== 'shift' || typeof Shift !== 'undefined';
+const Hero = {
+  models: {}, loading: {},
+  load(h) {
+    if (this.loading[h]) return; this.loading[h] = true;
+    HeroModels.load(HEROES[h].model).then(g => {
+      if (!g) return; const m = HeroModels.build(g); m.root.visible = false; scene.add(m.root); this.models[h] = m;
+      if (h === 'speed') Speed.collectGlow(m);
+      if (G.hero === h && Player.rig) { Player.rig.model = m; Player.rig.mesh.material = INVISIBLE_MAT; }
+    });
+  },
+  activate(h, midRun) {
+    if (!heroReady(h)) h = 'kinetic';
+    G.hero = h; Store.set('hero', h);
+    // leave the previous hero's powers in a clean state
+    TK.release(); if (Shield.active) Shield.drop(); if (Catch.active) Catch.release(); if (Vortex.active) Vortex.release(); Player.levitating = false; Outline.show(null); Tether.hide();
+    Speed.reset(); if (typeof Shift !== 'undefined') Shift.reset();
+    const speedy = h === 'speed';
+    if (Player.collider) Player.collider.setCollisionGroups(speedy ? ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER) : GROUPS.player);
+    if (Player.ctl) Player.ctl.setApplyImpulsesToDynamicBodies(!speedy);
+    if (City.quayWall) City.quayWall.setCollisionGroups(speedy ? ig(GRP.STATIC, GRP.UNIT) : ig(GRP.STATIC, GRP.PLAYER | GRP.UNIT));
+    const hpFrac = midRun ? Player.hp / Player.maxHp : 1;
+    Player.maxHp = CONFIG.player.hp + Prog.level('health') * 20; Player.hp = Player.maxHp * hpFrac;
+    Player.maxMind = h === 'speed' ? 100 + Prog.level('stamina') * 20 : h === 'shift' ? 100 + Prog.level('energy') * 25 : CONFIG.mind.max + Prog.level('mind') * 20; Player.mind = Player.maxMind;
+    for (const k in this.models) this.models[k].root.visible = false;
+    if (Player.rig) { Player.rig.model = this.models[h] || null; Player.rig.mesh.material = Player.rig.model ? INVISIBLE_MAT : CHAR_MAT; }
+    this.load(h);
+    Hud.build(); HeroHud.keys(); Tut.render();
+    if (midRun) { FX.ring(Player.pos.clone(), 3, new THREE.Color(HEROES[h].color), 80); Hud.banner('TAG TEAM', HEROES[h].name + ' — ' + HEROES[h].title.toUpperCase()); Audio.heatUp(3); }
+  },
+};
+function HeroUpdate(rdt, dt) { if (G.hero === 'speed') Speed.update(rdt, dt); else if (G.hero === 'shift') Shift.update(rdt, dt); }
+function HeroMove(dt, rdt) { if (G.hero === 'speed') Speed.updatePlayer(rdt); else if (G.hero === 'shift') Shift.updatePlayer(rdt); }
+function HeroCamera(rdt) { if (G.mode !== 'play') return; if (G.hero === 'speed') Speed.cinematic(rdt); else if (G.hero === 'shift') Shift.camera(rdt); }
+const HeroSelect = {
+  open(daily) {
+    $('title').classList.add('hidden');
+    const p = $('subpanel'); $('sub').classList.remove('hidden'); $('herotabs').innerHTML = '';
+    p.innerHTML = `<h2>CHOOSE YOUR HERO${daily ? ' · DAILY RUN' : ''}</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">` + HERO_IDS.map(h => {
+      const H = HEROES[h]; const pr = Prog.all[h]; const rec = Records.allBy[h] || {}; const ok = heroReady(h);
+      return `<div class="card ${G.hero === h ? 'owned' : ''}" style="border-color:${H.color}"><h3 style="color:${H.color};font-size:18px">${H.name}</h3><p style="color:#fff">${H.title}</p><p>${H.blurb}</p>
+        <p class="mono" style="font-size:11px">Best ${fmt(rec.bestScore || 0)} · Heat ${rec.highestHeat || 0} · ${fmt(pr.kinesis)} kinesis</p>
+        <button class="primary" data-h="${h}" ${ok ? '' : 'disabled'} style="background:${H.color}">${ok ? 'PLAY ' + H.name : 'COMING SOON'}</button></div>`;
+    }).join('') + '</div><div class="row"><button id="hs-back">BACK</button></div>';
+    p.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { $('sub').classList.add('hidden'); G.hero = b.dataset.h; Store.set('hero', G.hero); Game.start({ daily, hero: G.hero }); });
+    $('hs-back').onclick = () => { $('sub').classList.add('hidden'); Menus.showTitle(); };
+  },
+  tabs(rerender) {
+    const el = $('herotabs');
+    el.innerHTML = HERO_IDS.filter(heroReady).map(h => `<button data-t="${h}" class="${G.hero === h ? 'primary' : ''}" style="${G.hero === h ? 'background:' + HEROES[h].color : ''}">${HEROES[h].name}</button>`).join('');
+    el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { G.hero = b.dataset.t; Store.set('hero', G.hero); rerender(); this.tabs(rerender); });
+  },
+};
+// per-hero HUD bits
+const HERO_SLOTS = {
+  speed: [
+    { id: 'blitz', key: 'LMB', name: 'BLITZ', g: '✦' }, { id: 'pluck', key: 'LMB·SLOW', name: 'PLUCK', g: '⊹', lock: 'pluck' }, { id: 'disarm', key: 'E', name: 'DISARM', g: '⊘', lock: 'disarm' },
+    { id: 'whirl', key: '2', name: 'WHIRLWIND', g: '◌', lock: 'whirl' }, { id: 'sonic', key: '3', name: 'SONIC', g: '◉', lock: 'sonic' }, { id: 'relay', key: '4', name: 'RELAY', g: '⋯', lock: 'relay' },
+    { id: 'overdrive', key: 'R', name: 'OVERDRIVE', g: '⏵', lock: 'overdrive' }, { id: 'phase', key: 'CTRL·OD', name: 'PHASE', g: '⇢', lock: 'phase' },
+  ],
+};
+const HeroHud = {
+  keys() {
+    const k = $('keys'); if (!k) return;
+    if (G.hero === 'speed') k.innerHTML = '<b>W</b> run — keep going to build <b>VELOCITY</b><br>run into a wall to <b>run up it</b> · <b>SPACE</b> jump / leap off<br><b>LMB</b> blitz · pluck bullets · pick up people<br><b>RMB</b> flick bullets back · <b>E</b> disarm · <b>2 3 4 R</b> powers<br><b>F</b> phone booth: tag team · <b>H</b> help';
+    else if (G.hero === 'shift') k.innerHTML = Shift.keysHtml();
+    else k.innerHTML = '<b>HOLD LMB</b> lift · <b>RELEASE</b> throw · <b>RMB</b> drop<br><b>Q</b> push · <b>CTRL</b> dodge / slam in air<br><b>SPACE ×2</b> telekinetic jump · <b>SHIFT</b> sprint<br><b>E</b> catch · <b>1–4</b> powers · <b>F</b> booth · <b>H</b> help';
+  },
+  slot(s) {
+    if (G.hero === 'shift') return Shift.slot(s);
+    const S = Speed; const locked = s.lock && !Prog.has(s.lock);
+    if (s.id === 'overdrive') return { locked, active: S.od, cd: 1 - clamp(S.v / 0.95, 0, 1) };
+    if (s.id === 'sonic') return { locked, active: false, cd: 1 - clamp(S.v / 0.9, 0, 1) };
+    if (s.id === 'relay') return { locked, active: S.relay, cd: 0 };
+    if (s.id === 'whirl') return { locked, active: !!S.whirl, cd: 0 };
+    if (s.id === 'pluck') return { locked, active: S.plucked.length > 0, cd: S.ws < 0.6 ? 0 : 1 };
+    if (s.id === 'disarm') return { locked, active: false, cd: 1 - clamp(S.v / 0.45, 0, 1) };
+    if (s.id === 'phase') return { locked, active: false, cd: S.od ? 0 : 1 };
+    return { locked, active: !!S.target, cd: 0 };
+  },
+  vitals() {
+    if (G.hero === 'kinetic') { $('lbl-mind').textContent = 'MIND'; $('lbl-ovl').textContent = 'OVERLOAD'; $('hoperow').classList.add('hidden'); return; }
+    if (G.hero === 'shift') { Shift.vitals(); return; }
+    const S = Speed; $('lbl-mind').textContent = 'STAMINA'; $('lbl-ovl').textContent = S.od ? 'OVERDRIVE' : 'VELOCITY';
+    $('ovlbar').style.width = clamp(S.v / 1.0, 0, 1) * 100 + '%'; $('ovlv').textContent = Math.round(S.s) + ' m/s · ×' + (1 / Math.max(0.02, S.ws)).toFixed(S.ws < 0.1 ? 0 : 1) + ' TIME';
+    $('ovlwrap').classList.toggle('full', S.od);
+    $('hoperow').classList.remove('hidden'); $('hopebar').style.width = S.hope + '%'; $('hopev').textContent = Math.round(S.hope) + (S.hope > 50 ? ' · CROWDS WITH YOU' : '');
+  },
+};
+
+// §SPEEDSTER ---------------------------------------------------------------------------
+TREES.speed = {
+  powers: [
+    { id: 'pluck', name: 'PLUCK', key: 'LMB in slowed time', cost: 250, req: [], desc: 'Reach out and grab bullets out of the air one by one. Right click flicks them back at the shooters.' },
+    { id: 'disarm', name: 'DISARM', key: 'E', cost: 400, req: [], desc: 'At high Velocity, dash through a group and take every weapon. They look at their empty hands when time resumes.' },
+    { id: 'sonic', name: 'SONIC BOOM', key: '3', cost: 650, req: [], desc: 'At full Velocity, break the sound barrier — a shockwave along your path blows out windows and knocks everything down.' },
+    { id: 'whirl', name: 'WHIRLWIND', key: '2 (hold)', cost: 600, req: ['disarm'], desc: 'Run tight circles to spin up a vortex that lifts and dizzies everyone around you.' },
+    { id: 'relay', name: 'RELAY', key: '4', cost: 800, req: ['pluck'], desc: 'Toggle, then tag enemies one by one in slowed time. They all fall at once when time catches up.' },
+    { id: 'overdrive', name: 'OVERDRIVE', key: 'R', cost: 1300, req: ['sonic'], desc: 'At full Velocity, push past it: the world all but stops — 2% speed.' },
+    { id: 'phase', name: 'PHASE STEP', key: 'CTRL in Overdrive', cost: 1100, req: ['overdrive'], desc: 'In Overdrive, dash straight through glass, vehicles and people.' },
+  ],
+  upgrades: [
+    { id: 'top', name: 'TOP SPEED', base: 110, max: 5, desc: '+8 m/s top speed.' },
+    { id: 'accel', name: 'ACCELERATION', base: 100, max: 5, desc: 'Explode off the line faster.' },
+    { id: 'build', name: 'VELOCITY BUILD', base: 120, max: 5, desc: 'Velocity — and slowed time — builds faster.' },
+    { id: 'dilation', name: 'TIME DILATION', base: 160, max: 5, desc: 'At full sprint the world runs even slower.' },
+    { id: 'stamina', name: 'STAMINA', base: 110, max: 5, desc: '+20 stamina for speed attacks.' },
+    { id: 'wall', name: 'WALL-RUN HEIGHT', base: 130, max: 5, desc: '+30 m before a wall run starts to fade. Level 3 reaches the top of the mirror tower.' },
+    { id: 'water', name: 'WATER-RUN THRESHOLD', base: 90, max: 5, desc: 'Run on water at lower speeds.' },
+    { id: 'health', name: 'HEALTH', base: 120, max: 5, desc: '+20 health.' },
+  ],
+};
+CHALLENGES_BY.speed = [
+  { id: 'tower', name: 'Run up the tallest tower without stopping', reward: 1200 },
+  { id: 'carSave', name: 'Save everyone from a car explosion', reward: 700 },
+  { id: 'pluck50', name: 'Pluck 50 bullets in one run', reward: 900 },
+  { id: 'pacer', name: 'Beat Pacer in a race', reward: 1200 },
+  { id: 'rescue10', name: 'Rescue ten people in one run', reward: 600 },
+  { id: 'overdriveOn', name: 'Reach Overdrive', reward: 400 },
+  { id: 'sonicGlass', name: 'Blow out ten windows with one sonic boom', reward: 500 },
+  { id: 'waterRun', name: 'Run 200 m across the harbour', reward: 400 },
+  { id: 'pacerDown', name: 'Bring down Pacer', reward: 1000 },
+];
+RECORD_DEFS_BY.speed = [
+  ['bestScore', 'Best score', v => fmt(v)], ['highestHeat', 'Highest heat', v => v || 0], ['topSpeed', 'Top speed', v => Math.round(v || 0) + ' m/s'],
+  ['tallestWall', 'Tallest wall run', v => Math.round(v || 0) + ' m'], ['rescues', 'Rescues (one run)', v => v || 0], ['perfect', 'Perfect rescues (one run)', v => v || 0],
+  ['plucks', 'Bullets plucked (one run)', v => v || 0], ['hope', 'Highest Hope', v => Math.round(v || 0)], ['timeAtHeat5', 'Time at Heat 5', v => fmtTime(v)],
+];
+const SPEED_GLOWS = [
+  { id: 'amber', name: 'Amber', color: 0xffb347, req: null }, { id: 'ice', name: 'Ice', color: 0x8fe6ff, req: ['topSpeed', 55, 'Hit 55 m/s'] },
+  { id: 'white', name: 'Whiteout', color: 0xffffff, req: ['tallestWall', 100, 'Wall-run 100 m'] }, { id: 'rose', name: 'Rose', color: 0xff5fa8, req: ['rescues', 10, 'Rescue 10 in a run'] },
+  { id: 'lime', name: 'Lime', color: 0x9dff5a, req: ['plucks', 30, 'Pluck 30 in a run'] },
+];
+const _hit = { r: null };
+function castRayN(ox, oy, oz, dx, dy, dz, maxD, groups, excludeBody) {
+  const r = ray.r; r.origin.x = ox; r.origin.y = oy; r.origin.z = oz; r.dir.x = dx; r.dir.y = dy; r.dir.z = dz;
+  return world.castRayAndGetNormal(r, maxD, true, undefined, groups, undefined, excludeBody);
+}
+const Speed = {
+  v: 0, s: 0, heading: 0, state: 'ground', wall: null, climbed: 0, od: false, ws: 1, hope: 0, carry: null, plucked: [], tagged: [], relay: false, whirl: null,
+  netT: 0, stunT: 0, trail: [], trailI: 0, lastTrail: V3(), ringArmed: true, target: null, glowMats: [], waterRun: 0, wallCount: 0, camT: 0, odArmed: true, dodgeCd: 0, glow: new THREE.Color(0xffb347),
+  reset() {
+    this.v = 0; this.s = 0; this.state = 'ground'; this.wall = null; this.od = false; this.ws = 1; this.relay = false; this.whirl = null; this.netT = 0; this.stunT = 0;
+    if (this.carry) this.dropCarry(false); this.plucked = []; this.tagged = []; this.target = null; this.camT = 0; Music.swell(false);
+    for (const t of Rain.trail) { t.set(0, -999, 0, 0); } this.trail = [];
+    this.heading = Player.yaw + Math.PI; finalPass.uniforms.uCool.value = 0; Audio.setWorldScale(1);
+    const g = SPEED_GLOWS.find(x => x.id === (Cosmetics.sel && Cosmetics.sel.speedGlow)) || SPEED_GLOWS[0]; this.glow.setHex(Cosmetics.unlocked(g) ? g.color : 0xffb347);
+  },
+  collectGlow(m) {
+    this.glowMats = [];
+    m.root.traverse(o => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0); this.glowMats.push(o.material); } });
+  },
+  top() { return 34 + Prog.level('top') * 8; },
+  accel() { return 32 + Prog.level('accel') * 7; },
+  build() { return 0.26 * (1 + Prog.level('build') * 0.18); },
+  minScale() { return 0.1 * (1 - Prog.level('dilation') * 0.1); },
+  waterThr() { return 24 - Prog.level('water') * 2.6; },
+  wallMax() { return 75 + Prog.level('wall') * 30; },
+  heatMul() { return clamp(1 - this.hope * 0.006, 0.4, 1); },
+  computeScale(rdt) {
+    let target = 1; const v = this.v;
+    if (v > 0.18) target = lerp(1, this.minScale(), smooth(clamp((v - 0.18) / 0.72, 0, 1)));
+    if (this.state === 'wall' && this.climbed > 6) target = Math.min(target, 0.035);
+    if (this.od) target = 0.02;
+    target = lerp(target, 1, Dampen.k * 0.92);
+    this.ws = damp(this.ws, target, target < this.ws ? 5 : 2.5, rdt);
+  },
+  // §VELOCITY — movement in real time while the world slows
+  updatePlayer(dt) {
+    const P = Player, C = CONFIG.player;
+    // look
+    const sens = CONFIG.camera.sens * settings.sens;
+    P.yaw -= Input.mouse.dx * sens; P.pitch -= Input.mouse.dy * sens * (settings.invertY ? -1 : 1);
+    P.yaw -= Input.pad.rx * CONFIG.camera.padSens * dt * settings.sens; P.pitch -= Input.pad.ry * CONFIG.camera.padSens * 0.7 * dt * settings.sens;
+    P.pitch = clamp(P.pitch, -1.35, 1.1);
+    const [mx, my] = Input.move();
+    const camF = V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), camR = V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw));
+    const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx); const has = wish.lengthSq() > 0.04;
+    P.moveDir.copy(wish);
+    this.netT -= dt; this.stunT -= dt; this.dodgeCd -= dt;
+    const haz = Hazards.at(P.pos);
+    const netted = this.netT > 0;
+    let maxS = lerp(15, this.top(), clamp(this.v * 1.4, 0, 1)) + (this.od ? 12 : 0);
+    if (this.carry) maxS *= 0.42;
+    if (haz === 'foam') { maxS = Math.min(maxS, 4); this.v = Math.max(0, this.v - 1.6 * dt); }
+    if (netted || this.stunT > 0) maxS = 0;
+    const st = this.state;
+    if (this.whirl) { this.updateWhirl(dt); this.afterMove(dt); return; }
+    if (st === 'ground' || st === 'water') {
+      if (has && maxS > 0) {
+        const want = Math.atan2(wish.x, wish.z); const diff = angDiff(this.heading, want);
+        const turn = lerp(13, 2.6, clamp(this.s / 40, 0, 1));
+        this.heading += clamp(diff, -turn * dt, turn * dt);
+        if (Math.abs(diff) > 0.85 && this.s > 16) { // drift: slide on the wet street
+          this.v = Math.max(0, this.v - dt * 0.75 * Math.abs(diff)); this.s -= dt * this.s * 0.55 * Math.abs(diff);
+          if (Math.random() < 0.8) { const p = P.pos; FX.alpha.emit(p.x, 0.2, p.z, frnd(-3, 3) - Math.sin(this.heading) * 6, frnd(1, 4), frnd(-3, 3) - Math.cos(this.heading) * 6, 0.6, 0.3, 1.4, 0.7, 0.8, 0.9, 0.5, 0.7, 0.8, 0.9, 0, 1, -10, 0, 1); }
+          Audio.skid();
+        }
+        const startBurst = this.s < 3;
+        const acc = this.accel() * (1 - clamp(this.s / Math.max(1, maxS), 0, 1) * 0.65);
+        this.s = Math.min(maxS, this.s + acc * dt);
+        if (startBurst && this.s > 3) this.launchBurst();
+        if (this.v > 0.5) Tut.done('run');
+        if (Math.abs(diff) < 0.4 && this.s > maxS * 0.7) this.v = Math.min(this.od ? 1.2 : 1, this.v + this.build() * dt * (Input.down('sprint') ? 1.6 : 1));
+      } else {
+        const was = this.s; this.s = Math.max(0, this.s - (this.s > maxS ? 60 : 24) * dt);
+        this.v = Math.max(0, this.v - 0.95 * dt);
+        if (was > 12 && Math.random() < 0.7) { const p = P.pos; FX.alpha.emit(p.x, 0.15, p.z, Math.sin(this.heading) * 6 + frnd(-2, 2), frnd(0.5, 2), Math.cos(this.heading) * 6 + frnd(-2, 2), 0.5, 0.3, 1.2, 0.7, 0.8, 0.9, 0.45, 0.7, 0.8, 0.9, 0, 1, -10, 0, 1); Audio.skid(); }
+      }
+      if (this.s > maxS) this.s = damp(this.s, maxS, 3, dt);
+      if (this.s < maxS * 0.45) this.v = Math.max(0, this.v - 0.45 * dt);
+      P.vel.x = Math.sin(this.heading) * this.s; P.vel.z = Math.cos(this.heading) * this.s;
+      if (Input.tap('jump') && st === 'ground' && maxS > 0) { P.vel.y = 9 + this.v * 7; this.state = 'air'; Audio.sharpStep(1.4); }
+      else if (Input.tap('jump') && st === 'water' && P.pos.z < CONFIG.city.quayZ + 5) { P.vel.y = 11; this.state = 'air'; }
+    } else if (st === 'air') {
+      P.vel.y += -24 * (this.v > 0.4 ? 0.42 : 1) * dt;
+      if (has) { const want = Math.atan2(wish.x, wish.z); this.heading += clamp(angDiff(this.heading, want), -2 * dt, 2 * dt); }
+      const hs = Math.max(Math.hypot(P.vel.x, P.vel.z), 0); P.vel.x = Math.sin(this.heading) * hs; P.vel.z = Math.cos(this.heading) * hs; this.s = hs;
+    } else if (st === 'wall') {
+      this.updateWall(dt); return;
+    }
+    // dodge / phase step
+    if (Input.tap('dodge') && this.dodgeCd <= 0) this.dodge(wish);
+    // move
+    const want = { x: P.vel.x * dt, y: (this.state === 'air' ? P.vel.y : -2) * dt, z: P.vel.z * dt };
+    P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER));
+    const mv = P.ctl.computedMovement(); let grounded = P.ctl.computedGrounded();
+    const t = P.body.translation(); let nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
+    const wantH = Math.hypot(want.x, want.z), gotH = Math.hypot(mv.x, mv.z);
+    // §WALLRUN — hit a wall at speed and keep going: up
+    if (wantH > 0.05 && gotH < wantH * 0.55 && this.s > 13 && this.v > 0.22 && this.state !== 'water') {
+      const f = V3(Math.sin(this.heading), 0, Math.cos(this.heading));
+      const h = castRayN(t.x, t.y + 0.3, t.z, f.x, 0, f.z, 2.2, ig(0xffff, GRP.STATIC | GRP.WALKER), P.body);
+      if (h && Math.abs(h.normal.y) < 0.35 && -(f.x * h.normal.x + f.z * h.normal.z) > 0.5) { this.startWall(V3(h.normal.x, 0, h.normal.z).normalize(), objByCollider.get(h.collider.handle)); return; }
+      this.s *= 0.35; this.v *= 0.5; Shake.add(0.2); Audio.thud(P.pos, 0.6);
+    }
+    // §WATERRUN — over the harbour: fast enough and you run on the water
+    const overWater = nz > CONFIG.city.quayZ + 0.3;
+    if (overWater && ny - 0.9 < -1.1) {
+      if (this.s >= this.waterThr() && this.state !== 'water') {
+        ny = -1.1 + 0.9; grounded = true; P.vel.y = 0; this.waterRun += gotH;
+        if (this.waterRun > 200) Challenges.flag('waterRun');
+        for (let k = 0; k < 4; k++) FX.alpha.emit(nx - Math.sin(this.heading) * 0.6, -1.0, nz - Math.cos(this.heading) * 0.6, -Math.sin(this.heading) * frnd(2, 6) + frnd(-1.5, 1.5), frnd(4, 9), -Math.cos(this.heading) * frnd(2, 6) + frnd(-1.5, 1.5), frnd(0.6, 1.1), 0.3, 1.4, 0.8, 0.9, 1, 0.6, 0.8, 0.9, 1, 0, 0.5, -16, 0.02, 0);
+        if (this.state === 'air') this.state = 'ground';
+      } else {
+        if (this.state !== 'water') { FX.splash(V3(nx, -1.1, nz), 40, 1.6); Audio.splash(V3(nx, 0, nz), 1.5); this.state = 'water'; this.v = 0; }
+        ny = Math.max(ny, -1.85 + 0.9); grounded = true; this.s = Math.min(this.s, 3.5); P.vel.y = 0;
+        if (Math.random() < 0.1) FX.splash(V3(nx, -1.1, nz), 4, 0.4);
+      }
+    } else { this.waterRun = 0; if (this.state === 'water') this.state = 'ground'; }
+    if (this.state === 'water' && !overWater) this.state = 'ground';
+    // climb back onto the quay at speed
+    if (this.state !== 'water' && nz < CONFIG.city.quayZ + 1.2 && nz > CONFIG.city.quayZ - 1 && ny < 0.9 && P.vel.z < 0) ny = 0.95;
+    P.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz });
+    P.pos.set(nx, ny - 0.9, nz);
+    if (this.state === 'air' && grounded && P.vel.y <= 0) { this.land(); }
+    else if (this.state === 'ground' && !grounded && !overWater) { this.state = 'air'; P.vel.y = 0; }
+    if (this.state !== 'air') P.vel.y = 0;
+    P.grounded = this.state !== 'air';
+    if (P.pos.y < -40) P.spawn(240, 2, 40);
+    this.afterMove(dt);
+  },
+  launchBurst() { // explosive start: spray and debris thrown back
+    const p = Player.pos; const b = V3(-Math.sin(this.heading), 0, -Math.cos(this.heading));
+    for (let k = 0; k < 14; k++) FX.alpha.emit(p.x, 0.2, p.z, b.x * frnd(4, 10) + frnd(-2, 2), frnd(1, 4), b.z * frnd(4, 10) + frnd(-2, 2), 0.7, 0.3, 1.3, 0.7, 0.8, 0.9, 0.5, 0.7, 0.8, 0.9, 0, 1, -12, 0, 1);
+    world.intersectionsWithShape({ x: p.x, y: p.y + 0.5, z: p.z }, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(3), c => { const o = objByCollider.get(c.handle); if (o && o.body && o.mass < 300 && o.kind !== 'unit') impulse(o, b.x * o.mass * 6, o.mass * 3, b.z * o.mass * 6); return true; });
+    Audio.sharpStep(2); Rings.spawn(V3(p.x, 0.2, p.z), 3, '#' + this.glow.getHexString(), 0.3);
+  },
+  land() {
+    const P = Player; this.state = 'ground'; this.s = Math.max(this.s, Math.hypot(P.vel.x, P.vel.z) * 0.9);
+    const fall = P.fallStartY - P.pos.y; P.fallStartY = P.pos.y;
+    if (fall > 6) { FX.dust(P.pos, 20, 4); Rings.spawn(P.pos.clone(), 6, '#' + this.glow.getHexString(), 0.4); Shake.add(Math.min(0.4, fall / 50)); Audio.land(fall); }
+    else Audio.sharpStep(1.2);
+  },
+  startWall(n, tag) {
+    const P = Player; this.state = 'wall'; this.wall = { n, startY: P.pos.y, tag, bld: tag && tag.kind === 'building' ? tag.bld : null };
+    this.climbed = 0; this.wallCount++; P.vel.set(0, this.s, 0); this.s = Math.max(this.s, 18);
+    Audio.riser(); Music.swell(true); this.camT = 0; Toast.show('WALL RUN', 'big'); Tut.done('wallrun');
+    Replay.moment(500 + (this.wall.bld ? this.wall.bld.h * 10 : 0), 'WALL RUN', P.pos.clone());
+  },
+  updateWall(dt) {
+    const P = Player; const W = this.wall; const n = W.n;
+    this.climbed = P.pos.y - W.startY;
+    this.v = Math.min(this.od ? 1.2 : 1, this.v + this.build() * 1.4 * dt);
+    if (this.climbed > this.wallMax()) this.v -= 1.3 * dt;
+    if (this.netT > 0) this.v -= 2 * dt;
+    this.s = lerp(16, this.top(), clamp(this.v, 0, 1)) * (this.carry ? 0.5 : 1);
+    Records.bump('tallestWall', this.climbed);
+    if (Input.tap('jump')) { // leap off into a long glide
+      P.vel.set(n.x * this.s * 0.55, 9, n.z * this.s * 0.55); this.heading = Math.atan2(n.x, n.z); this.state = 'air'; this.endWall(); P.fallStartY = P.pos.y; return;
+    }
+    if (this.v < 0.2) { P.vel.set(n.x * 7, 2, n.z * 7); this.heading = Math.atan2(n.x, n.z); this.state = 'air'; this.s = 6; this.endWall(); Toast.show('LOST VELOCITY', 'heat'); return; }
+    const want = { x: -n.x * 0.05, y: this.s * dt, z: -n.z * 0.05 };
+    P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER));
+    const mv = P.ctl.computedMovement(); const t = P.body.translation();
+    let nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
+    if (mv.y < want.y * 0.3) { nx += n.x * 0.6; nz += n.z * 0.6; ny += want.y; } // parapet / ledge: step out and keep climbing
+    // still a wall in front?
+    const h = castRayN(nx, ny + 0.4, nz, -n.x, 0, -n.z, 1.6, ig(0xffff, GRP.STATIC | GRP.WALKER), P.body);
+    P.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz }); P.pos.set(nx, ny - 0.9, nz);
+    // run-up spray: hanging rain bursts, glass cracks beside the feet
+    if (Math.random() < 0.6) FX.alpha.emit(nx + n.x * 0.3, ny - 0.8, nz + n.z * 0.3, n.x * frnd(1, 4) + frnd(-1, 1), frnd(-2, 1), n.z * frnd(1, 4) + frnd(-1, 1), 0.6, 0.2, 0.9, 0.75, 0.85, 0.95, 0.5, 0.75, 0.85, 0.95, 0, 1, -4, 0, 0);
+    if (W.bld && Math.random() < dt * 3) Destruction.wallGlass(W.bld, V3(nx - n.x * 0.4, ny, nz - n.z * 0.4), n, 2);
+    if (!h) { // crest the top and burst over the edge onto the roof
+      P.vel.set(-n.x * Math.min(14, this.s * 0.35), 10, -n.z * Math.min(14, this.s * 0.35)); this.heading = Math.atan2(-n.x, -n.z); this.s = Math.hypot(P.vel.x, P.vel.z);
+      this.state = 'air'; P.fallStartY = P.pos.y;
+      Rings.spawn(P.pos.clone(), 10, '#' + this.glow.getHexString(), 0.6); FX.tkBurst(P.chest(), V3(0, 1, 0), 40, this.glow); Audio.sonic();
+      Toast.show('OVER THE TOP · <b>' + Math.round(this.climbed) + ' m</b>', 'big'); Score.add(this.climbed * 20, P.pos, null);
+      if (this.climbed > 150) Challenges.flag('tower');
+      this.endWall(); return;
+    }
+    this.afterMove(dt);
+  },
+  endWall() { this.wall = null; Music.swell(false); },
+  dodge(wish) {
+    const P = Player;
+    if (this.od && Prog.has('phase')) { // §PHASE step: straight through glass, vehicles and people
+      if (!P.spend(15)) return;
+      const f = V3(Math.sin(this.heading), 0, Math.cos(this.heading)); let d = 15;
+      const h = castRay(P.pos.x, P.pos.y + 1, P.pos.z, f.x, 0, f.z, d, ig(0xffff, GRP.STATIC), P.body);
+      if (h) { const o = objByCollider.get(h.collider.handle); if (!o || o.kind !== 'glass') d = Math.max(0, h.toi - 0.8); }
+      const a = P.pos.clone(), b = P.pos.clone().addScaledVector(f, d);
+      for (let k = 0; k < 6; k++) Ghosts.snap(lerp(0, 1, k / 5), a, b);
+      for (const pane of City.glassPanes) if (pane.alive && segPointDist2(a.x, 1.5, a.z, b.x, 1.5, b.z, pane.center.x, pane.center.y, pane.center.z) < 4) Destruction.shatter(pane, a, 10);
+      const t = P.body.translation(); P.body.setNextKinematicTranslation({ x: t.x + f.x * d, y: t.y, z: t.z + f.z * d }); P.pos.addScaledVector(f, d);
+      P.iframes = 0.5; this.dodgeCd = 0.4; Audio.whoosh(1.2); return;
+    }
+    if (!P.spend(8)) return;
+    const side = wish.lengthSq() > 0.01 ? wish.clone().normalize() : V3(Math.cos(this.heading), 0, -Math.sin(this.heading));
+    const t = P.body.translation(); const d = 5;
+    const h = castRay(t.x, t.y, t.z, side.x, 0, side.z, d, GROUPS.losStatic, P.body); const dd = h ? Math.max(0, h.toi - 0.6) : d;
+    P.body.setNextKinematicTranslation({ x: t.x + side.x * dd, y: t.y, z: t.z + side.z * dd }); P.pos.addScaledVector(side, dd); P.iframes = 0.35; this.dodgeCd = 0.35;
+    Ghosts.snap(0, P.pos, P.pos); Audio.whoosh(0.8);
+  },
+  afterMove(dt) {
+    const P = Player;
+    P.speed2 = this.state === 'wall' ? 0 : P.vel.x * P.vel.x + P.vel.z * P.vel.z;
+    P.inCover = City.isCovered(P.pos);
+    Records.bump('topSpeed', this.s);
+    // footsteps stay sharp and real-time
+    if (this.s > 3 && P.grounded) { this.stepAcc = (this.stepAcc || 0) + dt * (3 + this.s * 0.35); if (this.stepAcc > 1) { this.stepAcc = 0; Audio.sharpStep(0.6 + this.v * 0.6); } }
+    // shockwave ring at top speed
+    if (this.v >= 0.95 && this.ringArmed) { this.ringArmed = false; const p = P.pos.clone(); Rings.spawn(p, 18, '#' + this.glow.getHexString(), 0.8); Rings.spawn(p, 10, '#ffffff', 0.5); Mirror.uniforms.uRain.value = 4; Audio.sonic(); Shake.add(0.3); world.intersectionsWithShape({ x: p.x, y: p.y + 0.5, z: p.z }, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(8), c => { const o = objByCollider.get(c.handle); if (o && o.body && o.kind !== 'unit' && o.mass < 2000) { const q = o.body.translation(); const d = V3(q.x - p.x, 0, q.z - p.z).normalize(); impulse(o, d.x * o.mass * 7, o.mass * 4, d.z * o.mass * 7); } return true; }); }
+    if (this.v < 0.8) this.ringArmed = true;
+    // crash into traffic, bodycheck officers, kick debris aside
+    if (this.s > 6 && this.state !== 'wall') this.contacts();
+    // rain tunnel + spray where the speedster runs through hanging drops
+    if (this.ws < 0.7 && Player.pos.y > -1.5) {
+      const c = P.chest(); if (c.distanceTo(this.lastTrail) > 0.45) { this.lastTrail.copy(c); const tr = Rain.trail; tr[this.trailI % 24].set(c.x, c.y, c.z, 0.85); this.trail[this.trailI % 24] = performance.now(); this.trailI++;
+        if (Rain.amount > 0.3) for (let k = 0; k < 3; k++) FX.alpha.emit(c.x + frnd(-0.4, 0.4), c.y + frnd(-0.8, 0.6), c.z + frnd(-0.4, 0.4), frnd(-3, 3), frnd(-1, 2), frnd(-3, 3), 0.6, 0.08, 0.3, 0.8, 0.88, 1, 0.55, 0.8, 0.88, 1, 0, 0.5, -3, 0, 0); }
+    }
+    const now = performance.now(); for (let i = 0; i < 24; i++) if (this.trail[i] && now - this.trail[i] > 6000) { Rain.trail[i].w = 0; this.trail[i] = 0; }
+    // afterimages
+    if (this.v > 0.4 && (this.s > 12 || this.state === 'wall')) { this.ghostAcc = (this.ghostAcc || 0) + dt; if (this.ghostAcc > 0.045) { this.ghostAcc = 0; Ghosts.capture(); } }
+    P.animate(dt);
+    if (this.state === 'wall' && this.wall && P.rig) { const n = this.wall.n; const x = V3().crossVectors(n, UP).normalize(); _m1.makeBasis(x, n, UP); P.rig.mesh.quaternion.setFromRotationMatrix(_m1); P.rig.mesh.position.copy(P.pos).addScaledVector(n, -0.2); }
+  },
+  contacts() {
+    const P = Player; const p = P.pos; const f = V3(Math.sin(this.heading), 0, Math.cos(this.heading));
+    for (const v of Vehicles.list) {
+      if (!v.alive || !v.body || P.iframes > 0) continue; const t = v.body.translation(); if ((t.x - p.x) ** 2 + (t.z - p.z) ** 2 > 49) continue;
+      _q1.set(v.body.rotation().x, v.body.rotation().y, v.body.rotation().z, v.body.rotation().w).invert(); const l = V3(p.x - t.x, p.y + 0.9 - t.y, p.z - t.z).applyQuaternion(_q1);
+      if (Math.abs(l.x) < v.tpl.hx + 0.35 && Math.abs(l.z) < v.tpl.hz + 0.35 && Math.abs(l.y) < v.tpl.hy + 1) {
+        if (v.kinematic) Vehicles.wake(v);
+        const k = Math.min(this.s, 40); v.body.applyImpulse({ x: f.x * v.mass * k * 0.35, y: v.mass * 2, z: f.z * v.mass * k * 0.35 }, true);
+        Vehicles.damage(v, k * 1.6, p.clone()); Vehicles.crumple(v, V3(p.x, p.y + 1, p.z), clamp(k / 60, 0.1, 0.6)); v.chaosT = G.time + 6;
+        if (this.s > 18) { P.hurt(6 + k * 0.25, p.clone(), 'crash'); this.s *= 0.15; this.v *= 0.25; Shake.add(0.4); Toast.show('CRASHED', 'heat'); }
+        else this.s *= 0.5;
+        Audio.metal(p, 1); P.iframes = 0.25; break;
+      }
+    }
+    for (const u of Units.list) {
+      if (!u.alive || u.ko || u.type === 'civilian' || isDyn(u) || u.carried) continue;
+      if ((u.pos.x - p.x) ** 2 + (u.pos.z - p.z) ** 2 < 1.4 && Math.abs(u.pos.y - p.y) < 2) Units.hit(u, 10 + this.s * 0.8, f.clone().multiplyScalar(this.s * 0.5).add(V3(0, 5, 0)), 'body', 3);
+    }
+    if (this.s > 10) world.intersectionsWithShape({ x: p.x, y: p.y + 0.6, z: p.z }, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(1.1), c => { const o = objByCollider.get(c.handle); if (o && o.body && (o.kind === 'prop' || o.kind === 'part' || o.kind === 'sign') && !o.fixed && o.mass < 1500 && (o._kickT || 0) < G.time) { o._kickT = G.time + 0.5; impulse(o, f.x * o.mass * Math.min(this.s, 30) * 0.4, o.mass * 4, f.z * o.mass * Math.min(this.s, 30) * 0.4); o.chaosT = G.time + 5; } return true; });
+  },
+  netted() { if (this.v > 0.85 && Math.random() < 0.6) { Toast.show('DODGED THE NET'); return; } this.netT = 1.3; this.s = 0; this.v *= 0.2; Toast.show('NETTED', 'heat'); Audio.thud(Player.pos, 0.8); if (this.state === 'wall') { this.state = 'air'; this.endWall(); } },
+  // §SPEEDPOWERS + §PLUCK ------------------------------------------------------------------
+  pickTarget() {
+    const P = Player; const cp = camera.position; const f = CamRig.fwd || V3(0, 0, -1); const me = P.chest();
+    let best = null, bs = 1e9;
+    const consider = (kind, ref, pos, maxD, maxAng) => {
+      const d = pos.distanceTo(me); if (d > maxD) return; const dir = V3().subVectors(pos, cp); const L = dir.length(); const ang = Math.acos(clamp(dir.dot(f) / L, -1, 1));
+      const sc = (d < 2.2 ? 0 : ang / maxAng) + d * 0.02; if (ang > maxAng && d > 2.2) return; if (sc < bs) { bs = sc; best = { kind, ref, pos }; }
+    };
+    if (this.carry) return { kind: 'drop' };
+    if (Prog.has('pluck') && this.ws < 0.6) for (const p of Projectiles.list) if (!p.friendly && !p.plucked && !p.caught) consider('bullet', p, p.pos, 8, 0.3);
+    for (const u of Units.list) { if (!u.alive || u.ko || !u.body || u.carried) continue; const t = u.body.translation(); if (u.trapped) consider('victim', u, V3(t.x, t.y, t.z), 4, 1.2); else if (u.type !== 'civilian') consider('unit', u, V3(t.x, t.y + 0.3, t.z), 10, 0.45); }
+    for (const d of Air.drones) if (!d.dead) consider('drone', d, d.pos, 8, 0.5);
+    const wp = Walker.nearPart(me, 7); if (wp) consider('walker', null, wp, 7, 1.2);
+    if (Pacer.active()) consider('pacer', null, Pacer.pos, 7, 0.6);
+    return best;
+  },
+  update(rdt, dt) {
+    const P = Player;
+    this.computeScale(rdt);
+    finalPass.uniforms.uCool.value = clamp((1 - this.ws) * 0.9, 0, 0.85); Audio.setWorldScale(this.ws);
+    // suit glows brighter the faster you go
+    for (const m of this.glowMats) { m.emissive.copy(this.glow).multiplyScalar(0.05 + this.v * 0.9); }
+    if (!this.od && Prog.has('overdrive') && this.v >= 0.95 && Input.pressedKey('KeyR')) { this.od = true; Challenges.flag('overdriveOn'); Hud.banner('OVERDRIVE', 'THE WORLD ALMOST STOPS'); Audio.sonic(); Hud.ca(0.04); }
+    else if (this.od && (Input.pressedKey('KeyR') || P.mind <= 0 || this.v < 0.75)) { this.od = false; }
+    else if (!Prog.has('overdrive') && Input.pressedKey('KeyR')) Toast.show('OVERDRIVE — LOCKED (POWER TREE)', 'heat');
+    if (this.od) P.mind -= 7 * rdt;
+    if (!this.od && !this.whirl) P.mind = Math.min(P.maxMind, P.mind + 14 * rdt);
+    // plucked bullets hover by your hand
+    const hand = P.handPos(V3());
+    this.plucked = this.plucked.filter(p => Projectiles.list.includes(p));
+    this.plucked.forEach((p, i) => { const a = G.time * 0 + i * 0.7 + performance.now() / 400; p.pos.set(hand.x + Math.cos(a) * 0.35, hand.y + 0.2 + Math.sin(a * 1.3) * 0.15, hand.z + Math.sin(a) * 0.35); p.life = 30; });
+    // targeting
+    const tg = this.pickTarget(); this.target = tg;
+    const hint = !tg ? '' : tg.kind === 'bullet' ? 'LEFT CLICK — PLUCK THE BULLET' : tg.kind === 'victim' ? 'LEFT CLICK — PICK THEM UP' : tg.kind === 'drop' ? 'RUN CLEAR OF THE DANGER — OR RIGHT CLICK TO SET DOWN' : tg.kind === 'walker' ? 'LEFT CLICK — HIT IT AT SPEED' : (this.relay ? 'LEFT CLICK — TAG' : 'LEFT CLICK — BLITZ');
+    Hud.hint(this.plucked.length ? 'RIGHT CLICK — FLICK ' + this.plucked.length + ' BACK' + (hint ? ' · ' + hint : '') : hint, 'ok');
+    if (tg && tg.kind === 'bullet') FX.glow(tg.pos, 0.9, 1.5, 2.5, 3, 0.03);
+    if (Input.tap('grab') && tg) this.act(tg);
+    if (Input.tap('throw')) { if (this.plucked.length) this.flick(); else if (this.carry) this.dropCarry(true); }
+    if (Input.tap('push') && this.plucked.length) { for (const p of this.plucked) p.life = 0; this.plucked = []; }
+    if (Input.tap('catch')) this.disarm();
+    if (Input.tap('vortex')) this.sonic();
+    if (Input.tap('levitate') && !this.whirl) this.startWhirl();
+    if (Input.pressedKey('KeyR') && false) { }
+    if (Input.tap('shield')) Toast.show('VELOCITY USES E, 2, 3, 4 AND R', '');
+    if (Input.pressedKey('Digit4')) { if (!Prog.has('relay')) Toast.show('RELAY — LOCKED (POWER TREE)', 'heat'); else { this.relay = !this.relay; Toast.show('RELAY ' + (this.relay ? '<b>ON</b> — TAG THEM' : 'OFF')); if (!this.relay) this.fireRelay(); } }
+    if (this.tagged.length && this.ws > 0.7) this.fireRelay();
+    if (this.carry && this.carry.trapped) Rescue.carryUpdate(this.carry);
+    Hud.blur(clamp((this.s - 25) / 80, 0, 0.18), 0.05);
+  },
+  act(tg) {
+    const P = Player;
+    if (tg.kind === 'bullet') { if (!Prog.has('pluck')) return; const p = tg.ref; p.plucked = true; p.caught = true; p.vel.multiplyScalar(0.0001); this.plucked.push(p); Stats.plucks = (Stats.plucks || 0) + 1; Records.bump('plucks', Stats.plucks); if (Stats.plucks >= 50) Challenges.flag('pluck50'); Audio.pluck(); Tut.done('pluck'); return; }
+    if (tg.kind === 'victim') { this.pickUp(tg.ref); return; }
+    if (tg.kind === 'drop') { this.dropCarry(true); return; }
+    if (!P.spend(7)) return;
+    this.dashTo(tg.pos);
+    const n = 3 + Math.round(this.v * 6);
+    for (let i = 0; i < Math.min(n, 8); i++) FX.glow(V3(tg.pos.x + frnd(-0.5, 0.5), tg.pos.y + frnd(-0.4, 0.6), tg.pos.z + frnd(-0.5, 0.5)), 0.6, 3, 2.4, 1.6, 0.06);
+    Audio.punch(Math.min(n, 6)); Ghosts.capture(); Tut.done('blitz');
+    if (tg.kind === 'drone') { Air.killDrone(tg.ref, 'blitz'); return; }
+    if (tg.kind === 'walker') { Walker.blitzAt(tg.pos, 7); Shake.add(0.3); return; }
+    if (tg.kind === 'pacer') { Pacer.hit(); return; }
+    const u = tg.ref;
+    if (this.relay) { if (!u.tagged) { u.tagged = true; this.tagged.push(u); FX.ring(tg.pos, 1, this.glow, 20); Toast.show('TAGGED ×' + this.tagged.length); } return; }
+    const f = V3().subVectors(tg.pos, P.pos).setY(0).normalize();
+    Units.hit(u, (12 + this.v * 26) * n * 0.45, f.multiplyScalar(8 + this.v * 22).add(V3(0, 6 + this.v * 6, 0)), 'blitz', 3);
+    Score.add(40 * n, tg.pos, n > 5 ? 'BLITZ ×' + n : null);
+  },
+  dashTo(pos) {
+    const P = Player; const d = V3().subVectors(pos, P.pos).setY(0); const L = d.length(); if (L < 1.8) return; d.normalize();
+    const h = castRay(P.pos.x, P.pos.y + 1, P.pos.z, d.x, 0, d.z, L, GROUPS.losStatic, P.body); if (h) return;
+    const a = P.pos.clone(); const t = P.body.translation(); const step = L - 1.2;
+    P.body.setNextKinematicTranslation({ x: t.x + d.x * step, y: t.y, z: t.z + d.z * step }); P.pos.addScaledVector(d, step); this.heading = Math.atan2(d.x, d.z);
+    for (let k = 0; k < 4; k++) Ghosts.snap(k / 4, a, P.pos);
+  },
+  flick() {
+    const targets = Units.list.filter(u => u.alive && !u.ko && u.body && u.type !== 'civilian').concat(Air.targets(), Walker.targets());
+    for (const p of this.plucked) {
+      let tgt = p.owner && p.owner.alive && !p.owner.ko && p.owner.body ? p.owner : null;
+      if (!tgt && targets.length) { let b = 1e9; for (const u of targets) { const q = u.body ? u.body.translation() : u.pos; const d = (q.x - p.pos.x) ** 2 + (q.z - p.pos.z) ** 2; if (d < b) { b = d; tgt = u; } } }
+      const q = tgt ? (tgt.body ? tgt.body.translation() : tgt.pos) : CamRig.aimPoint; const dir = V3(q.x - p.pos.x, q.y + 0.3 - p.pos.y, q.z - p.pos.z).normalize();
+      p.vel.copy(dir).multiplyScalar(Math.max(p.speed * 1.6, 60)); p.caught = false; p.plucked = false; p.friendly = true; p.homing = tgt && tgt.body ? tgt : null; p.life = 3; p.returned = true; p.dmg *= 2.5;
+    }
+    Toast.show('FLICKED BACK <b>×' + this.plucked.length + '</b>', this.plucked.length > 4 ? 'big' : ''); Score.add(80 * this.plucked.length * this.plucked.length, Player.pos, null);
+    Audio.punch(2); this.plucked = []; Tut.done('flick');
+  },
+  disarm() {
+    const P = Player; if (!Prog.has('disarm')) { Toast.show('DISARM — LOCKED (POWER TREE)', 'heat'); return; }
+    if (this.v < 0.45) { Toast.show('DISARM NEEDS MORE VELOCITY', 'heat'); return; } if (!P.spend(20)) return;
+    const near = Units.list.filter(u => u.alive && !u.ko && u.type !== 'civilian' && !u.disarmed && u.pos.distanceTo(P.pos) < 16);
+    if (!near.length) { Toast.show('NO ONE TO DISARM'); return; }
+    const a = P.pos.clone();
+    for (const u of near) {
+      u.disarmed = true; u.stunT = Math.max(u.stunT, 3); u.action = 'hold';
+      if (u.shieldMesh) { u.shieldMesh.parent.remove(u.shieldMesh); u.shieldMesh = null; u.shield = false; }
+      u.rig.bones.laR.children.slice().forEach(c => { if (c.isMesh) c.visible = false; });
+      const w = Props.spawn(u.shield === false && u.type === 'shield' ? 'shield' : 'plank', P.pos.x + frnd(-1, 1), 1.2, P.pos.z + frnd(-1, 1), frnd(0, TAU), { awake: true }); if (w) Debris.track(w);
+      Ghosts.snap(0, u.pos, u.pos);
+    }
+    const far = near.reduce((m, u) => u.pos.distanceTo(a) > m.pos.distanceTo(a) ? u : m, near[0]);
+    this.dashTo(far.pos);
+    Toast.show('DISARMED <b>×' + near.length + '</b>', 'big'); Score.add(150 * near.length, P.pos, null); Audio.punch(near.length);
+  },
+  sonic() {
+    const P = Player; if (!Prog.has('sonic')) { Toast.show('SONIC BOOM — LOCKED (POWER TREE)', 'heat'); return; }
+    if (this.v < 0.9) { Toast.show('SONIC BOOM NEEDS FULL VELOCITY', 'heat'); return; } if (!P.spend(30)) return;
+    const f = V3(Math.sin(this.heading), 0, Math.cos(this.heading)); const a = P.pos.clone(); const b = a.clone().addScaledVector(f, 45);
+    let windows = 0;
+    for (let k = 0; k <= 5; k++) Rings.spawn(a.clone().lerp(b, k / 5), 12, k % 2 ? '#ffffff' : '#' + this.glow.getHexString(), 0.7);
+    const mid = a.clone().lerp(b, 0.5);
+    world.intersectionsWithShape({ x: mid.x, y: 2, z: mid.z }, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(30), c => {
+      const o = objByCollider.get(c.handle); if (!o || !o.body || o.kind === 'player') return true; const t = o.body.translation();
+      if (segPointDist2(a.x, 1, a.z, b.x, 1, b.z, t.x, 1, t.z) > 144) return true;
+      const away = V3(t.x - a.x, 0, t.z - a.z); const along = away.dot(f); away.addScaledVector(f, -along).normalize();
+      if (o.kind === 'unit') { if (o.type !== 'civilian') Units.hit(o, 45, away.clone().multiplyScalar(14).add(V3(0, 8, 0)), 'sonic', 4); else Units.hit(o, 0, away.clone().multiplyScalar(6).add(V3(0, 3, 0)), 'sonic', 2); return true; }
+      if (o.kind === 'car' && o.kinematic) Vehicles.wake(o);
+      if (o.fixed && o.onKnock) o.onKnock(o);
+      impulse(o, away.x * Math.min(o.mass, 8000) * 9, Math.min(o.mass, 8000) * 6, away.z * Math.min(o.mass, 8000) * 9); o.chaosT = G.time + 6; return true;
+    });
+    for (const pane of City.glassPanes) if (pane.alive && segPointDist2(a.x, 2, a.z, b.x, 2, b.z, pane.center.x, 2, pane.center.z) < 225) { Destruction.shatter(pane, a, 14); windows++; }
+    for (const B of City.buildings) { const cx = clamp(mid.x, B.x0, B.x1), cz = clamp(mid.z, B.z0, B.z1); if (segPointDist2(a.x, 0, a.z, b.x, 0, b.z, cx, 0, cz) < 225) { const n = V3(mid.x - cx, 0, mid.z - cz); if (n.lengthSq() < 1e-4) continue; n.normalize(); for (let k = 0; k < 3; k++) Destruction.wallGlass(B, V3(cx, 5 + k * 6, cz), n, 10); windows += 3; } }
+    if (windows >= 10) Challenges.flag('sonicGlass');
+    Audio.sonic(); Shake.add(1); Hud.ca(0.06); Hud.banner('SONIC BOOM', windows + ' WINDOWS'); Score.add(600 + windows * 40, mid, null); Heat.add(40, mid);
+  },
+  startWhirl() {
+    if (!Prog.has('whirl')) { Toast.show('WHIRLWIND — LOCKED (POWER TREE)', 'heat'); return; }
+    if (this.state !== 'ground' || !Player.spend(15)) return;
+    this.whirl = { c: Player.pos.clone(), a: 0, t: 0, items: [] }; Audio.vortex();
+  },
+  updateWhirl(dt) {
+    const P = Player, W = this.whirl; W.t += dt; W.a += dt * 14; P.mind -= 22 * dt;
+    const R = 4.5; const x = W.c.x + Math.cos(W.a) * R, z = W.c.z + Math.sin(W.a) * R;
+    const t = P.body.translation(); P.body.setNextKinematicTranslation({ x, y: t.y, z }); P.pos.set(x, t.y - 0.9, z);
+    this.heading = W.a + Math.PI / 2; P.vel.set(-Math.sin(W.a) * 30, 0, Math.cos(W.a) * 30); this.s = 30;
+    if (Math.random() < 0.8) FX.alpha.emit(W.c.x + frnd(-6, 6), frnd(0, 5), W.c.z + frnd(-6, 6), frnd(-6, 6), frnd(2, 6), frnd(-6, 6), 0.8, 0.5, 2, 0.6, 0.65, 0.7, 0.35, 0.5, 0.55, 0.6, 0, 0.5, 0, 0, 0);
+    world.intersectionsWithShape({ x: W.c.x, y: 1.5, z: W.c.z }, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(11), c => { const o = objByCollider.get(c.handle); if (o && o.body && o.kind !== 'player' && !o.fixed && o.mass < 900 && !W.items.includes(o) && o.type !== 'civilian') { W.items.push(o); if (o.kind === 'unit') Units.grabbed(o, false); else if (o.kinematic) { if (o.onKnock) o.onKnock(o); else setDynamic(o); } } return true; });
+    for (const o of W.items) { if (!o.alive || !o.body) continue; if (!isDyn(o)) setDynamic(o); const q = o.body.translation(); const ang = Math.atan2(q.z - W.c.z, q.x - W.c.x) + 0.6; const tx = W.c.x + Math.cos(ang) * 6, tz = W.c.z + Math.sin(ang) * 6; o.body.setLinvel({ x: (tx - q.x) * 6, y: (4 - q.y) * 3, z: (tz - q.z) * 6 }, true); if (o.kind === 'unit') o.stunT = Math.max(o.stunT, 4); }
+    if (!Input.down('levitate') || W.t > 3.5 || P.mind <= 0) {
+      for (const o of W.items) if (o.alive && o.body) { const q = o.body.translation(); const d = V3(q.x - W.c.x, 0, q.z - W.c.z).normalize(); o.body.setLinvel({ x: d.x * 22, y: 8, z: d.z * 22 }, true); if (o.kind === 'unit') { Units.released(o); Units.hit(o, 25, null, 'whirl', 4); } o.chaosT = G.time + 6; }
+      if (W.items.length) Score.add(100 * W.items.length, W.c, 'WHIRLWIND ×' + W.items.length);
+      Rings.spawn(W.c.clone(), 14, '#' + this.glow.getHexString(), 0.6); this.whirl = null;
+    }
+  },
+  fireRelay() {
+    const n = this.tagged.length; if (!n) return;
+    for (const u of this.tagged) { if (!u.alive) continue; u.tagged = false; const d = V3(u.pos.x - Player.pos.x, 0, u.pos.z - Player.pos.z).normalize(); Units.hit(u, 70, d.multiplyScalar(14).add(V3(0, 7, 0)), 'relay', 4); FX.glow(V3(u.pos.x, u.pos.y + 1, u.pos.z), 2, 3, 2, 1, 0.12); }
+    this.tagged = []; Score.add(150 * n * n, Player.pos, 'RELAY ×' + n, 'big'); Audio.punch(Math.min(8, n)); Shake.add(0.4);
+  },
+  pickUp(u) {
+    if (this.carry) return; this.carry = u; u.carried = true; u.collider.setCollisionGroups(ig(0, 0)); Audio.sharpStep(1); Tut.done('rescue');
+  },
+  dropCarry(byHand) {
+    const u = this.carry; if (!u) return; this.carry = null; u.carried = false;
+    if (u.alive && u.collider) { u.collider.setCollisionGroups(GROUPS.unit); const t = Player.body.translation(); u.body.setNextKinematicTranslation({ x: t.x + Math.cos(this.heading) * 1.2, y: Math.max(0.95, t.y), z: t.z - Math.sin(this.heading) * 1.2 }); u.pos.set(t.x + Math.cos(this.heading) * 1.2, Math.max(0, t.y - 0.9), t.z - Math.sin(this.heading) * 1.2); }
+    Rescue.delivered(u);
+  },
+  // the frozen-city pull-back while running up a wall
+  cinematic(rdt) {
+    const P = Player;
+    if (this.state !== 'wall' || !this.wall) { this.camT = Math.max(0, this.camT - rdt * 2); if (this.camT <= 0) return; }
+    else this.camT = Math.min(1, this.camT + rdt * 1.5);
+    const k = smooth(this.camT); if (k <= 0) return;
+    const n = this.wall ? this.wall.n : (this.lastN || V3(0, 0, 1)); if (this.wall) this.lastN = n.clone();
+    const side = V3().crossVectors(UP, n).normalize();
+    const back = 9 + Math.min(70, this.climbed * 0.55);
+    const want = P.pos.clone().addScaledVector(n, back).addScaledVector(side, back * 0.35).add(V3(0, -2 - this.climbed * 0.15, 0));
+    want.y = Math.max(want.y, 3);
+    camera.position.lerp(want, k); const look = P.pos.clone().add(V3(0, 1, 0)); const cur = V3(0, 0, -1).applyQuaternion(camera.quaternion).add(camera.position);
+    camera.lookAt(cur.lerp(look, k)); const fov = lerp(camera.fov, 74, k); if (Math.abs(fov - camera.fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    camera.updateMatrixWorld(); CamRig.pos.copy(camera.position);
+  },
+};
+// afterimages: a small pool of ghost figures copied from the hero's pose
+const Ghosts = (() => {
+  const pool = []; let idx = 0;
+  function get() {
+    if (pool.length < 10) { const m = new THREE.SkinnedMesh(Player.rig.mesh.geometry, new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })); const bones = {}; for (const n of BONES) { bones[n] = new THREE.Bone(); } for (const n of BONES) { const r = BONE_REST[n]; bones[n].position.set(r[1], r[2], r[3]); if (r[0]) bones[r[0]].add(bones[n]); } m.add(bones.hips); m.updateMatrixWorld(true); m.bind(new THREE.Skeleton(BONES.map(n => bones[n]))); m.userData = { bones, life: 0 }; m.layers.set(LAYER_NOREFLECT); m.frustumCulled = false; scene.add(m); pool.push(m); return m; }
+    return pool[idx++ % pool.length];
+  }
+  function capture() {
+    const r = Player.rig; if (!r) return; const g = get();
+    g.position.copy(r.mesh.position); g.quaternion.copy(r.mesh.quaternion); g.scale.copy(r.mesh.scale);
+    for (const n of BONES) { g.userData.bones[n].quaternion.copy(r.bones[n].quaternion); g.userData.bones[n].position.copy(r.bones[n].position); }
+    g.material.color.copy(Speed.glow); g.userData.life = 0.38; g.visible = true;
+  }
+  function snap(k, a, b) { capture(); const g = pool[(idx - 1) % pool.length]; if (g) g.position.lerpVectors(a, b, k); }
+  function update(rdt) { for (const g of pool) { if (!g.visible) continue; g.userData.life -= rdt; g.material.opacity = clamp(g.userData.life / 0.38, 0, 1) * 0.45; if (g.userData.life <= 0) g.visible = false; } }
+  return { capture, snap, update };
+})();
+
+// §TIMEDILATION — the world's clock comes from Speed.ws (applied in TimeFX); rain, fx, physics, AI and
+// audio all run on that clock while the speedster's movement, animation and input use real time.
+
+// §RESCUE ------------------------------------------------------------------------------
+// Slow disasters around the city: carry people clear before the countdown lands.
+const Rescue = (() => {
+  const list = []; let spawnT = 14; let markerBox = null;
+  const SAFE = 16;
+  function reset() { for (const d of list) cleanupD(d); list.length = 0; spawnT = 12; }
+  function cleanupD(d) { if (d.el) d.el.remove(); if (d.ring) scene.remove(d.ring); if (d.extra) for (const m of d.extra) scene.remove(m); }
+  function sidewalkSpot(minD, maxD) {
+    const pp = Player.pos;
+    for (let k = 0; k < 40; k++) { const b = fpick(City.blocks); if (b.type === 'containers' || b.type === 'trainyard') continue; const side = Math.floor(Math.random() * 4); const u = frnd(8, 56);
+      const p = side === 0 ? V3(b.x0 + u, 0, b.z0 + 2) : side === 1 ? V3(b.x0 + u, 0, b.z1 - 2) : side === 2 ? V3(b.x0 + 2, 0, b.z0 + u) : V3(b.x1 - 2, 0, b.z0 + u);
+      const d = p.distanceTo(pp); if (d < minD || d > maxD || !Nav.free(p.x, p.z)) continue; return { p, b, side }; }
+    return null;
+  }
+  function victims(d, n, spread = 2.5) {
+    for (let i = 0; i < n; i++) { const a = i / n * TAU + frnd(-0.3, 0.3); const u = Units.spawn('civilian', d.pos.x + Math.cos(a) * spread, 0.03, d.pos.z + Math.sin(a) * spread, { force: true, pal: { torso: fpick(['#7a3a3a', '#3a5a7a', '#5a5a3a', '#6a4a7a', '#2a5a4a']), arms: '#444', legs: '#222', boots: '#111', skin: fpick(['#c58c6a', '#8a5a3a', '#e0b090']) } }); if (u) { u.trapped = d; d.victims.push(u); } }
+  }
+  function spawn(kind, at) {
+    const spot = at ? { p: at } : sidewalkSpot(45, 110); if (!spot) return null;
+    const d = { kind, pos: spot.p.clone(), victims: [], saved: 0, lost: 0, done: false, t: 9, t0: 9, extra: [] };
+    if (kind === 'car') {
+      let car = null; for (const v of Vehicles.list) if (v.alive && !v.burnt && !v.kinematic && v.body.translation().distanceTo ? false : false) car = v;
+      car = Vehicles.create('car', d.pos.x + 3, 0.8, d.pos.z, frnd(0, TAU), {}); if (!car) return null;
+      car.fire = 1; car.fireT = 0; car.explodeT = 1e9; car.fireLight = LightPool.addDynamic({ pos: d.pos.clone().add(V3(3, 2, 0)), color: new THREE.Color(0xff7a2a), intensity: 90, range: 18, kind: 'fire', flicker: true, priority: 2.5 });
+      d.car = car; d.label = 'CAR ABOUT TO EXPLODE'; d.t = d.t0 = 8; victims(d, 4, 3);
+    } else if (kind === 'fire') {
+      d.label = 'BUILDING FIRE'; d.t = d.t0 = 11; victims(d, 4, 2.2);
+      d.light = LightPool.addDynamic({ pos: d.pos.clone().add(V3(0, 3, 0)), color: new THREE.Color(0xff6a20), intensity: 160, range: 24, kind: 'fire', flicker: true, priority: 2.5 });
+    } else if (kind === 'sign') {
+      let sg = null, bd = 1e9; for (const s of City.signs) { if (!s.alive) continue; const dd = s.center.distanceTo(d.pos); if (dd < bd && s.center.y < 14) { bd = dd; sg = s; } }
+      if (!sg) return null; d.sign = sg; d.pos.copy(sg.center).addScaledVector(sg.n, 2).setY(0); d.label = 'SIGN ABOUT TO FALL'; d.t = d.t0 = 7; victims(d, 3, 1.6);
+    } else if (kind === 'bus') {
+      const dir = V3(frnd(-1, 1), 0, frnd(-1, 1)).normalize(); const start = d.pos.clone().addScaledVector(dir, -70);
+      const bus = Vehicles.create('bus', start.x, (vehTemplates.bus || buildVehicleTemplate('bus')).hy + 0.05, start.z, Math.atan2(dir.x, dir.z), { kinematic: true });
+      bus.state = 'runaway'; d.bus = bus; d.dir = dir; d.label = 'RUNAWAY BUS'; d.t = d.t0 = 70 / 9; victims(d, 4, 2);
+    } else {
+      d.label = 'SCAFFOLD COLLAPSING'; d.t = d.t0 = 9; d.props = [];
+      for (let k = 0; k < 6; k++) { const o = Props.spawn(k % 2 ? 'plank' : 'crate', d.pos.x + frnd(-2, 2), 3 + k * 1.2, d.pos.z + frnd(-1, 1), frnd(0, 1), { fixed: true }); if (o) d.props.push(o); }
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 9, 4), MAT.metal); pole.position.set(d.pos.x, 4.5, d.pos.z); scene.add(pole); d.extra.push(pole); victims(d, 3, 1.8);
+    }
+    d.ring = new THREE.Mesh(new THREE.RingGeometry(SAFE - 0.4, SAFE, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3b4f, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    d.ring.position.set(d.pos.x, 0.08, d.pos.z); d.ring.layers.set(LAYER_NOREFLECT); scene.add(d.ring);
+    d.el = document.createElement('div'); d.el.className = 'dmark'; $('hud').appendChild(d.el);
+    list.push(d); News.say('chaos'); Toast.show('⚠ ' + d.label, 'heat');
+    return d;
+  }
+  function update(dt, rdt) {
+    if (G.mode !== 'play' && G.mode !== 'detained') return;
+    // disasters come for the speedster; the kinetic hero's car fires near people become disasters too
+    if (G.hero === 'speed') { spawnT -= rdt; if (spawnT <= 0 && list.filter(d => !d.done).length < 2) { spawnT = frnd(28, 48); spawn(fpick(['car', 'car', 'fire', 'sign', 'bus', 'scaffold'])); } }
+    for (let i = list.length - 1; i >= 0; i--) {
+      const d = list[i];
+      if (d.done) { d.doneT -= rdt; if (d.doneT <= 0) { cleanupD(d); list.splice(i, 1); } continue; }
+      d.t -= dt;
+      if (d.kind === 'fire' && Math.random() < dt * 60) FX.fire(V3(d.pos.x + frnd(-2, 2), frnd(0.2, 3), d.pos.z + frnd(-2, 2)), 1.6);
+      if (d.kind === 'bus' && d.bus && d.bus.alive && d.bus.kinematic) { const t = d.bus.body.translation(); d.bus.body.setNextKinematicTranslation({ x: t.x + d.dir.x * 9 * dt, y: t.y, z: t.z + d.dir.z * 9 * dt }); }
+      if (d.kind === 'scaffold' && Math.random() < dt * 4) FX.sparks(V3(d.pos.x, frnd(3, 9), d.pos.z), 2, 0.4);
+      // victims carried out of the circle are safe
+      for (const u of d.victims) if (!u.trapped || !u.alive) continue;
+      // marker
+      const scr = V3(d.pos.x, 3, d.pos.z).project(camera); const vis = scr.z < 1;
+      const x = clamp((scr.x * 0.5 + 0.5) * innerWidth, 40, innerWidth - 40), y = clamp((-scr.y * 0.5 + 0.5) * innerHeight, 80, innerHeight - 120);
+      d.el.style.left = x + 'px'; d.el.style.top = y + 'px'; d.el.style.opacity = vis ? 1 : 0.7;
+      const left = d.victims.filter(u => u.trapped === d && u.alive).length;
+      d.el.innerHTML = `<b>⚠ ${d.label}</b><span>${Math.max(0, d.t).toFixed(1)}s</span><small>${d.saved}/${d.victims.length} SAVED${G.hero !== 'speed' ? '' : left ? ' · ' + left + ' TRAPPED' : ''}</small>`;
+      d.el.classList.toggle('urgent', d.t < 3);
+      d.ring.material.opacity = 0.2 + 0.25 * (Math.sin(performance.now() / 150) * 0.5 + 0.5) * (d.t < 3 ? 1.6 : 1);
+      if (d.t <= 0) resolve(d);
+    }
+    // hope fades slowly; crowds cheer when it is high
+    Speed.hope = Math.max(0, Speed.hope - rdt * 0.35);
+    if (Speed.hope > 60 && Math.random() < rdt * 0.08) Audio.cheer();
+  }
+  function carryUpdate(u) {
+    const P = Player; const t = P.body.translation();
+    u.body.setNextKinematicTranslation({ x: t.x, y: t.y + 0.6, z: t.z }); u.pos.set(t.x, t.y - 0.3, t.z);
+    const m = u.rig.mesh; m.position.set(t.x, t.y + 0.55, t.z); _q1.setFromAxisAngle(UP, Speed.heading); _q2.setFromAxisAngle(V3(0, 0, 1), Math.PI / 2); m.quaternion.copy(_q1).multiply(_q2);
+    poseRig(u.rig, { t: G.time, speed: 0, down: true }, 1 / 60);
+    const d = u.trapped; if (d && P.pos.distanceTo(d.pos) > SAFE) Speed.dropCarry(false);
+  }
+  function delivered(u) {
+    const d = u.trapped; if (!d) return;
+    if (Player.pos.distanceTo(d.pos) < SAFE) return; // set down inside the danger zone: still trapped
+    u.trapped = null; u.saved = true; u.scaredT = G.time + 6; d.saved++;
+    Stats.rescues = (Stats.rescues || 0) + 1; Records.bump('rescues', Stats.rescues); if (Stats.rescues >= 10) Challenges.flag('rescue10');
+    Speed.hope = Math.min(100, Speed.hope + 12); Records.bump('hope', Speed.hope);
+    Score.add(300, u.pos, 'SAVED'); Audio.cheer(); FX.ring(u.pos.clone(), 1.5, new THREE.Color(0x6dffb0), 30);
+    Timers.after(2.5, () => { if (u.alive && !u.carried) removeObj(u); });
+    if (d.saved === d.victims.length && d.t > 0) perfect(d);
+  }
+  function perfect(d) {
+    Stats.perfect = (Stats.perfect || 0) + 1; Records.bump('perfect', Stats.perfect); Speed.hope = Math.min(100, Speed.hope + 20);
+    Score.add(1500 + Math.round(d.t * 200), d.pos, 'PERFECT RESCUE', 'big'); Hud.banner('PERFECT RESCUE', 'EVERYONE SAFE · ' + d.t.toFixed(1) + 's TO SPARE');
+    if (d.kind === 'car') Challenges.flag('carSave');
+  }
+  function resolve(d) {
+    d.done = true; d.doneT = 3; d.el.classList.add('done');
+    if (d.kind === 'car' && d.car && d.car.alive) { d.car.explodeT = null; Vehicles.explode(d.car); }
+    else if (d.kind === 'fire') { Explosions.blast(d.pos.clone().add(V3(0, 1.5, 0)), 8, 0.9); if (d.light) Timers.after(6, () => LightPool.remove(d.light)); }
+    else if (d.kind === 'sign' && d.sign) Destruction.dropSign(d.sign);
+    else if (d.kind === 'bus' && d.bus && d.bus.alive) { Vehicles.wake(d.bus); d.bus.body.setLinvel({ x: d.dir.x * 14, y: 0, z: d.dir.z * 14 }, true); }
+    else if (d.kind === 'scaffold') for (const o of d.props) if (o.alive) { setDynamic(o); o.body.applyImpulse({ x: frnd(-1, 1) * o.mass * 4, y: -o.mass * 2, z: frnd(-1, 1) * o.mass * 4 }, true); }
+    for (const u of d.victims) if (u.trapped === d && u.alive && !u.carried) { u.trapped = null; d.lost++; const away = V3(u.pos.x - d.pos.x, 0, u.pos.z - d.pos.z).normalize(); Units.hit(u, 100, away.multiplyScalar(9).add(V3(0, 6, 0)), 'disaster', 6); }
+    if (d.lost && G.hero === 'speed') { Speed.hope = Math.max(0, Speed.hope - 15 * d.lost); Toast.show(d.lost + ' COULDN\'T BE SAVED', 'heat'); }
+    else if (!d.lost && d.saved) Toast.show('EVERYONE GOT OUT', 'big');
+    Shake.at(d.pos, 0.5, 60);
+  }
+  return { reset, update, spawn, carryUpdate, delivered, get list() { return list; } };
+})();
+// §SPEEDSTER — the MRA's anti-speed measures: spike strips, foam, caltrops, chrono-dampeners, Pacer
+const Hazards = (() => {
+  const list = [];
+  const foamMat = new THREE.MeshStandardMaterial({ color: 0xe8e0f0, roughness: 0.9, emissive: 0x302838, transparent: true, opacity: 0.92 });
+  const spikeMat = new THREE.MeshStandardMaterial({ color: 0x40444c, roughness: 0.4, metalness: 0.8, emissive: 0x1a0c0c });
+  function reset() { for (const h of list) scene.remove(h.mesh); list.length = 0; }
+  function add(type, pos, rot = 0) {
+    let mesh, r;
+    if (type === 'foam') { const g = new THREE.CircleGeometry(1, 20); const p = g.attributes.position; for (let i = 1; i < p.count; i++) { const k = 0.75 + Math.random() * 0.4; p.setXY(i, p.getX(i) * k, p.getY(i) * k); } g.rotateX(-Math.PI / 2); mesh = new THREE.Mesh(g, foamMat); r = 3.4; mesh.scale.setScalar(r); FX.splash(V3(pos.x, 0.3, pos.z), 20, 1); Audio.splash(pos, 0.8); }
+    else if (type === 'spike') { mesh = new THREE.Group(); const base = new THREE.Mesh(new THREE.BoxGeometry(14, 0.06, 0.5), spikeMat); mesh.add(base); for (let k = -6.5; k <= 6.5; k += 0.5) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 4), spikeMat); s.position.set(k, 0.12, 0); mesh.add(s); } mesh.rotation.y = rot; r = 0; }
+    else { mesh = new THREE.Group(); for (let k = 0; k < 26; k++) { const s = new THREE.Mesh(new THREE.TetrahedronGeometry(0.12), spikeMat); s.position.set(frnd(-3, 3), 0.08, frnd(-3, 3)); s.rotation.set(frnd(0, 6), frnd(0, 6), 0); mesh.add(s); } r = 3.2; }
+    mesh.position.set(pos.x, 0.03, pos.z); scene.add(mesh);
+    const h = { type, pos: pos.clone(), r, rot, mesh, life: type === 'spike' ? 40 : 22 }; list.push(h); return h;
+  }
+  function at(p) {
+    if (p.y > 1.5) return null;
+    for (const h of list) {
+      if (h.type === 'spike') { const dx = p.x - h.pos.x, dz = p.z - h.pos.z; const c = Math.cos(h.rot), s = Math.sin(h.rot); const lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < 7 && Math.abs(lz) < 0.6) return trip(h); }
+      else if ((p.x - h.pos.x) ** 2 + (p.z - h.pos.z) ** 2 < h.r * h.r) { if (h.type === 'caltrop') return trip(h); return 'foam'; }
+    }
+    return null;
+  }
+  function trip(h) {
+    const S = Speed; if (S.s < 8 || (h._t || 0) > performance.now()) return h.type; h._t = performance.now() + 900;
+    if (h.type === 'spike') { S.s *= 0.15; S.v = 0; Player.hurt(8, Player.pos.clone(), 'spike'); Toast.show('SPIKE STRIP — <b>VELOCITY LOST</b>', 'heat'); }
+    else { S.s *= 0.45; S.v = Math.max(0, S.v - 0.45); Player.hurt(4, Player.pos.clone(), 'caltrop'); Toast.show('CALTROPS', 'heat'); }
+    Audio.metal(Player.pos, 0.6); Shake.add(0.3); return h.type;
+  }
+  function update(dt, rdt) { for (let i = list.length - 1; i >= 0; i--) { const h = list[i]; h.life -= dt; if (h.life <= 0) { scene.remove(h.mesh); list.splice(i, 1); } } }
+  return { reset, add, at, update, list };
+})();
+const SpeedMRA = {
+  spikeT: 8, caltropT: 6,
+  direct(eff) {
+    const D = Heat.director;
+    if ((D.cd.spike || 0) <= 0 && eff >= 1 && Player.pos.y < 2) { D.cd.spike = 16; this.spike(); }
+    if (eff >= 3 && (D.cd.caltrop || 0) <= 0) { D.cd.caltrop = 5; for (const d of Air.drones) if (!d.dead && !d.damp && d.pos.distanceTo(Player.pos) < 70) { const p = Player.pos.clone().addScaledVector(Player.vel, 1.4); p.y = 0; if (Nav.free(p.x, p.z)) { Hazards.add('caltrop', p); FX.sparks(d.pos.clone(), 6, 0.4); } break; } }
+    if (eff >= 3 && (D.cd.drone || 0) <= 0 && Air.drones.filter(d => !d.dead && !d.damp).length < 3) { D.cd.drone = 8; Air.spawnDrone(false); }
+    if (eff >= 5) { if (!Pacer.spawned) Pacer.spawn(); }
+  },
+  spike() {
+    const pp = Player.pos; const f = Player.vel.lengthSq() > 1 ? V3(Player.vel.x, 0, Player.vel.z).normalize() : V3(Math.sin(Speed.heading), 0, Math.cos(Speed.heading));
+    const p = pp.clone().addScaledVector(f, frnd(35, 55)); const n = City.nearestNode(p.x, p.z); if (!n) return;
+    // lay it across whichever street axis we're heading along
+    const alongX = Math.abs(f.x) > Math.abs(f.z); const q = alongX ? V3(p.x, 0, n.z) : V3(n.x, 0, p.z);
+    if (Math.hypot(q.x - pp.x, q.z - pp.z) < 15) return;
+    Hazards.add('spike', q, alongX ? Math.PI / 2 : 0); News.say('roadblock');
+  },
+};
+const PACER_PAL = { torso: '#121418', legs: '#0d0f12', helmet: '#16181c', visor: '#ff6a1a', chevron: '#ff6a1a', band: '#ff6a1a', boots: '#0b0b0b', stripe: '#ff6a1a', skin: '#a07050' };
+const Pacer = {
+  rig: null, pos: V3(), yaw: 0, state: 'off', spawned: false, hp: 7, speed: 0, path: null, pathI: 0, repath: 0, hitT: 0, stunT: 0, beacon: null, target: null, downT: 0,
+  active() { return this.state === 'duel' || this.state === 'race'; },
+  reset() { if (this.rig) scene.remove(this.rig.mesh); if (this.beacon) scene.remove(this.beacon); this.rig = null; this.beacon = null; this.state = 'off'; this.spawned = false; this.hp = 7; },
+  spawn() {
+    this.spawned = true; const pp = Player.pos;
+    this.rig = makeCharacter('unit', PACER_PAL); this.rig.mesh.castShadow = true; scene.add(this.rig.mesh);
+    const a = frnd(0, TAU); this.pos.set(pp.x + Math.cos(a) * 14, 0, pp.z + Math.sin(a) * 14); if (!Nav.free(this.pos.x, this.pos.z)) this.pos.set(pp.x, 0, pp.z + 6);
+    // the race: to a beacon on the far side of the city
+    let best = null, bd = 0; for (const n of City.nodes) { const d = Math.hypot(n.x - pp.x, n.z - pp.z); if (d > 200 && d < 360 && d > bd) { bd = d; best = n; } }
+    if (!best) best = City.nodes.reduce((m, n) => Math.hypot(n.x - pp.x, n.z - pp.z) > Math.hypot(m.x - pp.x, m.z - pp.z) ? n : m, City.nodes[0]);
+    this.target = V3(best.x, 0, best.z);
+    this.beacon = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 160, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    this.beacon.position.set(this.target.x, 80, this.target.z); this.beacon.layers.set(LAYER_NOREFLECT); scene.add(this.beacon);
+    this.state = 'race'; this.path = null; Hud.banner('PACER', 'RACE TO THE ORANGE BEACON — ' + Math.round(bd) + ' m'); Audio.alarm(); News.say('warden');
+  },
+  update(rdt, dt) {
+    if (!this.rig || G.mode !== 'play') return;
+    const pp = Player.pos; const top = Speed.top();
+    this.stunT -= rdt; this.hitT -= rdt;
+    let moveTo = null, sp = 0;
+    if (this.state === 'race') {
+      moveTo = this.target; sp = top * 0.88;
+      const md = Math.hypot(pp.x - this.target.x, pp.z - this.target.z), pd = Math.hypot(this.pos.x - this.target.x, this.pos.z - this.target.z);
+      $('hint').dataset.race = 1;
+      if (md < 8) { this.state = 'duel'; this.stunT = 6; Hud.banner('YOU WIN THE RACE', 'PACER IS SHAKEN — BLITZ HIM'); Challenges.flag('pacer'); Score.add(3000, pp, 'BEAT PACER', 'big'); scene.remove(this.beacon); this.beacon = null; }
+      else if (pd < 8) { this.state = 'duel'; Hud.banner('PACER WINS', 'NOW HE\'S COMING FOR YOU'); scene.remove(this.beacon); this.beacon = null; }
+    } else if (this.state === 'duel') {
+      const d = this.pos.distanceTo(pp);
+      if (this.stunT <= 0) { moveTo = pp; sp = top * 0.8; if (d < 2.2 && this.hitT <= 0 && Math.abs(pp.y - this.pos.y) < 2) { this.hitT = 0.9; Player.hurt(12, this.pos.clone(), 'pacer'); Player.knock(V3(pp.x - this.pos.x, 2, pp.z - this.pos.z).normalize().multiplyScalar(10)); Speed.s *= 0.4; Audio.punch(3); } }
+    } else if (this.state === 'down') { this.downT -= rdt; poseRig(this.rig, { t: G.time, speed: 0, down: true }, rdt); if (this.downT <= 0) { scene.remove(this.rig.mesh); this.rig = null; this.state = 'off'; } return; }
+    if (moveTo) {
+      // climb when the speedster is above (walls, roofs)
+      if (moveTo === pp && pp.y - this.pos.y > 1.5 && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 6) { this.pos.y = Math.min(pp.y, this.pos.y + 25 * rdt); }
+      else {
+        this.repath -= rdt;
+        if (!this.path || this.repath <= 0) { this.repath = 0.8; this.path = Nav.find(this.pos.x, this.pos.z, moveTo.x, moveTo.z) || [moveTo.clone()]; this.pathI = 0; }
+        let wp = this.path[this.pathI]; while (wp && Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 2 && this.pathI < this.path.length - 1) { this.pathI++; wp = this.path[this.pathI]; }
+        if (wp) { const dx = wp.x - this.pos.x, dz = wp.z - this.pos.z; const L = Math.hypot(dx, dz); if (L > 0.3) { const k = Math.min(L, sp * rdt); this.pos.x += dx / L * k; this.pos.z += dz / L * k; this.yaw = Math.atan2(dx, dz); } }
+        const roof = City.buildingAt(this.pos.x, this.pos.z); const gy = roof ? roof.h : 0; this.pos.y = damp(this.pos.y, moveTo === pp ? Math.max(gy, Math.min(pp.y, gy + 0.5)) : gy, 10, rdt);
+      }
+      this.speed = sp;
+      if (Math.random() < 0.5) FX.tkMote(V3(this.pos.x, this.pos.y + 1, this.pos.z), new THREE.Color(1, 0.4, 0.1), 0.3);
+    }
+    this.rig.mesh.position.copy(this.pos); this.rig.mesh.rotation.set(0, this.yaw, 0);
+    poseRig(this.rig, { t: G.time, speed: moveTo ? Math.min(sp, 14) : 0, action: this.stunT > 0 ? 'hold' : null }, rdt);
+  },
+  hit() {
+    if (!this.active()) return;
+    if (this.stunT <= 0 && Speed.v < 0.7 && Math.random() < 0.6) { const a = frnd(0, TAU); this.pos.x += Math.cos(a) * 3; this.pos.z += Math.sin(a) * 3; Toast.show('PACER <b>DODGED</b> — GET MORE VELOCITY', 'heat'); return; }
+    this.hp--; this.stunT = 1.2; Shake.add(0.3); FX.sparks(V3(this.pos.x, this.pos.y + 1, this.pos.z), 20, 1, new THREE.Color(1, 0.4, 0.1));
+    if (this.hp <= 0) { this.state = 'down'; this.downT = 20; Score.add(6000, this.pos, 'PACER DOWN', 'big'); Challenges.flag('pacerDown'); Hud.banner('PACER IS DOWN', ''); if (this.beacon) { scene.remove(this.beacon); this.beacon = null; } }
+    else Toast.show('PACER <b>' + this.hp + '</b> HITS LEFT');
+  },
+};
+const HeroCos = {
+  html() {
+    if (G.hero === 'shift') return Shift.cosHtml();
+    return '<h2>COSMETICS · VELOCITY</h2><div class="sect">SUIT GLOW — brightens the faster you run</div><div class="grid">' + SPEED_GLOWS.map(g => { const u = Cosmetics.unlocked(g); const hex = '#' + g.color.toString(16).padStart(6, '0'); return `<div class="card ${(Cosmetics.sel.speedGlow || 'amber') === g.id ? 'owned' : ''}"><h3><span class="swatch" style="background:${hex};color:${hex}"></span>${g.name}</h3><p>${u ? 'Unlocked' : 'Locked — ' + g.req[2]}</p><button data-sg="${g.id}" ${u ? '' : 'disabled'}>USE</button></div>`; }).join('') + '</div>';
+  },
+  wire(panel, again) { panel.querySelectorAll('[data-sg]').forEach(b => b.onclick = () => { Cosmetics.set('speedGlow', b.dataset.sg); Speed.reset(); again(); }); if (G.hero === 'shift') Shift.cosWire(panel, again); },
+};
+// Tag Team: phone booths around the city switch heroes mid-run
+const Booths = {
+  list: [],
+  build() {
+    for (const b of this.list) if (b.mesh) City.group.remove(b.mesh);
+    this.list = [];
+    const picks = City.blocks.filter(b => b.type === 'buildings' || b.type === 'plaza');
+    for (let k = 0; k < picks.length; k += 2) {
+      const b = picks[k]; const x = b.x0 + 2.2, z = b.z1 - 2.6; if (!Nav.free(x, z)) continue;
+      const g = new THREE.Group();
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.4, 1.1), new THREE.MeshStandardMaterial({ color: 0x1a2a3a, roughness: 0.4, metalness: 0.6 })); frame.position.y = 1.2; g.add(frame);
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.7, 1.15), MAT.glass); glass.position.y = 1.15; g.add(glass);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 1.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 2.2, 2.6) })); top.position.y = 2.55; g.add(top);
+      g.position.set(x, 0, z); City.group.add(g); addStaticBox(x, 1.2, z, 0.55, 1.2, 0.55);
+      LightPool.add({ pos: V3(x, 2.8, z), color: new THREE.Color(0x46f0ff), intensity: 20, range: 9, kind: 'booth' });
+      this.list.push({ x, z, mesh: g });
+    }
+  },
+  update() {
+    if (G.mode !== 'play') return;
+    const pp = Player.pos; const near = this.list.find(b => (b.x - pp.x) ** 2 + (b.z - pp.z) ** 2 < 9 && pp.y < 2);
+    if (!near) return;
+    const ready = HERO_IDS.filter(heroReady); const next = ready[(ready.indexOf(G.hero) + 1) % ready.length];
+    Hud.hint('F — TAG TEAM: SWITCH TO ' + HEROES[next].name, 'ok');
+    if (Input.pressedKey('KeyF')) Hero.activate(next, true);
+  },
+};
 // game state + run flow ------------------------------------------------------------------
-const G = { mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
+const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
 function disposeGroup(g) { if (!g) return; g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.geometry && o.geometry !== Lamps.geo) { if (o.material === VEH_MAT || o.material === MAT.neon || o.material === MAT.metal || Object.values(City.meshes || {}).includes(o)) o.geometry.dispose(); } }); }
 function buildWorld(seed) {
   rng = mulberry32(seed);
@@ -6112,7 +7020,7 @@ function buildWorld(seed) {
   Ship.fires = [];
   City.generate();
   Props.reset(); Lamps.reset();
-  City.populate();
+  City.populate(); Booths.build(); Rescue.reset(); Hazards.reset(); Pacer.reset();
   Vehicles.trainReset();
   for (let i = 0; i < 16; i++) Vehicles.spawnTraffic(V3(120, 0, 60));
   world.step(eventQueue); eventQueue.drainContactForceEvents(() => { });
@@ -6129,7 +7037,7 @@ const Game = {
     setTimeout(() => {
       try {
         buildWorld(seed);
-        Player.spawn(118, 0.1, 62, Math.PI * 0.85);
+        Player.spawn(118, 0.1, 62, Math.PI * 0.85); Hero.activate(opts.hero || G.hero, false);
         Player.rig.mesh.visible = true;
         Score.reset(); Stats.reset(); Records.startRun(); Challenges.runDone = []; Replay.reset();
         G.mode = 'play'; G.time = 0; G.runTime = 0; G.wardenKills = 0; G.grip = null;
@@ -6160,7 +7068,8 @@ const Game = {
     $('detainedflash').classList.add('hidden');
     const score = Score.total;
     const kin = Math.floor(score / 40) + Stats.kos * 3 + Stats.helis * 60 + Stats.wardens * 400 + Stats.carsWrecked * 4;
-    Prog.earn(kin); Records.endRun(); Cosmetics.apply();
+    { const tot = Object.values(Score.byHero).reduce((a, b) => a + b, 0); for (const h of HERO_IDS) { const share = tot ? (Score.byHero[h] || 0) / tot : (h === G.hero ? 1 : 0); if (share > 0) Prog.earn(Math.round(kin * share), h); } }
+    Records.endRun(); Cosmetics.apply();
     const pb = G.daily ? Daily.submit(score) : false;
     const res = { score, heat: Heat.maxLevel, time: G.runTime, kinesis: kin, daily: G.daily, pb };
     Input.releaseLock(); Hud.show(false); Hud.boss(null);
@@ -6246,10 +7155,11 @@ function frame(now) {
   Shafts.beginFrame();
   if (live) {
     G.time += dt; if (M === 'play') { G.runTime += rdt; Stats.time = G.runTime; }
-    const pdt = Catch.active ? rdt * 0.8 : dt;
+    const pdt = G.hero !== 'kinetic' ? rdt : Catch.active ? rdt * 0.8 : dt;
     if (M === 'play' || M === 'detained') {
       Player.update(pdt, rdt);
-      if (M === 'play') { TK.update(pdt, rdt); Push.update(pdt); Slam.update(pdt); Shield.update(pdt); Catch.update(pdt, rdt); Levitate.update(pdt); Vortex.update(pdt); Overload.update(dt, rdt); }
+      if (M === 'play') { if (G.hero === 'kinetic') { TK.update(pdt, rdt); Push.update(pdt); Slam.update(pdt); Shield.update(pdt); Catch.update(pdt, rdt); Levitate.update(pdt); Vortex.update(pdt); Overload.update(dt, rdt); } else HeroUpdate(rdt, dt); Booths.update(rdt); }
+      Rescue.update(dt, rdt); Hazards.update(dt, rdt); Pacer.update(rdt, dt);
       Units.update(dt, G.time); Squads.update(dt); Heat.update(dt); Air.update(dt, G.time); Dampen.update(rdt); Walker.update(dt, G.time); Cranes.update(dt); Ship.update(dt);
       Projectiles.update(dt); Flyers.update(dt); Score.update(dt);
     }
@@ -6264,7 +7174,7 @@ function frame(now) {
   if (M === 'title' || (M === 'summary' && !Replay.playing)) { const a = now / 1000 * 0.05; camera.position.set(120 + Math.cos(a) * 85, 34 + Math.sin(a * 0.7) * 6, 90 + Math.sin(a) * 85); camera.lookAt(130, 6, 80); camera.updateMatrixWorld(); if (camera.fov !== CONFIG.camera.fov) { camera.fov = CONFIG.camera.fov; camera.updateProjectionMatrix(); } }
   else if (M === 'photo') Photo.update(rdt);
   else if (M === 'replay') Replay.update(rdt);
-  else if (M === 'play' || M === 'detained' || M === 'paused') { if (M !== 'paused') CamRig.update(rdt); if (M === 'detained') { camera.position.y += rdt * 2; camera.lookAt(Player.pos.x, Player.pos.y + 1, Player.pos.z); camera.updateMatrixWorld(); } }
+  else if (M === 'play' || M === 'detained' || M === 'paused') { if (M !== 'paused') { CamRig.update(rdt); HeroCamera(rdt); } if (M === 'detained') { camera.position.y += rdt * 2; camera.lookAt(Player.pos.x, Player.pos.y + 1, Player.pos.z); camera.updateMatrixWorld(); } }
   if (M !== 'paused' && M !== 'photo') headlights();
   Shafts.endFrame();
   // lights, rain, reflections
@@ -6275,7 +7185,7 @@ function frame(now) {
   Mirror.uniforms.uTime.value = G.time;
   Mirror.update(camera);
   if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
-  HeroModels.sync(Player.rig);
+  HeroModels.sync(Player.rig); Ghosts.update(rdt);
   Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
   Input.endFrame();
 }
@@ -6287,7 +7197,7 @@ async function boot() {
   initMaterials(); SKY = makeSky(); scene.add(SKY);
   FX.init(); Shards.init(); Shafts.init(); Decals.init(); Rain.init(); Splashes.init(); Peds.init(); Catch.init();
   Prog.load(); Records.load(); Challenges.load(); Cosmetics.load(); Tut.load();
-  Player.init();
+  Player.init(); Hero.load('speed'); Hero.load('shift');
   applyQuality();
   setLoad(0.45, 'BUILDING THE CITY');
   await new Promise(r => setTimeout(r, 20));
@@ -6298,7 +7208,7 @@ async function boot() {
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Rescue, Pacer, Hazards, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
