@@ -76,4 +76,4 @@ Monsters move about twice as fast, hit 25% harder with 60% more knockback, attac
 
 ## Camera and replay update
 
-With one human player the camera follows your own monster from behind, looking toward your rival; buildings between the camera and the monsters are cut away. With two human players the shared camera frames both. Projectiles, beams and army fire still do damage but no longer stop you. The Watch replay button and the instant replay now use the fight camera.
+With one human player the camera follows your own monster from behind, looking toward your rival; buildings between the camera and the monsters are cut away. With two human players the shared camera frames both. Projectiles, beams and army fire still do damage but no longer stop you. The Watch replay button and the instant replay now use the fight camera. Replays no longer skip themselves when you are holding a fight button (that was why they seemed not to work). They play to the end unless you press Enter or Esc, or Start / B on a gamepad, or click **Skip replay ▸**. Watch replay also works in modes without rounds: it falls back to the best moment of the match.

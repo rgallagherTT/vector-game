@@ -104,6 +104,7 @@ select,input[type=text]{background:#1a1520;color:var(--ink);border:1px solid #4a
   <div id="banner" class="disp"></div><div id="subbanner" class="disp"></div>
   <div id="callout" class="disp"></div>
   <div id="howto" class="hidden"></div>
+  <button id="skipReplay" class="btn inline hidden" style="position:absolute;right:16px;bottom:40px;pointer-events:auto;width:auto">Skip replay ▸</button>
   <div id="frameData" class="hidden"></div>
   <div id="trainPanel" class="hidden"></div>
   <div id="scoreboard" class="hidden"></div>
@@ -3666,8 +3667,8 @@ const REPLAY = {
   clip(m) { if (!m && this.frames.length > 20) m = { t: this.frames[this.frames.length - 1].t - 2.4, label: 'Last moments' }; if (!m) return null; const a = m.t - 3.2, b = m.t + 2.4; const fr = this.frames.filter(x => x.t >= a && x.t <= b); return fr.length > 10 ? { frames: fr, label: m.label, t0: fr[0].t, focus: m.t } : null; },
   // play a clip by driving the fighters' rigs from snapshots
   play(clip, fighters, onDone, speed = 0.55) {
-    if (!clip) { onDone && onDone(); return; } this.playing = { clip, fighters, t: clip.t0, onDone, speed, saved: fighters.map(f => ({ pos: f.pos.clone(), yaw: f.yaw, state: f.state, st: f.st, move: f.move, vis: f.rig?.root.visible })) };
-    HUD.banner('REPLAY', clip.label || ''); $('#helpline').textContent = 'Instant replay — press Light / Enter to skip';
+    if (!clip) { HUD.toast('No replay recorded for that round'); onDone && onDone(); return; } this.playing = { clip, fighters, t: clip.t0, onDone, speed, saved: fighters.map(f => ({ pos: f.pos.clone(), yaw: f.yaw, state: f.state, st: f.st, move: f.move, vis: f.rig?.root.visible })) };
+    HUD.banner('REPLAY', clip.label || ''); this.prevHelp = $('#helpline').textContent; $('#helpline').textContent = 'Replay — press Enter or Esc to skip'; TAPPED.delete('Enter'); TAPPED.delete('Escape'); this.skipReq = false; this.playing.started = performance.now(); $('#skipReplay').classList.remove('hidden'); HUD.show(true);
     CAM.cine = null; R.bokeh.enabled = false; CAM.snapNext = true;
   },
   update(rdt) {
@@ -3681,12 +3682,13 @@ const REPLAY = {
     });
     if (n) { CAM.cine = null; const m = CAM.mode; CAM.mode = 'fight'; CAM.update(rdt, !!CAM.snapNext); CAM.snapNext = false; CAM.mode = m; }
     if (Math.abs(P.t - C.focus) < rdt * P.speed) { FX.flash(0.25); FX.doShake(1.5); }
-    const skip = KEYS.has('Enter') || KEYS.has('KeyF') || KEYS.has('Period') || connectedPads().some(i => navigator.getGamepads()[i]?.buttons[0]?.pressed);
-    if (P.t >= fr[fr.length - 1].t || (skip && P.t - C.t0 > 0.4)) this.stop();
+    // only a fresh press of Enter / Esc (or Start / B, or the Skip button) skips — never the fight buttons you may still be holding
+    const skip = this.skipReq || TAPPED.has('Enter') || TAPPED.has('Escape'); TAPPED.delete('Enter'); TAPPED.delete('Escape'); this.skipReq = false;
+    if (P.t >= fr[fr.length - 1].t || (skip && performance.now() - P.started > 1000)) this.stop();
     return true;
   },
   stop() {
-    const P = this.playing; if (!P) return; this.playing = null; R.bokeh.enabled = false;
+    const P = this.playing; if (!P) return; this.playing = null; R.bokeh.enabled = false; $('#skipReplay').classList.add('hidden'); $('#helpline').textContent = this.prevHelp || '';
     P.fighters.forEach((f, k) => { const s = P.saved[k]; f.pos.copy(s.pos); f.yaw = s.yaw; f.state = s.state; f.st = s.st; f.move = s.move; if (f.rig) f.rig.root.visible = s.vis; });
     P.onDone && P.onDone();
   },
@@ -3992,6 +3994,7 @@ const MENU = {
   ok() { if (this.focused) this.focused.click(); },
   back() { if (this.current?.back) this.current.back(); },
   padEvent(k, pad) {
+    if (REPLAY.playing) { if (k === 'start' || k === 'back') REPLAY.skipReq = true; return; }
     if (this.selState && this.selState.padEvent(k, pad)) return;
     if (G.inMatch && !this.current) { if (k === 'start') pauseMenu(); return; }
     if (k === 'up' || k === 'down' || k === 'left' || k === 'right') this.nav(k); else if (k === 'ok') this.ok(); else if (k === 'back' || (k === 'start' && G.paused)) this.back();
@@ -4120,7 +4123,7 @@ const MENU = {
       <p>City destruction score: <b>${fs.reduce((s, f) => s + Math.round(f.destruction), 0)}</b> · Monster points earned: <b>${G.matchPoints || 0}</b> (total ${PROFILE.points})</p>
       <div class="row"><button class="btn disp inline" data-act="rematch">Instant Rematch</button><button class="btn inline" data-act="replay">Watch replay</button><button class="btn inline" data-act="save">Save highlight</button><button class="btn inline" data-act="menu">Main menu</button></div>`, {
       back: () => { m.quit(); this.main(); },
-      actions: { rematch: () => { this.hide(); m.quit(); m.rematch(); }, replay: () => { this.hide(); REPLAY.play(m.lastClip, G.fighters, () => this.results(m)); }, save: (a, b) => { if (REPLAY.save(m.lastClip, { arena: G.arena.id, fighters: G.fighters.map(f => ({ id: f.id, skin: f.def.skin || 0 })) })) b.textContent = 'Saved ✔'; else b.textContent = 'Nothing to save'; }, menu: () => { m.quit(); this.main(); } },
+      actions: { rematch: () => { this.hide(); m.quit(); m.rematch(); }, replay: () => { const clip = m.lastClip || (m.lastClip = REPLAY.clip(REPLAY.best())); this.hide(); REPLAY.play(clip, G.fighters, () => this.results(m)); }, save: (a, b) => { if (REPLAY.save(m.lastClip || (m.lastClip = REPLAY.clip(REPLAY.best())), { arena: G.arena.id, fighters: G.fighters.map(f => ({ id: f.id, skin: f.def.skin || 0 })) })) b.textContent = 'Saved ✔'; else b.textContent = 'Nothing to save'; }, menu: () => { m.quit(); this.main(); } },
     });
   },
   message(title, text, ok) { this.show(`<h2 class="disp">${title}</h2><p>${text}</p><button class="btn disp" data-act="ok">OK</button>`, { back: ok, actions: { ok } }); },
@@ -4207,6 +4210,7 @@ function pauseMenu() {
     },
   });
 }
+document.getElementById('skipReplay').addEventListener('click', () => { REPLAY.skipReq = true; });
 function snapPhoto() {
   try { R.composer.render(); const url = R.renderer.domElement.toDataURL('image/png'); const a = document.createElement('a'); a.href = url; a.download = `kaiju-clash-${Date.now()}.png`; a.click(); HUD.toast('Photo saved'); } catch (e) { HUD.toast('Could not save photo'); }
 }
