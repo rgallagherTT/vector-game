@@ -177,6 +177,27 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
 .dmark small{display:block;color:#6dffb0;font-size:11px}
 .dmark.urgent span{color:#ff3b4f;animation:hflash .25s infinite alternate}
 .dmark.done{opacity:.4!important}
+.speech{position:absolute;transform:translate(-50%,-100%);font-size:13px;padding:5px 10px;background:rgba(250,250,245,.92);color:#111;border-radius:10px;white-space:nowrap;pointer-events:none;font-weight:600}
+#wheel{position:fixed;left:50%;top:50%;width:0;height:0;z-index:12;pointer-events:none}
+#wheel .wf{position:absolute;left:-58px;top:-26px;width:116px;padding:8px 6px;text-align:center;background:rgba(14,8,24,.86);border:1px solid rgba(197,140,255,.4);font-family:var(--mono);font-size:11px;color:#e8dcff;letter-spacing:.06em}
+#wheel .wf b{position:absolute;left:5px;top:3px;font-size:10px;color:#c58cff}
+#wheel .wf small{display:block;color:#8a7aa8;font-size:9.5px}
+#wheel .wf.sel{border-color:#ff9ff0;box-shadow:0 0 18px rgba(255,159,240,.6);color:#fff;background:rgba(60,20,80,.92)}
+#wheel .wf.cur{border-color:#9ff3ff}
+#wheel .wf.no{opacity:.35}
+#wheel .wc{position:absolute;left:-110px;top:-24px;width:220px;text-align:center;font-family:var(--mono);font-size:14px;font-weight:800;color:#fff;letter-spacing:.1em}
+#wheel .wc small{display:block;font-size:10px;color:#c58cff;font-weight:400}
+#susp{position:absolute;left:50%;top:190px;transform:translateX(-50%);width:300px;text-align:center;padding:8px 12px;background:rgba(10,6,20,.78);border:1px solid #c58cff}
+#susp .ss{font-family:var(--mono);font-size:15px;font-weight:800;letter-spacing:.3em;color:#9dffb0}
+#susp .sh{font-family:var(--mono);font-size:10.5px;color:#c8b8e8;letter-spacing:.12em}
+#susp .bar i{background:linear-gradient(90deg,#ffe08a,#ff3b4f)}
+#susp.curious .ss{color:#ffe08a} #susp.suspicious .ss{color:#ff8a3d} #susp.alarmed .ss{color:#ff3b4f;animation:hflash .3s infinite alternate}
+#question{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);width:min(560px,90vw);padding:12px 16px;background:rgba(8,8,14,.9);border:1px solid #ffe08a;font-size:15px;text-align:center}
+#question .qb{position:relative;height:12px;margin-top:10px;background:rgba(255,255,255,.1)}
+#question .qb span{position:absolute;top:0;bottom:0;width:20%;background:rgba(109,255,176,.45)}
+#question .qb i{position:absolute;top:-3px;bottom:-3px;width:3px;background:#fff}
+#board{position:fixed;inset:6vh 6vw;z-index:12;overflow:auto;background:rgba(8,6,16,.94);border:1px solid #c58cff;padding:22px 26px}
+#board h2{margin:0 0 14px;font-family:var(--mono);letter-spacing:.3em;font-size:16px;color:#c58cff}
 @media (max-width:1400px){#slots{bottom:118px}}
 @media (max-width:760px){#minimap{width:120px;height:120px}#heatbox{width:220px}.hicon{width:32px;height:22px}#slots{transform:translateX(-50%) scale(.72);transform-origin:bottom center}#bossbar{width:80vw}}
 </style>
@@ -222,6 +243,8 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
   </svg></div>
   <div id="hint"></div>
   <div id="tut" class="hidden"></div>
+  <div id="susp" class="hidden"></div>
+  <div id="question" class="hidden"></div>
   <div id="keys"><b>HOLD LMB</b> lift · <b>RELEASE</b> throw · <b>RMB</b> drop<br><b>Q</b> push · <b>CTRL</b> dodge / slam in air<br><b>SPACE ×2</b> telekinetic jump · <b>SHIFT</b> sprint<br><b>E</b> catch · <b>1–4</b> powers · <b>H</b> help · <b>ESC</b> pause</div>
   <div id="toasts"></div>
   <div id="banner"></div>
@@ -271,6 +294,8 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
 <div id="replay-ui" class="hidden"><b>● REPLAY</b> <span id="replay-what"></span> · SPACE skip</div>
 <div id="letterbox" class="hidden"></div>
 <div id="debug" class="hidden"></div>
+<div id="wheel" class="hidden"></div>
+<div id="board" class="hidden"></div>
 <div id="loading"><div>KINETIC</div><div class="b"><i id="loadbar"></i></div><div id="loadmsg" style="font-size:11px;margin-top:10px;color:var(--dim);letter-spacing:.2em">LOADING</div><div class="e" id="loaderr"></div></div>
 
 <script type="module">
@@ -2946,7 +2971,7 @@ const Rain = (() => {
     changeT -= dt; if (changeT <= 0) { changeT = frnd(25, 60); target = G.modifier === 'storm' ? 1.4 : frnd(0.45, 1.25); }
     if (BENCH) target = 1.3;
     amt = damp(amt, target, 0.3, dt);
-    const u = mat.uniforms; u.uTime.value = t; u.uCam.value.copy(camera.position); u.uAmt.value = camera.position.y < -1.5 ? 0 : clamp(amt, 0, 1.5);
+    const u = mat.uniforms; u.uTime.value = t; u.uCam.value.copy(camera.position); u.uAmt.value = camera.position.y < -1.5 || Shift.inCell ? 0 : clamp(amt, 0, 1.5);
     u.uSpeed.value = 26; u.uWind.value.set(2.2 + Math.sin(t * 0.1) * 1.5, 0.8 + Math.cos(t * 0.07));
     const L = LightPool.lights;
     for (let i = 0; i < 12; i++) { if (i < L.length && L[i].intensity > 0) { u.uLP.value[i].copy(L[i].position); u.uLC.value[i].copy(L[i].color).multiplyScalar(Math.min(1, L[i].intensity / 80)); } else u.uLP.value[i].set(0, -999, 0); }
@@ -2965,7 +2990,7 @@ const Splashes = (() => {
   }
   function update(dt, amt) {
     const cp = camera.position; const n = Math.floor(MAX * clamp(amt, 0, 1) * (Q.rain / 15000 + 0.3)); let k = 0;
-    if (cp.y < -1.5) { im.count = 0; return; }
+    if (cp.y < -1.5 || Shift.inCell) { im.count = 0; return; }
     for (let i = 0; i < n; i++) {
       const a = s[i]; a.t += dt;
       if (a.t > a.life) { a.t = 0; a.life = frnd(0.25, 0.5); const r = frnd(1, 22), ang = frnd(0, TAU); a.x = cp.x + Math.cos(ang) * r; a.z = cp.z + Math.sin(ang) * r; const b = City.buildingAt(a.x, a.z); a.y = b ? b.h + 0.02 : 0.03; if (b && b.h > cp.y + 5) a.t = 9; }
@@ -3402,14 +3427,14 @@ const CamRig = {
   update(dt) {
     if (G.mode === 'photo' || G.mode === 'replay') return;
     const C = CONFIG.camera; const aiming = TK.holding || TK.pulling || Input.down('throw') || Catch.active;
-    const targetDist = (aiming ? C.aimDist : C.dist) * (TK.held && TK.held.mass > 6000 ? 1.6 : TK.held && TK.held.mass > 2500 ? 1.25 : 1);
+    const targetDist = (this.dMul || 1) * (aiming ? C.aimDist : C.dist) * (TK.held && TK.held.mass > 6000 ? 1.6 : TK.held && TK.held.mass > 2500 ? 1.25 : 1);
     this.dist = damp(this.dist, targetDist, 7, dt);
     this.shoulder = damp(this.shoulder, aiming ? C.aimShoulder : C.shoulder, 7, dt);
     let fovT = aiming ? C.aimFov : C.fov; if (TK.charging) fovT -= TK.charge * 6; if (Player.dodgeT > 0) fovT += 8; if (Math.sqrt(Player.speed2) > 11) fovT += 4; if (G.hero === 'speed') fovT += Speed.v * 20 - (Speed.v > 0.3 ? 4 : 0);
     this.fov = damp(this.fov, fovT, 6, dt);
     if (Math.abs(camera.fov - this.fov) > 0.01) { camera.fov = this.fov; camera.updateProjectionMatrix(); }
     const p = Player.pos; const yaw = Player.yaw, pitch = Player.pitch;
-    const pivot = V3(p.x, p.y + C.height, p.z);
+    const pivot = V3(p.x, p.y + (this.hOv != null ? this.hOv : C.height), p.z);
     const back = V3(Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
     const right = V3(Math.cos(yaw), 0, -Math.sin(yaw));
     const shoulderP = pivot.clone().addScaledVector(right, this.shoulder * 0.55);
@@ -4335,7 +4360,9 @@ const Units = (() => {
   }
   // --- AI ------------------------------------------------------------------------------
   const _t = V3(), _d = V3();
-  function canSee(u) {
+  function canSee(u, raw) {
+    if (!raw && G.hero === 'shift' && typeof Shift !== 'undefined' && !Shift.recognizable()) return false;
+    if (G.hero === 'shift' && typeof Shift !== 'undefined' && Shift.inCell) return false;
     const pp = Player.pos; const eye = _t.set(u.pos.x, u.pos.y + 1.6 * (u.rig.scale || 1), u.pos.z);
     const dx = pp.x - eye.x, dz = pp.z - eye.z, dy = pp.y + 1.2 - eye.y; const dist = Math.hypot(dx, dy, dz);
     const range = u.type === 'sniper' ? 150 : DEFS.vision * (Player.inCover ? 0.6 : 1) * (G.modifier === 'storm' ? 0.85 : 1);
@@ -4599,6 +4626,7 @@ const Director = {
     const nUnits = active.length;
     if (nUnits >= CONFIG.heat.maxUnits) return;
     if (Player.pos.y < -1.5) return; // they don't follow you underground — they wait at the stations
+    if (typeof Shift !== 'undefined' && Shift.inCell) return;
     // Heat 1: two on foot + a cruiser
     if (eff >= 1) {
       if (count('officer') < Math.round((eff === 1 ? 2 : 3) * mul) && can('foot', 7)) this.footOfficers(2);
@@ -5640,6 +5668,7 @@ const Audio = (() => {
     sniperCharge(pos) { if (!ok()) return; const g = out(pos, 0.6); if (!g) return; tone(g, T(), 0.8, 'sine', 600, 2400, 0.12, 0.6); },
     hurt() { if (!ok() || !limit('hurt', 0.15)) return; const g = out(null, 0.5); const t = T(); tone(g, t, 0.2, 'sine', 160, 60, 0.6); nz(g, t, 0.12, 'lowpass', 900, 300, 1, 0.001, 0.4); },
     thunder() { if (!ok()) return; const g = out(null, 0.9); const t = T(); nz(g, t, 3.5 + Math.random() * 2, 'lowpass', 300, 50, 0.6, 0.15, 1); nz(g, t, 0.4, 'lowpass', 2000, 300, 0.6, 0.005, 0.4); },
+    heartbeat(on) { if (this._hb) { clearInterval(this._hb); this._hb = null; } if (!on || !ok()) return; const beat = () => { const t = T(); const g = ctx.createGain(); g.gain.value = 0.8; g.connect(pl); tone(g, t, 0.16, 'sine', 70, 40, 1); tone(g, t + 0.22, 0.14, 'sine', 62, 38, 0.7); }; beat(); this._hb = setInterval(beat, 820); },
     setWorldScale(s) { if (!ctx || !wlp) return; const t = T(); wlp.frequency.setTargetAtTime(lerp(320, 20000, Math.pow(clamp(s, 0, 1), 0.7)), t, 0.08); humG.gain.setTargetAtTime((1 - clamp(s, 0, 1)) * 0.22, t, 0.1); },
     sharpStep(k = 1) { if (!ok() || !limit('sstep', 0.05)) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.22 * k; g.connect(pl); nz(g, t, 0.06, 'bandpass', 2400, 1200, 1.2, 0.001, 0.8); tone(g, t, 0.07, 'sine', 140, 60, 0.4); },
     riser() { if (!ok()) return; const t = T(); const g = ctx.createGain(); g.gain.value = 0.5; g.connect(pl); nz(g, t, 2.2, 'bandpass', 200, 3000, 2, 1.5, 0.6); tone(g, t, 2.2, 'sawtooth', 55, 220, 0.12, 1.2); },
@@ -6006,7 +6035,7 @@ const Menus = (() => {
       <table class="rec" style="margin-top:12px">
         <tr><td>Highest heat</td><td>${res.heat}</td></tr><tr><td>Time survived</td><td>${fmtTime(res.time)}</td></tr>
         <tr><td>Units knocked out</td><td>${Stats.kos}</td></tr><tr><td>Vehicles wrecked</td><td>${Stats.carsWrecked}</td></tr><tr><td>Helicopters down</td><td>${Stats.helis}</td></tr><tr><td>Wardens brought down</td><td>${Stats.wardens}</td></tr>
-        ${Stats.rescues ? `<tr><td>Rescues</td><td>${Stats.rescues} (${Stats.perfect || 0} perfect)</td></tr>` : ''}${Stats.plucks ? `<tr><td>Bullets plucked</td><td>${Stats.plucks}</td></tr>` : ''}
+        ${Stats.rescues ? `<tr><td>Rescues</td><td>${Stats.rescues} (${Stats.perfect || 0} perfect)</td></tr>` : ''}${Stats.plucks ? `<tr><td>Bullets plucked</td><td>${Stats.plucks}</td></tr>` : ''}${Stats.heists ? `<tr><td>Heists pulled off</td><td>${Stats.heists}</td></tr>` : ''}
         <tr><td>Kinesis earned</td><td style="color:var(--mag)">+${fmt(res.kinesis)}</td></tr>
       </table>
       ${br.length ? `<div class="sect">RECORDS BROKEN</div><div class="mono" style="color:var(--mag);font-size:13px;line-height:1.6">${br.join('<br>')}</div>` : ''}
@@ -7006,6 +7035,812 @@ const Booths = {
     if (Input.pressedKey('KeyF')) Hero.activate(next, true);
   },
 };
+// §SHIFTER -----------------------------------------------------------------------------
+// The quiet hero: become anything you touch, and be somewhere you shouldn't — in plain sight.
+// Tell: an iridescent ripple across the surface during a shift.
+TREES.shift = {
+  powers: [
+    { id: 'echo', name: 'ECHO', key: 'G', cost: 250, req: [], desc: 'Throw a sound where you aim. Guards nearby go and look.' },
+    { id: 'mimic', name: 'MIMIC VOICE', key: 'passive', cost: 450, req: [], desc: 'In human disguises, pass a senior guard\'s questioning every time.' },
+    { id: 'copy', name: 'COPY', key: 'C', cost: 900, req: ['echo'], desc: 'Leave a decoy duplicate of your current form behind. Guards investigate it.' },
+    { id: 'swap', name: 'SWAP', key: 'E at range', cost: 1300, req: ['mimic'], desc: 'Shift instantly into any object within 6 m — no touch needed.' },
+  ],
+  upgrades: [
+    { id: 'energy', name: 'SHIFT ENERGY', base: 100, max: 5, desc: 'Hold forms longer.' },
+    { id: 'still', name: 'STILLNESS', base: 120, max: 5, desc: 'Hold perfectly still under observation for longer.' },
+    { id: 'speed', name: 'SHIFT SPEED', base: 110, max: 5, desc: 'Shift faster — less time half-way between shapes.' },
+    { id: 'library', name: 'FORM LIBRARY', base: 90, max: 5, desc: '+3 forms remembered at once.' },
+    { id: 'cat', name: 'CAT', base: 80, max: 5, desc: 'A faster, higher-jumping cat.' },
+    { id: 'wings', name: 'WINGS', base: 80, max: 5, desc: 'Birds fly faster and drain less energy.' },
+    { id: 'health', name: 'HEALTH', base: 120, max: 5, desc: '+20 health.' },
+  ],
+};
+CHALLENGES_BY.shift = [
+  { id: 'ghostMuseum', name: 'Ghost the museum', reward: 1500 },
+  { id: 'close5', name: 'Five close calls in one heist', reward: 900 },
+  { id: 'bankDog', name: 'Rob the bank as a guard dog', reward: 900 },
+  { id: 'lockerCoat', name: 'Walk out of the evidence locker as a coat stand', reward: 1500 },
+  { id: 'firstHeist', name: 'Pull off a heist', reward: 400 },
+  { id: 'ghostAny', name: 'Ghost any heist', reward: 700 },
+  { id: 'learn15', name: 'Learn 15 different forms', reward: 500 },
+  { id: 'allHeists', name: 'Pull off all six heists', reward: 2000 },
+];
+RECORD_DEFS_BY.shift = [
+  ['bestScore', 'Best score', v => fmt(v)], ['closeCalls', 'Close calls (all time)', v => v || 0], ['closeRun', 'Close calls (one heist)', v => v || 0],
+  ['ghosts', 'Ghost heists', v => v || 0], ['heists', 'Heists pulled off', v => v || 0], ['forms', 'Forms learned (one run)', v => v || 0], ['highestHeat', 'Highest heat', v => v || 0],
+];
+const RIPPLES = [
+  { id: 'opal', name: 'Opal', a: 0x9ff3ff, b: 0xff9ff0, req: null }, { id: 'ember', name: 'Ember', a: 0xffb347, b: 0xff3b6a, req: ['closeCalls', 5, '5 close calls'] },
+  { id: 'abyss', name: 'Abyss', a: 0x4a6bff, b: 0x00ffc8, req: ['ghosts', 1, 'Ghost a heist'] }, { id: 'gold', name: 'Gilded', a: 0xffe08a, b: 0xffffff, req: ['heists', 6, 'Pull off 6 heists'] },
+];
+// §FORMS -------------------------------------------------------------------------------
+// clearance: 0 public · 1 loading/front · 2 staff + service · 3 secure · 4 vault
+const FORMS = {
+  human: { kind: 'human', name: 'YOURSELF', cam: 1.65 },
+  civilian: { kind: 'disguise', name: 'CIVILIAN', clearance: 0, pal: { torso: '#4a4f5a', arms: '#4a4f5a', legs: '#1a1a22', boots: '#111', skin: '#c58c6a' } },
+  courier: { kind: 'disguise', name: 'COURIER', clearance: 1, pal: { torso: '#e0a020', arms: '#e0a020', legs: '#2a2a2a', boots: '#111', skin: '#a87050', band: '#222' } },
+  staff: { kind: 'disguise', name: 'STAFF', clearance: 2, pal: { torso: '#e8e8ea', arms: '#e8e8ea', legs: '#2a2d36', boots: '#111', skin: '#e0b090', patch: '#46a0ff' } },
+  janitor: { kind: 'disguise', name: 'JANITOR', clearance: 2, service: true, pal: { torso: '#3a5a7a', arms: '#3a5a7a', legs: '#3a5a7a', boots: '#222', skin: '#8a5a3a', band: '#e8cf4a' } },
+  guard: { kind: 'disguise', name: 'GUARD', clearance: 3, pal: { torso: '#1d2230', arms: '#1d2230', legs: '#14171f', helmet: '#1d2230', visor: '#ffcc66', chevron: '#d8b04a', boots: '#0b0d12', skin: '#b98262', patch: '#d8b04a' }, uniform: true },
+  officer: { kind: 'disguise', name: 'MRA OFFICER', clearance: 1, pal: PALETTES.officer, uniform: true },
+  cat: { kind: 'animal', name: 'CAT', speed: 7, jump: 8, cam: 0.6, small: true, vents: true, climb: true, carry: false, belongs: ['street', 'loading', 'service'] },
+  pigeon: { kind: 'animal', name: 'PIGEON', speed: 10, fly: true, cam: 0.5, carry: false, belongs: ['street', 'roof'] },
+  rat: { kind: 'animal', name: 'RAT', speed: 5, cam: 0.35, small: true, tiny: true, vents: true, pipes: true, lasers: true, carry: false, belongs: ['street', 'service', 'loading', 'subway'] },
+  dog: { kind: 'animal', name: 'GUARD DOG', speed: 6.8, jump: 6, cam: 0.95, sniff: true, carry: 'small', belongs: ['street', 'loading', 'secure', 'vault', 'staff', 'service', 'public'] },
+  crow: { kind: 'animal', name: 'CROW', speed: 11, fly: true, cam: 0.5, carry: 'small', belongs: ['street', 'roof'] },
+  fish: { kind: 'animal', name: 'FISH', speed: 9, swim: true, cam: 0.3, carry: false, belongs: ['water'] },
+  moth: { kind: 'animal', name: 'MOTH', speed: 3.5, fly: true, cam: 0.3, tiny: true, lasers: true, carry: false, belongs: ['street', 'public', 'staff', 'service', 'secure', 'vault', 'loading', 'roof'] },
+  lamp: { kind: 'object', name: 'LAMP', h: 1.7, belongs: ['public', 'staff'] },
+  plant: { kind: 'object', name: 'POTTED PLANT', h: 1.3, belongs: ['public', 'staff', 'street'] },
+  statue: { kind: 'object', name: 'STATUE', h: 2.0, heavy: true, belongs: ['museum', 'public', 'secure'] },
+  bin: { kind: 'object', name: 'BIN', h: 1.0, belongs: ['street', 'service', 'staff', 'public', 'loading'] },
+  crate: { kind: 'object', name: 'CRATE', h: 1.0, belongs: ['street', 'loading', 'service'] },
+  chair: { kind: 'object', name: 'CHAIR', h: 1.0, belongs: ['staff', 'public'] },
+  vending: { kind: 'object', name: 'VENDING MACHINE', h: 2.0, heavy: true, belongs: ['street', 'staff', 'public'] },
+  cone: { kind: 'object', name: 'TRAFFIC CONE', h: 0.75, belongs: ['street', 'loading', 'service'] },
+  mannequin: { kind: 'object', name: 'MANNEQUIN', h: 1.85, belongs: ['lab', 'secure', 'staff'] },
+  extinguisher: { kind: 'object', name: 'FIRE EXTINGUISHER', h: 0.7, belongs: ['service', 'staff', 'public', 'secure'] },
+  coatstand: { kind: 'object', name: 'COAT STAND', h: 1.8, belongs: ['public', 'staff'] },
+  painting: { kind: 'object', name: 'PAINTING', h: 1.4, belongs: ['museum', 'secure', 'staff'] },
+  armour: { kind: 'object', name: 'SUIT OF ARMOUR', h: 1.95, heavy: true, belongs: ['museum', 'secure'] },
+};
+const PROP_TO_FORM = { bin: 'bin', crate: 'crate', vending: 'vending', barrier: 'cone', dumpster: 'bin', bench: 'chair', newsstand: 'vending', barrel: 'bin', oilbarrel: 'bin' };
+// §FORMLIB — procedural meshes for every form ----------------------------------------
+const FORM_MAT = PROP_MAT;
+function formGeo(boxes) { return geoFromBoxes(boxes); }
+const FormGeo = {};
+function buildFormGeos() {
+  const G2 = FormGeo;
+  G2.lamp = formGeo([[-0.25, 0, -0.25, 0.25, 0.08, 0.25, '#222'], [-0.03, 0.08, -0.03, 0.03, 1.4, 0.03, '#888'], [-0.3, 1.4, -0.3, 0.3, 1.75, 0.3, '#f2e6c8', 0.9]]);
+  G2.plant = formGeo([[-0.3, 0, -0.3, 0.3, 0.5, 0.3, '#7a4a2a'], [-0.5, 0.5, -0.5, 0.5, 1.0, 0.5, '#2f7a3a'], [-0.35, 0.9, -0.35, 0.35, 1.35, 0.35, '#3a9a46']]);
+  G2.statue = formGeo([[-0.5, 0, -0.5, 0.5, 0.5, 0.5, '#b8b4a8'], [-0.25, 0.5, -0.2, 0.25, 1.5, 0.2, '#cfcabd'], [-0.15, 1.5, -0.15, 0.15, 1.85, 0.15, '#cfcabd'], [-0.45, 1.1, -0.1, 0.45, 1.25, 0.1, '#cfcabd']]);
+  G2.bin = PROP_TYPES.bin.geo; G2.crate = PROP_TYPES.crate.geo; G2.vending = PROP_TYPES.vending.geo;
+  G2.chair = formGeo([[-0.25, 0.42, -0.25, 0.25, 0.5, 0.25, '#3a3a44'], [-0.25, 0.5, -0.27, 0.25, 1.0, -0.21, '#3a3a44'], [-0.22, 0, -0.22, -0.18, 0.42, -0.18, '#111'], [0.18, 0, 0.18, 0.22, 0.42, 0.22, '#111'], [-0.22, 0, 0.18, -0.18, 0.42, 0.22, '#111'], [0.18, 0, -0.22, 0.22, 0.42, -0.18, '#111']]);
+  G2.cone = formGeo([[-0.25, 0, -0.25, 0.25, 0.05, 0.25, '#222'], [-0.15, 0.05, -0.15, 0.15, 0.4, 0.15, '#ff6a1a'], [-0.1, 0.4, -0.1, 0.1, 0.75, 0.1, '#ff6a1a'], [-0.16, 0.3, -0.16, 0.16, 0.38, 0.16, '#ffffff', 0.4]]);
+  G2.mannequin = formGeo([[-0.2, 0, -0.2, 0.2, 0.05, 0.2, '#333'], [-0.02, 0.05, -0.02, 0.02, 0.8, 0.02, '#333'], [-0.2, 0.8, -0.12, 0.2, 1.5, 0.12, '#e8e2d8'], [-0.1, 1.55, -0.1, 0.1, 1.85, 0.1, '#e8e2d8']]);
+  G2.extinguisher = formGeo([[-0.12, 0, -0.12, 0.12, 0.6, 0.12, '#c0202a'], [-0.05, 0.6, -0.05, 0.05, 0.7, 0.05, '#222'], [0.05, 0.55, -0.02, 0.18, 0.62, 0.02, '#222']]);
+  G2.coatstand = formGeo([[-0.25, 0, -0.25, 0.25, 0.06, 0.25, '#4a3020'], [-0.03, 0.06, -0.03, 0.03, 1.8, 0.03, '#4a3020'], [-0.25, 1.55, -0.03, 0.25, 1.6, 0.03, '#4a3020'], [-0.03, 1.55, -0.25, 0.03, 1.6, 0.25, '#4a3020'], [-0.18, 1.0, 0.03, 0.18, 1.55, 0.12, '#5a2a2a']]);
+  G2.painting = formGeo([[-0.75, 0.6, -0.05, 0.75, 1.6, 0.05, '#c8a040'], [-0.65, 0.7, 0.05, 0.65, 1.5, 0.07, '#2a4a6a', 0.3], [-0.04, 0, -0.04, 0.04, 0.6, 0.04, '#333']]);
+  G2.armour = formGeo([[-0.3, 0, -0.3, 0.3, 0.1, 0.3, '#333'], [-0.12, 0.1, -0.1, -0.02, 0.9, 0.1, '#9aa0a8'], [0.02, 0.1, -0.1, 0.12, 0.9, 0.1, '#9aa0a8'], [-0.25, 0.9, -0.15, 0.25, 1.55, 0.15, '#b0b6be'], [-0.13, 1.55, -0.13, 0.13, 1.9, 0.13, '#b0b6be'], [-0.36, 0.95, -0.08, -0.26, 1.5, 0.08, '#9aa0a8'], [0.26, 0.95, -0.08, 0.36, 1.5, 0.08, '#9aa0a8']]);
+  // animals (parts kept separate so they can move)
+  G2.catBody = formGeo([[-0.12, 0.15, -0.28, 0.12, 0.35, 0.22, '#3a3330'], [-0.1, 0.28, 0.22, 0.1, 0.46, 0.4, '#3a3330'], [-0.09, 0.44, 0.24, -0.03, 0.52, 0.3, '#3a3330'], [0.03, 0.44, 0.24, 0.09, 0.52, 0.3, '#3a3330'], [-0.06, 0.36, 0.4, -0.02, 0.4, 0.41, '#bfff60', 1.5], [0.02, 0.36, 0.4, 0.06, 0.4, 0.41, '#bfff60', 1.5]]);
+  G2.catLeg = formGeo([[-0.03, -0.15, -0.03, 0.03, 0, 0.03, '#3a3330']]);
+  G2.catTail = formGeo([[-0.025, 0, -0.35, 0.025, 0.05, 0, '#3a3330']]);
+  G2.ratBody = formGeo([[-0.06, 0.04, -0.12, 0.06, 0.12, 0.1, '#6a6058'], [-0.04, 0.05, 0.1, 0.04, 0.11, 0.18, '#6a6058'], [-0.01, 0.06, 0.18, 0.01, 0.08, 0.19, '#ff6a8a', 0.5]]);
+  G2.ratTail = formGeo([[-0.008, 0.06, -0.3, 0.008, 0.075, -0.12, '#c08a7a']]);
+  G2.dogBody = formGeo([[-0.17, 0.4, -0.42, 0.17, 0.72, 0.32, '#2a2420'], [-0.13, 0.62, 0.3, 0.13, 0.88, 0.6, '#2a2420'], [-0.08, 0.62, 0.58, 0.08, 0.74, 0.72, '#1a1410'], [-0.12, 0.85, 0.36, -0.05, 0.98, 0.44, '#2a2420'], [0.05, 0.85, 0.36, 0.12, 0.98, 0.44, '#2a2420'], [-0.18, 0.6, 0.1, 0.18, 0.66, 0.2, '#c0202a', 0.3]]);
+  G2.dogLeg = formGeo([[-0.05, -0.4, -0.05, 0.05, 0, 0.05, '#2a2420']]);
+  G2.dogTail = formGeo([[-0.03, 0, -0.3, 0.03, 0.06, 0, '#2a2420']]);
+  G2.birdBody = formGeo([[-0.08, 0.06, -0.15, 0.08, 0.2, 0.12, '#6a7080'], [-0.06, 0.15, 0.1, 0.06, 0.27, 0.2, '#5a6a6a'], [-0.02, 0.18, 0.2, 0.02, 0.21, 0.26, '#d0a040'], [-0.05, 0.08, -0.25, 0.05, 0.12, -0.14, '#4a505a']]);
+  G2.crowBody = formGeo([[-0.09, 0.06, -0.17, 0.09, 0.22, 0.13, '#101014'], [-0.07, 0.16, 0.1, 0.07, 0.3, 0.22, '#101014'], [-0.02, 0.2, 0.22, 0.02, 0.24, 0.32, '#222'], [-0.06, 0.08, -0.3, 0.06, 0.13, -0.16, '#101014']]);
+  G2.wing = formGeo([[0, 0, -0.1, 0.32, 0.02, 0.12, '#5a606a']]);
+  G2.crowWing = formGeo([[0, 0, -0.12, 0.4, 0.02, 0.14, '#16161c']]);
+  G2.fishBody = formGeo([[-0.06, -0.08, -0.18, 0.06, 0.08, 0.2, '#d8a040', 0.3], [-0.01, -0.06, -0.32, 0.01, 0.06, -0.18, '#c08030']]);
+  G2.mothBody = formGeo([[-0.02, -0.02, -0.05, 0.02, 0.02, 0.05, '#c8b890', 0.6]]);
+  G2.mothWing = formGeo([[0, 0, -0.04, 0.09, 0.005, 0.05, '#e8dcc0', 0.8]]);
+}
+function makeFormMesh(id) {
+  const g = new THREE.Group(); const P = (geo, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, FORM_MAT); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const parts = {};
+  if (FormGeo[id]) P(FormGeo[id]);
+  else if (id === 'cat') { P(FormGeo.catBody); parts.legs = [[-0.08, 0.17], [0.08, 0.17], [-0.08, -0.22], [0.08, -0.22]].map(([x, z]) => P(FormGeo.catLeg, x, 0.17, z)); parts.tail = P(FormGeo.catTail, 0, 0.3, -0.28); }
+  else if (id === 'dog') { P(FormGeo.dogBody); parts.legs = [[-0.11, 0.25], [0.11, 0.25], [-0.11, -0.35], [0.11, -0.35]].map(([x, z]) => P(FormGeo.dogLeg, x, 0.42, z)); parts.tail = P(FormGeo.dogTail, 0, 0.66, -0.42); }
+  else if (id === 'rat') { P(FormGeo.ratBody); parts.tail = P(FormGeo.ratTail); }
+  else if (id === 'pigeon' || id === 'crow') { P(id === 'crow' ? FormGeo.crowBody : FormGeo.birdBody); const W = id === 'crow' ? FormGeo.crowWing : FormGeo.wing; parts.wl = P(W, 0.07, 0.17, 0); parts.wr = P(W, -0.07, 0.17, 0); parts.wr.scale.x = -1; }
+  else if (id === 'fish') { P(FormGeo.fishBody); }
+  else if (id === 'moth') { P(FormGeo.mothBody); parts.wl = P(FormGeo.mothWing, 0.02, 0, 0); parts.wr = P(FormGeo.mothWing, -0.02, 0, 0); parts.wr.scale.x = -1; }
+  g.userData.parts = parts; g.userData.id = id;
+  return g;
+}
+function animateForm(m, id, speed, t, air) {
+  const p = m.userData.parts; const ph = t * (4 + speed * 2.2);
+  if (p.legs) p.legs.forEach((l, i) => { l.rotation.x = speed > 0.2 ? Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI : 0)) * 0.7 : 0; });
+  if (p.tail) p.tail.rotation.y = Math.sin(t * 3) * 0.4;
+  if (p.wl) { const f = air ? Math.sin(t * (id === 'moth' ? 40 : 18)) * 0.9 : 0.1; p.wl.rotation.z = f; p.wr.rotation.z = -f; }
+}
+// iridescent ripple shell
+const RIPPLE_MAT = new THREE.ShaderMaterial({
+  uniforms: { uT: { value: 0 }, uA: { value: new THREE.Color(0x9ff3ff) }, uB: { value: new THREE.Color(0xff9ff0) }, uK: { value: 0 } },
+  vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ vP=position; vec4 mv=modelViewMatrix*vec4(position,1.0); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
+  fragmentShader: 'uniform float uT,uK; uniform vec3 uA,uB; varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ float f=pow(1.0-abs(dot(vN,vV)),1.5); float band=0.5+0.5*sin(vP.y*14.0-uT*9.0+sin(vP.x*7.0+uT*3.0)*2.0); vec3 c=mix(uA,uB,band); float front=smoothstep(uK-0.25,uK,fract(vP.y*0.6+0.5)); gl_FragColor=vec4(c*(f*1.6+band*0.25)*uK,1.0); }',
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+});
+const Ripple = (() => {
+  const pool = [];
+  function at(pos, size, dur = 0.6) {
+    let m = pool.find(x => !x.visible); if (!m) { m = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), RIPPLE_MAT.clone()); m.layers.set(LAYER_NOREFLECT); m.renderOrder = 7; scene.add(m); pool.push(m); }
+    const r = RIPPLES.find(x => x.id === (Cosmetics.sel.ripple || 'opal')) || RIPPLES[0]; m.material.uniforms.uA.value.setHex(r.a); m.material.uniforms.uB.value.setHex(r.b);
+    m.position.copy(pos); m.scale.set(size.x, size.y, size.z); m.visible = true; m.userData = { t: 0, dur }; return m;
+  }
+  function update(rdt) { for (const m of pool) { if (!m.visible) continue; const u = m.userData; u.t += rdt; const k = u.t / u.dur; m.material.uniforms.uT.value = u.t; m.material.uniforms.uK.value = Math.sin(clamp(k, 0, 1) * Math.PI) * 1.2; if (k >= 1) m.visible = false; } }
+  return { at, update };
+})();
+// city critters you can touch to learn: cats in alleys, pigeons on ledges, rats in the subway, dogs at sites, crows, fish, moths
+const Critters = (() => {
+  const list = [];
+  function reset() { for (const c of list) scene.remove(c.mesh); list.length = 0; }
+  function add(id, p, home) { const mesh = makeFormMesh(id); mesh.position.copy(p); mesh.rotation.y = frnd(0, TAU); scene.add(mesh); list.push({ id, pos: p.clone(), home: (home || p).clone(), mesh, t: frnd(0, 10), mode: 'idle', target: null }); }
+  function build() {
+    reset(); if (!FormGeo.lamp) buildFormGeos();
+    let n = 0;
+    for (const b of City.blocks) {
+      if (b.type !== 'buildings') continue; const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+      if (n % 2 === 0) add('cat', V3(cx + frnd(-12, 12), 0, cz + frnd(-1, 1)));
+      if (n % 3 === 0) add('moth', V3(b.x0 + 2, 6.4, b.z0 + 4));
+      n++;
+    }
+    for (const r of City.roofs.filter(r => r.h < 30)) if (Math.random() < 0.25) add('pigeon', V3(r.x0 + 0.6, r.h + 1.1, (r.z0 + r.z1) / 2));
+    for (const s of City.stations) add('rat', V3(s.bottom.x + frnd(-3, 3), City.tunnelY + 0.05, s.bottom.z + frnd(-3, 3)));
+    for (let k = 0; k < 5; k++) add('dog', V3(frnd(20, 220), 0, frnd(260, 330)));
+    for (let k = 0; k < 6; k++) add('crow', V3(frnd(0, 480), City.train.y + 0.95, City.train.z + (k % 2 ? 3.85 : -3.85)));
+    for (let k = 0; k < 6; k++) add('fish', V3(frnd(0, 220), -1.7, CONFIG.city.quayZ + frnd(3, 12)));
+  }
+  function update(dt) {
+    const pp = Player.pos;
+    for (const c of list) {
+      c.t += dt; const d = c.pos.distanceTo(pp); if (d > 120) continue;
+      let sp = 0;
+      if (c.id === 'cat' || c.id === 'dog' || c.id === 'rat') {
+        // cats hunt a rat-shaped shapeshifter
+        if (c.id === 'cat' && G.hero === 'shift' && Shift.form === 'rat' && d < 6) { c.target = pp.clone(); if (d < 0.8) Shift.caughtByCat(); }
+        if (!c.target || c.pos.distanceTo(c.target) < 0.5) { c.target = c.home.clone().add(V3(frnd(-4, 4), 0, frnd(-4, 4))); c.wait = frnd(1, 5); }
+        if (c.wait > 0) c.wait -= dt; else { const dir = V3().subVectors(c.target, c.pos).setY(0); const L = dir.length(); if (L > 0.1) { sp = c.id === 'cat' && G.hero === 'shift' && Shift.form === 'rat' && d < 6 ? 6 : 1.2; c.pos.addScaledVector(dir.normalize(), Math.min(L, sp * dt)); c.mesh.rotation.y = Math.atan2(dir.x, dir.z); } }
+      } else if (c.id === 'pigeon' || c.id === 'crow' || c.id === 'moth') {
+        if (c.id === 'moth') { c.pos.set(c.home.x + Math.sin(c.t * 2.3) * 0.6, c.home.y + Math.sin(c.t * 3.1) * 0.4, c.home.z + Math.cos(c.t * 1.9) * 0.6); sp = 1; }
+        else if (d < 3 && G.hero !== 'shift') { c.pos.y += dt * 4; sp = 1; }
+        else c.pos.y = damp(c.pos.y, c.home.y, 1, dt);
+      } else if (c.id === 'fish') { c.pos.x = c.home.x + Math.sin(c.t * 0.4) * 4; c.pos.z = c.home.z + Math.cos(c.t * 0.3) * 2; c.mesh.rotation.y = c.t * 0.4 + Math.PI / 2; sp = 1; }
+      c.mesh.position.copy(c.pos); animateForm(c.mesh, c.id, sp, c.t, c.id !== 'cat' && c.id !== 'dog' && c.id !== 'rat' && sp > 0);
+    }
+  }
+  return { build, update, list, reset };
+})();
+
+// §HEISTS + §HEISTGEN -------------------------------------------------------------------
+const HEIST_TYPES = {
+  bank: { name: 'BANK VAULT', prize: 'Gold bars and a deposit box', big: true, value: 9000, sec: 3, guards: 8, w: 48, d: 36, wall: 0x6a6458, floor: '#3a3632', rooms: ['public', 'public', 'staff', 'staff', 'secure', 'vault'], decor: { public: ['plant', 'plant', 'coatstand', 'chair', 'lamp', 'bin'], staff: ['chair', 'chair', 'lamp', 'coatstand', 'plant', 'bin'], secure: ['extinguisher', 'painting'], vault: [] }, lasers: true, timed: true },
+  museum: { name: 'MUSEUM', prize: 'The Halcyon Jewel', big: false, value: 12000, sec: 3, guards: 9, w: 56, d: 40, wall: 0xb8b0a0, floor: '#5a5248', rooms: ['public', 'museum', 'museum', 'service', 'staff', 'secure'], decor: { public: ['plant', 'statue', 'coatstand', 'bin'], museum: ['statue', 'statue', 'armour', 'painting', 'painting', 'armour'], service: ['crate', 'crate', 'bin', 'extinguisher'], staff: ['chair', 'lamp', 'coatstand'], secure: ['statue', 'armour', 'painting'] }, cases: true },
+  casino: { name: 'CASINO', prize: 'The counting room take', big: true, value: 10000, sec: 3, guards: 10, w: 52, d: 38, wall: 0x4a1a2a, floor: '#3a1420', rooms: ['public', 'public', 'public', 'staff', 'secure', 'vault'], decor: { public: ['plant', 'chair', 'chair', 'lamp', 'vending'], staff: ['chair', 'lamp', 'bin'], secure: ['extinguisher', 'chair'], vault: ['crate'] }, crowd: 12 },
+  lab: { name: 'CORPORATE LAB', prize: 'Prototype data core', big: false, value: 9000, sec: 4, guards: 8, w: 48, d: 36, wall: 0xd8dce4, floor: '#c8ccd2', rooms: ['public', 'staff', 'lab', 'lab', 'secure', 'vault'], decor: { public: ['plant', 'chair', 'coatstand'], staff: ['chair', 'lamp', 'plant'], lab: ['mannequin', 'mannequin', 'extinguisher', 'chair'], secure: ['extinguisher', 'mannequin'], vault: [] }, scanners: true },
+  penthouse: { name: 'PENTHOUSE', prize: 'A billionaire\'s Fabergé-style egg', big: false, value: 11000, sec: 3, guards: 6, dogs: 2, w: 40, d: 30, wall: 0x2a2a30, floor: '#6a5a48', rooms: ['staff', 'service', 'staff', 'secure', 'staff', 'vault'], decor: { staff: ['lamp', 'plant', 'chair', 'coatstand', 'painting'], service: ['bin', 'crate', 'extinguisher'], secure: ['statue', 'armour', 'painting', 'painting'], vault: [] } },
+  locker: { name: 'MRA EVIDENCE LOCKER', prize: 'Seized prototype tech', big: false, value: 15000, sec: 5, guards: 10, w: 48, d: 36, wall: 0x2a3038, floor: '#22262c', rooms: ['public', 'staff', 'service', 'secure', 'secure', 'vault'], decor: { public: ['coatstand', 'chair', 'plant', 'bin'], staff: ['chair', 'lamp', 'coatstand', 'bin'], service: ['crate', 'crate', 'bin', 'extinguisher', 'cone'], secure: ['extinguisher', 'crate'], vault: ['crate'] }, truesight: true },
+};
+const ZONE_CLEAR = { public: 0, museum: 0, loading: 1, staff: 2, service: 2, lab: 3, secure: 3, vault: 4, street: 0, roof: 0 };
+const GUARD_PAL = FORMS.guard.pal, SENIOR_PAL = Object.assign({}, FORMS.guard.pal, { torso: '#2a2018', chevron: '#ffffff', patch: '#ffffff' });
+const GUARD_NAMES = ['Okafor', 'Reyes', 'Lindqvist', 'Haddad', 'Novak', 'Mbeki', 'Tanaka', 'Duarte', 'Kowal', 'Achebe', 'Ferreira', 'Sato', 'Brennan', 'Iyer'];
+const Heists = (() => {
+  const list = []; let cell = null; const CELL_BASE = V3(3400, 0, 3400);
+  const store = () => Store.get('heists', {});
+  function reset() { if (cell) unload(); for (const h of list) { for (const m of h.markers) scene.remove(m.mesh); } list.length = 0; }
+  function build() {
+    reset();
+    const used = new Set(); const pickB = (keys, minH = 8, maxH = 200) => { const c = City.buildings.filter(b => keys.includes(b.d.key) && b.h >= minH && b.h <= maxH && !used.has(b) && (b.x1 - b.x0) > 14 && (b.z1 - b.z0) > 14); if (!c.length) return null; const b = c[Math.floor(rng() * c.length)]; used.add(b); return b; };
+    const plan = [['bank', ['core']], ['museum', ['core', 'neon']], ['casino', ['neon']], ['lab', ['under', 'core']], ['penthouse', ['core'], 60], ['locker', ['under', 'harbour']]];
+    plan.forEach(([type, keys, minH], k) => {
+      const b = pickB(keys, minH || 8) || pickB(['neon', 'core', 'under', 'harbour']); if (!b) return;
+      const H = { type, T: HEIST_TYPES[type], b, k, base: CELL_BASE.clone().add(V3(k * 160, 0, 0)), notes: new Set(), phase: 'casing', markers: [], done: false };
+      // entrances on the real building: front door, loading bay, roof hatch, alley vent
+      const faces = [['pz', V3(0, 0, 1)], ['nz', V3(0, 0, -1)], ['px', V3(1, 0, 0)], ['nx', V3(-1, 0, 0)]];
+      const front = faces.find(([f, n]) => { const c = V3((b.x0 + b.x1) / 2, 0, (b.z0 + b.z1) / 2); const p = c.clone().add(V3(n.x * ((b.x1 - b.x0) / 2 + 1.2), 0, n.z * ((b.z1 - b.z0) / 2 + 1.2))); return City.onRoad(p.x + n.x * 8, p.z + n.z * 8); }) || faces[0];
+      const fn = front[1]; const side = V3(fn.z, 0, -fn.x); const ctr = V3((b.x0 + b.x1) / 2, 0, (b.z0 + b.z1) / 2);
+      const halfN = Math.abs(fn.x) * (b.x1 - b.x0) / 2 + Math.abs(fn.z) * (b.z1 - b.z0) / 2, halfS = Math.abs(side.x) * (b.x1 - b.x0) / 2 + Math.abs(side.z) * (b.z1 - b.z0) / 2;
+      const mk = (kind, p, label) => { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), new THREE.MeshBasicMaterial({ color: kind === 'front' ? new THREE.Color(2.5, 1.2, 3) : new THREE.Color(1.2, 1.6, 3) })); m.position.copy(p).y += 1.6; m.layers.set(LAYER_NOREFLECT); scene.add(m); H.markers.push({ kind, pos: p.clone(), label, mesh: m }); };
+      mk('front', ctr.clone().addScaledVector(fn, halfN + 1.0), 'FRONT DOOR');
+      mk('loading', ctr.clone().addScaledVector(side, halfS + 1.0), 'LOADING BAY');
+      mk('vent', ctr.clone().addScaledVector(side, -(halfS + 0.8)).setY(0), 'ALLEY VENT');
+      mk('roof', V3(ctr.x, b.h + 0.2, ctr.z), 'ROOF HATCH');
+      list.push(H);
+    });
+  }
+  // ---- interior cells (built on entry, removed on exit) ----
+  function zoneRects(H) {
+    const T = H.T; const W = T.w, D = T.d; const rw = W / 3, rd = D / 2; const rooms = [];
+    for (let j = 0; j < 2; j++) for (let i = 0; i < 3; i++) rooms.push({ x0: H.base.x - W / 2 + i * rw, z0: H.base.z - D / 2 + j * rd, x1: H.base.x - W / 2 + (i + 1) * rw, z1: H.base.z - D / 2 + (j + 1) * rd, zone: T.rooms[j * 3 + i], i, j });
+    return rooms;
+  }
+  function load(H, via) {
+    const T = H.T; const C = { H, group: new THREE.Group(), bodies: [], guards: [], cams: [], lasers: [], plates: [], scanners: [], objects: [], doors: [], vents: [], exits: [], lights: [], crowd: [], rooms: zoneRects(H), attention: {}, alarm: false, prizeTaken: false, prizePos: null, seen: false, closeCalls: 0, formsUsed: new Set(), t0: G.time, vaultOpen: false, vaultT: 0 };
+    cell = C; scene.add(C.group);
+    const W = T.w, D = T.d, X = H.base.x, Z = H.base.z, WH = 4.2;
+    const wallMat = new THREE.MeshStandardMaterial({ color: T.wall, roughness: 0.8 });
+    const fc = canvas(256, 256), fg = fc.getContext('2d'); fg.fillStyle = T.floor; fg.fillRect(0, 0, 256, 256); for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { if ((i + j) % 2) { fg.fillStyle = 'rgba(255,255,255,.05)'; fg.fillRect(i * 32, j * 32, 32, 32); } } fg.strokeStyle = 'rgba(0,0,0,.25)'; for (let i = 0; i <= 8; i++) { fg.beginPath(); fg.moveTo(i * 32, 0); fg.lineTo(i * 32, 256); fg.stroke(); fg.beginPath(); fg.moveTo(0, i * 32); fg.lineTo(256, i * 32); fg.stroke(); }
+    const ft = texFrom(fc); ft.repeat.set(W / 6, D / 6);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: ft, roughness: 0.25, metalness: 0.1 })); floor.rotation.x = -Math.PI / 2; floor.position.set(X, 0.01, Z); floor.receiveShadow = true; C.group.add(floor);
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.9 })); ceil.rotation.x = Math.PI / 2; ceil.position.set(X, WH, Z); C.group.add(ceil);
+    const sbox = (cx, cy, cz, hx, hy, hz, mat = wallMat, vis = true) => { const r = addStaticBox(cx, cy, cz, hx, hy, hz); C.bodies.push(r.body); if (vis) { const m = new THREE.Mesh(new THREE.BoxGeometry(hx * 2, hy * 2, hz * 2), mat); m.position.set(cx, cy, cz); m.castShadow = true; m.receiveShadow = true; C.group.add(m); return { r, m }; } return { r }; };
+    sbox(X, -0.5, Z, W / 2 + 1, 0.5, D / 2 + 1, wallMat, false);
+    sbox(X, WH + 0.2, Z, W / 2 + 1, 0.2, D / 2 + 1, wallMat, false);
+    // outer walls with a front-door gap (south) and a loading gap (east)
+    const gapWall = (x0, z0, x1, z1, gaps) => { const alongX = x1 - x0 > z1 - z0; let cur = alongX ? x0 : z0; const end = alongX ? x1 : z1; for (const [g0, g1] of gaps.sort((a, b) => a[0] - b[0])) { if (g0 > cur) { if (alongX) sbox((cur + g0) / 2, WH / 2, (z0 + z1) / 2, (g0 - cur) / 2, WH / 2, (z1 - z0) / 2 || 0.2); else sbox((x0 + x1) / 2, WH / 2, (cur + g0) / 2, (x1 - x0) / 2 || 0.2, WH / 2, (g0 - cur) / 2); } cur = g1; } if (cur < end) { if (alongX) sbox((cur + end) / 2, WH / 2, (z0 + z1) / 2, (end - cur) / 2, WH / 2, (z1 - z0) / 2 || 0.2); else sbox((x0 + x1) / 2, WH / 2, (cur + end) / 2, (x1 - x0) / 2 || 0.2, WH / 2, (end - cur) / 2); } };
+    const fx = X - W / 2 + W / 6; // front door into the first (public) room
+    gapWall(X - W / 2, Z + D / 2, X + W / 2, Z + D / 2 + 0.4, [[fx - 1.5, fx + 1.5]]);
+    gapWall(X - W / 2, Z - D / 2 - 0.4, X + W / 2, Z - D / 2, []);
+    gapWall(X - W / 2 - 0.4, Z - D / 2, X - W / 2, Z + D / 2, []);
+    gapWall(X + W / 2, Z - D / 2, X + W / 2 + 0.4, Z + D / 2, [[Z + D / 4 - 1.8, Z + D / 4 + 1.8]]);
+    C.exits.push({ kind: 'front', pos: V3(fx, 0, Z + D / 2 + 0.8), label: 'FRONT DOOR' });
+    C.exits.push({ kind: 'loading', pos: V3(X + W / 2 + 0.8, 0, Z + D / 4), label: 'LOADING BAY' });
+    // inner walls between the 6 rooms, each with a doorway; doors into secure/vault rooms lock
+    const R = C.rooms; const roomAt = (i, j) => R[j * 3 + i];
+    for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { const a = roomAt(i, j), b = roomAt(i + 1, j); const x = a.x1; const zc = (a.z0 + a.z1) / 2; gapWall(x - 0.15, a.z0, x + 0.15, a.z1, [[zc - 1.2, zc + 1.2]]); addDoor(C, V3(x, 0, zc), 'x', Math.max(ZONE_CLEAR[a.zone], ZONE_CLEAR[b.zone])); }
+    for (let i = 0; i < 3; i++) { const a = roomAt(i, 0), b = roomAt(i, 1); const z = a.z1; const xc = (a.x0 + a.x1) / 2 + (i === 1 ? 4 : 0); gapWall(a.x0, z - 0.15, a.x1, z + 0.15, [[xc - 1.2, xc + 1.2]]); addDoor(C, V3(xc, 0, z), 'z', Math.max(ZONE_CLEAR[a.zone], ZONE_CLEAR[b.zone])); }
+    // lights, decor objects (forms you can learn + context for disguises)
+    for (const r of R) {
+      const c = V3((r.x0 + r.x1) / 2, 3.6, (r.z0 + r.z1) / 2); const col = r.zone === 'vault' ? 0xffd8a0 : r.zone === 'secure' ? 0xd8e8ff : r.zone === 'casino' || T === HEIST_TYPES.casino ? 0xff7ad0 : 0xfff0d8;
+      C.lights.push(LightPool.add({ pos: c, color: new THREE.Color(col), intensity: 60, range: 18, kind: 'interior', priority: 3 }));
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(4, 0.08, 0.4), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(2.2) })); strip.position.set(c.x, WH - 0.05, c.z); C.group.add(strip);
+      const kinds = (T.decor[r.zone] || []).slice();
+      kinds.forEach((f, n) => { const along = (n + 0.5) / kinds.length; const wallSide = n % 2; const p = wallSide ? V3(lerp(r.x0 + 1.2, r.x1 - 1.2, along), 0, r.z0 + 0.9) : V3(r.x0 + 0.9, 0, lerp(r.z0 + 1.2, r.z1 - 1.2, along)); addObject(C, f, p, wallSide ? 0 : Math.PI / 2, r.zone); });
+    }
+    // the prize, on a pedestal in the vault / secure room
+    const pr = R.find(r => r.zone === 'vault') || R[5]; C.prizeRoom = pr; C.prizePos = V3((pr.x0 + pr.x1) / 2, 0, (pr.z0 + pr.z1) / 2);
+    const ped = sbox(C.prizePos.x, 0.5, C.prizePos.z, 0.5, 0.5, 0.5, new THREE.MeshStandardMaterial({ color: 0x2a2a30, metalness: 0.6, roughness: 0.3 }));
+    C.prizeMesh = makePrizeMesh(H.type); C.prizeMesh.position.set(C.prizePos.x, 1.0, C.prizePos.z); C.group.add(C.prizeMesh);
+    if (T.cases) { const cs = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.9, 1.1), MAT.glass); cs.position.set(C.prizePos.x, 1.45, C.prizePos.z); C.group.add(cs); C.case = cs; }
+    C.lights.push(LightPool.add({ pos: C.prizePos.clone().add(V3(0, 2.5, 0)), color: new THREE.Color(0xfff2c0), intensity: 50, range: 8, kind: 'prize', priority: 4 }));
+    // security
+    if (T.lasers || H.type === 'museum' || T.sec >= 4) for (let k = 0; k < 4; k++) addLaser(C, V3(pr.x0 + 1, 0, lerp(pr.z0 + 2, pr.z1 - 2, k / 3)), V3(pr.x1 - 1, 0, lerp(pr.z0 + 2, pr.z1 - 2, k / 3)), 0.35 + (k % 2) * 0.6);
+    C.plates.push({ x0: C.prizePos.x - 2, z0: C.prizePos.z - 2, x1: C.prizePos.x + 2, z1: C.prizePos.z + 2 });
+    { const pm = new THREE.Mesh(new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3a3a40, metalness: 0.7, roughness: 0.3 })); pm.position.set(C.prizePos.x, 0.02, C.prizePos.z); C.group.add(pm); }
+    for (const r of R) if (r.zone === 'secure' || r.zone === 'vault' || r.zone === 'public' || r.zone === 'museum') addCamera(C, V3(r.x0 + 0.4, 3.8, r.z0 + 0.4), Math.PI * 0.25);
+    if (T.truesight) for (const d of C.doors) if (d.clear >= 3) C.scanners.push({ pos: d.pos.clone(), axis: d.axis, mesh: addArch(C, d.pos, d.axis) });
+    if (T.timed) { C.timedDoor = C.doors.find(d => d.clear >= 4); }
+    // vents: alley vent ↔ service/staff room, a rat-only pipe into the vault, roof hatch into a back room
+    const svc = R.find(r => r.zone === 'service') || R.find(r => r.zone === 'staff') || R[3];
+    const ventIn = V3(svc.x0 + 0.6, 0, (svc.z0 + svc.z1) / 2);
+    C.exits.push({ kind: 'vent', pos: ventIn.clone(), label: 'VENT (TO THE ALLEY)', small: true });
+    C.vents.push({ a: V3(svc.x1 - 0.6, 0, svc.z0 + 0.8), b: V3(pr.x0 + 0.6, 0, pr.z1 - 0.8), pipe: true, label: 'PIPE (RATS ONLY)' });
+    C.exits.push({ kind: 'roof', pos: V3((svc.x0 + svc.x1) / 2, 0, svc.z0 + 1.2), label: 'ROOF HATCH', fly: true });
+    for (const v of C.vents) for (const p of [v.a, v.b]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.08), new THREE.MeshStandardMaterial({ color: 0x8a8e96, metalness: 0.8 })); m.position.set(p.x, 0.25, p.z); C.group.add(m); }
+    // keycard in a staff room (the crow, the dog's nose, or a human can take it)
+    const kr = R.find(r => r.zone === 'staff') || R[2]; C.keycard = { pos: V3(kr.x1 - 1.5, 0.9, kr.z1 - 1.5), taken: false, mesh: null };
+    C.keycard.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.02, 0.16), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.5, 1.2) })); C.keycard.mesh.position.copy(C.keycard.pos); C.group.add(C.keycard.mesh);
+    sbox(C.keycard.pos.x, 0.42, C.keycard.pos.z, 0.6, 0.42, 0.4, new THREE.MeshStandardMaterial({ color: 0x4a3a2a }));
+    // guards on patrol routes (some senior; some know each other) + dogs + a crowd for the casino
+    const routeFor = (rs) => rs.map(r => V3(lerp(r.x0 + 2, r.x1 - 2, Math.random()), 0, lerp(r.z0 + 2, r.z1 - 2, Math.random())));
+    const nG = T.guards; const names = GUARD_NAMES.slice().sort(() => Math.random() - 0.5);
+    for (let k = 0; k < nG; k++) {
+      const home = R[k % 6]; const route = routeFor([home, R[(k + 1) % 6], home, R[(k + 3) % 6]]);
+      addGuard(C, { name: names[k], senior: k % 4 === 1, route, pos: route[0].clone() });
+    }
+    for (let k = 0; k < (T.dogs || 0); k++) addGuard(C, { name: 'Dog ' + (k + 1), dog: true, route: routeFor([R[3 + k], R[5], R[3 + k]]), pos: V3((R[3 + k].x0 + R[3 + k].x1) / 2, 0, (R[3 + k].z0 + R[3 + k].z1) / 2) });
+    for (const g of C.guards) for (const o of C.guards) if (g !== o && !g.dog && !o.dog && Math.random() < 0.35) { g.knows.add(o.name); o.knows.add(g.name); }
+    for (let k = 0; k < (T.crowd || 0); k++) { const r = R[k % 3]; const rig = makeCharacter('ped', { torso: fpick(['#7a3a3a', '#3a5a7a', '#5a5a3a', '#6a4a7a', '#c0a040']), arms: '#444', legs: '#222', boots: '#111', skin: fpick(['#c58c6a', '#8a5a3a', '#e0b090']) }); scene.add(rig.mesh); C.crowd.push({ rig, pos: V3(lerp(r.x0 + 2, r.x1 - 2, Math.random()), 0, lerp(r.z0 + 2, r.z1 - 2, Math.random())), room: r, target: null, yaw: 0 }); }
+    world.step(eventQueue); eventQueue.drainContactForceEvents(() => { });
+    // place the player
+    const entry = via === 'front' ? C.exits[0].pos.clone().add(V3(0, 0, -1.5)) : via === 'loading' ? C.exits[1].pos.clone().add(V3(-1.5, 0, 0)) : via === 'roof' ? C.exits.find(e => e.kind === 'roof').pos.clone() : ventIn.clone().add(V3(0.8, 0, 0));
+    Shift.teleport(entry);
+    Mirror.enabled = false;
+    H.notes.add('entered via ' + via);
+    Hud.banner(H.T.name, (C.prizeTaken ? 'GETAWAY' : 'THE JOB') + ' — ' + H.T.prize.toUpperCase());
+    return C;
+  }
+  function addDoor(C, pos, axis, clear) {
+    const locked = clear >= 4; const d = { pos: pos.clone(), axis, clear, locked, open: !locked, body: null, mesh: null };
+    const hx = axis === 'x' ? 0.1 : 1.2, hz = axis === 'x' ? 1.2 : 0.1;
+    d.mesh = new THREE.Mesh(new THREE.BoxGeometry(hx * 2, 3.2, hz * 2), new THREE.MeshStandardMaterial({ color: locked ? 0x8a2a2a : 0x5a5e66, metalness: 0.7, roughness: 0.35, emissive: locked ? 0x300808 : 0 }));
+    d.mesh.position.set(pos.x, 1.6, pos.z); C.group.add(d.mesh);
+    d.setLocked = (v) => { d.locked = v; if (v && !d.body) { const r = addStaticBox(pos.x, 1.6, pos.z, hx, 1.6, hz); d.body = r.body; C.bodies.push(r.body); } if (!v && d.body) { world.removeRigidBody(d.body); C.bodies = C.bodies.filter(b => b !== d.body); d.body = null; } d.mesh.visible = v; };
+    d.setLocked(locked); C.doors.push(d);
+  }
+  function addObject(C, form, p, rot, zone) {
+    const m = makeFormMesh(form); m.position.copy(p); m.rotation.y = rot; C.group.add(m);
+    if (FORMS[form].heavy || form === 'vending') { const r = addStaticBox(p.x, (FORMS[form].h || 1) / 2, p.z, 0.4, (FORMS[form].h || 1) / 2, 0.4); C.bodies.push(r.body); }
+    if (form === 'lamp') C.lights.push(LightPool.add({ pos: p.clone().add(V3(0, 1.6, 0)), color: new THREE.Color(0xffd8a0), intensity: 14, range: 6, kind: 'lamp' }));
+    C.objects.push({ form, pos: p.clone(), zone, mesh: m });
+  }
+  function addCamera(C, pos, base) {
+    const m = new THREE.Group(); const body = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.2, 0.45), new THREE.MeshStandardMaterial({ color: 0xdedede, metalness: 0.5 })); m.add(body); const led = new THREE.Mesh(new THREE.SphereGeometry(0.04), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.2, 0.2) })); led.position.set(0, 0.12, 0.2); m.add(led);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(2.6, 7, 16, 1, true).translate(0, -3.5, 0).rotateX(-Math.PI / 2 - 0.5), new THREE.MeshBasicMaterial({ color: 0xff3040, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.add(cone);
+    m.position.copy(pos); C.group.add(m); C.cams.push({ pos: pos.clone(), base, yaw: base, t: Math.random() * 10, mesh: m, cone, susp: 0, alert: 0 });
+  }
+  function addLaser(C, a, b, y) {
+    const len = a.distanceTo(b); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, len, 4).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.2, 0.3) }));
+    m.position.set((a.x + b.x) / 2, y, (a.z + b.z) / 2); m.rotation.y = -Math.atan2(b.z - a.z, b.x - a.x); m.layers.set(LAYER_NOREFLECT); C.group.add(m); C.lasers.push({ a: a.clone().setY(y), b: b.clone().setY(y), y, mesh: m, on: true });
+  }
+  function addArch(C, pos, axis) { const g = new THREE.Group(); const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 2.5, 3) }); for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3, 0.15), mat); p.position.set(axis === 'x' ? 0 : s * 1.3, 1.5, axis === 'x' ? s * 1.3 : 0); g.add(p); } const t = new THREE.Mesh(new THREE.BoxGeometry(axis === 'x' ? 0.15 : 2.75, 0.15, axis === 'x' ? 2.75 : 0.15), mat); t.position.y = 3; g.add(t); g.position.copy(pos); C.group.add(g); return g; }
+  function makePrizeMesh(type) {
+    const g = new THREE.Group(); const M = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.9, roughness: 0.2, emissive: c, emissiveIntensity: 0.25 });
+    if (type === 'bank') for (let k = 0; k < 6; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.2), M(0xffc23a)); b.position.set((k % 3 - 1) * 0.22, Math.floor(k / 3) * 0.13 + 0.06, 0); g.add(b); }
+    else if (type === 'museum') { const j = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshStandardMaterial({ color: 0x8af0ff, emissive: 0x40a0ff, emissiveIntensity: 1.2, metalness: 0.2, roughness: 0.05 })); j.position.y = 0.35; g.add(j); }
+    else if (type === 'casino') { const c = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.5), M(0x2a8a4a)); c.position.y = 0.25; g.add(c); }
+    else if (type === 'lab') { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.4, 12), new THREE.MeshStandardMaterial({ color: 0x46f0ff, emissive: 0x46f0ff, emissiveIntensity: 1.5 })); c.position.y = 0.2; g.add(c); }
+    else if (type === 'penthouse') { const e = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), M(0xff5fa8)); e.scale.y = 1.3; e.position.y = 0.3; g.add(e); }
+    else { const c = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.35), new THREE.MeshStandardMaterial({ color: 0x1fe0c4, emissive: 0x1fe0c4, emissiveIntensity: 0.8, metalness: 0.6 })); c.position.y = 0.15; g.add(c); }
+    return g;
+  }
+  function addGuard(C, o) {
+    let rig = null, mesh = null;
+    if (o.dog) { mesh = makeFormMesh('dog'); mesh.scale.setScalar(1.15); scene.add(mesh); }
+    else { rig = makeCharacter('unit', o.senior ? SENIOR_PAL : GUARD_PAL); rig.mesh.castShadow = true; scene.add(rig.mesh); }
+    const g = { name: o.name, senior: !!o.senior, dog: !!o.dog, rig, mesh, pos: o.pos.clone(), yaw: 0, route: o.route, ri: 0, wait: 0, state: 'patrol', susp: 0, knows: new Set(), memory: null, path: null, look: null, said: 0, questioned: -99, leashT: 0, speed: 1.5, inspectT: 0 };
+    C.guards.push(g);
+  }
+  function unload() {
+    const C = cell; if (!C) return;
+    for (const b of C.bodies) if (b) world.removeRigidBody(b);
+    for (const g of C.guards) { if (g.rig) scene.remove(g.rig.mesh); if (g.mesh) scene.remove(g.mesh); }
+    for (const p of C.crowd) scene.remove(p.rig.mesh);
+    for (const l of C.lights) LightPool.remove(l);
+    scene.remove(C.group); C.group.traverse(o => { if (o.isMesh && o.geometry && !Object.values(FormGeo).includes(o.geometry) && !Object.values(PROP_TYPES).some(t => t.geo === o.geometry)) o.geometry.dispose(); });
+    cell = null; Mirror.enabled = true;
+  }
+  function zoneAt(p) { if (!cell) return 'street'; for (const r of cell.rooms) if (p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1) return r.zone === 'museum' ? 'museum' : r.zone; return 'street'; }
+  return { build, load, unload, list, get cell() { return cell; }, zoneAt, store, reset };
+})();
+// §GUARDS + §SUSPICION -----------------------------------------------------------------
+const Guards = {
+  sees(g, p, range = 14, fov = 0.85) {
+    const eyeY = g.dog ? 0.8 : 1.65; const dx = p.x - g.pos.x, dz = p.z - g.pos.z; const d = Math.hypot(dx, dz); if (d > range) return 0;
+    const f = (Math.sin(g.yaw) * dx + Math.cos(g.yaw) * dz) / (d || 1); if (d > 2 && f < Math.cos(fov)) return 0;
+    if (!losClear(V3(g.pos.x, eyeY, g.pos.z), V3(p.x, p.y + Shift.height() * 0.6 + 0.1, p.z), 0.3)) return 0;
+    return 1 - d / range * 0.6;
+  },
+  say(g, line) { if (G.time - g.said < 3) return; g.said = G.time; Speech.show(g, line); },
+  update(C, dt, rdt) {
+    const pp = Player.pos; const form = Shift.form; const F = FORMS[form]; const zone = Heists.zoneAt(pp); const moving = Math.sqrt(Player.speed2) > 0.25;
+    let maxS = 0, watched = 0, watchers = [];
+    for (const g of C.guards) {
+      const vis = Guards.sees(g, pp, g.dog ? 10 : 14);
+      let gain = 0;
+      if (vis > 0 && !Player.detained) {
+        watched = Math.max(watched, vis); watchers.push(g);
+        const att = 1 + (C.attention[form] || 0);
+        if (Shift.shifting) gain += 260;
+        else if (F.kind === 'human') gain += ZONE_CLEAR[zone] > 0 ? 110 : (moving ? 4 : 8);
+        else if (F.kind === 'disguise') {
+          const need = ZONE_CLEAR[zone] || 0; const has = F.clearance + (F.service && zone === 'service' ? 1 : 0);
+          if (has < need) { gain += 45; Guards.say(g, 'Hey — you\'re not cleared for this area.'); }
+          if (Shift.disguiseId && C.guards.some(o => o.name === Shift.disguiseId && Guards.sees(g, o.pos, 16) > 0) && g.name !== Shift.disguiseId) { gain += 400; Guards.say(g, 'Wait — ' + Shift.disguiseId + '? There are two of you!'); }
+          if (Shift.disguiseId === g.name && vis > 0.5) { gain += 400; Guards.say(g, '...That\'s ME.'); }
+          if (g.senior && vis > 0.55 && G.time - g.questioned > 25 && g.state !== 'question') { g.state = 'question'; g.questioned = G.time; Question.start(g); }
+          if (Shift.disguiseId && g.knows.has(Shift.disguiseId) && vis > 0.6) { gain += 6; }
+          if (moving && Math.sqrt(Player.speed2) > 5) gain += 10;
+        } else if (F.kind === 'animal') {
+          if (form === 'dog') { gain += 0; if (vis > 0.6 && !g.dog) { g.leashT += dt; if (g.leashT > 3) { Shift.leashed(g); g.leashT = -6; } } }
+          else if (form === 'moth') gain += 0;
+          else if (!(F.belongs || []).includes(zone)) gain += (form === 'rat' ? 12 : form === 'cat' ? 18 : 28) * att;
+        } else if (F.kind === 'object') {
+          if (!(F.belongs || []).includes(zone)) gain += 22 * att;
+          if (moving) gain += 140 * att;
+          if (g.memory && g.memory.form === form && g.memory.pos.distanceTo(pp) > 0.6) { gain += 60 * att; g.memory.pos.copy(pp); Guards.say(g, fpick(['Was that ' + F.name.toLowerCase() + ' always there?', 'Did that just move?', 'Huh. Thought that was by the wall.'])); }
+          if (!g.memory || g.memory.form !== form) g.memory = { form, pos: pp.clone() };
+          if (Shift.twitchT > 0) gain += 120;
+        }
+        // guard dogs smell a shapeshifter in any form
+        if (g.dog && Math.hypot(pp.x - g.pos.x, pp.z - g.pos.z) < 3.5 && form !== 'human') { gain += 80; Guards.say(g, 'GRRRR — WOOF!'); }
+        gain *= vis;
+      }
+      // footsteps (hearing)
+      if (F.kind !== 'object' && !F.tiny && Math.sqrt(Player.speed2) > 5 && Math.hypot(pp.x - g.pos.x, pp.z - g.pos.z) < 9) { gain += 12; g.look = pp.clone(); }
+      // a missing prize
+      if (C.prizeTaken && !g.sawMissing && Guards.sees(g, C.prizePos, 16, 1) > 0) { g.sawMissing = true; gain += 300; Guards.say(g, 'THE ' + (C.H.type === 'bank' ? 'VAULT' : 'DISPLAY') + ' — IT\'S GONE!'); }
+      g.susp = clamp(g.susp + gain * dt - (gain > 0 ? 0 : (g.state === 'suspicious' ? 5 : 9) * dt), 0, 130);
+      if (gain > 0 && g.susp >= 50) { C.seen = true; if (F.kind === 'object' || F.kind === 'animal') { if (!C.attention[form] || C.attention[form] < 1.5) { C.attention[form] = Math.min(2, (C.attention[form] || 0) + 0.5); Guards.say(g, fpick(['Keep an eye on the ' + F.name.toLowerCase() + 's, something\'s off.', 'Heads up — watch the ' + F.name.toLowerCase() + 's.'])); } } }
+      if (g.susp >= 100 && !C.alarm) Alert.raise(g.name + ' raised the alarm');
+      maxS = Math.max(maxS, g.susp);
+      Guards.move(C, g, dt, vis);
+    }
+    // cameras sweep and report
+    for (const c of C.cams) {
+      c.t += dt; c.yaw = c.base + Math.sin(c.t * 0.5) * 0.9; c.mesh.rotation.y = c.yaw;
+      const dx = pp.x - c.pos.x, dz = pp.z - c.pos.z; const d = Math.hypot(dx, dz); let see = 0;
+      if (d < 16) { const f = (Math.sin(c.yaw) * dx + Math.cos(c.yaw) * dz) / d; if (f > 0.82 && losClear(c.pos, V3(pp.x, pp.y + 0.6, pp.z), 0.3)) see = 1; }
+      let gain = 0; if (see && !Player.detained) { if (Shift.shifting) gain = 200; else if (F.kind === 'human' && ZONE_CLEAR[zone] > 0) gain = 70; else if (F.kind === 'object' && moving) gain = 80; else if (F.kind === 'disguise' && (F.clearance < (ZONE_CLEAR[zone] || 0))) gain = 25; else if (F.kind === 'animal' && !(F.belongs || []).includes(zone) && form !== 'moth') gain = 10; watched = Math.max(watched, 0.6); }
+      c.susp = clamp(c.susp + gain * dt - (gain ? 0 : 8 * dt), 0, 120); c.cone.material.opacity = 0.04 + c.susp / 120 * 0.25;
+      if (c.susp > 50) { C.seen = true; const near = C.guards.filter(g => !g.dog).sort((a, b) => a.pos.distanceTo(pp) - b.pos.distanceTo(pp))[0]; if (near && near.state === 'patrol') { near.state = 'investigate'; near.look = pp.clone(); near.path = null; Guards.say(near, 'Camera picked something up. Checking it.'); } }
+      if (c.susp >= 110 && !C.alarm) Alert.raise('A camera caught you');
+      maxS = Math.max(maxS, c.susp);
+    }
+    // lasers, pressure plates, true-sight scanners
+    if (!C.alarm) {
+      for (const l of C.lasers) { if (!l.on) continue; const h = Shift.height(); if (pp.y < l.y && pp.y + h > l.y - 0.05 && !F.lasers && segPointDist2(l.a.x, l.y, l.a.z, l.b.x, l.y, l.b.z, pp.x, l.y, pp.z) < 0.09) { l.mesh.material.color.setRGB(6, 4, 4); Alert.raise('You broke a laser'); } }
+      const heavy = F.kind === 'human' || F.kind === 'disguise' || form === 'dog' || (F.kind === 'object' && F.heavy);
+      for (const p of C.plates) if (heavy && pp.x > p.x0 && pp.x < p.x1 && pp.z > p.z0 && pp.z < p.z1 && pp.y < 0.5 && !C.prizeTaken) Alert.raise('Pressure plate');
+      for (const s of C.scanners) if (form !== 'human' && Math.hypot(pp.x - s.pos.x, pp.z - s.pos.z) < 1.2) { s.mesh.children.forEach(c => c.material.color.setRGB(4, 0.3, 0.3)); Alert.raise('TRUE-SIGHT SCANNER — SHAPESHIFTER DETECTED'); }
+    }
+    // the bank's timed vault door
+    if (C.timedDoor && !C.keycardUsed) { C.vaultT += dt; const open = (C.vaultT % 60) > 45; if (open !== !C.timedDoor.locked) C.timedDoor.setLocked(!open); if (open && !C.vaultAnnounced) { C.vaultAnnounced = true; Toast.show('VAULT DOOR CYCLING OPEN — 15 SECONDS', 'heat'); } if (!open) C.vaultAnnounced = false; }
+    // crowd (casino)
+    for (const p of C.crowd) { if (!p.target || p.pos.distanceTo(p.target) < 0.6) p.target = V3(lerp(p.room.x0 + 2, p.room.x1 - 2, Math.random()), 0, lerp(p.room.z0 + 2, p.room.z1 - 2, Math.random())); const d = V3().subVectors(p.target, p.pos); const L = d.length(); if (L > 0.1) { p.pos.addScaledVector(d.normalize(), Math.min(L, 1.1 * dt)); p.yaw = Math.atan2(d.x, d.z); } p.rig.mesh.position.copy(p.pos); p.rig.mesh.rotation.y = p.yaw; poseRig(p.rig, { t: G.time, speed: 1.1 }, dt); }
+    Shift.watched = watched; Shift.watchers = watchers; Shift.maxSusp = maxS;
+  },
+  move(C, g, dt, vis) {
+    const pp = Player.pos; let target = null, sp = g.dog ? 2.2 : g.speed;
+    const prev = g.state;
+    if (g.state === 'question') { g.yaw += angDiff(g.yaw, Math.atan2(pp.x - g.pos.x, pp.z - g.pos.z)) * Math.min(1, dt * 5); Guards.pose(g, 0, dt, 'hold'); return; }
+    if (g.state === 'leash') { target = pp.clone(); sp = 1.8; }
+    else if (C.alarm) { g.state = 'alarmed'; target = pp.clone(); sp = g.dog ? 6 : 4.2; if (Math.hypot(pp.x - g.pos.x, pp.z - g.pos.z) < 1.4 && Math.abs(pp.y - g.pos.y) < 2 && (g.hitT || 0) < G.time) { g.hitT = G.time + 0.8; Player.hurt(g.dog ? 12 : 15, g.pos.clone(), 'guard'); Player.knock(V3(pp.x - g.pos.x, 2, pp.z - g.pos.z).normalize().multiplyScalar(6)); Audio.baton(g.pos); } }
+    else if (g.susp >= 60) { g.state = 'suspicious'; target = pp.clone(); sp = g.dog ? 3 : 2.0; }
+    else if (g.susp >= 25) { g.state = 'curious'; g.look = pp.clone(); if (Math.hypot(pp.x - g.pos.x, pp.z - g.pos.z) > 3.5) { target = pp.clone(); sp = 1.1; } }
+    else if (g.state === 'investigate' && g.look) { target = g.look; sp = 1.8; if (g.pos.distanceTo(g.look) < 1.2) { g.inspectT += dt; if (g.inspectT > 2.5) { g.state = 'patrol'; g.look = null; g.inspectT = 0; Guards.say(g, fpick(['Nothing here.', 'Must be the wiring.', 'Huh.'])); } } }
+    else { g.state = 'patrol'; if (g.wait > 0) g.wait -= dt; else { target = g.route[g.ri]; if (g.pos.distanceTo(target) < 0.6) { g.ri = (g.ri + 1) % g.route.length; g.wait = frnd(1, 4); target = null; } } }
+    if (prev !== g.state) { if (g.state === 'curious') Guards.say(g, fpick(['Hm?', 'What was that?', 'Hello?'])); if (g.state === 'suspicious') Guards.say(g, fpick(['Something\'s not right…', 'Hold on.', 'Who\'s there?'])); }
+    let speed = 0;
+    if (target) {
+      const dx = target.x - g.pos.x, dz = target.z - g.pos.z; const L = Math.hypot(dx, dz);
+      if (L > (g.state === 'suspicious' ? 1.3 : 0.4)) {
+        const step = Math.min(L, sp * dt); const nx = g.pos.x + dx / L * step, nz = g.pos.z + dz / L * step;
+        if (losClear(V3(g.pos.x, 1, g.pos.z), V3(nx + dx / L * 0.5, 1, nz + dz / L * 0.5), 0)) { g.pos.x = nx; g.pos.z = nz; speed = sp; }
+        else { g.slide = (g.slide || 0) + dt; const side = V3(-dz / L, 0, dx / L).multiplyScalar(g.slide % 4 < 2 ? 1 : -1); if (losClear(V3(g.pos.x, 1, g.pos.z), V3(g.pos.x + side.x, 1, g.pos.z + side.z), 0)) { g.pos.addScaledVector(side, sp * dt); speed = sp; } if (g.state === 'patrol' && g.slide > 3) { g.ri = (g.ri + 1) % g.route.length; g.slide = 0; } }
+        g.yaw += angDiff(g.yaw, Math.atan2(dx, dz)) * Math.min(1, dt * 6);
+      } else if (g.look) g.yaw += angDiff(g.yaw, Math.atan2(g.look.x - g.pos.x, g.look.z - g.pos.z)) * Math.min(1, dt * 4);
+    } else if (g.look) g.yaw += angDiff(g.yaw, Math.atan2(g.look.x - g.pos.x, g.look.z - g.pos.z)) * Math.min(1, dt * 4);
+    else if (g.state === 'patrol') g.yaw += Math.sin(G.time * 0.7 + g.pos.x) * dt * 0.6;
+    Guards.pose(g, speed, dt, g.state === 'suspicious' && g.pos.distanceTo(pp) < 2 ? 'push' : g.state === 'alarmed' ? 'shoot' : null);
+  },
+  pose(g, speed, dt, action) {
+    if (g.dog) { g.mesh.position.copy(g.pos); g.mesh.rotation.y = g.yaw; animateForm(g.mesh, 'dog', speed, G.time, false); return; }
+    g.rig.mesh.position.copy(g.pos); g.rig.mesh.rotation.set(0, g.yaw, 0);
+    poseRig(g.rig, { t: G.time, speed, action, at: 0.1, crouch: g.state === 'suspicious' && g.pos.distanceTo(Player.pos) < 2.2 ? 0.35 : 0 }, dt);
+  },
+};
+// guard speech bubbles
+const Speech = {
+  list: [],
+  show(g, line) { const el = document.createElement('div'); el.className = 'speech'; el.textContent = (g.dog ? '' : g.name + ': ') + line; $('hud').appendChild(el); this.list.push({ g, el, t: 3 }); },
+  update(rdt) { for (let i = this.list.length - 1; i >= 0; i--) { const s = this.list[i]; s.t -= rdt; const p = V3(s.g.pos.x, 2.3, s.g.pos.z).project(camera); s.el.style.left = ((p.x * 0.5 + 0.5) * innerWidth) + 'px'; s.el.style.top = ((-p.y * 0.5 + 0.5) * innerHeight) + 'px'; s.el.style.opacity = p.z < 1 ? clamp(s.t, 0, 1) : 0; if (s.t <= 0) { s.el.remove(); this.list.splice(i, 1); } } },
+  clear() { for (const s of this.list) s.el.remove(); this.list = []; },
+};
+// senior guards stop and question a disguise
+const Question = {
+  g: null, t: 0, window: null,
+  start(g) { this.g = g; this.t = 0; this.window = frnd(0.9, 1.6); const line = fpick(['You\'re not on my roster. Badge number?', 'Haven\'t seen you before. Who\'s your supervisor?', 'Hold it. Which shift are you on?']); Guards.say(g, line); if (Prog.has('mimic')) { Timers.after(0.6, () => { this.pass('"Night shift — Reyes signed me in."'); }); return; } $('question').classList.remove('hidden'); $('question').innerHTML = `<b>${g.name.toUpperCase()} (SENIOR GUARD)</b> ${line}<br>PRESS <b>E</b> WHEN THE BAR IS IN THE GREEN<div class="qb"><i></i><span></span></div>`; },
+  update(rdt) {
+    if (!this.g) return; this.t += rdt; const k = (this.t % 2.2) / 2.2;
+    const el = $('question'); const bar = el.querySelector('.qb i'); const zone = el.querySelector('.qb span');
+    if (bar) { bar.style.left = (k * 100) + '%'; zone.style.left = (this.window / 2.2 * 100) + '%'; }
+    if (Input.pressedKey('KeyE') && !Prog.has('mimic')) { if (Math.abs(this.t % 2.2 - this.window - 0.15) < 0.22) this.pass('"Okafor\'s crew. Started Monday."'); else this.fail(); }
+    if (this.t > 4.4 && !Prog.has('mimic')) this.fail();
+  },
+  pass(reply) { const g = this.g; if (!g) return; g.state = 'patrol'; g.susp = Math.max(0, g.susp - 30); Guards.say(g, 'Fine. Move along.'); Toast.show('QUESTIONING PASSED — ' + reply); $('question').classList.add('hidden'); this.g = null; Score.add(400, Player.pos, 'SMOOTH TALK'); },
+  fail() { const g = this.g; if (!g) return; g.state = 'suspicious'; g.susp += 70; Guards.say(g, 'That\'s not right. Don\'t move.'); $('question').classList.add('hidden'); this.g = null; },
+};
+// §ALERT + §ESCAPE ----------------------------------------------------------------------
+const Alert = {
+  raise(why) {
+    const C = Heists.cell; if (!C || C.alarm) return;
+    C.alarm = true; Toast.show('ALARM — ' + why.toUpperCase(), 'big'); Hud.banner('ALARM', 'THE BUILDING IS LOCKING DOWN — GET OUT');
+    Audio.alarm(); Timers.after(0.6, () => Audio.alarm()); Timers.after(1.2, () => Audio.alarm());
+    for (const d of C.doors) if (d.clear >= 2) d.setLocked(true);
+    const red = LightPool.addDynamic({ pos: Player.pos.clone().add(V3(0, 3, 0)), color: new THREE.Color(0xff1030), intensity: 200, range: 40, kind: 'alarm', pulse: 6, priority: 9 }); C.lights.push(red); C.alarmLight = red;
+    if (CloseCall.active) CloseCall.end(false);
+    // hand over to the city's heat system at a level set by the heist's security
+    const H = C.H; Heat.points = CONFIG.heat.thresholds[Math.min(5, H.T.sec)] + 10; Heat.lastKnown.copy(H.markers[0].pos); Heat.lastSeenT = G.time;
+    News.say('roadblock');
+  },
+};
+const CloseCall = {
+  active: null,
+  check(C, dt) {
+    if (this.active) { this.update(C, dt); return; }
+    if (FORMS[Shift.form].kind !== 'object' || C.alarm) return;
+    for (const g of C.guards) { if (g.dog) continue; const d = Math.hypot(g.pos.x - Player.pos.x, g.pos.z - Player.pos.z); if (d < 2.6 && g.susp > 20 && g.susp < 100 && Guards.sees(g, Player.pos, 4, 1.4) > 0) { this.start(g); return; } }
+  },
+  start(g) {
+    this.active = { g, t: 0, stage: 'pause', susp0: g.susp };
+    TimeFX.slowmo(0.3, 30); $('letterbox').classList.remove('hidden'); Audio.heartbeat(true); Music.setLevel(0);
+    g.state = 'inspect';
+  },
+  update(C, dt) {
+    const A = this.active; const g = A.g; A.t += dt;
+    // the guard pauses, leans in, maybe taps the object or switches the lamp on…
+    if (A.t > 0.8 && A.stage === 'pause') { A.stage = 'lean'; Guards.say(g, fpick(['…', 'Huh.', 'Hm.'])); }
+    if (A.t > 2.0 && A.stage === 'lean') { A.stage = 'tap'; if (Shift.form === 'lamp') { Shift.lampOn = true; Guards.say(g, 'Bulb\'s fine.'); } else { Guards.say(g, fpick(['*tap tap*', 'Solid enough.', 'Weird.'])); } Audio.thud(Player.pos, 0.3); }
+    if (A.t > 3.4 && A.stage === 'tap') { A.stage = 'leave'; g.state = 'patrol'; g.susp = Math.min(g.susp, 30); g.look = null; g.wait = 0; g.ri = (g.ri + 1) % g.route.length; }
+    if (Math.sqrt(Player.speed2) > 0.2 || Shift.twitchT > 0) { g.susp = 120; this.end(false); return; }
+    if (A.stage === 'leave' && Math.hypot(g.pos.x - Player.pos.x, g.pos.z - Player.pos.z) > 4.5) this.end(true);
+    if (A.t > 12) this.end(true);
+  },
+  end(ok) {
+    const A = this.active; this.active = null; TimeFX.effects = TimeFX.effects.filter(e => e.scale !== 0.3); $('letterbox').classList.add('hidden'); Audio.heartbeat(false); Shift.lampOn = false;
+    const C = Heists.cell;
+    if (ok && C) { C.closeCalls++; const all = (Records.all.closeCalls || 0) + 1; Records.all.closeCalls = all - 1; Records.bump('closeCalls', all); Records.bump('closeRun', C.closeCalls); if (C.closeCalls >= 5) Challenges.flag('close5'); Score.add(800, Player.pos, 'CLOSE CALL', 'big'); Hud.banner('CLOSE CALL', ''); Audio.cheer(); }
+  },
+  camera(rdt) {
+    const A = this.active; if (!A) return false; const g = A.g;
+    const eye = V3(Player.pos.x, Player.pos.y + Shift.height() * 0.85, Player.pos.z); const face = V3(g.pos.x, 1.6, g.pos.z);
+    camera.position.lerp(eye, 1 - Math.exp(-8 * rdt)); camera.lookAt(face); if (camera.fov !== 40) { camera.fov = 40; camera.updateProjectionMatrix(); } camera.updateMatrixWorld(); return true;
+  },
+};
+// §STILLNESS + the player as the shapeshifter --------------------------------------------
+const Shift = {
+  form: 'human', disguiseId: null, library: [], shifting: false, shiftT: 0, target: null, learnT: 0, mesh: null, rigs: {}, still: 100, twitchT: 0, watched: 0, watchers: [], maxSusp: 0,
+  prize: null, keycard: false, heist: null, inCell: false, burned: false, lampOn: false, leashT: 0, decoys: [], wheelOpen: false, wheelSel: 0, wheelV: V3(), echoT: 0, energyWarn: false, heading: 0, yv: 0,
+  reset() {
+    this.setForm('human', true); this.shifting = false; this.target = null; this.learnT = 0; this.prize = null; this.keycard = false; this.burned = false; this.wheelOpen = false; $('wheel').classList.add('hidden'); $('question').classList.add('hidden');
+    for (const d of this.decoys) scene.remove(d.mesh); this.decoys = [];
+    if (Heists.cell) Heists.unload(); this.inCell = false; this.heist = null; Speech.clear();
+    if (!this.library.length) this.library = ['human'];
+    if (!FormGeo.lamp) buildFormGeos();
+  },
+  height() { const F = FORMS[this.form]; return F.kind === 'object' ? F.h : F.kind === 'animal' ? (F.cam || 0.5) : 1.8; },
+  libMax() { return 6 + Prog.level('library') * 3; },
+  learn(id, who) {
+    if (this.library.includes(id)) { Toast.show(FORMS[id].name + ' — ALREADY LEARNED'); return; }
+    const nonHuman = this.library.filter(f => f !== 'human');
+    if (nonHuman.length >= this.libMax()) { const drop = nonHuman[0]; this.library.splice(this.library.indexOf(drop), 1); Toast.show('FORGOT ' + FORMS[drop].name, 'heat'); }
+    this.library.push(id); if (who) this.ids = Object.assign(this.ids || {}, { [id]: who });
+    Toast.show('LEARNED: <b>' + FORMS[id].name + '</b>' + (who ? ' (' + who + ')' : ''), 'big'); Audio.pluck(); Tut.done('touch');
+    Stats.forms = (Stats.forms || 0) + 1; Records.bump('forms', this.library.length - 1); if (this.library.length - 1 >= 15) Challenges.flag('learn15');
+    if (this.heist) this.heist.notes.add('learned ' + FORMS[id].name.toLowerCase());
+  },
+  setForm(id, instant) {
+    const P = Player; this.form = id; this.disguiseId = FORMS[id].kind === 'disguise' && id === 'guard' ? (this.ids && this.ids.guard) || null : null;
+    if (this.mesh) { scene.remove(this.mesh); this.mesh = null; }
+    for (const k in this.rigs) this.rigs[k].mesh.visible = false;
+    const F = FORMS[id];
+    if (P.rig) P.rig.mesh.visible = id === 'human';
+    if (F.kind === 'disguise') { if (!this.rigs[id]) { this.rigs[id] = makeCharacter(id === 'officer' ? 'unit' : id === 'guard' ? 'unit' : 'ped', F.pal); scene.add(this.rigs[id].mesh); } this.rigs[id].mesh.visible = true; }
+    else if (F.kind !== 'human') { this.mesh = makeFormMesh(id); scene.add(this.mesh); }
+    this.still = 100 + Prog.level('still') * 25; CamRig.hOv = F.kind === 'animal' ? (F.cam || 0.6) : F.kind === 'object' ? F.h * 0.9 + 0.4 : null; CamRig.dMul = F.kind === 'animal' ? 0.6 : F.kind === 'object' ? 1.1 : 1;
+    if (this.heist && Heists.cell) Heists.cell.formsUsed.add(id);
+    if (!instant) Ripple.at(V3(P.pos.x, P.pos.y + this.height() / 2, P.pos.z), V3(0.8, Math.max(0.5, this.height() * 0.6), 0.8), 0.6);
+  },
+  canCarryAs(id) { if (!this.prize) return true; const F = FORMS[id]; return F.kind === 'human' || F.kind === 'disguise' || (F.carry === 'small' && !this.prize.big); },
+  beginShift(id) {
+    if (id === this.form || this.shifting) return;
+    if (!this.canCarryAs(id)) { Toast.show('CAN\'T CARRY THE PRIZE AS A ' + FORMS[id].name, 'heat'); return; }
+    if (FORMS[id].swim && !(Player.pos.z > CONFIG.city.quayZ + 0.3)) { Toast.show('FISH NEED WATER', 'heat'); return; }
+    if (id !== 'human' && Player.mind < 10) { Toast.show('NOT ENOUGH SHIFT ENERGY', 'heat'); return; }
+    this.shifting = true; this.shiftT = 0.55 * (1 - Prog.level('speed') * 0.12); this.nextForm = id;
+    Ripple.at(V3(Player.pos.x, Player.pos.y + this.height() / 2, Player.pos.z), V3(0.9, Math.max(0.6, this.height() * 0.65), 0.9), this.shiftT + 0.3); Audio.catchOn();
+    // shifting in front of the MRA burns this form
+    if (!this.inCell && Units.list.some(u => u.alive && !u.ko && u.type !== 'civilian' && Units.canSee(u, true))) { this.burned = true; Heat.add(160, Player.pos); Heat.lastSeenT = G.time; Heat.lastKnown.copy(Player.pos); Toast.show('THEY SAW YOU SHIFT', 'heat'); }
+  },
+  recognizable() { return this.form === 'human' || this.burned; },
+  teleport(p) { const P = Player; const t = { x: p.x, y: p.y + 0.95, z: p.z }; P.body.setTranslation(t, true); P.body.setNextKinematicTranslation(t); P.pos.set(p.x, p.y, p.z); P.vel.set(0, 0, 0); CamRig.pos.copy(P.pos).add(V3(0, 2, 4)); },
+  caughtByCat() { if (this.form !== 'rat') return; Toast.show('A CAT GOT YOU', 'heat'); Player.hurt(15, Player.pos.clone(), 'cat'); this.setForm('human'); },
+  leashed(g) { if (this.form !== 'dog') return; Guards.say(g, 'Who\'s a good boy? Come here, you.'); this.leashT = 2.5; g.state = 'leash'; Timers.after(2.5, () => { if (g.state === 'leash') g.state = 'patrol'; }); Toast.show('A GUARD IS LEASHING YOU — STAY CALM', 'heat'); },
+  // §SHIFTER controls -------------------------------------------------------------------
+  updatePlayer(dt) {
+    const P = Player; const F = FORMS[this.form];
+    const sens = CONFIG.camera.sens * settings.sens * (this.wheelOpen ? 0 : 1);
+    P.yaw -= Input.mouse.dx * sens; P.pitch = clamp(P.pitch - Input.mouse.dy * sens * (settings.invertY ? -1 : 1), -1.35, 1.1);
+    P.yaw -= Input.pad.rx * CONFIG.camera.padSens * dt * settings.sens; P.pitch = clamp(P.pitch - Input.pad.ry * CONFIG.camera.padSens * 0.7 * dt, -1.35, 1.1);
+    const [mx, my] = this.wheelOpen || this.leashT > 0 || Question.g || CloseCall.active && false ? [0, 0] : Input.move();
+    this.leashT -= dt;
+    const camF = V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), camR = V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw));
+    const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx);
+    const indoor = this.inCell;
+    let speed = F.kind === 'human' || F.kind === 'disguise' ? (Input.down('sprint') ? 7.2 : 4.2) : F.kind === 'object' ? 1.1 : (F.fly && indoor ? 3.5 : F.speed * (this.form === 'cat' ? 1 + Prog.level('cat') * 0.12 : F.fly ? 1 + Prog.level('wings') * 0.1 : 1));
+    if (F.swim && !(P.pos.z > CONFIG.city.quayZ + 0.3)) { this.setForm('human'); return; }
+    const target = wish.multiplyScalar(speed); const acc = F.kind === 'object' ? 6 : 30;
+    P.vel.x = damp(P.vel.x, target.x, acc * 0.3, dt); P.vel.z = damp(P.vel.z, target.z, acc * 0.3, dt);
+    let wantY;
+    if (F.fly) { let vy = 0; if (Input.down('jump')) vy += 6; if (Input.down('dodge')) vy -= 6; if (this.form === 'moth') { const near = this.nearestLight(); if (near && near.d < 7) { P.vel.x += (near.p.x - P.pos.x) * dt * 1.6; P.vel.z += (near.p.z - P.pos.z) * dt * 1.6; vy += (near.p.y - P.pos.y) * 1.2; } } P.vel.y = damp(P.vel.y, vy, 4, dt); wantY = P.vel.y * dt; }
+    else if (F.swim) { P.vel.y = 0; wantY = 0; }
+    else {
+      if (P.grounded) { P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump') && F.kind !== 'object') { P.vel.y = F.jump ? F.jump * (this.form === 'cat' ? 1 + Prog.level('cat') * 0.1 : 1) : 7; P.grounded = false; } }
+      P.vel.y += -24 * dt; wantY = P.vel.y * dt;
+    }
+    const want = { x: P.vel.x * dt, y: wantY, z: P.vel.z * dt };
+    P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS.player);
+    const mv = P.ctl.computedMovement(); const t = P.body.translation();
+    let nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
+    // cats climb walls
+    if (this.form === 'cat' && wish.lengthSq() > 0.1 && Math.hypot(mv.x, mv.z) < Math.hypot(want.x, want.z) * 0.4) { ny += 4 * dt; P.vel.y = 0; }
+    if (F.swim) ny = -1.6 + 0.9;
+    P.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz }); P.pos.set(nx, ny - 0.9, nz);
+    P.grounded = P.ctl.computedGrounded() || F.swim; if (P.grounded && P.vel.y < 0) P.vel.y = 0;
+    P.speed2 = P.vel.x * P.vel.x + P.vel.z * P.vel.z; P.inCover = this.inCell ? 'INSIDE' : City.isCovered(P.pos);
+    if (P.pos.y < -40) P.spawn(240, 2, 40);
+    // face movement
+    if (P.speed2 > 0.04) this.heading += angDiff(this.heading, Math.atan2(P.vel.x, P.vel.z)) * Math.min(1, dt * 10);
+    // visuals
+    if (this.form === 'human') { P.animate(dt); }
+    else if (F.kind === 'disguise') { const r = this.rigs[this.form]; r.mesh.position.copy(P.pos); r.mesh.rotation.set(0, this.heading, 0); poseRig(r, { t: G.time, speed: Math.sqrt(P.speed2), air: !P.grounded }, dt); P.rig.mesh.position.copy(P.pos); }
+    else if (this.mesh) {
+      this.mesh.position.copy(P.pos); this.mesh.rotation.set(0, this.heading, 0);
+      if (this.twitchT > 0) { this.mesh.position.x += Math.sin(G.time * 80) * 0.03; this.mesh.rotation.z = Math.sin(G.time * 70) * 0.05; }
+      animateForm(this.mesh, this.form, Math.sqrt(P.speed2), performance.now() / 1000, F.fly && !P.grounded);
+      P.rig.mesh.position.copy(P.pos);
+    }
+  },
+  nearestLight() { let best = null; for (const l of LightPool.lights) { if (l.intensity <= 0) continue; const d = l.position.distanceTo(Player.pos); if (!best || d < best.d) best = { d, p: l.position }; } return best; },
+  findTouch() {
+    const P = Player; const me = P.pos; const f = V3(Math.sin(this.heading), 0, Math.cos(this.heading)); const cf = CamRig.fwd || f;
+    const range = Prog.has('swap') ? 6 : 2.4; let best = null, bs = 1e9;
+    const consider = (kind, id, pos, ref, extra) => { const d = Math.hypot(pos.x - me.x, pos.z - me.z); if (d > range || Math.abs(pos.y - me.y) > 3) return; const dir = V3(pos.x - me.x, 0, pos.z - me.z).normalize(); const a = dir.dot(V3(cf.x, 0, cf.z).normalize()); if (a < 0.2 && d > 1.2) return; const s = d - a; if (s < bs) { bs = s; best = Object.assign({ kind, id, pos, ref }, extra || {}); } };
+    for (const c of Critters.list) consider('critter', c.id, c.pos, c);
+    for (const o of objs) { if (!o.body || o.kind !== 'prop' || !PROP_TO_FORM[o.type]) continue; const t = o.body.translation(); if (Math.abs(t.x - me.x) > range + 1 || Math.abs(t.z - me.z) > range + 1) continue; consider('prop', PROP_TO_FORM[o.type], V3(t.x, t.y, t.z), o); }
+    for (const l of Lamps.list) { if (!l.lit) continue; const t = l.body.translation(); if (Math.abs(t.x - me.x) > range + 1 || Math.abs(t.z - me.z) > range + 1) continue; consider('prop', 'lamp', V3(t.x, 0, t.z), l); }
+    for (const u of Units.list) { if (!u.alive || u.ko || isDyn(u)) continue; consider('person', u.type === 'civilian' ? 'civilian' : 'officer', u.pos, u); }
+    const C = Heists.cell;
+    if (C) { for (const o of C.objects) consider('object', o.form, o.pos, o); for (const g of C.guards) consider('person', g.dog ? 'dog' : 'guard', g.pos, g, { who: g.dog ? null : g.name }); }
+    // plaza statues
+    for (const b of City.blocks) if (b.plaza) consider('object', 'statue', V3(b.plaza.cx, 0, b.plaza.cz + 6.5), null);
+    return best;
+  },
+  update(rdt, dt) {
+    const P = Player; const F = FORMS[this.form];
+    // energy: non-human forms drain, human recharges
+    if (this.form !== 'human') { P.mind -= (F.kind === 'object' ? 1.0 : F.kind === 'disguise' ? 1.4 : F.fly ? 2.6 * (1 - Prog.level('wings') * 0.1) : 2.0) * rdt; if (P.mind <= 0) { P.mind = 0; Toast.show('OUT OF SHIFT ENERGY', 'heat'); this.beginShift('human'); } }
+    else P.mind = Math.min(P.maxMind, P.mind + 10 * rdt);
+    // finish an in-progress shift
+    if (this.shifting) { this.shiftT -= rdt; if (this.shiftT <= 0) { this.shifting = false; this.setForm(this.nextForm, true); if (this.nextForm !== 'human') Tut.done('wheel'); } }
+    // stillness under observation
+    this.twitchT -= rdt;
+    if (F.kind === 'object') {
+      const moving = Math.sqrt(P.speed2) > 0.2;
+      if (this.watched > 0 && !moving) { this.still -= rdt * (10 + this.watched * 22) * (1 - Prog.level('still') * 0.08); if (this.still <= 0) { this.twitchT = 0.6; this.still = 35; Toast.show('YOU TWITCHED', 'heat'); Audio.thud(P.pos, 0.2); } }
+      else if (this.watched === 0) this.still = Math.min(100 + Prog.level('still') * 25, this.still + rdt * 30);
+      if (this.watched > 0 && !moving) Tut.done('still');
+    }
+    // touch to learn (hold E); E also enters/exits, takes the prize, opens doors, uses vents
+    const inter = this.interaction();
+    const T = inter ? null : this.findTouch(); this.target = T;
+    if (inter) Hud.hint(inter.label, inter.bad ? 'bad' : 'ok');
+    else if (T) Hud.hint((Prog.has('swap') && T.kind !== 'person' && Math.hypot(T.pos.x - P.pos.x, T.pos.z - P.pos.z) > 2.4 ? 'E — SWAP INTO ' : 'HOLD E — LEARN ') + FORMS[T.id].name + (this.library.includes(T.id) ? ' (KNOWN)' : ''), 'ok');
+    else Hud.hint(this.form !== 'human' ? FORMS[this.form].name + ' · HOLD Q TO SHIFT · R TO RETURN' : '', 'ok');
+    if (inter && Input.pressedKey('KeyE')) inter.act();
+    else if (T && Input.keys.KeyE && !this.shifting) {
+      const far = Math.hypot(T.pos.x - P.pos.x, T.pos.z - P.pos.z) > 2.4;
+      if (far && Prog.has('swap') && T.kind !== 'person') { if (!this.library.includes(T.id)) this.learn(T.id); this.beginShift(T.id); Input.keys.KeyE = false; }
+      else if (!far) {
+        this.learnT += rdt; if (this.learnT < 0.1) Ripple.at(V3(T.pos.x, T.pos.y + 0.6, T.pos.z), V3(0.7, 0.9, 0.7), 1.1);
+        if (this.learnT > 1) {
+          this.learnT = 0; Input.keys.KeyE = false;
+          if (T.kind === 'person') { // from behind, unseen
+            const ref = T.ref; const fy = ref.yaw || 0; const toMe = V3(P.pos.x - T.pos.x, 0, P.pos.z - T.pos.z).normalize(); const front = Math.sin(fy) * toMe.x + Math.cos(fy) * toMe.z;
+            const seen = front > -0.2 || (ref.sees) || (ref.susp != null && ref.susp > 25);
+            if (seen) { Toast.show('THEY NOTICED YOU', 'heat'); if (ref.susp != null) { ref.susp += 60; Guards.say(ref, 'Hey! Hands off!'); } else Heat.add(30, P.pos); }
+            else this.learn(T.id, T.who);
+          } else this.learn(T.id);
+        }
+      }
+    } else this.learnT = 0;
+    // form wheel (hold Q) and quick keys
+    this.wheel(rdt);
+    if (Input.pressedKey('KeyR') && this.form !== 'human') this.beginShift('human');
+    // echo + copy
+    this.echoT -= rdt;
+    if (Input.pressedKey('KeyG')) { if (!Prog.has('echo')) Toast.show('ECHO — LOCKED (POWER TREE)', 'heat'); else if (this.echoT <= 0) this.echo(); }
+    if (Input.pressedKey('KeyC')) { if (!Prog.has('copy')) Toast.show('COPY — LOCKED (POWER TREE)', 'heat'); else this.copy(); }
+    for (let i = this.decoys.length - 1; i >= 0; i--) { const d = this.decoys[i]; d.t -= dt; if (d.t <= 0) { Ripple.at(d.mesh.position.clone().add(V3(0, 0.6, 0)), V3(0.7, 0.9, 0.7), 0.5); scene.remove(d.mesh); this.decoys.splice(i, 1); } }
+    // heist logic inside a cell
+    const C = Heists.cell;
+    if (C) { Guards.update(C, dt, rdt); CloseCall.check(C, dt); Question.update(rdt); for (const d of this.decoys) for (const g of C.guards) if (!g.dog && g.state === 'patrol' && Guards.sees(g, d.mesh.position, 12) > 0 && Math.random() < dt) { g.state = 'investigate'; g.look = d.mesh.position.clone(); Guards.say(g, 'What\'s that doing there?'); } if (C.keycard.mesh) C.keycard.mesh.rotation.y += rdt * 2; if (C.prizeMesh) C.prizeMesh.rotation.y += rdt * 0.6; }
+    else { this.watched = 0; for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.sees) this.watched = 1; }
+    // the heist marker diamonds + getaway completion
+    for (const H of Heists.list) for (const m of H.markers) { m.mesh.rotation.y += rdt * 1.5; m.mesh.position.y = m.pos.y + 1.6 + Math.sin(performance.now() / 400) * 0.15; m.mesh.visible = !H.done; }
+    if (this.heist && !this.inCell && this.heist.phase === 'getaway') { const d = Player.pos.distanceTo(this.heist.markers[0].pos); if (d > 80 && Heat.level === 0) this.completeHeist(); }
+    // casing: notice entrances near the building
+    if (!this.inCell) for (const H of Heists.list) for (const m of H.markers) if (m.pos.distanceTo(P.pos) < 20 && !H.notes.has('entrance: ' + m.label)) { H.notes.add('entrance: ' + m.label); if (H.notes.size === 1) Toast.show('CASING ' + H.T.name + ' — NOTES ON THE HEIST BOARD (B)'); }
+    if (Input.pressedKey('KeyB') || Input.pressedKey('Tab')) Board.toggle();
+    Speech.update(rdt);
+  },
+  interaction() {
+    const P = Player; const me = P.pos; const F = FORMS[this.form];
+    const near = (p, r = 1.8) => Math.hypot(p.x - me.x, p.z - me.z) < r && Math.abs(p.y - me.y) < 3;
+    if (!this.inCell) {
+      for (const H of Heists.list) { if (H.done) continue; for (const m of H.markers) { if (!near(m.pos, 2.2)) continue;
+        const ok = m.kind === 'front' ? (F.kind === 'human' || F.kind === 'disguise' || this.form === 'dog') : m.kind === 'loading' ? (this.form === 'courier' || this.form === 'crate' || this.form === 'janitor' || this.form === 'staff' || this.form === 'guard') : m.kind === 'roof' ? (F.fly || this.form === 'cat') : (F.vents);
+        const need = m.kind === 'front' ? 'a person or a dog' : m.kind === 'loading' ? 'a courier, staff disguise or a crate' : m.kind === 'roof' ? 'a bird or a cat' : 'a cat or a rat';
+        return { label: ok ? 'E — ' + (H.phase === 'getaway' ? 'GO BACK INTO ' : 'ENTER ') + H.T.name + ' (' + m.label + ')' : m.label + ' — needs ' + need, bad: !ok, act: () => { if (!ok) return; if (G.hero !== 'shift') return; this.enter(H, m.kind); } };
+      } }
+      return null;
+    }
+    const C = Heists.cell;
+    for (const e of C.exits) if (near(e.pos, 1.6)) { const ok = e.kind === 'vent' ? F.vents : e.kind === 'roof' ? (F.fly || this.form === 'cat') : !(C.alarm && e.kind === 'front'); return { label: ok ? 'E — LEAVE (' + e.label + ')' : e.label + (C.alarm && e.kind === 'front' ? ' — LOCKED DOWN' : ' — not in this form'), bad: !ok, act: () => { if (ok) this.exit(e.kind); } }; }
+    for (const v of C.vents) for (const [a, b] of [[v.a, v.b], [v.b, v.a]]) if (near(a, 1.2)) { const ok = v.pipe ? F.pipes : F.vents; return { label: ok ? 'E — CRAWL THROUGH (' + v.label + ')' : v.label, bad: !ok, act: () => { if (ok) { Ripple.at(a.clone().add(V3(0, 0.3, 0)), V3(0.5, 0.4, 0.5), 0.4); this.teleport(b.clone().add(V3(0.6, 0, 0))); } } }; }
+    if (!C.keycard.taken && near(C.keycard.pos, 1.6)) { const ok = F.kind === 'human' || F.kind === 'disguise' || this.form === 'crow' || this.form === 'dog'; return { label: ok ? 'E — TAKE THE KEYCARD' : 'KEYCARD — take it as a person, a crow or a dog', bad: !ok, act: () => { if (!ok) return; C.keycard.taken = true; this.keycard = true; C.group.remove(C.keycard.mesh); Toast.show('KEYCARD <b>TAKEN</b>'); } }; }
+    for (const d of C.doors) if (d.locked && near(d.pos, 2)) { const ok = this.keycard && !C.alarm; return { label: ok ? 'E — SWIPE THE KEYCARD' : 'LOCKED — needs a keycard' + (C.H.T.timed ? ' (or wait for the timed cycle)' : ''), bad: !ok, act: () => { if (ok) { d.setLocked(false); C.keycardUsed = true; Audio.ui(2); } } }; }
+    if (!C.prizeTaken && near(C.prizePos, 1.8)) { const small = !C.H.T.big; const ok = F.kind === 'human' || F.kind === 'disguise' || (small && (this.form === 'crow' || this.form === 'dog')); return { label: ok ? 'E — TAKE ' + C.H.T.prize.toUpperCase() : 'THE PRIZE — ' + (small ? 'take it as a person, a crow or a dog' : 'needs human hands'), bad: !ok, act: () => { if (ok) this.takePrize(C); } }; }
+    return null;
+  },
+  enter(H, via) {
+    this.heist = H; if (H.phase === 'casing') H.phase = 'job';
+    const C = Heists.load(H, via); this.inCell = true; C.formsUsed.add(this.form);
+    if (this.prize) C.prizeTaken = true;
+    Tut.done('heist'); Music.setLevel(0);
+  },
+  exit(kind) {
+    const H = this.heist; const C = Heists.cell; const alarm = C.alarm;
+    H.seen = (H.seen || false) || C.seen; H.alarm = (H.alarm || false) || alarm; H.closeCalls = (H.closeCalls || 0) + C.closeCalls; H.forms = new Set([...(H.forms || []), ...C.formsUsed]);
+    H.exitForm = this.form;
+    Heists.unload(); this.inCell = false; CloseCall.active = null; $('letterbox').classList.add('hidden'); Question.g = null; $('question').classList.add('hidden'); Speech.clear();
+    const m = H.markers.find(x => x.kind === kind) || H.markers[0];
+    this.teleport(m.pos.clone().add(V3(0, kind === 'roof' ? 0.3 : 0, 0)));
+    if (alarm) { Heat.lastKnown.copy(m.pos); Heat.lastSeenT = G.time; }
+    if (this.prize) { H.phase = 'getaway'; Hud.banner('GETAWAY', alarm ? 'LOSE THE HEAT — BREAK LINE OF SIGHT AND SHIFT' : 'WALK AWAY. CALMLY.'); if (H.type === 'locker' && this.form === 'coatstand') Challenges.flag('lockerCoat'); }
+  },
+  takePrize(C) {
+    C.prizeTaken = true; C.group.remove(C.prizeMesh); if (C.case) C.group.remove(C.case);
+    this.prize = { type: C.H.type, big: C.H.T.big, value: C.H.T.value }; this.heist.prizeForm = this.form; this.heist.phase = 'getaway';
+    Toast.show('YOU HAVE ' + C.H.T.prize.toUpperCase(), 'big'); Audio.cheer(); Hud.banner('THE PRIZE', 'NOW GET OUT');
+  },
+  completeHeist() {
+    const H = this.heist; if (!H || !this.prize) return;
+    const rating = H.alarm ? 'LOUD' : H.seen ? 'CLEAN' : 'GHOST';
+    const t = G.time - (H.t0 || 0);
+    const score = H.T.value + (H.forms ? H.forms.size : 0) * 250 + (H.closeCalls || 0) * 800 + (rating === 'GHOST' ? 6000 : rating === 'CLEAN' ? 2500 : 0);
+    Score.add(score, Player.pos, H.T.name + ' — ' + rating, 'big'); Hud.banner(rating, H.T.name + ' · +' + fmt(score));
+    const st = Heists.store(); const order = { LOUD: 1, CLEAN: 2, GHOST: 3 }; const prev = st[H.type] || {}; if (!prev.rating || order[rating] > order[prev.rating]) prev.rating = rating; prev.best = Math.max(prev.best || 0, score); prev.count = (prev.count || 0) + 1; st[H.type] = prev; Store.set('heists', st);
+    Records.bump('heists', Object.values(st).reduce((a, b) => a + (b.count || 0), 0)); if (rating === 'GHOST') { Records.bump('ghosts', Object.values(st).filter(b => b.rating === 'GHOST').length); Challenges.flag('ghostAny'); if (H.type === 'museum') Challenges.flag('ghostMuseum'); }
+    Challenges.flag('firstHeist'); if (H.type === 'bank' && H.prizeForm === 'dog') Challenges.flag('bankDog'); if (Object.keys(st).length >= 6) Challenges.flag('allHeists');
+    Stats.heists = (Stats.heists || 0) + 1;
+    H.done = true; this.prize = null; this.heist = null; this.keycard = false;
+  },
+  echo() {
+    const p = CamRig.aimPoint.clone(); if (p.distanceTo(Player.pos) > 20) p.copy(Player.pos).addScaledVector(CamRig.fwd, 18); p.y = 0;
+    this.echoT = 4; Rings.spawn(p.clone(), 5, '#c58cff', 0.5); Audio.horn(p); Audio.thud(p, 0.6);
+    const C = Heists.cell; if (C) for (const g of C.guards) if (g.pos.distanceTo(p) < 14 && !C.alarm) { g.state = 'investigate'; g.look = p.clone(); g.susp = Math.max(g.susp, 10); Guards.say(g, fpick(['What was that?', 'Did you hear that?', 'Over there.'])); }
+    for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(p) < 20) { u.state = 'search'; u.searchPt = p.clone(); }
+  },
+  copy() {
+    if (this.decoys.length >= 2) { const d = this.decoys.shift(); scene.remove(d.mesh); }
+    let m; const F = FORMS[this.form];
+    if (F.kind === 'disguise') { const r = makeCharacter('unit', F.pal); r.mesh.position.copy(Player.pos); r.mesh.rotation.y = this.heading; m = r.mesh; }
+    else if (this.form === 'human') { const r = makeCharacter('ped', { torso: '#2a2a30', arms: '#2a2a30', legs: '#16161a', boots: '#111', skin: '#b98262' }); r.mesh.position.copy(Player.pos); m = r.mesh; }
+    else { m = makeFormMesh(this.form); m.position.copy(Player.pos); m.rotation.y = this.heading; }
+    scene.add(m); this.decoys.push({ mesh: m, t: 25 }); Ripple.at(Player.pos.clone().add(V3(0, 0.6, 0)), V3(0.8, 1, 0.8), 0.6); Toast.show('DECOY LEFT');
+  },
+  wheel(rdt) {
+    const el = $('wheel');
+    if (Input.keys.KeyQ && !this.wheelOpen && !this.shifting) { this.wheelOpen = true; this.wheelV.set(0, 0, 0); el.classList.remove('hidden'); }
+    for (let i = 1; i <= 9; i++) if (Input.pressedKey('Digit' + i) && this.library[i - 1]) this.beginShift(this.library[i - 1]);
+    if (!this.wheelOpen) return;
+    this.wheelV.x += Input.mouse.dx; this.wheelV.y += Input.mouse.dy; const L = Math.hypot(this.wheelV.x, this.wheelV.y); if (L > 120) { this.wheelV.x *= 120 / L; this.wheelV.y *= 120 / L; }
+    const n = this.library.length; const ang = Math.atan2(this.wheelV.x, -this.wheelV.y); const sel = L > 25 ? ((Math.round(ang / TAU * n) % n) + n) % n : -1; this.wheelSel = sel;
+    el.innerHTML = this.library.map((f, i) => { const a = i / n * TAU; const x = Math.sin(a) * 150, y = -Math.cos(a) * 150; return `<div class="wf ${i === sel ? 'sel' : ''} ${f === this.form ? 'cur' : ''} ${this.canCarryAs(f) ? '' : 'no'}" style="transform:translate(${x}px,${y}px)"><b>${i + 1}</b>${FORMS[f].name}<small>${FORMS[f].kind}</small></div>`; }).join('') + `<div class="wc">${sel >= 0 ? FORMS[this.library[sel]].name : 'MOVE THE MOUSE TO PICK A FORM'}<small>${this.library.length - 1}/${this.libMax()} LEARNED</small></div>`;
+    if (!Input.keys.KeyQ) { this.wheelOpen = false; el.classList.add('hidden'); if (sel >= 0) this.beginShift(this.library[sel]); }
+  },
+  camera(rdt) { if (CloseCall.camera(rdt)) return; },
+  keysHtml() { return '<b>HOLD E</b> on an animal, object or person — learn its form<br><b>HOLD Q</b> form wheel · <b>1–9</b> quick forms · <b>R</b> back to human<br>as an object: <b>hold still when watched</b><br><b>E</b> enter heists / vents / take the prize · <b>B</b> heist board<br><b>G</b> echo · <b>C</b> copy · <b>F</b> phone booth · <b>H</b> help'; },
+  slot(s) { if (s.id === 'echo') return { locked: !Prog.has('echo'), cd: clamp(this.echoT / 4, 0, 1) }; if (s.id === 'copy') return { locked: !Prog.has('copy'), active: this.decoys.length > 0 }; if (s.id === 'form') return { active: this.form !== 'human' }; if (s.id === 'learn') return { active: !!this.target }; if (s.id === 'board') return {}; if (s.id === 'human') return { active: this.form === 'human' }; return {}; },
+  vitals() {
+    $('lbl-mind').textContent = 'SHIFT ENERGY'; const F = FORMS[this.form];
+    $('lbl-ovl').textContent = F.kind === 'object' ? 'STILLNESS' + (this.watched ? ' — BEING WATCHED' : '') : 'FORM · ' + F.name;
+    $('ovlbar').style.width = (F.kind === 'object' ? clamp(this.still / (100 + Prog.level('still') * 25), 0, 1) * 100 : 100) + '%'; $('ovlv').textContent = this.disguiseId ? 'as ' + this.disguiseId : F.kind.toUpperCase();
+    $('ovlwrap').classList.toggle('full', F.kind === 'object' && this.watched > 0);
+    $('hoperow').classList.add('hidden');
+    const S = $('susp'); const C = Heists.cell; const s = this.maxSusp || 0;
+    if (C || this.heist) { S.classList.remove('hidden'); const st = C && C.alarm ? 'ALARMED' : s >= 60 ? 'SUSPICIOUS' : s >= 25 ? 'CURIOUS' : 'UNAWARE'; S.className = st.toLowerCase(); S.innerHTML = `<div class="sh">${(this.heist ? this.heist.T.name : '')} · ${this.heist ? this.heist.phase.toUpperCase() : ''}</div><div class="ss">👁 ${st}</div><div class="bar"><i style="width:${clamp(s, 0, 100)}%"></i></div><div class="sh">${C ? (C.seen ? 'SEEN' : 'UNSEEN') + ' · CLOSE CALLS ' + C.closeCalls + (this.keycard ? ' · KEYCARD' : '') : this.prize ? 'GET CLEAR — 80 m FROM THE BUILDING' + (Heat.level ? ' WITH NO HEAT' : '') : ''}</div>`; }
+    else S.classList.add('hidden');
+  },
+  cosHtml() { return '<h2>COSMETICS · MIMIC</h2><div class="sect">SHIFT RIPPLE</div><div class="grid">' + RIPPLES.map(r => { const u = Cosmetics.unlocked(r); const a = '#' + r.a.toString(16).padStart(6, '0'), b = '#' + r.b.toString(16).padStart(6, '0'); return `<div class="card ${(Cosmetics.sel.ripple || 'opal') === r.id ? 'owned' : ''}"><h3><span class="swatch" style="background:linear-gradient(90deg,${a},${b});color:${a}"></span>${r.name}</h3><p>${u ? 'Unlocked' : 'Locked — ' + r.req[2]}</p><button data-rp="${r.id}" ${u ? '' : 'disabled'}>USE</button></div>`; }).join('') + '</div>'; },
+  cosWire(panel, again) { panel.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { Cosmetics.set('ripple', b.dataset.rp); again(); }); },
+};
+HERO_SLOTS.shift = [
+  { id: 'learn', key: 'HOLD E', name: 'LEARN', g: '✋' }, { id: 'form', key: 'HOLD Q', name: 'SHIFT', g: '❖' }, { id: 'human', key: 'R', name: 'HUMAN', g: '◆' },
+  { id: 'echo', key: 'G', name: 'ECHO', g: '◌' }, { id: 'copy', key: 'C', name: 'COPY', g: '⧉' }, { id: 'board', key: 'B', name: 'BOARD', g: '☰' },
+];
+TUT_BY.shift = [
+  ['touch', 'LEARN', 'Walk up to a cat, a bin or a bench and <b>HOLD E</b> to learn its form'],
+  ['wheel', 'SHIFT', '<b>HOLD Q</b> to open the form wheel, move the mouse to a form and let go'],
+  ['heist', 'HEISTS', 'Find a <b>◇ diamond</b> by a building — a heist. Press <b>B</b> for the heist board, then get in'],
+  ['still', 'HOLD STILL', 'As an object, when a guard looks your way — <b>don\'t move</b>. Watch the stillness bar'],
+];
+// the heist board: targets, ratings and what you learned while casing them
+const Board = {
+  open: false,
+  toggle() {
+    this.open = !this.open; const el = $('board'); if (!this.open) { el.classList.add('hidden'); return; }
+    const st = Heists.store();
+    el.innerHTML = '<h2>HEIST BOARD</h2><div class="grid">' + Heists.list.map(H => { const s = st[H.type] || {}; const d = districtAt(H.b.x0, H.b.z0); return `<div class="card ${H.done ? 'done' : ''}"><h3>${H.T.name}</h3><p>${d.name} · security ${'▮'.repeat(H.T.sec)}${'▯'.repeat(5 - H.T.sec)}</p><p style="color:#fff">${H.T.prize}</p><p>${H.T.big ? 'Big prize — needs human hands' : 'Small prize — a crow or dog can carry it'}</p><p class="mono" style="font-size:11px">Best: ${s.rating || '—'} ${s.best ? '· ' + fmt(s.best) : ''}</p><p class="mono" style="font-size:11px;color:var(--tk)">${[...H.notes].slice(-6).join('<br>') || 'No notes yet — go and case it.'}</p><p class="mono" style="font-size:11px">${H.done ? 'DONE THIS RUN' : H.phase.toUpperCase()}</p></div>`; }).join('') + '</div><p class="mono" style="font-size:12px;color:var(--dim)">GHOST: never seen · CLEAN: seen but no alarm · LOUD: alarm raised, but you got away. Press B to close.</p>';
+    el.classList.remove('hidden');
+  },
+};
 // game state + run flow ------------------------------------------------------------------
 const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
 function disposeGroup(g) { if (!g) return; g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.geometry && o.geometry !== Lamps.geo) { if (o.material === VEH_MAT || o.material === MAT.neon || o.material === MAT.metal || Object.values(City.meshes || {}).includes(o)) o.geometry.dispose(); } }); }
@@ -7020,7 +7855,7 @@ function buildWorld(seed) {
   Ship.fires = [];
   City.generate();
   Props.reset(); Lamps.reset();
-  City.populate(); Booths.build(); Rescue.reset(); Hazards.reset(); Pacer.reset();
+  City.populate(); Booths.build(); Rescue.reset(); Hazards.reset(); Pacer.reset(); Critters.build(); Heists.build();
   Vehicles.trainReset();
   for (let i = 0; i < 16; i++) Vehicles.spawnTraffic(V3(120, 0, 60));
   world.step(eventQueue); eventQueue.drainContactForceEvents(() => { });
@@ -7051,7 +7886,7 @@ const Game = {
       } catch (e) { fatal(e); }
     }, 30);
   },
-  pause() { if (G.mode !== 'play') return; G.mode = 'paused'; $('pause').classList.remove('hidden'); Input.releaseLock(); TK.release(); },
+  pause() { if (G.mode !== 'play') return; if (Board.open) Board.toggle(); G.mode = 'paused'; $('pause').classList.remove('hidden'); Input.releaseLock(); TK.release(); },
   resume() { $('pause').classList.add('hidden'); $('sub').classList.add('hidden'); G.mode = 'play'; try { renderer.domElement.requestPointerLock(); } catch { } },
   detain(manual) {
     if (G.mode !== 'play' || Player.detained) return;
@@ -7185,7 +8020,7 @@ function frame(now) {
   Mirror.uniforms.uTime.value = G.time;
   Mirror.update(camera);
   if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
-  HeroModels.sync(Player.rig); Ghosts.update(rdt);
+  HeroModels.sync(Player.rig); Ghosts.update(rdt); Ripple.update(rdt); if (M === 'play' || M === 'title') Critters.update(dt);
   Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
   Input.endFrame();
 }
@@ -7208,7 +8043,7 @@ async function boot() {
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Rescue, Pacer, Hazards, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
