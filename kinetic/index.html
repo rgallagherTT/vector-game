@@ -287,6 +287,7 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
    // §DESTRUCTION  glass, lampposts, hydrants, signs, decals
    // §FX           particles, shards, rain, splashes, shafts, shake
    // §PLAYER       movement, camera
+   // §HEROMODEL    GLB hero models driven by the procedural pose library (retargeted)
    // §TELEKINESIS  aim, highlight, grab/pull, hold, throw, tether
    // §POWERS       push, slam, dodge, telekinetic jump
    // §POWERS2      debris shield, catch, levitate, heavy lift, vortex, overload
@@ -315,6 +316,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const GAME_TITLE = "KINETIC";
 
@@ -3229,6 +3231,7 @@ const Player = {
     if (!this.rig) {
       this.rig = makeCharacter('player', this.palette());
       this.rig.mesh.castShadow = true; scene.add(this.rig.mesh);
+      HeroModels.attach(this.rig, 'hero_telekinetic.glb');
       this.handGlow = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ color: TK_COLOR })); scene.add(this.handGlow);
     }
   },
@@ -3236,7 +3239,7 @@ const Player = {
     const o = Cosmetics.outfit();
     return { torso: o.torso, legs: o.legs, hood: o.hood, arms: o.torso, hands: '#1a1d22', boots: '#0d0e10', eyes: '#' + TK_COLOR.getHexString(), belt: o.belt || '#111', skin: '#b98262', band: o.band, stripe: o.stripe };
   },
-  refreshLook() { if (!this.rig) return; scene.remove(this.rig.mesh); this.rig = makeCharacter('player', this.palette()); this.rig.mesh.castShadow = true; scene.add(this.rig.mesh); this.handGlow.material.color.copy(TK_COLOR); },
+  refreshLook() { if (!this.rig) return; const model = this.rig.model; scene.remove(this.rig.mesh); this.rig = makeCharacter('player', this.palette()); if (model) { this.rig.model = model; this.rig.mesh.material = INVISIBLE_MAT; } this.rig.mesh.castShadow = true; scene.add(this.rig.mesh); this.handGlow.material.color.copy(TK_COLOR); },
   spawn(x, y, z, yaw = 0) {
     this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = -0.08;
     this.maxHp = CONFIG.player.hp + Prog.level('health') * 20; this.hp = this.maxHp;
@@ -3812,6 +3815,70 @@ const Slam = {
   update(dt) { this.cd -= dt; },
 };
 
+// §HEROMODEL ----------------------------------------------------------------------------
+// Hero GLBs (same 25-bone rig) are driven by the procedural pose library: each frame the
+// procedural rig is posed, then its bone rotations are retargeted onto the GLB skeleton.
+// If a model fails to load, the procedural figure stays visible.
+const INVISIBLE_MAT = new THREE.MeshBasicMaterial({ visible: false });
+const HeroModels = (() => {
+  const loader = new GLTFLoader(); const cache = {};
+  const MAP = { hips: 'Hips', spine: 'Spine01', head: 'Head', uaL: 'LeftArm', laL: 'LeftForeArm', uaR: 'RightArm', laR: 'RightForeArm', thL: 'LeftUpLeg', shL: 'LeftLeg', thR: 'RightUpLeg', shR: 'RightLeg' };
+  const CHILD = { Hips: 'Spine02', Spine01: 'Spine', Head: 'head_end', LeftArm: 'LeftForeArm', LeftForeArm: 'LeftHand', RightArm: 'RightForeArm', RightForeArm: 'RightHand', LeftUpLeg: 'LeftLeg', LeftLeg: 'LeftFoot', RightUpLeg: 'RightLeg', RightLeg: 'RightFoot' };
+  const DOWN = V3(0, -1, 0), UPV = V3(0, 1, 0);
+  const MYDIR = { hips: UPV, spine: UPV, head: UPV, uaL: DOWN, laL: DOWN, uaR: DOWN, laR: DOWN, thL: DOWN, shL: DOWN, thR: DOWN, shR: DOWN };
+  function load(url) {
+    if (!cache[url]) cache[url] = new Promise(res => loader.load(url, g => res(g), undefined, e => { console.warn('hero model failed', url, e); res(null); }));
+    return cache[url];
+  }
+  function build(gltf) {
+    const root = gltf.scene; const bones = {}; const order = [];
+    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.envMapIntensity = 0.6; if (o.material.roughness != null) o.material.roughness = Math.min(o.material.roughness, 0.7); } } if (o.isBone) { bones[o.name] = o; order.push(o); } });
+    root.updateMatrixWorld(true);
+    const rootInvQ = root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const rest = {};
+    for (const b of order) {
+      const w = b.getWorldQuaternion(new THREE.Quaternion()).premultiply(rootInvQ);
+      rest[b.name] = { local: b.quaternion.clone(), world: w, pos: b.position.clone() };
+    }
+    // calibrate: rotate each mapped GLB bone's rest so it points the way the procedural rig's bone does at rest
+    const inv = {}; for (const k in MAP) inv[MAP[k]] = k;
+    for (const name in inv) {
+      const b = bones[name], c = bones[CHILD[name]]; if (!b || !c) continue;
+      const a = b.getWorldPosition(V3()), e = c.getWorldPosition(V3());
+      const dir = e.sub(a).applyQuaternion(rootInvQ).normalize();
+      const off = new THREE.Quaternion().setFromUnitVectors(dir, MYDIR[inv[name]]);
+      rest[name].cal = rest[name].world.clone().premultiply(off);
+    }
+    // parents that are not bones (Armature) keep their rest world rotation
+    const parentRestW = {}; for (const b of order) if (!b.parent.isBone) parentRestW[b.name] = b.parent.getWorldQuaternion(new THREE.Quaternion()).premultiply(rootInvQ);
+    return { root, bones, order, rest, inv, parentRestW, W: {} };
+  }
+  const _rq = new THREE.Quaternion(), _d = new THREE.Quaternion(), _pw = new THREE.Quaternion();
+  function pose(m, rig) {
+    if (!m || !rig) return;
+    rig.mesh.updateMatrixWorld(true);
+    m.root.position.copy(rig.mesh.position); m.root.quaternion.copy(rig.mesh.quaternion); m.root.scale.copy(rig.mesh.scale);
+    _rq.copy(rig.mesh.quaternion).invert();
+    for (const b of m.order) {
+      const R = m.rest[b.name];
+      const pw = b.parent.isBone ? m.W[b.parent.name] : m.parentRestW[b.name];
+      let W = m.W[b.name] || (m.W[b.name] = new THREE.Quaternion());
+      const my = m.inv[b.name];
+      if (my && R.cal) { rig.bones[my].getWorldQuaternion(_d); _d.premultiply(_rq); W.copy(_d).multiply(R.cal); }
+      else W.copy(pw).multiply(R.local);
+      b.quaternion.copy(_pw.copy(pw).invert().multiply(W));
+    }
+    const hips = m.bones.Hips; if (hips) hips.position.y = m.rest.Hips.pos.y + (rig.bones.hips.position.y - 0.95) / (m.root.scale.y || 1);
+  }
+  // attach a model to a procedural rig: the procedural figure goes invisible, the model follows it
+  async function attach(rig, url) {
+    const g = await load(url); if (!g) return null;
+    const m = build(g); scene.add(m.root); rig.mesh.material = INVISIBLE_MAT; rig.model = m;
+    return m;
+  }
+  function sync(rig) { if (!rig || !rig.model) return; rig.model.root.visible = rig.mesh.visible; if (rig.mesh.visible) pose(rig.model, rig); }
+  return { load, attach, pose, sync };
+})();
 // §POWERS2 -----------------------------------------------------------------------------
 // Debris shield: up to eight small objects orbit the player and soak up bullets; F fires them one by one.
 const Shield = {
@@ -6208,6 +6275,7 @@ function frame(now) {
   Mirror.uniforms.uTime.value = G.time;
   Mirror.update(camera);
   if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
+  HeroModels.sync(Player.rig);
   Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
   Input.endFrame();
 }
