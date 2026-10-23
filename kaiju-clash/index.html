@@ -168,7 +168,7 @@ const CONFIG = {
   // scale & feel
   monsterHeight: 100, gravity: 46, debrisGravity: 14, lowGravityMult: 0.32,
   walkSpeed: 34, runSpeed: 78, accel: 190, airControl: 0.45, turnRate: 5.0, attackSpeed: 1.3, autoRun: true,
-  powerMult: 1.25, knockbackMult: 1.6, liftMult: 1.15, cityScale: 1.85,
+  powerMult: 1.25, knockbackMult: 1.6, liftMult: 1.15, cityScale: 1.85, followCam: true,
   jumpVel: 60, stepThreshold: 18, stepTime: 0.42, runStepTime: 0.3, footShake: 0.9,
   fighterRadius: 22, pushApart: 1.0, inputBuffer: 0.22,
   // combat
@@ -209,14 +209,14 @@ const CONFIG = {
 // Per-monster multipliers on outgoing damage (dmg) and max health (hp).
 // Tuned by the headless simulator (?sim=balance&tune=1); before/after numbers in BALANCE_REPORT.
 const BALANCE = {
-  granitor:   { dmg: 1.009, hp: 1.009 },
-  skitterax:  { dmg: 0.980, hp: 0.989 },
-  voltwyrm:   { dmg: 1.480, hp: 1.265 },
-  bulwark9:   { dmg: 0.838, hp: 0.900 },
-  motherbrine:{ dmg: 0.991, hp: 0.996 },
-  thornback:  { dmg: 0.963, hp: 0.981 },
-  pyroclast:  { dmg: 0.684, hp: 0.805 },
-  gloomwing:  { dmg: 1.143, hp: 1.080 },
+  granitor:   { dmg: 0.999, hp: 1.004 },
+  skitterax:  { dmg: 0.977, hp: 0.987 },
+  voltwyrm:   { dmg: 1.477, hp: 1.263 },
+  bulwark9:   { dmg: 0.861, hp: 0.914 },
+  motherbrine:{ dmg: 0.973, hp: 0.986 },
+  thornback:  { dmg: 0.916, hp: 0.953 },
+  pyroclast:  { dmg: 0.744, hp: 0.846 },
+  gloomwing:  { dmg: 1.105, hp: 1.059 },
 };
 // Win rates from ?sim=balance (AI 'normal' vs 'normal', sides swapped every other fight).
 // Reproduce: ?sim=balance&baseline=1&n=60   and   ?sim=balance&tune=1&n=80&verify=160
@@ -232,16 +232,16 @@ Thornback      23%    43%    83%    28%    43%     —     18%    57%   42.4%
 Pyroclast      83%    70%    97%    67%    90%    82%     —     77%   80.7%
 Gloomwing      22%    18%    78%    23%    37%    43%    23%     —    35.0%
 
-AFTER tuning (faster, harder-hitting update) — verification run, 150 fights per pairing
+AFTER tuning (follow-camera update; shots no longer stun) — verification run, fresh seed, 150 fights per pairing
             Granit Skitte Voltwy Bulwar Mother Thornb Pyrocl Gloomw   OVERALL
-Granitor        —     51%    37%    54%    59%    54%    39%    51%   49.2%
-Skitterax      49%     —     39%    54%    41%    50%    43%    55%   47.1%
-Voltwyrm       63%    61%     —     36%    57%    44%    58%    56%   53.6%
-Bulwark-9      46%    46%    64%     —     41%    55%    70%    41%   52.0%
-Mother Bri     41%    59%    43%    59%     —     41%    54%    51%   49.7%
-Thornback      46%    50%    56%    45%    59%     —     49%    49%   50.6%
-Pyroclast      61%    57%    42%    30%    46%    51%     —     53%   48.7%
-Gloomwing      49%    45%    44%    59%    49%    51%    47%     —    49.0%
+Granitor        —     49%    37%    56%    62%    60%    35%    51%   49.9%
+Skitterax      51%     —     49%    61%    47%    44%    51%    53%   50.9%
+Voltwyrm       63%    51%     —     31%    50%    47%    45%    59%   49.5%
+Bulwark-9      44%    39%    69%     —     37%    55%    69%    48%   51.5%
+Mother Bri     38%    53%    50%    63%     —     42%    53%    49%   49.8%
+Thornback      40%    56%    53%    45%    58%     —     50%    55%   51.0%
+Pyroclast      65%    49%    55%    31%    47%    50%     —     54%   50.0%
+Gloomwing      49%    47%    41%    52%    51%    45%    46%     —    47.3%
 `;
 
 // §UTIL ------------------------------------------------------------------------
@@ -1064,7 +1064,7 @@ class City {
   }
   writeChunk(ch) {
     if (!ch.mesh) return;
-    if (ch.state === 3) _m1.makeScale(0, 0, 0);
+    if (ch.state === 3 || (ch.b.hidden && ch.state <= 0)) _m1.makeScale(0, 0, 0);
     else { if (ch.q) _q1.set(ch.q.x, ch.q.y, ch.q.z, ch.q.w); else _q1.identity(); _v2.set(ch.sx * 0.996, ch.sy * 0.996, ch.sz * 0.996); _m1.compose(ch.p, _q1, _v2); }
     ch.mesh.setMatrixAt(ch.inst, _m1); ch.mesh.instanceMatrix.needsUpdate = true;
   }
@@ -1517,7 +1517,7 @@ function explode(pos, radius, dmg, src, o = {}) {
   FX.emit('fire', pos, 40, { scale: radius / 60, spread: radius * 0.3 }); FX.emit('smoke', pos, 14, { scale: radius / 70, spread: radius * 0.4 });
   FX.emit('spark', pos, 40, { speed: 120 }); FX.debris(pos, 14, 0x3a3634, 50, 3); FX.ring(pos, radius * 1.4, 0xffa040, 0.7);
   FX.lightFlash(V3(pos.x, pos.y + 30, pos.z), 0xff8a30, 40); FX.doShake(o.shake ?? 1.6); Audio.explosion(pos, radius / 70);
-  for (const f of G.fighters) {
+  if (dmg > 0) for (const f of G.fighters) {
     if (!f.active || f === o.skip) continue; const d = f.pos.distanceTo(_v1.set(pos.x, Math.max(pos.y - 40, f.pos.y), pos.z)); if (d > radius + f.radius) continue;
     const k = 1 - clamp(d / (radius + f.radius), 0, 1) * 0.6; _v2.subVectors(f.pos, pos).setY(0).normalize();
     f.takeHit(src, { dmg: dmg * k, kb: 40 * k, lift: 22 * k, stun: 0.5, kind: 'explosion', knockdown: dmg * k > 60, dir: _v2.clone(), unblockable: o.unblockable, point: pos, fire: true });
@@ -2769,6 +2769,9 @@ class Fighter {
     if (this.flying && dmg > 40) { this.flying = 0; this.endFlight(); }
     if (h.fire) this.status.burn = 2;
     // reactions
+    // getting shot (projectiles, beams, army fire) chips and flinches but never stops you in your tracks
+    const shot = (h.kind === 'projectile' || h.kind === 'beam') && !h.knockdown && !h.launcher && (h.lift || 0) < 40;
+    if (shot) { h = Object.assign({}, h, { noReact: true, silent: h.silent || dmg < 25 }); if (!G.headless) FX.emit('spark', h.point || this.center(), 6); }
     if (!h.noReact && !armored) {
       const airborne = !this.grounded || this.state === 'launched' || this.state === 'thrown';
       if (h.launcher || (h.lift || 0) > 40) { this.state = 'launched'; this.st = 0; this.vel.copy(dir).multiplyScalar(h.kb || 20).setY((h.lift || 60) * (G.arena?.gravMult < 1 ? 0.75 : 1)); this.grounded = false; this.tumbleV = rand(2, 4) * (chance(0.5) ? 1 : -1); this.crashed.clear(); }
@@ -2998,7 +3001,7 @@ class Fighter {
     const from = this.mouthPos(), t = this.target, R = sp.range * this.scale; let dir = fwd(this.yaw); if (t) { _v1.subVectors(t.center(), from); dir = _v1.normalize().clone(); const fy = fwd(this.yaw); if (dir.clone().setY(0).normalize().dot(fy) < 0.6) dir = fy.clone().setY(dir.y); }
     this.turnToward(t ? yawTo(this.pos, t.pos) : this.yaw, dt, 0.4);
     const to = from.clone().addScaledVector(dir, R);
-    for (const o of this.enemies()) { const c = o.center(); const proj = clamp(_v1.subVectors(c, from).dot(dir), 0, R); const closest = from.clone().addScaledVector(dir, proj); if (closest.distanceTo(c) < sp.width + o.radius) { const r = o.takeHit(this, { dmg: sp.dps * dt * this.outDmg(), kb: 2, lift: 0, stun: 0.25, kind: 'beam', dir: dir.clone().setY(0).normalize(), point: c, silent: true, noReact: o.state === 'hitstun' && o.st < 0.2, fire: sp.lava }); if (r === 'hit' && o.state !== 'launched') { o.state = 'hitstun'; o.st = 0; o.stunT = 0.3; } if (Math.random() < 0.2) Audio.impact(0.3, c); } }
+    for (const o of this.enemies()) { const c = o.center(); const proj = clamp(_v1.subVectors(c, from).dot(dir), 0, R); const closest = from.clone().addScaledVector(dir, proj); if (closest.distanceTo(c) < sp.width + o.radius) { const r = o.takeHit(this, { dmg: sp.dps * dt * this.outDmg(), kb: 2, lift: 0, stun: 0.25, kind: 'beam', dir: dir.clone().setY(0).normalize(), point: c, silent: true, noReact: o.state === 'hitstun' && o.st < 0.2, fire: sp.lava }); if (Math.random() < 0.2) Audio.impact(0.3, c); } }
     if (G.arena && Math.random() < dt * 6) { const p = from.clone().addScaledVector(dir, rand(0.3, 1) * R); for (const b of G.arena.city.near(p.x, p.z, 30)) if (b.solid && p.y < b.top) G.arena.city.damage(b, p, 20, dir.clone().multiplyScalar(20), this); if (sp.lava) SETPIECES.checkPoint(p, this, 'lava'); }
     if (!G.headless) {
       if (!this.beam) { this.beam = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 10, 1, true), new THREE.MeshBasicMaterial({ color: sp.color, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); G.scene.add(this.beam); }
@@ -3529,6 +3532,16 @@ const CAM = {
   pos: V3(0, 300, 700), look: V3(), side: V3(0, 0, 1), cine: null, mode: 'fight', free: null,
   cinematic(o) { this.cine = Object.assign({ t: 0, dur: 2, dist: 300, height: 0.25, orbit: 0.6, a0: null }, o); },
   snap() { this.update(1, true); },
+  // hide any building standing between the lens and a monster (logic and collisions are untouched)
+  cutaway(fs) {
+    const A = G.arena; if (!A || G.headless) return; const now = new Set(), c = G.camera.position;
+    for (const f of fs) { const p = f.center(); for (let u = 0.08; u < 0.96; u += 0.07) { const x = lerp(c.x, p.x, u), y = lerp(c.y, p.y, u), z = lerp(c.z, p.z, u); for (const b of A.city.near(x, z, 15)) if (b.solid && y < b.top + 6 && x > b.bounds.minX - 8 && x < b.bounds.maxX + 8 && z > b.bounds.minZ - 8 && z < b.bounds.maxZ + 8) now.add(b); } }
+    if (this.cut) for (const b of this.cut) if (!now.has(b)) { b.hidden = false; b.chunks.forEach(ch => A.city.writeChunk(ch)); }
+    for (const b of now) if (!b.hidden) { b.hidden = true; b.chunks.forEach(ch => A.city.writeChunk(ch)); }
+    this.cut = now;
+  },
+  // the one human player's monster, when there is exactly one (two humans share the framing camera)
+  me() { if (!CONFIG.followCam || !G.inMatch || REPLAY.playing) return null; const hs = G.fighters.filter(f => f.human && !f.out && (f.active || f.state === 'victory' || f.state === 'ko')); return hs.length === 1 ? hs[0] : null; },
   frameTargets() { return G.fighters.filter(f => !f.out && (f.active || f.state === 'ko' || f.state === 'victory') && (!f.rig || f.rig.root.visible)); },
   update(rdt, snap = false) {
     const cam = G.camera; if (!cam) return; const k = snap ? 1 : 1 - Math.exp(-CONFIG.camLerp * rdt);
@@ -3544,6 +3557,16 @@ const CAM = {
       if (c.follow && c.follow.active !== undefined) { look = c.follow.center(); }
       if (c.t >= c.dur) this.cine = null;
       this.pos.lerp(desired, snap ? 1 : 1 - Math.exp(-4 * rdt)); this.look.lerp(look, snap ? 1 : 1 - Math.exp(-6 * rdt));
+    } else if (this.me()) {
+      // follow camera: sits behind your own monster, looking past it toward your rival
+      const f = this.me(), t = f.target && f.target.active ? f.target : null;
+      const wantYaw = t && dist2(t.pos, f.pos) > 20 ? yawTo(f.pos, t.pos) : f.yaw;
+      this.fYaw = this.fYaw == null || snap ? wantYaw : this.fYaw + angDiff(this.fYaw, wantYaw) * (1 - Math.exp(-2.8 * rdt));
+      const dir = fwd(this.fYaw), dist = 240 * f.scale;
+      desired = f.center().addScaledVector(dir, -dist); desired.y = f.pos.y + f.height * 1.05 + 25;
+      look = f.center().addScaledVector(dir, 110); look.y = f.pos.y + f.height * 0.55;
+      // buildings in the way are cut away (see cutaway), so the camera can stay low behind you
+      this.pos.lerp(desired, snap ? 1 : 1 - Math.exp(-6 * rdt)); this.look.lerp(look, snap ? 1 : 1 - Math.exp(-8 * rdt));
     } else if (fs.length) {
       const ctr = V3(); fs.forEach(f => ctr.add(f.center())); ctr.divideScalar(fs.length);
       let a = fs[0], b = fs[1] || fs[0], spread = 0;
@@ -3562,6 +3585,7 @@ const CAM = {
     cam.position.copy(this.pos);
     const sh = FX.shake || 0; if (sh > 0.01) { cam.position.x += (Math.random() - 0.5) * sh * 7; cam.position.y += (Math.random() - 0.5) * sh * 7; cam.position.z += (Math.random() - 0.5) * sh * 7; }
     cam.lookAt(this.look);
+    this.cutaway(fs);
     if (R.bokeh) { R.bokeh.uniforms.focus.value = cam.position.distanceTo(this.look); }
   },
   // photo mode: free camera with DOF
@@ -3639,12 +3663,12 @@ const REPLAY = {
     while (this.frames.length && this.frames[0].t < G.time - this.maxT) this.frames.shift();
   },
   best(since = -1e9) { let b = null; for (const m of this.marks) if (m.t >= since && (!b || m.score > b.score)) b = m; return b; },
-  clip(m) { if (!m) return null; const a = m.t - 3.2, b = m.t + 2.4; const fr = this.frames.filter(x => x.t >= a && x.t <= b); return fr.length > 10 ? { frames: fr, label: m.label, t0: fr[0].t, focus: m.t } : null; },
+  clip(m) { if (!m && this.frames.length > 20) m = { t: this.frames[this.frames.length - 1].t - 2.4, label: 'Last moments' }; if (!m) return null; const a = m.t - 3.2, b = m.t + 2.4; const fr = this.frames.filter(x => x.t >= a && x.t <= b); return fr.length > 10 ? { frames: fr, label: m.label, t0: fr[0].t, focus: m.t } : null; },
   // play a clip by driving the fighters' rigs from snapshots
   play(clip, fighters, onDone, speed = 0.55) {
     if (!clip) { onDone && onDone(); return; } this.playing = { clip, fighters, t: clip.t0, onDone, speed, saved: fighters.map(f => ({ pos: f.pos.clone(), yaw: f.yaw, state: f.state, st: f.st, move: f.move, vis: f.rig?.root.visible })) };
     HUD.banner('REPLAY', clip.label || ''); $('#helpline').textContent = 'Instant replay — press Light / Enter to skip';
-    CAM.cine = null; R.bokeh.enabled = true;
+    CAM.cine = null; R.bokeh.enabled = false; CAM.snapNext = true;
   },
   update(rdt) {
     const P = this.playing; if (!P) return false; const C = P.clip; P.t += rdt * P.speed;
@@ -3655,7 +3679,7 @@ const REPLAY = {
       f.state = B.state; f.st = lerp(A.st, B.st, A.state === B.state ? u : 1); f.tumble = lerp(A.tumble || 0, B.tumble || 0, u); f.grounded = B.grounded; f.flying = B.flying; f.rolling = B.rolling; f.move = B.move; if (f.rig) f.rig.root.visible = B.vis && !B.out;
       f.render(rdt * P.speed); if (B.vis && !B.out) { ctr.add(f.center()); n++; }
     });
-    if (n) { ctr.divideScalar(n); const ang = (P.t - C.t0) * 0.35 + 0.6; const desired = ctr.clone().add(V3(Math.sin(ang) * 260, 40, Math.cos(ang) * 260)); CAM.pos.lerp(desired, 1 - Math.exp(-3 * rdt)); CAM.look.lerp(ctr, 1 - Math.exp(-5 * rdt)); G.camera.position.copy(CAM.pos); G.camera.lookAt(CAM.look); R.bokeh.uniforms.focus.value = CAM.pos.distanceTo(CAM.look); }
+    if (n) { CAM.cine = null; const m = CAM.mode; CAM.mode = 'fight'; CAM.update(rdt, !!CAM.snapNext); CAM.snapNext = false; CAM.mode = m; }
     if (Math.abs(P.t - C.focus) < rdt * P.speed) { FX.flash(0.25); FX.doShake(1.5); }
     const skip = KEYS.has('Enter') || KEYS.has('KeyF') || KEYS.has('Period') || connectedPads().some(i => navigator.getGamepads()[i]?.buttons[0]?.pressed);
     if (P.t >= fr[fr.length - 1].t || (skip && P.t - C.t0 > 0.4)) this.stop();
@@ -3678,7 +3702,7 @@ const REPLAY = {
 // §MODES -----------------------------------------------------------------------
 function loadArena(id, opts = {}) {
   if (G.arena) { G.arena.dispose(); } PHYS.dispose(); if (!G.headless) FX.clear(); ARMY.reset();
-  G.projectiles.forEach(p => p.mesh && G.scene.remove(p.mesh)); G.projectiles = []; G.effects = []; G.darkness = 0; G.darknessTarget = 0; G.timers = [];
+  G.projectiles.forEach(p => p.mesh && G.scene.remove(p.mesh)); G.projectiles = []; G.effects = []; CAM.cut = null; G.darkness = 0; G.darknessTarget = 0; G.timers = [];
   const A = new Arena(ARENA_DEFS[id] || ARENA_DEFS.halcyon, opts); G.arena = A; A.build(); if (!G.headless) PHYS.init(A);
   rng = mulberry32((Date.now() & 0xffff) + 17); return A;
 }
@@ -3712,7 +3736,7 @@ class Match {
   }
   hudGroups() { return [0, 1].map(team => ({ fighter: () => G.fighters.find(f => f.team === team) })); }
   async start() {
-    G.mode = this; G.inMatch = true; G.time = 0; G.matchPoints = 0; G.buildingsDown = 0; REPLAY.reset(); CAM.mode = 'fight'; CAM.cine = null;
+    G.mode = this; G.inMatch = true; G.time = 0; G.matchPoints = 0; G.buildingsDown = 0; REPLAY.reset(); CAM.mode = 'fight'; CAM.cine = null; CAM.fYaw = null;
     if (!this.arenaLoaded) { loadArena(this.cfg.arena, this.arenaOpts || {}); this.arenaLoaded = true; }
     this.spawnFighters(); this.matchStartT = G.time;
     HUD.setup(this); HUD.show(true); HUD.scoreboard(null); MENU.hide();
@@ -4346,7 +4370,7 @@ function simStep(dt, rdt) {
   }
 }
 function render() { R.renderer.info.reset(); R.composer.render(); }
-window.__K = { G, CONFIG, BALANCE, ROSTER, ARENA_DEFS, VersusMatch, TagMatch, DerbyMatch, KothMatch, RumbleMatch, TrainingMatch, ARCADE, REPLAY, PHYS, MENU, SETPIECES, ARMY, Fighter, AIController, loadArena, SIM, PROFILE: () => PROFILE, award, resolveMonster };
+window.__K = { spawnProjectile, G, CONFIG, BALANCE, ROSTER, ARENA_DEFS, VersusMatch, TagMatch, DerbyMatch, KothMatch, RumbleMatch, TrainingMatch, ARCADE, REPLAY, PHYS, MENU, SETPIECES, ARMY, Fighter, AIController, loadArena, SIM, PROFILE: () => PROFILE, award, resolveMonster };
 // debug helper: advance n simulation steps without rendering (used by automated tests)
 window.__step = (n = 30, dt = 1 / 30) => { const t0 = performance.now(); for (let i = 0; i < n; i++) { if (!G.inMatch || !G.mode) break; if (G.slowmo) { G.slowmo.t += dt; if (G.slowmo.t >= G.slowmo.dur) G.slowmo = null; } G.hitstop = 0; simStep(dt, dt); FX.update(dt, dt); G.arena?.update(dt); for (const f of G.fighters) f.render(dt); CAM.update(dt); } return (performance.now() - t0) / n; };
 async function boot() {
