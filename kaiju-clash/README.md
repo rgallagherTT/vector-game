@@ -72,4 +72,8 @@ The manifest comment at the top of `index.html` lists the section anchors: `// �
 
 ## Speed and size update
 
-Monsters move about twice as fast, hit 25% harder with 60% more knockback, attack 30% faster and smash through any building they run into. Every city is about 1.85× wider, with outer districts and satellite skylines (650–1,060 buildings per arena). The ultimate meter fills about twice as fast. Balance was re-tuned afterwards: every monster wins 47.1%–53.6% of 1,050 AI fights.
+Monsters move about twice as fast, hit 25% harder with 60% more knockback, attack 30% faster and smash through any building they run into. Every city is about 1.85× wider, with outer districts and satellite skylines (650–1,060 buildings per arena). The ultimate meter fills about twice as fast. Balance was re-tuned afterwards: every monster wins 47.3%–51.5% of 1,050 AI fights.
+
+## Camera and replay update
+
+With one human player the camera follows your own monster from behind, looking toward your rival; buildings between the camera and the monsters are cut away. With two human players the shared camera frames both. Projectiles, beams and army fire still do damage but no longer stop you. The Watch replay button and the instant replay now use the fight camera.
