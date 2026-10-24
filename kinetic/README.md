@@ -38,6 +38,12 @@ Phone booths around the city switch heroes mid-run (Tag Team, `F`).
   Health also comes back fast for every hero.
 - **Knocked out?** You wake up at the nearest hospital and pay the bill. Banked cash is safe.
 - **The Threadrunner climbs walls.** Push into one to climb hand over hand; Space leaps off.
+- **Daytime kit** (`design/`):
+  - dry, sunlit texture sets that swap in at dawn
+  - unlit signs, sunlit billboards and faded posters by day
+  - day lighting and fog from the kit's lighting guide
+  - pigeons on the rooftops that scatter when you land near them
+  - a lens flare when you look into the sun
 - **Design kit** (`design/`):
   - PBR window facades and surface detail
   - 60 real neon signs (lit at night, off by day, flickering, animated)
