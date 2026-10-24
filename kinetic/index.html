@@ -8508,9 +8508,9 @@ const Apt = (() => {
   function build(A) {
     const C = { group: new THREE.Group(), bodies: [], lights: [], spots: [] }; cell = C; scene.add(C.group);
     const W = A.id === 'studio' ? 12 : A.id === 'loft' ? 18 : 22, D = A.id === 'studio' ? 9 : 12, H = 3.4, X = BASE.x, Z = BASE.z;
-    const wall = new THREE.MeshStandardMaterial({ color: A.wall, roughness: 0.85 });
+    const wall = (IntKit.ready && IntKit.mat(A.id === 'studio' ? 'wallpaper_floral' : A.kind === 'hideout' ? 'concrete_polished' : 'painted_plaster', [W / 3, 1.2], { color: A.kind === 'hideout' ? 0xb0b0b0 : 0xffffff })) || new THREE.MeshStandardMaterial({ color: A.wall, roughness: 0.85 });
     const sbox = (cx, cy, cz, hx, hy, hz, mat, vis = true) => { const r = addStaticBox(cx, cy, cz, hx, hy, hz); C.bodies.push(r.body); if (vis && mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(hx * 2, hy * 2, hz * 2), mat); m.position.set(cx, cy, cz); C.group.add(m); } };
-    const floorMat = new THREE.MeshStandardMaterial({ color: A.id === 'penthouse' ? 0x3a3128 : 0x2e2620, roughness: 0.35, metalness: 0.05 });
+    const floorMat = (IntKit.ready && IntKit.mat(A.id === 'penthouse' ? 'wood_floor' : A.kind === 'hideout' ? 'concrete_polished' : A.id === 'loft' ? 'wood_floor' : 'carpet', [W / 3, D / 3])) || new THREE.MeshStandardMaterial({ color: A.id === 'penthouse' ? 0x3a3128 : 0x2e2620, roughness: 0.35, metalness: 0.05 });
     sbox(X, -0.5, Z, W / 2 + 1, 0.5, D / 2 + 1, floorMat); sbox(X, H + 0.2, Z, W / 2 + 1, 0.2, D / 2 + 1, new THREE.MeshStandardMaterial({ color: 0x15161a }));
     sbox(X - W / 2 - 0.2, H / 2, Z, 0.2, H / 2, D / 2, wall); sbox(X + W / 2 + 0.2, H / 2, Z, 0.2, H / 2, D / 2, wall); sbox(X, H / 2, Z + D / 2 + 0.2, W / 2, H / 2, 0.2, wall);
     // the window wall: the city at night
@@ -8520,8 +8520,8 @@ const Apt = (() => {
     for (let i = 0; i < 6; i++) { g.fillStyle = ['#ff3cac', '#46f0ff', '#ffb21f'][i % 3]; g.fillRect(r() * 1000, 120 + r() * 100, 30, 6); }
     const win = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.4, H - 0.6), new THREE.MeshBasicMaterial({ map: texFrom(c) })); win.position.set(X, H / 2 + 0.1, Z - D / 2 + 0.01); C.group.add(win);
     for (let k = 1; k < W / 3; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), new THREE.MeshStandardMaterial({ color: 0x111 })); m.position.set(X - W / 2 + k * 3, H / 2, Z - D / 2 + 0.06); C.group.add(m); }
-    const lamp = (x, z, col, i = 30) => { const l = LightPool.add({ pos: V3(x, H - 0.4, z), color: new THREE.Color(col), intensity: i, range: 14, kind: 'interior', priority: 3 }); C.lights.push(l); };
-    lamp(X - W / 4, Z, A.light); lamp(X + W / 4, Z, A.light); lamp(X, Z - D / 2 + 1, 0x8ab4ff, 18);
+    const lamp = (x, z, col, i = 75) => { const l = LightPool.add({ pos: V3(x, H - 0.4, z), color: new THREE.Color(col), intensity: i, range: 14, kind: 'interior', priority: 3 }); C.lights.push(l); };
+    lamp(X - W / 4, Z, A.light); lamp(X + W / 4, Z, A.light); lamp(X, Z - D / 2 + 1, 0x8ab4ff, 30);
     const box = (x, y, z, w, h, d, col, solid = true, emiss) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), emiss ? new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(emiss) }) : new THREE.MeshStandardMaterial({ color: col, roughness: 0.7 })); m.position.set(x, y, z); C.group.add(m); if (solid) { const rr = addStaticBox(x, y, z, w / 2, h / 2, d / 2); C.bodies.push(rr.body); } return m; };
     // bed, sofa + TV, desk + laptop, heavy bag, door
     const bed = V3(X - W / 2 + 1.6, 0, Z + D / 2 - 2.2); box(bed.x, 0.3, bed.z, 2.2, 0.6, 3.2, 0x3a4a6a); box(bed.x, 0.7, bed.z + 1.2, 2.0, 0.25, 0.6, 0xe8e0d0, false); box(bed.x - 1.15, 0.8, bed.z, 0.1, 1.0, 3.2, 0x2a1a10);
@@ -10332,7 +10332,7 @@ const DayNight = (() => {
     S.day = smooth(clamp((el + 0.08) / 0.3, 0, 1)); S.night = 1 - S.day; S.dusk = clamp(1 - Math.abs(el) * 4, 0, 1) * (el > -0.15 ? 1 : 0);
     const az = (hour - 6.5) / 13 * Math.PI; S.sun.set(Math.cos(az) * 0.7, Math.max(0.05, el), 0.45).normalize();
     const indoor = Apt.inside ? 0.3 : 1; const d = S.day;
-    renderer.toneMappingExposure = lerp(1.75, 1.1, d);
+    renderer.toneMappingExposure = Interiors.inside ? 1.0 : lerp(1.75, 1.1, d);
     hemi.color.copy(NIGHT.hemiSky).lerp(DAYC.hemiSky, d); hemi.groundColor.copy(NIGHT.hemiGround).lerp(DAYC.hemiGround, d);
     if (!S.flash) hemi.intensity = lerp(HEMI_I, Design.ready ? 1.45 : 1.9, d) * indoor;
     moon.color.copy(NIGHT.key).lerp(DAYC.key, d).lerp(DAYC.dusk, S.dusk * d * 0.7); moon.intensity = lerp(1.0, 3.3, d) * indoor;
@@ -10370,6 +10370,21 @@ const SHOP_T = {
   cafe: { name: 'GRIND CAFE', sign: '#ffc890', d: ['core', 'midtown', 'oldtown', 'heights'], w: 14, dd: 10 },
   tailor: { name: 'NEEDLE & SEAM TAILOR', sign: '#ffffff', d: ['midtown', 'oldtown'], w: 14, dd: 10 },
 };
+const ROOM_KIT = {
+  diner: { floor: 'checker_floor', wall: 'subway_tile', ceil: 'ceiling_tile', decals: (W, D) => [['menu_noodle', -W / 2 + 0.06, 2.2, 0, Math.PI / 2, 1.0], ['no_smoking', W / 2 - 0.06, 2.0, 2, -Math.PI / 2, 0.5]] },
+  shop: { floor: 'linoleum', wall: 'painted_plaster', ceil: 'ceiling_tile', decals: (W, D) => [['wet_floor', 0, 0.5, 0, 0.6, 0.6], ['notice_board', W / 2 - 0.06, 1.8, -1, -Math.PI / 2, 1.2]] },
+  gym: { floor: 'concrete_polished', wall: 'painted_plaster', tint: 0x9a9a9a, decals: (W, D) => [['gym_motivation', W / 2 - 0.06, 2.4, -2, -Math.PI / 2, 1.6]] },
+  arcade: { floor: 'carpet', wall: 'wallpaper_stripe', tint: 0x6a5a8a, decals: (W, D) => [['arcade_high_scores', -W / 2 + 0.06, 2.4, 0, Math.PI / 2, 1.6]] },
+  club: { floor: 'concrete_polished', wall: 'painted_plaster', tint: 0x4a3050, decals: (W, D) => [['menu_bar_drinks', 0, 2.6, -D / 2 + 0.06, 0, 1.4], ['karaoke_song_list', W / 2 - 0.06, 2.0, 2, -Math.PI / 2, 1.0]] },
+  bank: { floor: 'checker_floor', wall: 'painted_plaster', ceil: 'ceiling_tile', tint: 0xf0e8d8, decals: (W, D) => [['notice_board', -W / 2 + 0.06, 1.8, 2, Math.PI / 2, 1.2], ['wall_calendar', W / 2 - 0.06, 1.9, 3, -Math.PI / 2, 0.7]] },
+  office: { floor: 'carpet', wall: 'painted_plaster', ceil: 'ceiling_tile', decals: (W, D) => [['notice_board', W / 2 - 0.06, 1.8, 2, -Math.PI / 2, 1.2], ['wall_calendar', -W / 2 + 0.06, 1.9, 2, Math.PI / 2, 0.7]] },
+  warehouse: { floor: 'concrete_polished', wall: null, decals: (W, D) => [['no_smoking', -W / 2 + 0.06, 2.2, 0, Math.PI / 2, 0.8]] },
+  clinic: { floor: 'linoleum', wall: 'subway_tile', ceil: 'ceiling_tile', decals: (W, D) => [['pharmacy_price_list', -W / 2 + 0.06, 1.9, 0, Math.PI / 2, 1.1], ['wet_floor', 1, 0.5, 1, 0.3, 0.6]] },
+  hospital: { floor: 'linoleum', wall: 'subway_tile', ceil: 'ceiling_tile', decals: (W, D) => [['pharmacy_price_list', -W / 2 + 0.06, 1.9, 0, Math.PI / 2, 1.1], ['notice_board', W / 2 - 0.06, 1.8, 3, -Math.PI / 2, 1.2]] },
+  cafe: { floor: 'wood_floor', wall: 'wallpaper_floral', decals: (W, D) => [['menu_bar_drinks', -W / 2 + 0.06, 2.2, 0, Math.PI / 2, 1.0], ['wall_calendar', W / 2 - 0.06, 1.9, 1, -Math.PI / 2, 0.6]] },
+  tailor: { floor: 'wood_floor', wall: 'wallpaper_stripe', decals: (W, D) => [['tattoo_flash_sheet', -W / 2 + 0.06, 2.0, 0, Math.PI / 2, 1.0]] },
+};
+for (const k in ROOM_KIT) if (SHOP_T[k]) SHOP_T[k].kit = ROOM_KIT[k];
 const Interiors = (() => {
   const BASE = V3(5200, 0, 5200); const doors = []; let cell = null, at = null, mini = null;
   const signTex = (txt, col) => { const c = canvas(512, 96), g = c.getContext('2d'); g.fillStyle = '#0a0c12'; g.fillRect(0, 0, 512, 96); g.strokeStyle = col; g.lineWidth = 6; g.strokeRect(6, 6, 500, 84); g.fillStyle = col; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 256, 50); const t = texFrom(c); return t; };
@@ -10406,9 +10421,11 @@ const Interiors = (() => {
     else if (st.planks) { for (let j = 0; j < 16; j++) { g.fillStyle = j % 2 ? st.a : st.b; g.fillRect(0, j * 32, 512, 32); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, j * 32, 512, 2); for (let k = 0; k < 3; k++) g.fillRect(((j * 173 + k * 197) % 512), j * 32, 2, 32); } }
     else { g.fillStyle = st.a || '#3a3c42'; g.fillRect(0, 0, 512, 512); const r = mulberry32(9); for (let i = 0; i < 4000; i++) { g.fillStyle = `rgba(${r() < .5 ? '0,0,0' : '255,255,255'},${r() * 0.05})`; g.fillRect(r() * 512, r() * 512, 2, 2); } g.strokeStyle = 'rgba(0,0,0,.18)'; for (let i = 0; i <= 512; i += 128) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 512); g.moveTo(0, i); g.lineTo(512, i); g.stroke(); } }
     const ft = texFrom(fc); ft.repeat.set(W / 6, D / 6);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: ft, roughness: st.rough != null ? st.rough : 0.35, metalness: 0.05 })); floor.rotation.x = -Math.PI / 2; floor.position.set(X, 0.01, Z); floor.receiveShadow = true; C.group.add(floor);
-    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ color: T.ceil || 0x202228, roughness: 0.9 })); ceil.rotation.x = Math.PI / 2; ceil.position.set(X, H, Z); C.group.add(ceil);
-    const wall = new THREE.MeshStandardMaterial({ color: T.wall || 0x3a3a44, roughness: 0.85 }); const trim = new THREE.MeshStandardMaterial({ color: T.trim || 0x1a1a20, roughness: 0.5 });
+    const KF = T.kit && IntKit.ready ? IntKit.mat(T.kit.floor, [W / 3, D / 3]) : null;
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), KF || new THREE.MeshStandardMaterial({ map: ft, roughness: st.rough != null ? st.rough : 0.35, metalness: 0.05 })); floor.rotation.x = -Math.PI / 2; floor.position.set(X, 0.01, Z); floor.receiveShadow = true; C.group.add(floor);
+    const KC = T.kit && T.kit.ceil && IntKit.ready ? IntKit.mat(T.kit.ceil, [W / 1.2, D / 1.2]) : null;
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), KC || new THREE.MeshStandardMaterial({ color: T.ceil || 0x202228, roughness: 0.9 })); ceil.rotation.x = Math.PI / 2; ceil.position.set(X, H, Z); C.group.add(ceil);
+    const wall = (T.kit && T.kit.wall && IntKit.ready ? IntKit.mat(T.kit.wall, [W / 3, H / 3], { color: T.kit.tint || 0xffffff }) : null) || new THREE.MeshStandardMaterial({ color: T.wall || 0x3a3a44, roughness: 0.85 }); const trim = new THREE.MeshStandardMaterial({ color: T.trim || 0x1a1a20, roughness: 0.5 });
     const sb = (cx, cy, cz, hx, hy, hz, mat) => { const r2 = addStaticBox(cx, cy, cz, hx, hy, hz); C.bodies.push(r2.body); if (mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(hx * 2, hy * 2, hz * 2), mat); m.position.set(cx, cy, cz); m.receiveShadow = true; C.group.add(m); } };
     sb(X, -0.5, Z, W / 2 + 1, 0.5, D / 2 + 1, null); sb(X, H + 0.25, Z, W / 2 + 1, 0.25, D / 2 + 1, null);
     sb(X - W / 2 - 0.2, H / 2, Z, 0.2, H / 2, D / 2 + 0.4, wall); sb(X + W / 2 + 0.2, H / 2, Z, 0.2, H / 2, D / 2 + 0.4, wall); sb(X, H / 2, Z - D / 2 - 0.2, W / 2, H / 2, 0.2, wall); sb(X, H / 2, Z + D / 2 + 0.2, W / 2, H / 2, 0.2, wall);
@@ -10417,7 +10434,7 @@ const Interiors = (() => {
     // ceiling light panels + real lights
     const lp = new THREE.MeshBasicMaterial({ color: new THREE.Color(T.lightCol || 0xfff2dc).multiplyScalar(1.6), toneMapped: false });
     for (let x = -W / 2 + 3; x < W / 2 - 1; x += 5) for (let z = -D / 2 + 3; z < D / 2 - 1; z += 5) { const m = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.6), lp); m.position.set(X + x, H - 0.03, Z + z); C.group.add(m); }
-    for (const [x, z] of [[-W / 4, 0], [W / 4, 0], [0, -D / 4], [0, D / 4]]) C.lights.push(LightPool.add({ pos: V3(X + x, H - 0.6, Z + z), color: new THREE.Color(T.lightCol || 0xfff2dc), intensity: T.lightI || 34, range: 16, kind: 'interior', priority: 4 }));
+    for (const [x, z] of [[-W / 4, 0], [W / 4, 0], [0, -D / 4], [0, D / 4]]) C.lights.push(LightPool.add({ pos: V3(X + x, H - 0.6, Z + z), color: new THREE.Color(T.lightCol || 0xfff2dc), intensity: (T.lightI || 34) * 0.4, range: 16, kind: 'interior', priority: 4 }));
     // a window wall onto the daytime/nighttime street
     const wc = canvas(1024, 256), wg = wc.getContext('2d'); const day = DayNight.day; const sky = wg.createLinearGradient(0, 0, 0, 256); sky.addColorStop(0, day > 0.5 ? '#8fb8e8' : '#0c1428'); sky.addColorStop(1, day > 0.5 ? '#d8e4f0' : '#2a1c3a'); wg.fillStyle = sky; wg.fillRect(0, 0, 1024, 256);
     const rr = mulberry32(T.name.length * 31); for (let i = 0; i < 40; i++) { const w = 30 + rr() * 60, h = 60 + rr() * 170, x = rr() * 1024; wg.fillStyle = day > 0.5 ? `rgb(${120 + rr() * 60},${130 + rr() * 50},${150 + rr() * 50})` : `rgb(${14 + rr() * 14},${16 + rr() * 14},${28 + rr() * 20})`; wg.fillRect(x, 256 - h, w, h); for (let k = 0; k < h / 10; k++) for (let j = 0; j < w / 8; j++) if (rr() < (day > 0.5 ? 0.15 : 0.35)) { wg.fillStyle = day > 0.5 ? 'rgba(220,235,255,.6)' : 'rgba(255,210,140,.85)'; wg.fillRect(x + j * 8 + 2, 256 - h + k * 10 + 2, 4, 5); } }
@@ -10429,6 +10446,8 @@ const Interiors = (() => {
     C.npc = (x, z, yaw, pal) => { const u = Units.spawn('civilian', X + x, 0.03, Z + z, { force: true, state: 'civ', pal: pal || civPal() }); if (u) { u.job = C; u.idleNPC = true; u.yaw = yaw; u.faceYaw = yaw; C.units.push(u); } return u; };
     C.shelf = (x, z, w, rot) => { C.box(x, 1.0, z, rot ? 0.5 : w, 2.0, rot ? w : 0.5, 0x5a4a3a); const n = Math.floor(w / 0.32); const im = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.28, 0.2), new THREE.MeshStandardMaterial({ roughness: 0.5 }), n * 4); let k = 0; const r3 = mulberry32((x * 13 + z * 7) | 0); for (let lv = 0; lv < 4; lv++) for (let i = 0; i < n; i++) { const off = -w / 2 + 0.2 + i * 0.32; _m1.makeTranslation(X + x + (rot ? 0.26 : off), 0.35 + lv * 0.48, Z + z + (rot ? off : 0.26)); im.setMatrixAt(k, _m1); im.setColorAt(k++, new THREE.Color().setHSL(r3(), 0.6, 0.5)); } im.count = k; C.group.add(im); };
     C.spot = (k, x, z, label, fn) => C.spots.push({ k, p: V3(X + x, 0, Z + z), label, fn });
+    C.decal = (name, x, y, z, ry, w) => IntKit.decal(C.group, name, V3(X + x, y, Z + z), ry, w);
+    C.decal('exit_sign', 0, 3.05, D / 2 - 0.06, Math.PI, 0.9); C.decal('wall_clock', W / 2 - 0.06, 2.8, -D / 4, -Math.PI / 2, 0.6); if (T.kit && T.kit.decals) for (const [n, x, y, z, ry, w] of T.kit.decals(W, D)) C.decal(n, x, y, z, ry, w);
     C.entry = V3(X, 0.1, Z + D / 2 - 1.6); C.spot('leave', 0, D / 2 - 0.8, 'T — LEAVE', () => leave());
     const exitM = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.8, 0.1), new THREE.MeshBasicMaterial({ color: new THREE.Color(T.sign).multiplyScalar(0.8), toneMapped: false })); exitM.position.set(X, 1.4, Z + D / 2 - 0.12); C.group.add(exitM);
     return C;
@@ -10724,7 +10743,7 @@ const Hospital = {
     return { fine, name: best ? best.T.name : 'THE HOSPITAL' };
   },
 };
-SHOP_T.hospital = { name: 'MERCY GENERAL HOSPITAL', sign: '#ff6a6a', d: ['oldtown', 'heights', 'midtown', 'core', 'under', 'neon', 'harbour'], w: 26, dd: 16 };
+SHOP_T.hospital = { kit: ROOM_KIT.hospital, name: 'MERCY GENERAL HOSPITAL', sign: '#ff6a6a', d: ['oldtown', 'heights', 'midtown', 'core', 'under', 'neon', 'harbour'], w: 26, dd: 16 };
 // §DESIGNKIT -----------------------------------------------------------------------------
 // The KINETIC design kit (design/): PBR facades and street textures, 60 neon signs (lit, off and animated
 // frames), 20 rooftop billboards and 40 street decals. Everything is optional — if a file fails to load the
@@ -10757,6 +10776,7 @@ const Design = (() => {
     SETS.ground = { night: { normalMap: an }, day: { normalMap: adn || an } };
     if (an && MAT.ground) { const gw = City.groundRect ? City.groundRect.W : 1400, gh = City.groundRect ? City.groundRect.H : 900; an.repeat.set(gw / 5, gh / 5); MAT.ground.normalMap = an; MAT.ground.normalScale.set(0.5, 0.5); MAT.ground.needsUpdate = true; }
     DayNight.facadeDay = 1.0; mode = null;
+    InteriorMap.init(tex); IntKit.init(man, tex);
     ready = true; if (City.group && City.buildings.length) dress();
   }
   // a batch of camera-independent quads sharing one texture: one draw call per texture
@@ -10848,6 +10868,7 @@ const Design = (() => {
   function update(rdt) {
     if (!ready) return; const night = DayNight.night; const isDay = DayNight.day > 0.5;
     if (mode !== isDay) { mode = isDay; applyMode(isDay); }
+    InteriorMap.update();
     frameT += rdt; flickT -= rdt; const step = frameT > 0.28; if (step) frameT = 0;
     for (const s of signs) {
       if (s.offT > 0) s.offT -= rdt;
@@ -10903,6 +10924,72 @@ const LensFlare = (() => {
     const cx = innerWidth / 2, cy = innerHeight / 2; ghosts.forEach((g, i) => { const k = 0.4 + i * 0.45; g.style.left = (x + (cx - x) * k * 2) + 'px'; g.style.top = (y + (cy - y) * k * 2) + 'px'; g.style.opacity = vis * 0.5; });
   }
   return { init, update };
+})();
+
+// §INTERIORMAP --------------------------------------------------------------------------
+// Every window on the kit facades looks into a room: the interiors kit's pre-rendered one-point-perspective
+// cards, ray-marched as a box behind the glass so the room shifts with your view. ~35% of rooms are lit at night.
+const InteriorMap = (() => {
+  const U = { uIntDay: { value: null }, uIntNight: { value: null }, uIntDark: { value: null }, uIntN: { value: 0 }, uIntOn: { value: 0 } };
+  function patch(m) {
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vIW; varying vec3 vIN;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvIW = (modelMatrix * vec4(transformed, 1.0)).xyz; vIN = normalize(mat3(modelMatrix) * objectNormal);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 vIW; varying vec3 vIN; uniform sampler2D uIntDay, uIntNight, uIntDark; uniform float uIntN, uIntOn;
+        float ihash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        vec4 interiorAt(vec2 muv){
+          vec2 cell = muv * 4.0; vec2 f = fract(cell); vec2 id = floor(cell);
+          vec2 l = vec2((f.x - 0.17) / 0.66, ((1.0 - f.y) - 0.13) / 0.6);
+          if (uIntOn < 0.5 || l.x < 0.0 || l.x > 1.0 || l.y < 0.0 || l.y > 1.0 || abs(vIN.y) > 0.5) return vec4(0.0);
+          l.y = 1.0 - l.y;
+          vec3 n = normalize(vec3(vIN.x, 0.0, vIN.z)); vec3 t = normalize(cross(vec3(0.0, 1.0, 0.0), n));
+          vec3 V = normalize(vIW - cameraPosition); vec3 d = vec3(dot(V, t), dot(V, vec3(0.0, 1.0, 0.0)), -dot(V, n));
+          d.z = max(d.z, 0.05);
+          vec3 p0 = vec3(l, 0.0);
+          float tx = ((d.x > 0.0 ? 1.0 : 0.0) - p0.x) / (abs(d.x) < 1e-4 ? 1e-4 : d.x);
+          float ty = ((d.y > 0.0 ? 1.0 : 0.0) - p0.y) / (abs(d.y) < 1e-4 ? 1e-4 : d.y);
+          float tz = 1.0 / d.z; float tt = min(min(tx, ty), tz);
+          vec3 h = p0 + d * tt; float s = 1.0 / (1.0 + h.z * (1.0 / 0.47 - 1.0));
+          vec2 cuv = clamp(0.5 + (h.xy - 0.5) * s, 0.01, 0.99);
+          vec2 key = id + floor(vIW.xz / 31.0) * 7.0 + floor(vIW.y / 3.6) * 0.0;
+          float r = ihash(key); float k = floor(r * 16.0); vec2 auv = (vec2(mod(k, 4.0), floor(k / 4.0)) + vec2(cuv.x, 1.0 - cuv.y)) / 4.0; auv.y = 1.0 - auv.y;
+          float lit = step(ihash(key + 13.7), 0.35);
+          vec3 day = texture2D(uIntDay, auv).rgb; vec3 nite = mix(texture2D(uIntDark, auv).rgb, texture2D(uIntNight, auv).rgb, lit);
+          return vec4(mix(day, nite, uIntN), lit);
+        }`)
+        .replace('#include <map_fragment>', '#include <map_fragment>\n vec4 IR = interiorAt(vMapUv); float inWin = IR.a > 0.0 || length(IR.rgb) > 0.0 ? 1.0 : 0.0;\n diffuseColor.rgb = mix(diffuseColor.rgb, IR.rgb * (1.0 - uIntN) * 1.15 + diffuseColor.rgb * 0.15, inWin * 0.8);')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance = mix(totalEmissiveRadiance, IR.rgb * uIntN * (0.06 + IR.a * 0.32), inWin);');
+    };
+    m.customProgramCacheKey = () => 'interiormap'; m.needsUpdate = true;
+  }
+  async function init(tex) {
+    const [a, b, c] = await Promise.all([tex('int/atlas_day.jpg'), tex('int/atlas_night.jpg'), tex('int/atlas_dark.jpg')]);
+    if (!a || !b) return; for (const t of [a, b, c]) if (t) { t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.repeat.set(1, 1); }
+    U.uIntDay.value = a; U.uIntNight.value = b; U.uIntDark.value = c || b; U.uIntOn.value = 1;
+    for (const i of [0, 1, 3, 4]) patch(MAT.facade[i]);
+  }
+  return { init, update() { U.uIntN.value = DayNight.night; } };
+})();
+// walkable rooms dressed with the interiors kit textures and decals
+const IntKit = (() => {
+  const T = {}; let man = null, ready = false;
+  async function init(m, tex) {
+    man = m.int; if (!man) return;
+    await Promise.all(man.sets.map(async s => { const [a, n, r] = await Promise.all([tex('int/' + s + '_albedo.jpg'), tex('int/' + s + '_normal.jpg', false), tex('int/' + s + '_roughness.jpg', false)]); if (a) T[s] = { a, n, r }; }));
+    ready = true;
+  }
+  function mat(set, rep, extra = {}) { const S = T[set]; if (!S) return null; const cl = t => { if (!t) return null; const c = t.clone(); c.repeat.set(rep[0], rep[1]); c.needsUpdate = true; return c; }; return new THREE.MeshStandardMaterial(Object.assign({ map: cl(S.a), normalMap: cl(S.n), roughnessMap: cl(S.r), roughness: 1 }, extra)); }
+  const decTex = {};
+  function decal(group, name, pos, ry, w) {
+    if (!man) return; const d = man.decals.find(x => x[0] === name); if (!d) return; const h = w * d[2] / d[1];
+    const load = n => decTex[n] || (decTex[n] = new THREE.TextureLoader().load('design/int/' + n + '.webp', t => { t.colorSpace = THREE.SRGBColorSpace; }));
+    const em = man.decals.find(x => x[0] === name + '_emissive');
+    const mt = new THREE.MeshStandardMaterial({ map: load(name), transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 }); if (em) { mt.emissiveMap = load(em[0]); mt.emissive.set(0xffffff); mt.emissiveIntensity = 1.4; }
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mt); m.position.copy(pos); m.rotation.y = ry; group.add(m);
+  }
+  return { init, mat, decal, get ready() { return ready; } };
 })();
 // game state + run flow ------------------------------------------------------------------
 const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
@@ -11125,7 +11212,7 @@ async function boot() {
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
