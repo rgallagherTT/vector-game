@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
 <title>KAIJU CLASH</title>
 <style>
 :root{--ink:#f6eedd;--gold:#ffc23a;--red:#ff3b2f;--blue:#38b6ff;--bg:#0b0a0d;--panel:rgba(14,12,18,.82);--edge:rgba(255,194,58,.55)}
@@ -84,6 +85,31 @@ select,input[type=text]{background:#1a1520;color:var(--ink);border:1px solid #4a
 #debug{position:fixed;left:8px;top:120px;z-index:20;font:12px/1.35 monospace;background:rgba(0,0,0,.72);color:#9f9;padding:8px 10px;white-space:pre;pointer-events:none}
 #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:#0b0a0d;font-size:40px;color:var(--gold)}
 @media (max-width:700px){.screen h1{font-size:40px}#banner{font-size:56px}.name{font-size:15px}}
+/* touch controls */
+#touch{position:fixed;inset:0;z-index:8;pointer-events:none;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none}
+#touch .zone{position:absolute;left:0;top:22%;bottom:0;width:46%;pointer-events:auto;touch-action:none}
+#touch .base{position:absolute;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;border:3px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);pointer-events:none}
+#touch .knob{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:rgba(255,194,58,.75);box-shadow:0 0 14px rgba(0,0,0,.6)}
+#touch .base.idle{opacity:.45}
+#touch .tb{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;border:3px solid rgba(255,255,255,.55);background:rgba(20,16,26,.55);color:#fff;font:700 13px Impact,'Arial Narrow Bold',sans-serif;letter-spacing:.05em;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.05;text-shadow:0 2px 0 #000;-webkit-tap-highlight-color:transparent}
+#touch .tb.on{background:rgba(255,194,58,.65);border-color:#ffe066;transform:scale(.94)}
+#touch .tb.atk{width:96px;height:96px;right:calc(22px + env(safe-area-inset-right));bottom:26px;font-size:18px;background:rgba(179,0,27,.6);border-color:#ff8a7a}
+#touch .tb.jump{width:70px;height:70px;right:calc(130px + env(safe-area-inset-right));bottom:18px}
+#touch .tb.grab{width:70px;height:70px;right:calc(30px + env(safe-area-inset-right));bottom:134px}
+#touch .tb.block{width:66px;height:66px;right:calc(126px + env(safe-area-inset-right));bottom:104px}
+#touch .tb.special{width:66px;height:66px;right:calc(210px + env(safe-area-inset-right));bottom:62px;background:rgba(30,90,160,.55);border-color:#8fd0ff}
+#touch .tb.rage{width:78px;height:78px;right:calc(114px + env(safe-area-inset-right));bottom:184px;opacity:.55}
+#touch .tb.rage.ready{opacity:1;background:rgba(255,59,47,.8);border-color:#ffe066;box-shadow:0 0 22px #ff3b2f;animation:ultp .45s infinite alternate}
+#touch .tb.tag{width:56px;height:56px;right:calc(28px + env(safe-area-inset-right));bottom:222px;font-size:12px}
+#touch .tb.pause{width:46px;height:46px;left:50%;top:auto;bottom:10px;margin-left:-23px;border-radius:10px;font-size:18px}
+#touch .hint{position:absolute;left:12px;bottom:12px;font-size:12px;opacity:.6;pointer-events:none}
+#rotate{position:fixed;inset:0;z-index:40;background:#0b0a0d;color:var(--gold);display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;font-size:26px;padding:24px}
+body.touch #rotate.need{display:flex}
+body.touch .keys{display:none}
+body.touch #toasts{bottom:auto;top:84px}
+body.touch #helpline{display:none}
+body.touch #skipReplay{font-size:22px;padding:14px 22px}
+@media (max-height:520px){.screen{padding:12px 16px;max-height:96vh}.screen h1{font-size:34px}.screen h2{font-size:24px}.btn{padding:7px 12px;font-size:16px;margin:4px 0}.selpanel{padding:8px 10px;bottom:8px;font-size:12px}.selpanel .big{font-size:24px}.selpanel .muted{font-size:11px}#banner{font-size:48px}.howcard{padding:8px 12px;min-width:0}.howcard table{font-size:12px}.howcard h3{font-size:16px}.name{font-size:14px}.combo{font-size:30px;top:80px}}
 </style>
 <script type="importmap">
 {"imports":{
@@ -97,6 +123,9 @@ select,input[type=text]{background:#1a1520;color:var(--ink);border:1px solid #4a
 <canvas id="gl"></canvas>
 <div id="vignette"></div>
 <div id="flash"></div>
+<div id="touch" class="hidden"><div class="zone"><div class="base idle"><div class="knob"></div></div></div>
+  <div class="tb atk" data-b="light"><span>ATTACK</span><small style="font-size:9px;opacity:.85;margin-top:3px">hold = uppercut</small></div><div class="tb jump" data-b="jump">JUMP</div><div class="tb grab" data-b="grab">GRAB</div><div class="tb block" data-b="block">BLOCK</div><div class="tb special" data-b="special">SPECIAL</div><div class="tb rage" data-b="rage"><span>ULTI-</span><span>MATE</span></div><div class="tb tag hidden" data-b="tag">TAG</div><div class="tb pause" data-act="pause">❚❚</div></div>
+<div id="rotate"><div style="font-size:64px">⟳</div><div class="disp">Turn your phone sideways</div><div class="muted" style="margin-top:8px;color:var(--ink)">KAIJU CLASH plays in landscape</div></div>
 <div id="hud" class="hidden">
   <div id="bars"></div>
   <div id="center"><div id="timer" class="disp">99</div><div id="roundinfo" class="disp" style="font-size:14px"></div></div>
@@ -264,6 +293,7 @@ const randi = (a, b) => Math.floor(rand(a, b + 1));
 const pick = arr => arr[Math.floor(rng() * arr.length)];
 const chance = p => rng() < p;
 const QS = new URLSearchParams(location.search);
+const IS_TOUCH = QS.get('touch') === '1' || (QS.get('touch') !== '0' && typeof matchMedia === 'function' && (matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(pointer: fine)').matches)));
 const $ = s => document.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const NOOP = new Proxy(function () {}, { get: () => NOOP, apply: () => NOOP });
@@ -314,6 +344,7 @@ function loadProfile() {
       PROFILE.stats = Object.assign(d.stats, p.stats || {});
       PROFILE.settings = Object.assign(d.settings, p.settings || {});
     }
+    if (IS_TOUCH && !PROFILE.settings.touchInit) { PROFILE.settings.touchInit = true; PROFILE.settings.quality = 'low'; } // phones: start on the fast setting (changeable in Settings)
   } catch (e) { PROFILE = defaultProfile(); }
 }
 function saveProfile() {
@@ -589,10 +620,43 @@ const KEYMAPS = {
 const KEY_HELP = {
   kbL: [['Move', 'W A S D'], ['Attack', 'F'], ['Uppercut', 'hold F'], ['Grab / throw', 'R'], ['Jump', 'Space'], ['Block', 'Q'], ['Special', 'E'], ['ULTIMATE', 'T']],
   kbR: [['Move', 'Arrows'], ['Attack', 'K'], ['Uppercut', 'hold K'], ['Grab / throw', 'L'], ['Jump', 'I'], ['Block', 'J'], ['Special', 'O'], ['ULTIMATE', 'P']],
+  touch: [['Move', 'Drag left side'], ['Attack', 'ATTACK'], ['Uppercut', 'hold ATTACK'], ['Grab / throw', 'GRAB'], ['Jump', 'JUMP'], ['Block', 'BLOCK'], ['Special', 'SPECIAL'], ['ULTIMATE', 'ULTIMATE button']],
   pad: [['Move', 'Left stick'], ['Attack', 'X'], ['Uppercut', 'hold X'], ['Grab / throw', 'B'], ['Jump', 'A'], ['Block', 'LB'], ['Special', 'RB'], ['ULTIMATE', 'Y / RT']],
 };
 const helpFor = dev => KEY_HELP[dev && dev.startsWith('pad') ? 'pad' : dev] || KEY_HELP.kbL;
 const ultKey = dev => helpFor(dev).find(r => r[0] === 'ULTIMATE')[1];
+// on-screen touch controls: a floating stick on the left half, buttons on the right
+const TOUCH = {
+  ix: 0, iy: 0, held: {}, tap: new Set(), stick: null, shown: false,
+  init() {
+    if (!IS_TOUCH) return; document.body.classList.add('touch');
+    const root = $('#touch'), zone = root.querySelector('.zone'), base = root.querySelector('.base'), knob = root.querySelector('.knob'), RAD = 58;
+    const homeBase = () => { base.classList.add('idle'); base.style.left = '110px'; base.style.top = (zone.clientHeight - 100) + 'px'; knob.style.transform = ''; };
+    homeBase(); addEventListener('resize', homeBase);
+    zone.addEventListener('pointerdown', e => { e.preventDefault(); if (this.stick) return; const r = zone.getBoundingClientRect(); this.stick = { id: e.pointerId, x: e.clientX, y: e.clientY }; zone.setPointerCapture?.(e.pointerId); base.classList.remove('idle'); base.style.left = (e.clientX - r.left) + 'px'; base.style.top = (e.clientY - r.top) + 'px'; });
+    zone.addEventListener('pointermove', e => { const S = this.stick; if (!S || e.pointerId !== S.id) return; e.preventDefault(); let dx = e.clientX - S.x, dy = e.clientY - S.y; const d = Math.hypot(dx, dy); if (d > RAD) { dx *= RAD / d; dy *= RAD / d; } knob.style.transform = `translate(${dx}px,${dy}px)`; const m = Math.min(1, d / RAD); this.ix = m < 0.18 ? 0 : dx / RAD; this.iy = m < 0.18 ? 0 : -dy / RAD; });
+    const end = e => { if (!this.stick || e.pointerId !== this.stick.id) return; this.stick = null; this.ix = this.iy = 0; homeBase(); };
+    zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
+    root.querySelectorAll('.tb[data-b]').forEach(b => {
+      const k = b.dataset.b, ids = new Set();
+      const up = e => { ids.delete(e.pointerId); if (!ids.size) { this.held[k] = false; b.classList.remove('on'); } };
+      b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); ids.add(e.pointerId); this.held[k] = true; this.tap.add(k); b.classList.add('on'); Audio.resume(); try { navigator.vibrate?.(12); } catch (x) { } });
+      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+    });
+    root.querySelector('[data-act=pause]').addEventListener('click', e => { e.preventDefault(); pauseMenu(); });
+    root.addEventListener('contextmenu', e => e.preventDefault());
+    const orient = () => $('#rotate').classList.toggle('need', innerHeight > innerWidth * 1.05); orient(); addEventListener('resize', orient);
+  },
+  reset() { this.ix = this.iy = 0; this.held = {}; this.tap.clear(); this.stick = null; $('#touch').querySelectorAll('.tb.on').forEach(b => b.classList.remove('on')); },
+  // shown only while a touch player is fighting and no menu or replay is on screen
+  update() {
+    if (!IS_TOUCH) return; const me = G.inMatch && G.fighters.find(f => f.ctrl?.device === 'touch' && !f.out && (f.active ?? true));
+    const show = !!(me && !G.paused && !G.photo && !MENU.current && !REPLAY.playing);
+    if (show !== this.shown) { this.shown = show; $('#touch').classList.toggle('hidden', !show); if (!show) this.reset(); }
+    if (show) { const t = $('#touch'); t.querySelector('.rage').classList.toggle('ready', me.rage >= CONFIG.rageMax); t.querySelector('.tag').classList.toggle('hidden', G.mode?.kind !== 'tag' && !(G.mode instanceof TagMatch)); }
+  },
+};
+const ctrlLabel = c => c === 'cpu' ? 'CPU' : c === 'touch' ? 'Touch' : c.startsWith('pad') ? 'Gamepad ' + (+c.slice(3) + 1) : KEYMAPS[c].label;
 const BUTTONS = ['light', 'heavy', 'grab', 'jump', 'block', 'special', 'rage', 'taunt', 'tag', 'run'];
 const PAD_MAP = { jump: [0], grab: [1], light: [2], heavy: [], block: [4], special: [5], run: [6, 10], rage: [3, 7], tag: [8], taunt: [12, 13] };
 const GAME_CODES = new Set(Object.values(KEYMAPS).flatMap(m => Object.values(m).filter(Array.isArray).flat()));
@@ -609,10 +673,13 @@ function camRelative(o, ix, iy) {
 }
 class DeviceInput {
   constructor(device) { this.device = device; this.prev = {}; this.cur = blankInput(); }
-  get label() { return this.device.startsWith('pad') ? `Gamepad ${+this.device.slice(3) + 1}` : KEYMAPS[this.device].label; }
+  get label() { return ctrlLabel(this.device); }
   poll() {
     const o = blankInput(); let ix = 0, iy = 0;
-    if (this.device.startsWith('kb')) {
+    if (this.device === 'touch') {
+      ix = TOUCH.ix; iy = TOUCH.iy;
+      BUTTONS.forEach(b => { o.held[b] = !!TOUCH.held[b]; if (TOUCH.tap.has(b)) { o.tap = o.tap || {}; o.tap[b] = true; TOUCH.tap.delete(b); } });
+    } else if (this.device.startsWith('kb')) {
       const m = KEYMAPS[this.device], any = arr => arr.some(k => KEYS.has(k));
       ix = (any(m.right) ? 1 : 0) - (any(m.left) ? 1 : 0); iy = (any(m.up) ? 1 : 0) - (any(m.down) ? 1 : 0);
       BUTTONS.forEach(b => { o.held[b] = any(m[b]); if (m[b].some(k => TAPPED.has(k))) { o.tap = o.tap || {}; o.tap[b] = true; m[b].forEach(k => TAPPED.delete(k)); } });
@@ -2675,7 +2742,7 @@ class Fighter {
     const P = inp.pressed, H = inp.held;
     if (this.buffer && this.buffer.t > 0) { this.buffer.t -= dt; } else this.buffer = null;
     const pressed = b => P[b] || (this.buffer && this.buffer.b === b && (this.buffer = null, true));
-    if (P.rage && this.rage >= CONFIG.rageMax) return this.startRage();
+    if (pressed('rage') && this.rage >= CONFIG.rageMax) return this.startRage();
     if (P.taunt) { if (this.def.parts.body === 'bulwark9' && !this.repairUsed && G.arena?.repairZones.some(z => Math.hypot(this.pos.x - z.x, this.pos.z - z.z) < z.r)) return this.startRepair(); return this.startTaunt(this.dirInput(inp) === 'f' ? 1 : 0); }
     if (P.tag && G.mode?.tryTag?.(this)) return;
     if (pressed('special')) { const d = this.dirInput(inp), i = d === 'f' ? 1 : d === 'b' ? 2 : 0; return this.startSpecial(i); }
@@ -2706,7 +2773,7 @@ class Fighter {
     if (mv.chargeable && t >= su - 0.02 && inp.held[ck] && this.heavyHeld < CONFIG.launcherHold) { this.st = su - 0.02; return; }
     this.vel.x = damp(this.vel.x, 0, 6, dt); this.vel.z = damp(this.vel.z, 0, 6, dt);
     if (t >= su && t < su + ac) this.hitTest(mv);
-    if (inp.pressed.light) this.buffer = { b: 'light', t: CONFIG.inputBuffer }; if (inp.pressed.heavy) this.buffer = { b: 'heavy', t: CONFIG.inputBuffer }; if (inp.pressed.special) this.buffer = { b: 'special', t: CONFIG.inputBuffer };
+    if (inp.pressed.light) this.buffer = { b: 'light', t: CONFIG.inputBuffer }; if (inp.pressed.heavy) this.buffer = { b: 'heavy', t: CONFIG.inputBuffer }; if (inp.pressed.special) this.buffer = { b: 'special', t: CONFIG.inputBuffer }; if (inp.pressed.rage && this.rage >= CONFIG.rageMax) this.buffer = { b: 'rage', t: 0.8 }; // ULTIMATE pressed mid-attack fires as soon as the move ends
     // chain: L→L→L, L→L→H = launcher finisher, any → special cancel on hit
     if (t >= su + ac * 0.6 && this.buffer) {
       if (this.buffer.b === 'light' && mv.type === 'light' && this.lightIdx < 2) { this.buffer = null; this.chainT = 1; return this.startLight(); }
@@ -3630,7 +3697,7 @@ const HUD = {
       if (s.ult.textContent !== uTxt) { s.ult.textContent = uTxt; s.ult.classList.toggle('ready', full); }
       if (full && !f.ultAnnounced && f.human && G.mode?.phase === 'fight') { f.ultAnnounced = true; HUD.banner('ULTIMATE READY', `${f.name}: press ${ultKey(dev)}`); Audio.announce('Ultimate ready!'); }
       if (!full) f.ultAnnounced = false;
-      const kh = f.human && dev ? helpFor(dev).map(([a, k]) => `<span>${a === 'ULTIMATE' ? '<b>ULT</b>' : a} <kbd>${k}</kbd></span>`).join('') : '';
+      const kh = f.human && dev && dev !== 'touch' ? helpFor(dev).map(([a, k]) => `<span>${a === 'ULTIMATE' ? '<b>ULT</b>' : a} <kbd>${k}</kbd></span>`).join('') : '';
       if (s.keys._h !== kh) { s.keys._h = kh; s.keys.innerHTML = kh; }
       s.minis.innerHTML = s.g.minis ? s.g.minis() : '';
     }
@@ -3981,6 +4048,7 @@ const MENU = {
   show(html, opts = {}) {
     const m = $('#menu'); m.innerHTML = ''; const s = el('div', 'screen' + (opts.clear ? ' clear' : ''), html); m.appendChild(s); this.current = { el: s, back: opts.back, onKey: opts.onKey };
     s.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', e => { Audio.init(); Audio.resume(); opts.actions?.[b.dataset.act]?.(b.dataset.arg, b, e); }));
+    if (IS_TOUCH && opts.back && !s.querySelector('[data-act=back]')) { const bb = el('button', 'btn small inline', '◀ Back'); bb.addEventListener('click', () => opts.back()); s.appendChild(bb); } // no Esc key on a phone
     const first = s.querySelector('.btn:not(.locked)') || s.querySelector('.btn'); this.focus(first); return s;
   },
   focus(b) { if (!this.current) return; this.current.el.querySelectorAll('.btn.focus').forEach(x => x.classList.remove('focus')); if (b) { b.classList.add('focus'); b.scrollIntoView({ block: 'nearest' }); } this.focused = b; },
@@ -4031,7 +4099,7 @@ const MENU = {
   },
   // --- screens ---------------------------------------------------------------------
   title() {
-    this.show(`<h1 class="disp">${GAME_TITLE}</h1><p class="disp" style="font-size:22px;margin:0 0 18px">Two monsters. One city.</p><button class="btn disp" data-act="go">Press Enter / A to stomp in</button><p class="muted">Best with two gamepads — or share one keyboard (left half vs right half).</p>`, { actions: { go: () => { Audio.init(); Audio.resume(); this.main(); } } });
+    this.show(`<h1 class="disp">${GAME_TITLE}</h1><p class="disp" style="font-size:22px;margin:0 0 18px">Two monsters. One city.</p><button class="btn disp" data-act="go">${IS_TOUCH ? 'Tap to stomp in' : 'Press Enter / A to stomp in'}</button><p class="muted">${IS_TOUCH ? 'Touch controls: drag the left side to move, buttons on the right to fight.' : 'Best with two gamepads — or share one keyboard (left half vs right half).'}</p>`, { actions: { go: () => { Audio.init(); Audio.resume(); if (IS_TOUCH) { try { const d = document.documentElement, fs = d.requestFullscreen || d.webkitRequestFullscreen; const pr = fs && fs.call(d); if (pr && pr.then) pr.then(() => screen.orientation?.lock?.('landscape').catch(() => { })).catch(() => { }); } catch (e) { } } this.main(); } } });
     CAM.mode = 'flyover';
   },
   main() {
@@ -4062,21 +4130,22 @@ const MENU = {
       check() { if (S.players.every(p => p.ready || p.ctrl === 'cpu')) { S.players.forEach(p => { if (p.ctrl === 'cpu' && S.tag && p.picks.length < 2) { p.picks = [ids[p.idx], pick(ROSTER_ORDER)]; p.skins = [0, 0]; } }); setTimeout(() => MENU.afterSelect(S), 500); } },
       render: () => this.renderSelect(S),
     };
-    const defaults = ['kbL', 'cpu', 'cpu', 'cpu']; if (pads.length) defaults[0] = 'pad' + pads[0]; if (kind === 'training') defaults[1] = 'cpu';
+    const defaults = [IS_TOUCH ? 'touch' : 'kbL', 'cpu', 'cpu', 'cpu']; if (pads.length) defaults[0] = 'pad' + pads[0]; if (kind === 'training') defaults[1] = 'cpu';
     const unl = ids.filter(id => isMonsterUnlocked(id)); for (let i = 0; i < n; i++) S.players.push({ slot: i, ctrl: defaults[i], diff: 'normal', idx: ids.indexOf(unl[i % unl.length]), skin: 0, ready: false, picks: [], skins: [] });
     if (kind === 'arcade' || kind === 'training') S.players.length = kind === 'training' ? 2 : 1;
     this.openPodium(kind === 'arcade' ? 1 : n); this.renderSelect(S);
   },
   renderSelect(S) {
     const m = $('#menu'); m.innerHTML = ''; this.current = null;
-    const top = el('div', 'screen clear', `<h2 class="disp" style="text-align:center;font-size:42px">${{ versus: 'Versus', tag: 'Tag Team — pick two each', arcade: 'Arcade', derby: 'Destruction Derby', koth: 'King of the Hill', rumble: 'Rampage Rumble', training: 'Training' }[S.kind]}</h2><p class="muted" style="text-align:center">Left/Right: monster · Up/Down: skin · Light / Enter: confirm · Heavy: back · Esc: menu</p>`);
+    const top = el('div', 'screen clear', `<h2 class="disp" style="text-align:center;font-size:42px">${{ versus: 'Versus', tag: 'Tag Team — pick two each', arcade: 'Arcade', derby: 'Destruction Derby', koth: 'King of the Hill', rumble: 'Rampage Rumble', training: 'Training' }[S.kind]}</h2><p class="muted" style="text-align:center">${IS_TOUCH ? 'Tap ◀ ▶ to pick a monster, then Confirm' : 'Left/Right: monster · Up/Down: skin · Light / Enter: confirm · Heavy: back · Esc: menu'}</p>${IS_TOUCH ? '<button class="btn small inline" data-k="menu" style="pointer-events:auto;position:fixed;left:8px;top:8px">◀ Menu</button>' : ''}`);
+    top.querySelector('[data-k=menu]')?.addEventListener('click', () => { this.selState = null; this.main(); });
     top.style.cssText = 'position:fixed;top:10px;left:0;right:0;pointer-events:none'; m.appendChild(top);
     const W = S.players.length > 2 ? 23 : 44;
     S.players.forEach((p, i) => {
       const id = S.ids[p.idx], d = resolveMonster(id, p.skin), locked = !isMonsterUnlocked(id), native = ROSTER[id];
       const panel = el('div', 'selpanel ' + (i % 2 ? 'p1' : 'p0')); panel.style.width = W + 'vw'; if (S.players.length > 2) { panel.style.left = (2 + i * 24.5) + 'vw'; panel.style.right = 'auto'; }
       const stat = (lbl, v) => `<div class="muted">${lbl}</div><div class="statbar"><i style="width:${clamp(v, 0, 1) * 100}%"></i></div>`;
-      panel.innerHTML = `<div class="row" style="justify-content:space-between"><b class="disp">P${i + 1}</b><span><button class="btn small inline" data-k="ctrl">${p.ctrl === 'cpu' ? 'CPU' : p.ctrl.startsWith('pad') ? 'Gamepad ' + (+p.ctrl.slice(3) + 1) : KEYMAPS[p.ctrl].label}</button>${p.ctrl === 'cpu' ? `<button class="btn small inline" data-k="diff">${p.diff}</button>` : ''}</span></div>
+      panel.innerHTML = `<div class="row" style="justify-content:space-between"><b class="disp">P${i + 1}</b><span><button class="btn small inline" data-k="ctrl">${ctrlLabel(p.ctrl)}</button>${p.ctrl === 'cpu' ? `<button class="btn small inline" data-k="diff">${p.diff}</button>` : ''}</span></div>
         <div class="big disp">${locked ? '🔒 ' : ''}${d.name}</div><div class="muted">${d.style} · ${native ? native.skins[p.skin]?.name || '' : 'Custom'}${locked ? ` · ${PRICES.monsters[id]} pts to unlock` : ''}</div>
         <div style="font-size:13px;margin:6px 0">${native ? native.blurb : 'A Monster Lab creation.'}</div>
         ${stat('Health', d.stats.hp / 1500)}${stat('Speed', d.stats.speed / 1.4)}${stat('Power', d.stats.dmg * d.stats.grapple / 1.6)}
@@ -4084,7 +4153,7 @@ const MENU = {
         ${S.tag ? `<div>Team: ${p.picks.map(x => resolveMonster(x).name).join(' + ') || '—'}</div>` : ''}
         <div class="row" style="margin-top:6px"><button class="btn small inline" data-k="prev">◀</button><button class="btn small inline" data-k="next">▶</button><button class="btn small inline" data-k="skin">Skin</button><button class="btn small inline" data-k="ok">${p.ready ? '✔ READY' : locked ? 'Unlock' : 'Confirm'}</button></div>`;
       panel.querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => { Audio.init(); const k = b.dataset.k;
-        if (k === 'ctrl') { const opts = ['kbL', 'kbR', ...connectedPads().map(x => 'pad' + x), 'cpu'].filter(o => !(S.kind === 'arcade' && o === 'cpu')); p.ctrl = opts[(opts.indexOf(p.ctrl) + 1) % opts.length]; p.ready = false; }
+        if (k === 'ctrl') { const opts = [...(IS_TOUCH ? ['touch'] : []), 'kbL', 'kbR', ...connectedPads().map(x => 'pad' + x), 'cpu'].filter(o => !(S.kind === 'arcade' && o === 'cpu')); p.ctrl = opts[(opts.indexOf(p.ctrl) + 1) % opts.length]; p.ready = false; }
         if (k === 'diff') p.diff = { easy: 'normal', normal: 'hard', hard: 'easy' }[p.diff]; if (k === 'prev') S.cycle(p, -1); if (k === 'next') S.cycle(p, 1); if (k === 'skin') S.skin(p, 1); if (k === 'ok') S.confirm(p); S.render(); }));
       m.appendChild(panel);
       this.setPodium(S.kind === 'arcade' ? 0 : i, d, true);
@@ -4347,7 +4416,7 @@ let lastNow = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const rdt = Math.min(0.05, (now - lastNow) / 1000); lastNow = now; G.realTime += rdt; G.frame++;
-  MenuInput.poll(); BENCH.frame(rdt);
+  MenuInput.poll(); BENCH.frame(rdt); TOUCH.update();
   if (REPLAY.playing) { REPLAY.update(rdt); FX.update(rdt * 0.55, rdt); G.arena?.update(rdt * 0.55); render(); DEBUG.update(rdt); return; }
   let ts = 1; if (G.slowmo) { G.slowmo.t += rdt; ts = G.slowmo.scale; if (G.slowmo.t >= G.slowmo.dur) G.slowmo = null; }
   R.bokeh.enabled = !!(G.slowmo && G.slowmo.dof) || CAM.mode === 'photo';
@@ -4374,14 +4443,14 @@ function simStep(dt, rdt) {
   }
 }
 function render() { R.renderer.info.reset(); R.composer.render(); }
-window.__K = { spawnProjectile, G, CONFIG, BALANCE, ROSTER, ARENA_DEFS, VersusMatch, TagMatch, DerbyMatch, KothMatch, RumbleMatch, TrainingMatch, ARCADE, REPLAY, PHYS, MENU, SETPIECES, ARMY, Fighter, AIController, loadArena, SIM, PROFILE: () => PROFILE, award, resolveMonster };
+window.__K = { TOUCH, spawnProjectile, G, CONFIG, BALANCE, ROSTER, ARENA_DEFS, VersusMatch, TagMatch, DerbyMatch, KothMatch, RumbleMatch, TrainingMatch, ARCADE, REPLAY, PHYS, MENU, SETPIECES, ARMY, Fighter, AIController, loadArena, SIM, PROFILE: () => PROFILE, award, resolveMonster };
 // debug helper: advance n simulation steps without rendering (used by automated tests)
 window.__step = (n = 30, dt = 1 / 30) => { const t0 = performance.now(); for (let i = 0; i < n; i++) { if (!G.inMatch || !G.mode) break; if (G.slowmo) { G.slowmo.t += dt; if (G.slowmo.t >= G.slowmo.dur) G.slowmo = null; } G.hitstop = 0; simStep(dt, dt); FX.update(dt, dt); G.arena?.update(dt); for (const f of G.fighters) f.render(dt); CAM.update(dt); } return (performance.now() - t0) / n; };
 async function boot() {
   loadProfile();
   if (QS.get('sim') === 'balance') { $('#loading').textContent = 'Running balance simulator…'; FX = NOOP; G.headless = true; setTimeout(() => { $('#loading').remove(); SIM.main(); }, 30); return; }
   try { await RAPIER.init(); PHYS.available = true; } catch (e) { console.warn('Rapier unavailable, debris physics off', e); }
-  initRender(); FX = FXImpl; FX.init(); $('#loading').remove(); window.__G = G;
+  initRender(); setQuality(PROFILE.settings.quality); FX = FXImpl; FX.init(); $('#loading').remove(); window.__G = G; TOUCH.init();
   addEventListener('pointerdown', () => { Audio.init(); Audio.resume(); }, { once: false });
   const b = QS.get('bench'); if (b) { G.debug = true; Audio.init(); BENCH.start(b); } else { loadArena('halcyon'); MENU.title(); }
   requestAnimationFrame(frame);
