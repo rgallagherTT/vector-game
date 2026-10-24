@@ -378,7 +378,7 @@ const CONFIG = {
     jump: 8.6, tkJump: 22, tkJumpCost: 16, gravity: -24, coyote: 0.12,
     hp: 100, hpRegen: 7, regenDelay: 5, dodgeSpeed: 26, dodgeTime: 0.18, dodgeCost: 10, dodgeCd: 0.55,
   },
-  camera: { fov: 64, aimFov: 54, dist: 4.9, aimDist: 3.3, height: 1.65, shoulder: 0.95, aimShoulder: 1.15, sens: 0.0023, padSens: 3.1, follow: 14 },
+  camera: { fov: 64, aimFov: 54, dist: 4.9, aimDist: 3.3, height: 1.65, shoulder: 0.95, aimShoulder: 1.15, sens: 0.0013, padSens: 2.2, follow: 14 },
   tk: {
     range: 26, pullRange: 70, liftBase: 1800, gripMax: 100, gripRegen: 34, gripDrainK: 26,
     holdDist: 3.6, holdHeight: 1.6, stiffBase: 9, throwBase: 38, chargeTime: 0.8, chargeMin: 0.75, chargeMax: 1.35,
@@ -3451,7 +3451,7 @@ const CamRig = {
   dist: CONFIG.camera.dist, shoulder: CONFIG.camera.shoulder, fov: CONFIG.camera.fov, pos: V3(), look: V3(), aimPoint: V3(), aimHit: null,
   update(dt) {
     if (G.mode === 'photo' || G.mode === 'replay') return;
-    const C = CONFIG.camera; const aiming = TK.holding || TK.pulling || Input.down('throw') || Catch.active;
+    const C = CONFIG.camera; const aiming = TK.holding || TK.pulling || (Input.down('throw') && G.hero !== 'thread') || Catch.active;
     const targetDist = (this.dMul || 1) * (aiming ? C.aimDist : C.dist) * (TK.held && TK.held.mass > 6000 ? 1.6 : TK.held && TK.held.mass > 2500 ? 1.25 : 1);
     this.dist = damp(this.dist, targetDist, 7, dt);
     this.shoulder = damp(this.shoulder, aiming ? C.aimShoulder : C.shoulder, 7, dt);
@@ -8762,7 +8762,7 @@ const Threads = (() => {
   // fire: a bright tip streaks out to the target, the line spooling out behind it with a wave
   function fire(kind, from, to, normal, onBite) {
     const r = get(kind); r.state = 'fire'; r.b.copy(from); r.a.copy(to); r.an.copy(normal || UP); r.onBite = onBite; r.tipT = 0;
-    r.dur = clamp(from.distanceTo(to) / 260, 0.05, 0.22); r.len = from.distanceTo(to);
+    r.dur = clamp(from.distanceTo(to) / 480, 0.035, 0.1); r.len = from.distanceTo(to);
     for (let i = 0; i < ROPE_N; i++) { r.p[i].copy(from); r.q[i].copy(from); }
     sfx.zip(); return r;
   }
@@ -8787,7 +8787,7 @@ const Threads = (() => {
   function free(r) { r.state = 'idle'; r.alpha = 0; r.owner = null; }
   // a neon tint that slides along the thread as it moves through the city
   function neonAt(p, t) {
-    const d = districtAt(p.x, p.z); const k = (Math.sin(p.x * 0.043 + p.y * 0.07 + t * 0.4) + Math.cos(p.z * 0.037 - p.y * 0.05)) * 0.5 + 0.5;
+    const d = districtAt(p.x, p.z); const k = clamp((Math.sin(p.x * 0.043 + p.y * 0.07 + t * 0.4) + Math.cos(p.z * 0.037 - p.y * 0.05)) * 0.25 + 0.5, 0, 0.999) || 0;
     const i = Math.floor(k * 3.999); const f = k * 4 - i; _c.copy(NEON[i]).lerp(NEON[(i + 1) % 4], f);
     return _c.multiplyScalar((0.22 + d.neon * 0.35) * clamp(1 - (p.y - 30) / 120, 0.25, 1));
   }
@@ -8961,11 +8961,11 @@ const Thread = {
       if (p.distanceTo(c) > maxL || p.y < 2 || !this.anchorOK(p)) return null; return { pos: p.addScaledVector(h.normal, 0.04), n: V3(h.normal.x, h.normal.y, h.normal.z) };
     }
     const f = this.camFwd(); f.y = 0; if (f.lengthSq() < 0.01) f.set(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)); f.normalize();
-    const hv = Math.hypot(P.vel.x, P.vel.z); const vdir = hv > 4 ? V3(P.vel.x / hv, 0, P.vel.z / hv) : f; const fw = f.clone().lerp(vdir, 0.3).normalize();
-    const want = V3(c.x + fw.x * (13 + hv * 0.45), Math.max(c.y + 13, 15), c.z + fw.z * (13 + hv * 0.45));
+    const hv = Math.hypot(P.vel.x, P.vel.z); const vdir = hv > 4 ? V3(P.vel.x / hv, 0, P.vel.z / hv) : f; const fw = f.clone().lerp(vdir, 0.35).normalize();
+    const ahead = 16 + Math.min(hv, 45) * 0.5; const want = V3(c.x + fw.x * ahead, clamp(c.y + 12, 18, 40), c.z + fw.z * ahead);
     const cands = [];
     const consider = (p, n, bonus, kind) => {
-      const d = p.distanceTo(c); if (d < 6 || d > maxL) return; if (p.y - c.y < (kind === 'lamp' ? 1.5 : 3.5)) return;
+      const d = p.distanceTo(c); if (d < 7 || d > maxL) return; if (p.y - c.y < (kind === 'lamp' ? 2 : 5)) return;
       const dx = p.x - c.x, dz = p.z - c.z; const hd = Math.hypot(dx, dz) || 1; const fwd = (dx * fw.x + dz * fw.z) / hd; if (fwd < 0.12 && hd > 3) return;
       cands.push({ pos: p, n, s: p.distanceTo(want) - bonus - Math.min(12, (p.y - c.y)) * 0.25 - fwd * 4, kind });
     };
@@ -8999,7 +8999,9 @@ const Thread = {
     if (this.swing) this.releaseSwing(true);
     this.armSide = -this.armSide;
     const r = Threads.fire('swing', this.hand(V3()), A.pos, A.n, rr => this.bite(rr, A));
-    this.rope = r; this.shootT = 0; this.state = this.state === 'ground' || this.state === 'perch' ? 'air' : this.state; if (Player.grounded && this.state === 'air') Player.vel.y = Math.max(Player.vel.y, 5);
+    this.rope = r; this.shootT = 0;
+    const P = Player; if (P.grounded || this.state === 'perch') { const f = V3().subVectors(A.pos, P.pos).setY(0).normalize(); P.vel.x += f.x * 6; P.vel.z += f.z * 6; P.vel.y = Math.max(P.vel.y, 12); P.grounded = false; this.perch = null; this.moveBy(0, 0.25, 0, true); P.grounded = false; P.fallStartY = P.pos.y; }
+    this.state = 'air';
     if (this.trick) this.twistT = 0.2;
     return true;
   },
@@ -9008,12 +9010,14 @@ const Thread = {
     const c = this.center(); const d = c.distanceTo(A.pos);
     // the arc has to clear whatever is under it: reel the thread in until the bottom of the swing is off the ground
     const P0 = Player; let floor = P0.grounded ? P0.pos.y : 0; if (!P0.grounded) { const h = castRay(c.x, c.y, c.z, 0, -1, 0, 80, GROUPS.losStatic, P0.body); if (h) floor = c.y - h.toi; }
-    const target = clamp(Math.min(d * 0.97, A.pos.y - floor - 1.7), 4, this.maxLen());
+    const so0 = A.n && Math.abs(A.n.y) < 0.5 ? V3(A.n.x, 0, A.n.z).normalize().multiplyScalar(1.3) : V3();
+    const target = clamp(Math.min(d * 0.94, A.pos.y - floor - 3.2), 5, this.maxLen());
     const so = A.n && Math.abs(A.n.y) < 0.5 ? V3(A.n.x, 0, A.n.z).normalize().multiplyScalar(1.3) : V3();
     this.swing = { piv: [], anchor: A.pos.clone(), pivot: A.pos.clone().add(so), L: Math.min(d, this.maxLen()), target, t: 0, laser: Counters.laser(A.pos) ? 0.35 : -1, kind: A.kind };
     this.state = 'swing'; Tut.done('swing');
     // from the ground the thread yanks you up into the arc
-    const P = Player; if (P.grounded) { const to = V3().subVectors(A.pos, c).normalize(); P.vel.x += to.x * 9; P.vel.z += to.z * 9; P.vel.y = Math.max(P.vel.y, 9); P.grounded = false; this.moveBy(0, 0.15, 0, true); P.grounded = false; }
+    const P = Player; { const to = V3().subVectors(A.pos.clone().add(so0), c); const dd = to.length(); to.divideScalar(dd); const yank = clamp((dd - target) * 3.2, 0, 26); P.vel.addScaledVector(to, yank); if (P.grounded) { P.vel.y = Math.max(P.vel.y, 10); P.grounded = false; this.moveBy(0, 0.2, 0, true); P.grounded = false; } }
+    Shake.add(0.06);
     if (this.airT > 0.1 || !Player.grounded) { this.chain++; this.addStyle(1, this.chain > 1 ? 'CHAIN ×' + this.chain : null); if (this.chain >= 10) Challenges.flag('chain10'); }
     if (this.trick) this.twistT = 0.2;
     this.swingCount++;
@@ -9028,9 +9032,9 @@ const Thread = {
     const piv = S.piv.length ? S.piv[S.piv.length - 1] : S.pivot; const c = this.center();
     const ang = Math.atan2(v.y, Math.hypot(v.x, v.z));
     const perfect = v.y > 2 && sp > 11 && ang > 0.3 && ang < 1.05 && c.y > piv.y - S.L * 0.8;
-    if (sp > 3) { const k = (2.5 + Prog.level('swing') * 0.6) / sp; v.x += v.x * k; v.z += v.z * k; v.y += 3.2; }
+    { const hv = Math.hypot(v.x, v.z) || 1; const boost = 5 + Prog.level('swing') * 0.8; v.x += v.x / hv * boost; v.z += v.z / hv * boost; v.y = Math.max(v.y, 0) * 0.6 + 5.5; }
     if (perfect) {
-      v.multiplyScalar(1.24); v.y += 3.5; this.perfectRun++; Stats.perfects = (Stats.perfects || 0) + 1; Records.bump('perfects', Stats.perfects); if (this.perfectRun >= 5) Challenges.flag('perfect5');
+      v.x *= 1.15; v.z *= 1.15; v.y += 3; this.perfectRun++; Stats.perfects = (Stats.perfects || 0) + 1; Records.bump('perfects', Stats.perfects); if (this.perfectRun >= 5) Challenges.flag('perfect5');
       Rings.spawn(c.clone(), 2.6, '#ffd36a', 0.45); FX.glow(c, 1.8, 3, 2.2, 0.7, 0.15); this.addStyle(2, 'PERFECT RELEASE'); this.refill(10); Audio.ui(2.2);
     }
     Tut.done('release');
@@ -9055,19 +9059,28 @@ const Thread = {
       else if (S.piv.length) { const prev = S.piv.length > 1 ? S.piv[S.piv.length - 2] : S.pivot; const e = V3().subVectors(prev, c); const LL = e.length(); e.divideScalar(LL); const h2 = castRay(c.x, c.y, c.z, e.x, e.y, e.z, LL, GROUPS.losStatic, P.body); if (!h2 || h2.toi > LL - 0.6) { S.L += piv.distanceTo(prev); S.piv.pop(); piv = prev; } } }
     const [mx, my] = Input.move();
     const camF = V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), camR = V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw));
-    const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx);
-    const toP = V3().subVectors(c, piv); const dist = toP.length(); const n = toP.clone().divideScalar(dist || 1);
-    // pump: input along the tangent of the arc
-    const wt = wish.clone().addScaledVector(n, -wish.dot(n)); v.addScaledVector(wt, (8 + Prog.level('swing') * 1.5) * dt);
-    v.y += -26 * dt; v.multiplyScalar(1 - 0.03 * dt);
-    // reel in (SPACE) / let out (CTRL)
-    const reel = 11 + Prog.level('reel') * 3;
-    if (S.target != null) { if (S.L > S.target) S.L = Math.max(S.target, S.L - 34 * dt); else S.target = null; }
-    if (Input.down('jump')) { S.L = Math.max(3, S.L - reel * dt); v.addScaledVector(n, -2 * dt); }
-    if (Input.keys.ControlLeft || Input.keys.KeyC) S.L = Math.min(this.maxLen(), S.L + reel * 0.8 * dt);
-    let np = c.clone().addScaledVector(v, dt); const dd = V3().subVectors(np, piv); const dl = dd.length(); let tension = 0;
-    if (dl > S.L) { dd.divideScalar(dl); np = piv.clone().addScaledVector(dd, S.L); const vr = v.dot(dd); if (vr > 0) { v.addScaledVector(dd, -vr); tension = clamp(vr / 20, 0, 1); } tension = Math.max(tension, 0.4); }
-    const sp = v.length(); if (sp > 62) v.multiplyScalar(62 / sp);
+    const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx); const steer = wish.lengthSq() > 0.04 ? wish.normalize() : camF;
+    const reel = 14 + Prog.level('reel') * 4;
+    if (S.target != null) { if (S.L > S.target) S.L = Math.max(S.target, S.L - 45 * dt); else S.target = null; }
+    if (Input.down('jump')) S.L = Math.max(4, S.L - reel * dt);
+    if (Input.keys.ControlLeft || Input.keys.KeyC) S.L = Math.min(this.maxLen(), S.L + reel * dt);
+    // integrate the pendulum in small fixed steps: heavy gravity, a hard rope, and a push along the arc
+    // toward where you're steering (strongest through the bottom of the swing, where the speed is built)
+    const p = c.clone(); let tension = 0; const n = V3(); const tang = V3();
+    const steps = Math.max(1, Math.ceil(dt / (1 / 120))); const h = dt / steps;
+    for (let k = 0; k < steps; k++) {
+      n.subVectors(p, piv); const dist = n.length(); n.divideScalar(dist || 1);
+      v.y -= 36 * h;
+      const below = clamp(-n.y, 0, 1);
+      tang.copy(steer).addScaledVector(n, -steer.dot(n)); v.addScaledVector(tang, (7 + 15 * below * below + Prog.level('swing') * 2.5) * h);
+      // swing toward the camera: bend the horizontal velocity round to where you're looking
+      const hv = Math.hypot(v.x, v.z); if (hv > 2) { const cur = Math.atan2(v.x, v.z), want = Math.atan2(steer.x, steer.z); const nh = cur + clamp(angDiff(cur, want), -2.4 * h, 2.4 * h); v.x = Math.sin(nh) * hv; v.z = Math.cos(nh) * hv; }
+      p.addScaledVector(v, h);
+      const dd = V3().subVectors(p, piv); const dl = dd.length();
+      if (dl > S.L) { dd.divideScalar(dl); p.copy(piv).addScaledVector(dd, S.L); const vr = v.dot(dd); if (vr > 0) { v.addScaledVector(dd, -vr); tension = Math.max(tension, clamp(vr / 15, 0.4, 1)); } else tension = Math.max(tension, 0.4); }
+    }
+    let np = p;
+    const sp = v.length(); const cap = 44 + Prog.level('swing') * 2; if (sp > cap) v.multiplyScalar(cap / sp);
     Records.bump('topSwing', sp);
     this.moveBy(np.x - c.x, np.y - c.y, np.z - c.z, true);
     if (this.rope) { this.rope.tension = tension; this.rope.piv = S.piv.slice(); this.hand(this.rope.b); this.rope.a.copy(S.anchor); }
@@ -9077,7 +9090,14 @@ const Thread = {
     this.pr.material.opacity = damp(this.pr.material.opacity, inWin ? (this.focusOn ? 0.9 : 0.35) : 0, 14, dt); this.pr.position.copy(this.center()); this.pr.quaternion.copy(camera.quaternion);
     Threads.sfx.thrum(clamp(sp / 45, 0.05, 1) * (0.6 + tension * 0.4));
     if (!Input.down('throw')) { this.releaseSwing(false); return; }
-    if (P.grounded && v.y <= 0.5 && S.t > 0.35) { this.releaseSwing(true); this.state = 'ground'; this.land(); }
+    { const hx = c.x - piv.x, hz = c.z - piv.z; const past = hx * steer.x + hz * steer.z; const fwdV = v.x * steer.x + v.z * steer.z;
+      // holding on: once you've swung through and out ahead of the anchor, let go at the top of the rise and fire the next one
+      if (S.t > 0.4 && past > S.L * 0.35 && fwdV > 0 && (v.y < 5 || c.y > piv.y - S.L * 0.35)) { this.releaseSwing(false); this.refireT = 0.06; return; }
+      // snagged on a wall or dragging at the bottom: pop free and fire again
+      if (v.length() < 7 && S.t > 0.35) { S.stall = (S.stall || 0) + dt; if (S.stall > 0.25) { this.releaseSwing(true); this.state = 'air'; v.y = Math.max(v.y, 11); v.x += steer.x * 8; v.z += steer.z * 8; this.refireT = 0.15; return; } } else S.stall = 0;
+      // swung backwards (you turned round): let go and re-fire ahead
+      if (S.t > 0.8 && fwdV < -4 && past < -S.L * 0.2) { this.releaseSwing(false); this.refireT = 0.06; return; } }
+    if (P.grounded && v.y <= 0.5 && S.t > 0.3) { this.releaseSwing(true); this.state = 'ground'; this.land(); }
   },
   // move the player body by a displacement through the character controller, with collision response
   moveBy(dx, dy, dz, air) {
@@ -9112,7 +9132,8 @@ const Thread = {
     if (this.stunT > 0) this.stunT -= dt;
     // fire a thread (hold RMB). Firing again mid-flight chains the swing.
     const busy = this.zip || this.hang || this.sling || (this.tether && this.tether.swing);
-    if (!busy && Input.tap('throw') && this.state !== 'swing') this.fireSwing();
+    this.refireT = (this.refireT || 0) - dt;
+    if (!busy && this.state !== 'swing' && !(this.rope && this.rope.state === 'fire') && (Input.tap('throw') || (Input.down('throw') && this.refireT <= 0 && (!Player.grounded || this.landT <= 0)))) { if (!this.fireSwing()) this.refireT = 0.25; }
     if (this.rope && this.rope.state === 'fire' && !Input.down('throw') && this.shootT > 0.05) { Threads.release(this.rope); this.rope = null; }
     if (this.state === 'swing' && this.swing) { this.updateSwing(dt); this.after(dt); return; }
     if (this.zip) { this.updateZip(dt); this.after(dt); return; }
@@ -9132,7 +9153,7 @@ const Thread = {
       if (this.chain > 0 || this.style > 0) { this.styleT += dt; if (this.styleT > 0.35) this.bankStyle(); }
     } else {
       this.airT += dt; Records.bump('airTime', this.airT);
-      v.y += -24 * dt;
+      v.y += -(v.y > 0 ? 30 : 36) * dt; if (v.y < -50) v.y = -50;
       if (has) { const w = wish.clone().normalize(); v.x += w.x * 9 * dt; v.z += w.z * 9 * dt; }
       // glide: the scarf and coat catch the air (hold SPACE while falling)
       if (Input.down('jump') && v.y < -3 && !this.trick) { v.y = damp(v.y, -5.5, 6, dt); const hv = Math.hypot(v.x, v.z); const f = has ? wish.clone().normalize() : V3(v.x, 0, v.z).normalize(); if (hv < 15) { v.x += f.x * 8 * dt; v.z += f.z * 8 * dt; } this.glideT = 0.2; }
@@ -10242,7 +10263,7 @@ const Mobile = (() => {
     left.addEventListener('touchend', endStick); left.addEventListener('touchcancel', endStick);
     // right: drag to look
     right.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; lookId = t.identifier; lookX = t.clientX; lookY = t.clientY; Audio.unlock(); }, { passive: false });
-    right.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === lookId) { Input.look((t.clientX - lookX) * 1.7, (t.clientY - lookY) * 1.7); lookX = t.clientX; lookY = t.clientY; } }, { passive: false });
+    right.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === lookId) { Input.look((t.clientX - lookX) * 0.75, (t.clientY - lookY) * 0.75); lookX = t.clientX; lookY = t.clientY; } }, { passive: false });
     const endLook = e => { for (const t of e.changedTouches) if (t.identifier === lookId) lookId = null; };
     right.addEventListener('touchend', endLook); right.addEventListener('touchcancel', endLook);
   }
