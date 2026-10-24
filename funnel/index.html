@@ -12,7 +12,7 @@
   --font:"Arial Black","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:#f3d9a6;color:var(--ink);font-family:var(--font);user-select:none;-webkit-user-select:none;touch-action:none}
+html,body{margin:0;height:100%;overflow:hidden;-webkit-touch-callout:none;overscroll-behavior:none;background:#f3d9a6;color:var(--ink);font-family:var(--font);user-select:none;-webkit-user-select:none;touch-action:none}
 #view{position:fixed;inset:0}
 #view canvas{display:block;width:100%;height:100%}
 .hidden{display:none!important}
@@ -87,18 +87,27 @@ button.ghost{background:rgba(255,255,255,.18);color:var(--ink);border-bottom-col
 #endTitle{font-size:clamp(30px,6vw,52px)!important;color:#fff}
 /* touch */
 #touch{position:fixed;inset:0;pointer-events:none}
-#stick{position:absolute;width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;border:3px solid rgba(255,255,255,.5);background:rgba(40,30,50,.25)}
-#knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,255,255,.75)}
-.tbtn{position:absolute;width:84px;height:84px;border-radius:50%;background:rgba(255,207,63,.85);color:#3a2108;display:flex;align-items:center;justify-content:center;font-size:14px;pointer-events:auto;border:3px solid rgba(255,255,255,.6)}
-#tSurge{right:max(18px,env(safe-area-inset-right));bottom:120px}
-#tFling{right:max(112px,calc(env(safe-area-inset-right) + 94px));bottom:40px;background:rgba(255,120,80,.85)}
+#stick{position:absolute;width:var(--sk,130px);height:var(--sk,130px);margin:calc(var(--sk,130px) / -2) 0 0 calc(var(--sk,130px) / -2);border-radius:50%;border:3px solid rgba(255,255,255,.55);background:rgba(40,30,50,.28)}
+#knob{position:absolute;left:50%;top:50%;width:46%;height:46%;margin:-23% 0 0 -23%;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#stickGhost{position:absolute;width:var(--sk,130px);height:var(--sk,130px);border-radius:50%;border:3px dashed rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;letter-spacing:.08em;color:#fff;opacity:.8;transition:opacity .4s;pointer-events:none}
+#stickGhost.used{opacity:.22}#stickGhost.used span{display:none}
+.tbtn{position:absolute;width:84px;height:84px;border-radius:50%;background:rgba(255,207,63,.88);color:#3a2108;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;letter-spacing:.06em;pointer-events:auto;border:3px solid rgba(255,255,255,.65);box-shadow:0 3px 10px rgba(0,0,0,.25);overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent}
+.tbtn b{font-size:1.9em;line-height:1}.tbtn.down{transform:scale(.92);filter:brightness(1.15)}
+.tbtn .cd{position:absolute;inset:0;background:conic-gradient(rgba(0,0,0,.45) var(--p,0%),transparent 0);pointer-events:none}
+#tFling{background:rgba(255,120,80,.88)}#tFling.empty{opacity:.45}
 #tPause{right:max(14px,env(safe-area-inset-right));top:170px;width:48px;height:48px;font-size:18px;background:rgba(40,30,50,.55);color:#fff}
 #debug{position:fixed;left:8px;top:120px;font:12px/1.5 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.6);color:#9f9;padding:6px 9px;border-radius:6px;white-space:pre;pointer-events:none;text-shadow:none}
 #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;background:#f3d9a6;color:#3a2108}
 @media (max-width:640px){#minimap{width:92px;height:92px}#tc{left:max(14px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 84px);transform:none;text-align:left}#nextBox{display:none}#tl{width:56vw}
-  #bc{width:calc(100vw - 32px)}#surgeBox{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 66px)}#tSurge{bottom:230px}#tFling{right:max(18px,env(safe-area-inset-right));bottom:130px}}
+  #bc{width:calc(100vw - 32px)}#surgeBox{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 66px)}}
 
 /* ---- Stage 2 UI ---- */
+body.touch #surgeBox{display:none}
+body.touch #powersHud{transform:none;left:0;top:0;right:auto;bottom:auto;width:100%;height:100%;display:block;pointer-events:none}
+body.touch #powersHud .pw{position:absolute;pointer-events:auto;touch-action:none;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+body.touch #toasts{right:auto;left:50%;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 120px);transform:translateX(-50%);align-items:center}
+body.touch #bc{width:min(340px,42vw)}
+@media (max-width:640px){body.touch #bc{width:calc(100vw - 32px)}#tc{left:auto!important;right:max(14px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 146px)!important;text-align:right!important}}
 .mono{font-family:ui-monospace,Menlo,monospace}
 #ui{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;pointer-events:auto;background:rgba(30,20,40,.35);padding:max(14px,env(safe-area-inset-top)) 12px 30px}
 #ui.clear{background:transparent}
@@ -200,7 +209,7 @@ textarea{width:100%;min-height:120px;font:12px ui-monospace,monospace;border-rad
 <div id="toasts"></div>
 <div id="banner" class="hidden"><div id="bannerText" class="txt"></div><div id="bannerSub" class="txt"></div></div>
 <div id="ring"></div>
-<div id="touch" class="hidden"><div id="stick" class="hidden"><div id="knob"></div></div><div class="tbtn" id="tSurge">SURGE</div><div class="tbtn" id="tFling">FLING</div><div class="tbtn" id="tPause">II</div></div>
+<div id="touch" class="hidden"><div id="stickGhost"><span>DRAG<br>TO MOVE</span></div><div id="stick" class="hidden"><div id="knob"></div></div><div class="tbtn" id="tSurge"><div class="cd"></div><b>⏩</b>SURGE</div><div class="tbtn" id="tFling"><b>🎯</b>FLING</div><div class="tbtn" id="tPause">II</div></div>
 <div id="ui" class="screen hidden txt"><div id="uiBox"></div></div>
 <div id="photoUI" class="hidden"></div>
 <div id="replayUI" class="hidden"><b>●</b> REPLAY</div>
@@ -920,7 +929,7 @@ function ensureGeo(T) {
 }
 
 // §RENDER ------------------------------------------------------------------------------
-const settings = { master: CONFIG.audio.master, music: CONFIG.audio.music, sfx: CONFIG.audio.sfx, shake: 1, camDist: 1, quality: 'auto', colorblind: false, haptics: true, windPack: 'classic', keys: null };
+const settings = { master: CONFIG.audio.master, music: CONFIG.audio.music, sfx: CONFIG.audio.sfx, shake: 1, camDist: 1, quality: 'auto', colorblind: false, haptics: true, windPack: 'classic', keys: null, touchSide: 'right', touchSize: 1, fullscreen: true };
 const POST = { dof: 1.25 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('funnel.settings') || '{}')); } catch (e) { }
 const saveSettings = () => { try { localStorage.setItem('funnel.settings', JSON.stringify(settings)); } catch (e) { } };
@@ -3507,23 +3516,31 @@ const Input = (() => {
   addEventListener('keyup', e => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  // touch: a floating stick wherever the thumb lands (off the buttons); FLING drags to aim, release throws
+  let flingId = null, fsx = 0, fsy = 0; const flingAim = { x: 0, z: 0, on: false };
+  const skR = () => 60 * (settings.touchSize || 1);
   canvas.addEventListener('pointerdown', e => {
     Audio.init();
     if (PHOTO.on) return;
-    if (e.pointerType === 'touch') { if (stickId === null) { stickId = e.pointerId; sx = e.clientX; sy = e.clientY; const st = $('stick'); st.classList.remove('hidden'); st.style.left = sx + 'px'; st.style.top = sy + 'px'; $('knob').style.transform = ''; } lastDevice = 'touch'; return; }
+    if (e.pointerType === 'touch') { if (stickId === null) { stickId = e.pointerId; sx = e.clientX; sy = e.clientY; const st = $('stick'); st.classList.remove('hidden'); st.style.left = sx + 'px'; st.style.top = sy + 'px'; $('knob').style.transform = ''; $('stickGhost').classList.add('used'); } lastDevice = 'touch'; return; }
     lastDevice = 'mouse'; mx = e.clientX; my = e.clientY;
     if (e.button === 0) mouseL = true; if (e.button === 2) mouseR = true;
   });
   addEventListener('pointermove', e => {
-    if (e.pointerType === 'touch') { if (e.pointerId === stickId) { let dx = e.clientX - sx, dy = e.clientY - sy; const l = Math.hypot(dx, dy), m = 60; if (l > m) { dx *= m / l; dy *= m / l; } stick.x = dx / m; stick.z = dy / m; $('knob').style.transform = `translate(${dx}px,${dy}px)`; } return; }
+    if (e.pointerType === 'touch') {
+      if (e.pointerId === stickId) { let dx = e.clientX - sx, dy = e.clientY - sy; const l = Math.hypot(dx, dy), m = skR(); if (l > m) { dx *= m / l; dy *= m / l; } const n = Math.min(1, l / m), k = n < 0.12 ? 0 : (n - 0.12) / 0.88 / (n || 1); stick.x = dx / m * k; stick.z = dy / m * k; $('knob').style.transform = `translate(${dx}px,${dy}px)`; }
+      if (e.pointerId === flingId) { const dx = e.clientX - fsx, dy = e.clientY - fsy; flingAim.on = Math.hypot(dx, dy) > 14; flingAim.x = dx; flingAim.z = dy; }
+      return;
+    }
     mx = e.clientX; my = e.clientY; if (mouseL || mouseR) lastDevice = 'mouse';
   });
   const endTouch = e => { if (e.pointerId === stickId) { stickId = null; stick.x = stick.z = 0; $('stick').classList.add('hidden'); } };
   addEventListener('pointerup', e => { endTouch(e); if (e.pointerType !== 'touch') { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; } });
   addEventListener('pointercancel', endTouch);
-  const tb = (id, down, up) => { const el = $(id); el.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); Audio.init(); down(); }); if (up) for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, up); };
+  const tick = ms => { if (settings.haptics !== false && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { } };
+  const tb = (id, down, up) => { const el = $(id); el.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); Audio.init(); lastDevice = 'touch'; el.classList.add('down'); try { el.setPointerCapture(e.pointerId); } catch (er) { } tick(8); down(e); }); for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(ev, e => { el.classList.remove('down'); if (up) up(e); }); };
   tb('tSurge', () => { req[0].surge = true; touchSurge = true; }, () => { touchSurge = false; });
-  tb('tFling', () => { flingTouch = true; lastDevice = 'touch'; }, () => { flingTouch = false; });
+  tb('tFling', e => { flingTouch = true; flingId = e.pointerId; fsx = e.clientX; fsy = e.clientY; flingAim.on = false; }, () => { flingTouch = false; flingId = null; flingAim.on = false; });
   tb('tPause', () => onPauseKey());
   function updateMouseWorld() { ndc.set(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); ray.ray.intersectPlane(plane, mouseWorld); mouseWorld.x += ORIGIN.x; mouseWorld.z += ORIGIN.z; }
   function poll() {
@@ -3556,6 +3573,7 @@ const Input = (() => {
     return { x: 0, z: 0 };
   }
   function aim(slot, s) {
+    if (slot === 0 && flingTouch && flingAim.on) return { x: flingAim.x, z: flingAim.z };
     if (slot === 0 && (lastDevice === 'mouse' || mouseR)) { updateMouseWorld(); const dx = mouseWorld.x - s.x, dz = mouseWorld.z - s.z; if (Math.hypot(dx, dz) > 0.5) return { x: dx, z: dz }; }
     const pa = padAim[twoP ? slot : 0]; if (pa.x || pa.z) return { x: pa.x, z: pa.z };
     const m = move(slot, s); if (m.x || m.z) return m;
@@ -3566,8 +3584,9 @@ const Input = (() => {
   const consumeSurge = slot => { const r = req[slot].surge; req[slot].surge = false; return r; };
   const consumePower = (slot, i) => { const r = req[slot].p[i]; req[slot].p[i] = false; return r; };
   const pressPower = (slot, i) => { req[slot].p[i] = true; };
-  function rumble(slot, dur, strong, weak) { try { const pad = pads[twoP ? Math.max(0, slot) : 0]; if (pad && pad.vibrationActuator && settings.haptics !== false) pad.vibrationActuator.playEffect('dual-rumble', { duration: dur * 1000, strongMagnitude: Math.min(1, strong), weakMagnitude: Math.min(1, weak) }); } catch (e) { } }
-  return { poll, move, aim, flingHeld, surgeHeld, consumeSurge, consumePower, pressPower, rumble, keys, setTwo(v) { twoP = v; }, get two() { return twoP; }, capture(cb) { capture = cb; }, get device() { return lastDevice; }, get mouse() { return { x: mx, y: my, l: mouseL, r: mouseR }; } };
+  let lastBuzz = 0;
+  function rumble(slot, dur, strong, weak) { try { if (lastDevice === 'touch' && slot <= 0 && strong >= 0.3 && performance.now() - lastBuzz > 90) { lastBuzz = performance.now(); tick(Math.round(clamp(dur * 1000 * strong * 0.5, 10, 140))); } const pad = pads[twoP ? Math.max(0, slot) : 0]; if (pad && pad.vibrationActuator && settings.haptics !== false) pad.vibrationActuator.playEffect('dual-rumble', { duration: dur * 1000, strongMagnitude: Math.min(1, strong), weakMagnitude: Math.min(1, weak) }); } catch (e) { } }
+  return { poll, move, aim, flingHeld, surgeHeld, consumeSurge, consumePower, pressPower, rumble, keys, setTwo(v) { twoP = v; }, get two() { return twoP; }, capture(cb) { capture = cb; }, get device() { return lastDevice; }, get flingAim() { return flingAim; }, get mouse() { return { x: mx, y: my, l: mouseL, r: mouseR }; } };
 })();
 
 // §CAMERA ------------------------------------------------------------------------------
@@ -3706,8 +3725,26 @@ function buildPowerHud() {
   const H1 = STORMS.find(s => s.human && s.slot === 0); const el = $('powersHud'); el.innerHTML = '';
   if (!H1) return;
   const k = (settings.keys || DEFAULT_KEYS).p1;
-  H1.powers.forEach((pw, i) => { const d = document.createElement('div'); d.className = 'pw'; d.innerHTML = `${POWERBY[pw.id].icon}<div class="cd"></div><div class="k">${IS_TOUCH ? '' : keyName(i ? k.power2 : k.power1)}</div>`; d.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); Input.pressPower(0, i); }); el.appendChild(d); });
+  H1.powers.forEach((pw, i) => { const d = document.createElement('div'); d.className = 'pw'; d.innerHTML = `${POWERBY[pw.id].icon}<div class="cd"></div><div class="k">${IS_TOUCH ? '' : keyName(i ? k.power2 : k.power1)}</div>`; d.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); Audio.init(); if (IS_TOUCH && settings.haptics !== false && navigator.vibrate) try { navigator.vibrate(8); } catch (er) { } Input.pressPower(0, i); }); el.appendChild(d); });
+  layoutTouch();
 }
+// thumb cluster in the bottom corner (mirrored for left hands); the stick hint sits in the other corner
+function layoutTouch() {
+  if (!IS_TOUCH) return;
+  document.body.classList.add('touch');
+  const k = settings.touchSize || 1, side = settings.touchSide === 'left' ? 'left' : 'right', other = side === 'left' ? 'right' : 'left';
+  const portrait = innerWidth < innerHeight, b0 = (portrait ? 74 : 16);
+  const place = (el, x, y, size) => { if (!el) return; el.style[other] = 'auto'; el.style[side] = `calc(max(0px, env(safe-area-inset-${side})) + ${Math.round(x * k)}px)`; el.style.bottom = `calc(max(0px, env(safe-area-inset-bottom)) + ${Math.round(b0 + y * k)}px)`; el.style.top = 'auto'; el.style.width = el.style.height = Math.round(size * k) + 'px'; el.style.fontSize = Math.round(13 * k) + 'px'; };
+  place($('tSurge'), 16, 10, 92);
+  place($('tFling'), 120, 4, 76);
+  const pws = $('powersHud').children;
+  place(pws[0], 124, 96, 62); place(pws[1], 20, 116, 62);
+  for (const d of pws) d.style.fontSize = Math.round(26 * k) + 'px';
+  const tp = $('tPause'); tp.style.top = `calc(max(12px, env(safe-area-inset-top)) + ${portrait ? 226 : 158}px)`; tp.style[other] = 'auto'; tp.style[side] = `calc(max(0px, env(safe-area-inset-${side})) + 14px)`;
+  const g = $('stickGhost'); g.style[side] = 'auto'; g.style[other] = `calc(max(0px, env(safe-area-inset-${other})) + ${Math.round(28 * k)}px)`; g.style.bottom = `calc(max(0px, env(safe-area-inset-bottom)) + ${Math.round(b0 + 10 * k)}px)`;
+  document.documentElement.style.setProperty('--sk', Math.round(130 * k) + 'px');
+}
+if (IS_TOUCH) { addEventListener('resize', layoutTouch); addEventListener('orientationchange', () => setTimeout(layoutTouch, 200)); }
 const keyName = c => c.replace(/^Key/, '').replace(/^Digit/, '').replace('Arrow', '').replace('Right', ' R').replace('Left', ' L').replace('Period', '.').replace('Slash', '/').replace('Comma', ',');
 function updateHUD(rdt) {
   if (bannerT > 0) { bannerT -= rdt; if (bannerT <= 0) $('banner').classList.add('hidden'); }
@@ -3761,6 +3798,7 @@ function updateHUD(rdt) {
   const fx = H1.fx;
   setText('zoneNote', H1.stun > 0 ? '💫 STUNNED!' : fx.eyeCalm > 0 ? '👁️ the calm before…' : fx.eyeSuck > 0 ? '👁️ EYE OF THE STORM!' : fx.fire > 0 ? '🔥 FIRESTORM' : fx.magnet > 0 ? '🧲 MAGNETIC' : fx.hail > 0 ? '🧊 HAILSTORM' : H1.inFront ? '❄️ cold front: shrinking!' : H1.waterspout ? '🌊 WATERSPOUT! fish & boats on the menu' : H1.ground === 'water' ? '💧 water is draining your energy!' : H1.inRain ? '🌧 rain cloud: energy recharging' : H1.turboT > 0 ? '🌬️ turbine boost!' : H1.ground === 'powder' ? '❄️ fresh powder: rolling up snow' : (H1.ground === 'hot' || RUN.rule.hotAll) ? '🔥 hot ground: +35% growth' : '');
   $('surgeFill').style.width = (H1.surgeT > 0 ? 100 : 100 * (1 - clamp(H1.surgeCD / (CONFIG.surge.cooldown * H1.mod.surgeCD), 0, 1))).toFixed(0) + '%';
+  if (IS_TOUCH) { const sc = H1.surgeT > 0 ? 0 : 100 * clamp(H1.surgeCD / (CONFIG.surge.cooldown * H1.mod.surgeCD), 0, 1); $('tSurge').firstChild.style.setProperty('--p', sc.toFixed(0) + '%'); $('tFling').classList.toggle('empty', !H1.orb.length); }
   // powers
   const pws = $('powersHud').children;
   H1.powers.forEach((pw, i) => { const d = pws[i]; if (!d) return; const def = POWERBY[pw.id]; d.querySelector('.cd').style.setProperty('--p', (100 * pw.cd / def.cd).toFixed(0) + '%'); d.classList.toggle('active', pw.active > 0 || (pw.id === 'fire' && fx.fire > 0) || (pw.id === 'magnet' && fx.magnet > 0) || (pw.id === 'hail' && fx.hail > 0) || (pw.id === 'spout' && fx.spout > 0) || (pw.id === 'eye' && (fx.eyeCalm > 0 || fx.eyeSuck > 0))); });
@@ -4041,6 +4079,8 @@ const ACTS = {
   menu: () => { goMenu(); },
   spend: () => uiShow('upgrades'),
   quality: (v) => { settings.quality = v; saveSettings(); applyQuality(); uiShow('settings'); },
+  touchSide: (v) => { settings.touchSide = v; saveSettings(); layoutTouch(); uiShow('settings'); },
+  touchSize: (v) => { settings.touchSize = parseFloat(v); saveSettings(); layoutTouch(); uiShow('settings'); },
   toggle: (k) => { settings[k] = !settings[k]; saveSettings(); applyLook(); uiShow('settings'); },
 };
 const mapThumbs = {};
@@ -4119,7 +4159,11 @@ const SCREENS = {
       <div class="row"><label>Quality</label><div style="display:flex;gap:6px;flex-wrap:wrap">${['auto', 'low', 'medium', 'high', 'ultra'].map(q => `<button class="btn small ${settings.quality === q ? '' : 'ghost'}" data-act="quality" data-arg="${q}">${q}</button>`).join('')}</div></div>
       ${[['master', 'Master volume', 0, 1], ['music', 'Music', 0, 1], ['sfx', 'Effects', 0, 1], ['shake', 'Screen shake', 0, 1.5], ['camDist', 'Camera distance', 0.7, 1.5]].map(([key, lab, a, b]) => `<div class="row"><label>${lab}</label><input type="range" min="${a}" max="${b}" step="0.05" value="${settings[key]}" data-set="${key}"></div>`).join('')}
       <div class="row"><label>Colour-blind highlights</label><button class="btn small ${settings.colorblind ? '' : 'ghost'}" data-act="toggle" data-arg="colorblind">${settings.colorblind ? 'ON (blue)' : 'OFF (red)'}</button></div>
-      <div class="row"><label>Gamepad rumble</label><button class="btn small ${settings.haptics !== false ? '' : 'ghost'}" data-act="toggle" data-arg="haptics">${settings.haptics !== false ? 'ON' : 'OFF'}</button></div></div>
+      <div class="row"><label>${IS_TOUCH ? 'Vibration' : 'Gamepad rumble'}</label><button class="btn small ${settings.haptics !== false ? '' : 'ghost'}" data-act="toggle" data-arg="haptics">${settings.haptics !== false ? 'ON' : 'OFF'}</button></div></div>
+      ${IS_TOUCH ? `<div class="card" style="margin-top:10px"><b>TOUCH CONTROLS</b><div class="small">Drag anywhere to move. Drag the FLING button to aim, let go to throw.</div>
+      <div class="row"><label>Buttons on</label><div style="display:flex;gap:6px">${['left', 'right'].map(v => `<button class="btn small ${(settings.touchSide || 'right') === v ? '' : 'ghost'}" data-act="touchSide" data-arg="${v}">${v === 'left' ? 'Left hand' : 'Right hand'}</button>`).join('')}</div></div>
+      <div class="row"><label>Button size</label><div style="display:flex;gap:6px">${[[0.85, 'Small'], [1, 'Normal'], [1.2, 'Large']].map(([v, n]) => `<button class="btn small ${(settings.touchSize || 1) === v ? '' : 'ghost'}" data-act="touchSize" data-arg="${v}">${n}</button>`).join('')}</div></div>
+      <div class="row"><label>Fullscreen when playing</label><button class="btn small ${settings.fullscreen !== false ? '' : 'ghost'}" data-act="toggle" data-arg="fullscreen">${settings.fullscreen !== false ? 'ON' : 'OFF'}</button></div></div>` : ''}
       <div class="card" style="margin-top:10px"><b>CONTROLS</b> <span class="small">click a key to rebind</span>${['p1', 'p2'].map(p => `<div class="row"><label>${p === 'p1' ? 'Player 1' : 'Player 2'}</label><div style="display:flex;gap:6px;flex-wrap:wrap">${acts.map(a => `<span class="small">${a}</span><span class="kb" data-act="remap" data-arg="${p}|${a}">${keyName(k[p][a])}</span>`).join('')}</div></div>`).join('')}<button class="btn small ghost" data-act="resetkeys">Reset controls</button></div>
       <div class="card" style="margin-top:10px"><b>SAVE</b><div class="small">Your progress is saved in this browser. Copy it to move it elsewhere.</div><textarea id="saveTxt" placeholder="Paste a save here to import"></textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn small" data-act="export">Export</button><button class="btn small" data-act="import">Import</button><button class="btn small red" data-act="wipe">Erase all</button><span id="saveMsg" class="small"></span></div></div>`;
     wire();
@@ -4218,6 +4262,7 @@ function makeHuman(slot, x, z) {
   if (RUN.mods.doubleSpeed) s.mod.speed *= 2;
   return s;
 }
+function goFullscreen() { try { const d = document.documentElement; if (settings.fullscreen !== false && !document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).catch(() => { }); } catch (e) { } }
 function startMode(mode, opts = {}) {
   GS.lastStart = { mode, opts };
   uiHide(); Audio.init(); clearWorld();
@@ -4257,7 +4302,7 @@ function startMode(mode, opts = {}) {
   GS.victory = false; GS.slowT = 0; GS.slowScale = 1;
   CAM.snap = CAMS[1].snap = true; CAM.pullBack = 0; CAM.orbitT = 0;
   if (!headless) {
-    $('hud').classList.remove('hidden'); if (IS_TOUCH) $('touch').classList.remove('hidden');
+    $('hud').classList.remove('hidden'); if (IS_TOUCH) { $('touch').classList.remove('hidden'); layoutTouch(); goFullscreen(); }
     buildPowerHud(); applyLook(); Audio.setLayers(STORMS[0].tier);
     updateCamera(0);
     const title = mode === 'continent' ? 'THE CONTINENT' : mode === 'daily' ? `DAILY: ${RUN.daily.mod.name.toUpperCase()}` : mode === 'clash' ? 'STORM CLASH' : MAPDEF.name.toUpperCase();
@@ -4658,7 +4703,7 @@ const dbg = {
   spawn(id) { const T = TYPES[id], H1 = STORMS.find(s => s.human); if (!T || !H1) return 'unknown type'; ensureGeo(T); bindStorm(H1); const sp = Math.hypot(P.vx, P.vz) || 1, d = pullR() * 1.6 + T.rad + 4; const o = makeObj(T, P.x + P.vx / sp * d, P.z + (P.vz / sp || -1) * d, 0, 1, new THREE.Color(T.cols[0]).getHex(), T.tier + 0.1); addObj(o); return o; },
   spawnRare() { return dbg.spawn((MAPDEF && MAPDEF.rare) || 'goldencow'); },
   bench: startBench, advance(sec, inp = { x: 0, z: -1 }) { const dt = 1 / 30; for (let t = 0; t < sec; t += dt) { GS.realTime += dt; if (GS.slowT > 0) GS.slowT -= dt; step(dt, dt, Object.assign({ surge: false, fling: false, aim: inp, powers: [false, false] }, inp)); updateParticles(dt); for (const s of STORMS) { bindStorm(s); updateFunnelVisual(dt); } updateSkirt(dt); updateCamera(dt); updateScale(); } updateHUD(0.016); const H1 = STORMS.find(s => s.human); return H1 && [H1.L, H1.score, H1.orb.length]; },
-  get P() { return STORMS.find(s => s.human); }, CONFIG, TYPES, GS, RUN, SAVE: () => SAVE, MAPS, STORMS, CONT, MEGA, _i: { renderer, scene, camera, live, step, botInput, query, pullR, liftPower, BOT, startMode, endRun, usePower },
+  get P() { return STORMS.find(s => s.human); }, Input, CONFIG, TYPES, GS, RUN, SAVE: () => SAVE, MAPS, STORMS, CONT, MEGA, _i: { renderer, scene, camera, live, step, botInput, query, pullR, liftPower, BOT, startMode, endRun, usePower },
 };
 window.dbg = dbg;
 function applyQuality() {

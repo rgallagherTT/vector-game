@@ -36,6 +36,7 @@ Everything is in one self-contained `index.html`. Three.js 0.160 loads from a CD
 - **Fling:** F or right mouse.
 - **Powers:** Q and E.
 - **Pause:** Esc or P.
+- **Phone / tablet:** drag anywhere to move (a stick appears under your thumb). The big buttons sit in one thumb cluster: SURGE (it shows its cooldown), FLING (drag it to aim, release to throw), and your two powers. Settings → Touch controls can switch the buttons to the left hand, change their size, turn vibration off, and turn fullscreen off.
 - **Player 2 (versus/co-op):** IJKL to move, U to surge, O to fling, Y and H for powers. All keys can be remapped in Settings.
 
 ## For Stage 3
