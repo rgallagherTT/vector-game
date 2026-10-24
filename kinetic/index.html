@@ -10305,7 +10305,7 @@ const DayNight = (() => {
     if (SKY) { const u = SKY.material.uniforms; u.uDay.value = d; u.uDusk.value = S.dusk; u.uSun.value.copy(S.sun); }
     // the night textures need lifting by day: facades, concrete, roofs and the street pick up the sun
     if (!S.base) { S.base = new Map(); for (const m of [...MAT.facade, MAT.concrete, MAT.roof, MAT.metal, MAT.paint, MAT.ground]) if (m) S.base.set(m, m.color.clone()); }
-    for (const [m, c] of S.base) m.color.copy(c).multiplyScalar(lerp(1, m === MAT.ground ? 1.5 : MAT.facade.includes(m) ? 2.6 : 1.9, d));
+    for (const [m, c] of S.base) m.color.copy(c).multiplyScalar(lerp(1, m === MAT.ground ? 1.5 : MAT.facade.includes(m) ? (MAT.facade.indexOf(m) !== 2 && S.facadeDay ? S.facadeDay : 2.6) : 1.9, d));
     const win = lerp(1.9, 0.22, d); for (let i = 0; i < MAT.facade.length; i++) MAT.facade[i].emissiveIntensity = i === 2 ? win * 1.05 : win;
     if (MAT.mirrorTower) MAT.mirrorTower.emissiveIntensity = lerp(1, 0.1, d);
     LightPool.dayMul = lerp(1, 0.08, d); Shafts.night = S.night;
@@ -10355,7 +10355,7 @@ const Interiors = (() => {
       const awn = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.12, 1.6), new THREE.MeshStandardMaterial({ color: col.clone().multiplyScalar(0.55), roughness: 0.7 })); awn.position.set(0, 3.1, 0.8); awn.rotation.x = 0.18; g.add(awn);
       g.position.copy(pos).addScaledVector(n, -0.95); g.rotation.y = Math.atan2(n.x, n.z); scene.add(g);
       LightPool.add({ pos: pos.clone().add(V3(0, 3.5, 0)).addScaledVector(n, 0.8), color: col, intensity: 40, range: 12, kind: 'neon' });
-      doors.push({ t, T, b, pos, n, mesh: g, id: t + doors.length });
+      doors.push({ t, T, b, pos, n, mesh: g, sign, id: t + doors.length });
     }
   }
   // --- room building helpers
@@ -10686,6 +10686,121 @@ const Hospital = {
   },
 };
 SHOP_T.hospital = { name: 'MERCY GENERAL HOSPITAL', sign: '#ff6a6a', d: ['oldtown', 'heights', 'midtown', 'core', 'under', 'neon', 'harbour'], w: 26, dd: 16 };
+// §DESIGNKIT -----------------------------------------------------------------------------
+// The KINETIC design kit (design/): PBR facades and street textures, 60 neon signs (lit, off and animated
+// frames), 20 rooftop billboards and 40 street decals. Everything is optional — if a file fails to load the
+// procedural look stays.
+const Design = (() => {
+  const BASE = 'design/'; const loader = new THREE.TextureLoader(); let man = null, ready = false; const cache = {};
+  let groups = [], signs = [], bills = [], frameT = 0, flickT = 2;
+  const NEON_COLS = [0xff2fa8, 0x23e6ff, 0xffae2a, 0xb6ff2e, 0x9a5bff, 0xff3b4a, 0xff7ad9, 0x3a7bff];
+  function tex(url, srgb = true, rep) {
+    if (cache[url]) return cache[url];
+    return cache[url] = new Promise(res => loader.load(BASE + url, t => { if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (rep) t.repeat.set(rep[0], rep[1]); res(t); }, undefined, () => res(null)));
+  }
+  async function init() {
+    try { man = await (await fetch(BASE + 'manifest.json')).json(); } catch { return; }
+    // facades: the kit's window facade on every style except the Core's glass towers
+    const [a, n, r, e] = await Promise.all([tex('tex/window_facade_albedo.jpg', true, [2, 2]), tex('tex/window_facade_normal.jpg', false, [2, 2]), tex('tex/window_facade_roughness.jpg', false, [2, 2]), tex('tex/window_facade_emissive_mask.jpg', true, [2, 2])]);
+    if (a) for (const i of [0, 1, 3, 4]) { const m = MAT.facade[i]; m.map = a; if (n) { m.normalMap = n; m.normalScale.set(0.8, 0.8); } if (r) { m.roughnessMap = r; m.roughness = 1; } if (e) { m.emissiveMap = e; m.emissive.set(0xffd2a0); } m.metalness = 0.05; m.needsUpdate = true; }
+    const [gn, gr] = await Promise.all([tex('tex/window_facade_normal.jpg', false, [2, 2]), tex('tex/glass_roughness.jpg', false, [2, 2])]);
+    if (gn) { const m = MAT.facade[2]; m.normalMap = gn; m.normalScale.set(0.4, 0.4); m.needsUpdate = true; }
+    // concrete, metal and the street get real surface detail
+    const cn = await tex('tex/concrete_wall_normal.jpg', false, [1, 1]); if (cn && MAT.concrete) { MAT.concrete.normalMap = cn; MAT.concrete.needsUpdate = true; }
+    const mn = await tex('tex/metal_panel_normal.jpg', false, [1, 1]); if (mn && MAT.metal) { MAT.metal.normalMap = mn; MAT.metal.needsUpdate = true; }
+    const an = await tex('tex/asphalt_wet_normal.jpg', false); if (an && MAT.ground) { const gw = City.groundRect ? City.groundRect.W : 1400, gh = City.groundRect ? City.groundRect.H : 900; an.repeat.set(gw / 5, gh / 5); MAT.ground.normalMap = an; MAT.ground.normalScale.set(0.5, 0.5); MAT.ground.needsUpdate = true; }
+    DayNight.facadeDay = 1.25;
+    ready = true; if (City.group && City.buildings.length) dress();
+  }
+  // a batch of camera-independent quads sharing one texture: one draw call per texture
+  function batch(map, opts = {}) {
+    const B = { map, p: [], uv: [], idx: [], opts };
+    B.quad = (c, right, up, w, h, flip) => { const i = B.p.length / 3; const rx = right.x * w / 2, ry = right.y * w / 2, rz = right.z * w / 2, ux = up.x * h / 2, uy = up.y * h / 2, uz = up.z * h / 2;
+      B.p.push(c.x - rx - ux, c.y - ry - uy, c.z - rz - uz, c.x + rx - ux, c.y + ry - uy, c.z + rz - uz, c.x + rx + ux, c.y + ry + uy, c.z + rz + uz, c.x - rx + ux, c.y - ry + uy, c.z - rz + uz);
+      B.uv.push(flip ? 1 : 0, 0, flip ? 0 : 1, 0, flip ? 0 : 1, 1, flip ? 1 : 0, 1); B.idx.push(i, i + 1, i + 2, i, i + 2, i + 3); };
+    B.build = () => { if (!B.p.length) return null; const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(B.p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2)); g.setIndex(B.idx); g.computeVertexNormals(); g.computeBoundingSphere();
+      const mat = opts.std ? new THREE.MeshStandardMaterial({ map, transparent: !!opts.alpha, alphaTest: opts.alpha ? 0.05 : 0, side: THREE.DoubleSide, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2, depthWrite: !opts.alpha })
+        : new THREE.MeshBasicMaterial({ map, transparent: true, side: THREE.DoubleSide, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2 });
+      const m = new THREE.Mesh(g, mat); m.renderOrder = 3; City.group.add(m); groups.push(m); return m; };
+    return B;
+  }
+  // street-facing faces of a building: [centre on the face, outward normal, along-face vector, face width]
+  function faces(b) {
+    const out = []; const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const w = nx ? b.z1 - b.z0 : b.x1 - b.x0; const p = V3(nx ? (nx > 0 ? b.x1 : b.x0) : cx, 0, nz ? (nz > 0 ? b.z1 : b.z0) : cz); if (City.onRoad(p.x + nx * 7, p.z + nz * 7)) out.push({ p, n: V3(nx, 0, nz), t: V3(-nz, 0, nx), w }); }
+    return out;
+  }
+  async function dress() {
+    if (!ready || !man) return;
+    for (const m of groups) { City.group.remove(m); m.geometry.dispose(); } groups = []; signs = []; bills = [];
+    const r = mulberry32(CONFIG.seed * 13 + 5);
+    // --- neon signs on shopfronts, densest in Neon Row and Midtown
+    const names = Object.keys(man.signs); const plan = new Map();
+    for (const b of City.buildings) {
+      if (b.mirror || b.h < 8) continue; const k = b.d.key; const chance = k === 'neon' ? 0.85 : k === 'midtown' ? 0.6 : k === 'oldtown' || k === 'heights' || k === 'harbour' ? 0.35 : k === 'under' ? 0.4 : 0.18;
+      for (const F of faces(b)) {
+        if (r() > chance || F.w < 6) continue;
+        const name = names[Math.floor(r() * names.length)]; const S = man.signs[name]; const blade = name.includes('blade');
+        const asp = S.w / S.h; let w, h; if (blade || asp < 0.8) { h = 3.2 + r() * 2; w = h * asp; } else { w = Math.min(F.w - 1, 4 + r() * 3); h = w / asp; }
+        const y = blade ? 5 + r() * 4 : 3.4 + r() * (Math.min(b.h - h - 1, 9) - 3.4 > 0 ? Math.min(b.h - h - 1, 9) - 3.4 : 0) + h / 2;
+        const along = (r() - 0.5) * Math.max(0, F.w - w - 2);
+        let c, right; if (blade) { c = F.p.clone().addScaledVector(F.t, along).addScaledVector(F.n, w / 2 + 0.15); right = F.n.clone(); } else { c = F.p.clone().addScaledVector(F.t, along).addScaledVector(F.n, 0.08); right = F.t.clone().negate(); }
+        c.y = y; if (!plan.has(name)) plan.set(name, []); plan.get(name).push({ c, right, w, h, blade });
+        if (r() < 0.45) LightPool.add({ pos: c.clone().addScaledVector(F.n, 1.5), color: new THREE.Color(NEON_COLS[(name.length * 7 + name.charCodeAt(0)) % NEON_COLS.length]), intensity: 50, range: 9, kind: 'neon', priority: 1.2 });
+      }
+    }
+    for (const [name, list] of plan) {
+      const S = man.signs[name]; const lit = await tex('neon/' + S.lit + '.webp'); const off = S.off ? await tex('neon/' + S.off + '.webp') : lit; if (!lit) continue;
+      const frames = []; for (const f of S.frames) { const t = await tex('neon/' + f + '.webp'); if (t) frames.push(t); }
+      const B = batch(lit); for (const q of list) { B.quad(q.c, q.right, UP, q.w, q.h, false); if (q.blade) B.quad(q.c, q.right.clone().negate(), UP, q.w, q.h, false); }
+      const m = B.build(); if (m) signs.push({ m, lit, off, frames, fi: 0, flicker: r() < 1 / 12, offT: 0 });
+    }
+    // --- rooftop billboards over the Core, Midtown and Neon Row
+    const bnames = man.bills; const tall = City.buildings.filter(b => !b.mirror && ['core', 'midtown', 'neon'].includes(b.d.key) && b.h > 24 && (b.x1 - b.x0) > 14).sort(() => r() - 0.5).slice(0, 34);
+    const bplan = new Map(); const frameB = batch(null, { std: true });
+    for (const b of tall) { const F = faces(b)[0]; if (!F) continue; const name = bnames[Math.floor(r() * bnames.length)]; const w = Math.min(14, F.w - 2), h = w / 2; const c = F.p.clone().addScaledVector(F.n, -2).setY(b.h + h / 2 + 2.2); if (!bplan.has(name)) bplan.set(name, []); bplan.get(name).push({ c, right: F.t.clone().negate(), w, h, n: F.n });
+      for (const s of [-1, 1]) { const leg = c.clone().addScaledVector(F.t, s * w * 0.35).addScaledVector(F.n, -0.4); bucketless(leg, b.h, h); } }
+    for (const [name, list] of bplan) {
+      const a = await tex('bill/' + name + '.jpg'), e = await tex('bill/' + name + '_e.jpg'); if (!a) continue;
+      const B = batch(a, { std: true }); for (const q of list) { B.quad(q.c.clone().addScaledVector(q.n, 0.05), q.right, UP, q.w, q.h, false); B.quad(q.c.clone().addScaledVector(q.n, -0.05), q.right.clone().negate(), UP, q.w, q.h, false); }
+      const m = B.build(); if (m) { if (e) { m.material.emissiveMap = e; m.material.emissive.set(0xffffff); } m.material.side = THREE.FrontSide; m.material.needsUpdate = true; bills.push(m); }
+    }
+    // --- posters, flyers, opening hours and graffiti at street level; street names at corners
+    const dplan = new Map(); const D = man.decals;
+    const pickD = pre => { const l = D.filter(d => d[0].startsWith(pre)); return l[Math.floor(r() * l.length)]; };
+    for (const b of City.buildings) {
+      if (b.mirror) continue;
+      for (const F of faces(b)) {
+        const n = Math.floor(r() * 3); for (let k = 0; k < n; k++) {
+          const d = r() < 0.35 ? pickD('graffiti') || pickD('stencil') : r() < 0.5 ? pickD('poster') : r() < 0.5 ? pickD('flyer') : pickD('hours'); if (!d) continue;
+          const big = d[0].startsWith('graffiti') || d[0].startsWith('stencil'); const w = big ? 2.2 + r() * 1.6 : d[0].startsWith('hours') ? 0.6 : 0.8; const h = w * d[2] / d[1];
+          const c = F.p.clone().addScaledVector(F.t, (r() - 0.5) * (F.w - w - 1)).addScaledVector(F.n, 0.05); c.y = big ? 1.4 + r() * 1.2 : 1.3 + r() * 0.8;
+          if (!dplan.has(d[0])) dplan.set(d[0], []); dplan.get(d[0]).push({ c, right: F.t.clone().negate(), w, h });
+        }
+      }
+    }
+    for (const node of City.nodes) { if (r() > 0.5) continue; const d = pickD('street'); if (!d) continue; const c = V3(node.x + 9.2, 3.2, node.z + 9.2); if (!dplan.has(d[0])) dplan.set(d[0], []); dplan.get(d[0]).push({ c, right: V3(1, 0, 0), w: 1.5, h: 1.5 * d[2] / d[1] }); const t = pickD('traffic'); if (t && r() < 0.6) { const c2 = V3(node.x - 9.2, 2.6, node.z - 9.2); if (!dplan.has(t[0])) dplan.set(t[0], []); dplan.get(t[0]).push({ c: c2, right: V3(0, 0, 1), w: 0.8, h: 0.8 * t[2] / t[1] }); } }
+    for (const [name, list] of dplan) { const t = await tex('decal/' + name + '.webp'); if (!t) continue; const B = batch(t, { std: true, alpha: true }); for (const q of list) B.quad(q.c, q.right, UP, q.w, q.h, false); B.build(); }
+    // real signs over the doors of the buildings you can walk into
+    const DOOR = { arcade: 'arcade_pixel_palace', bank: 'bank_solvent_trust', gym: 'gym_iron_lung', clinic: 'pharmacy_24', hospital: 'pill_plus', cafe: 'coffee_bitter_end', club: 'club_velvet_static', shop: 'market_all_nite', tailor: 'barber_sharp_and_sons', warehouse: 'junktion_salvage', diner: 'script_open_all_night' };
+    for (const d of Interiors.doors) { const k = DOOR[d.t]; if (!k || !man.signs[k] || !d.sign) continue; const S = man.signs[k]; const t = await tex('neon/' + S.lit + '.webp'); if (t) { d.sign.material.map = t; d.sign.material.transparent = true; d.sign.material.needsUpdate = true; d.sign.scale.set(1, (5 * S.h / S.w) / 0.95, 1); } }
+  }
+  function bucketless(p, y0, h) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.4 + h * 0.2, 0.3), MAT.metal); leg.position.set(p.x, y0 + 1.2, p.z); City.group.add(leg); groups.push(leg); }
+  function update(rdt) {
+    if (!ready) return; const night = DayNight.night;
+    frameT += rdt; flickT -= rdt; const step = frameT > 0.28; if (step) frameT = 0;
+    for (const s of signs) {
+      if (s.offT > 0) s.offT -= rdt;
+      let t = night > 0.35 ? (s.frames.length ? s.frames[s.fi] : s.lit) : s.off; if (step && s.frames.length) s.fi = (s.fi + 1) % s.frames.length;
+      if (s.offT > 0) t = s.off;
+      if (s.m.material.map !== t) { s.m.material.map = t; s.m.material.needsUpdate = true; }
+      s.m.material.color.setScalar(night > 0.35 ? 1.6 : 1.0);
+    }
+    if (flickT <= 0) { flickT = frnd(2, 9); const f = signs.filter(s => s.flicker); const s = f[Math.floor(Math.random() * f.length)]; if (s && night > 0.35) { s.offT = frnd(0.04, 0.12); if (Math.random() < 0.3) setTimeout(() => { s.offT = 0.08; }, 180); } }
+    for (const m of bills) m.material.emissiveIntensity = lerp(0.35, 1.4, night);
+  }
+  return { init, dress, update, get ready() { return ready; } };
+})();
 // game state + run flow ------------------------------------------------------------------
 const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
 function disposeGroup(g) { if (!g) return; g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.geometry && o.geometry !== Lamps.geo) { if (o.material === VEH_MAT || o.material === MAT.neon || o.material === MAT.metal || Object.values(City.meshes || {}).includes(o)) o.geometry.dispose(); } }); }
@@ -10726,7 +10841,8 @@ const Game = {
         Music.setLevel(0); Music.warden(false); Hud.show(true); Hud.boss(null);
         CamRig.pos.set(118, 4, 70);
         if (G.career) { Career.start(); const st = Career.state; const home = Apt.markers.find(m => m.id === st.home); if (home) Apt.enter(home, true); Hud.banner('CAREER · DAY ' + st.day, home ? 'YOU WAKE UP AT HOME · PRESS M FOR YOUR PHONE' : 'PRESS M — YOUR PHONE HAS JOBS WAITING'); Timers.after(4, () => Toast.show('<b>M</b> PHONE · <b>T</b> USE DOORS & FURNITURE · ⚠ RED BEAMS ARE CRIMES', 'big')); }
-        else if (daily) Hud.banner('DAILY RUN', daily.name + ' — ' + daily.desc); else Hud.banner(GAME_TITLE, 'WRECK IT. THEY WILL COME.');
+        Design.dress();
+        if (!G.career) { if (daily) Hud.banner('DAILY RUN', daily.name + ' — ' + daily.desc); else Hud.banner(GAME_TITLE, 'WRECK IT. THEY WILL COME.'); }
         setLoadVisible(false);
         try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch { }
         Tut.render();
@@ -10884,7 +11000,7 @@ function frame(now) {
   Mirror.update(camera);
   if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
   HeroModels.sync(Player.rig); Ghosts.update(rdt); Ripple.update(rdt); if (M === 'play' || M === 'title') Critters.update(dt);
-  DayNight.update(rdt); Defence.update(rdt); Mobile.update(); Beacons.update(); if (live) Threads.update(rdt * (G.hero === 'thread' && Thread.focusOn ? 0.5 : 1) * (M === 'play' || M === 'title' || M === 'detained' ? 1 : 0)); Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
+  DayNight.update(rdt); Defence.update(rdt); Design.update(rdt); Mobile.update(); Beacons.update(); if (live) Threads.update(rdt * (G.hero === 'thread' && Thread.focusOn ? 0.5 : 1) * (M === 'play' || M === 'title' || M === 'detained' ? 1 : 0)); Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
   Input.endFrame();
 }
 
@@ -10892,7 +11008,7 @@ async function boot() {
   setLoad(0.08, 'PHYSICS');
   await RAPIER.init();
   setLoad(0.25, 'TEXTURES');
-  initMaterials(); SKY = makeSky(); scene.add(SKY);
+  initMaterials(); SKY = makeSky(); scene.add(SKY); Design.init();
   FX.init(); Shards.init(); Shafts.init(); Decals.init(); Rain.init(); Splashes.init(); Peds.init(); Catch.init();
   Prog.load(); Records.load(); Challenges.load(); Cosmetics.load(); Tut.load();
   Player.init(); Hero.load('speed'); Hero.load('shift'); Hero.load('thread');
@@ -10906,7 +11022,7 @@ async function boot() {
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
