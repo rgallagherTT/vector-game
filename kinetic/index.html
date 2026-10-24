@@ -3369,6 +3369,7 @@ const Player = {
   hurt(d, from, cause) {
     if (this.detained || G.mode !== 'play' || G.god) return;
     if (this.iframes > 0 || (this.dodgeT > 0)) return;
+    if (G.hero === 'speed' && Speed.phasing) return;
     if (Catch.active && from && from.distanceTo && from.distanceTo(this.pos) > 3 && cause !== 'explosion' && cause !== 'shock' && cause !== 'ram') return;
     d *= 1 - Prog.level('health') * 0.04;
     if (G.modifier === 'glass') d *= 1.25;
@@ -4268,7 +4269,7 @@ const Projectiles = (() => {
       // shield pieces
       if (!p.friendly && Shield.absorb(_a, _b)) { list.splice(i, 1); continue; }
       // the player
-      if (!p.friendly && G.mode === 'play') {
+      if (!p.friendly && G.mode === 'play' && !(G.hero === 'speed' && Speed.phasing)) {
         const r = p.D.explode ? 1.2 : 0.55;
         if (segPointDist2(_a.x, _a.y, _a.z, _b.x, _b.y, _b.z, pp.x, pp.y + 1.0, pp.z) < r * r) {
           if (p.D.explode) { explodeP(p, _b); list.splice(i, 1); continue; }
@@ -5834,6 +5835,7 @@ const TUT_STEPS = [
 const TUT_BY = {
   speed: [
     ['run', 'RUN', 'Hold <b>W</b> and keep running straight — <b>VELOCITY</b> builds and the world slows down around you'],
+    ['phasing', 'PHASING', '<b>HOLD Q</b> to vibrate out of step with the world: run straight through walls, cars and people, and let bullets pass through you. It drains stamina'],
     ['wallrun', 'WALL RUN', 'Run straight at a building at speed — you\'ll <b>run right up it</b>. <b>SPACE</b> leaps off'],
     ['blitz', 'BLITZ', 'Look roughly toward an enemy — a <b>ring locks on</b> — and <b>LEFT CLICK</b> to hit them a dozen times in an instant. <b>HOLD</b> to chain through the whole group'],
     ['rescue', 'RESCUE', 'When a ⚠ disaster appears, run in, <b>LEFT CLICK</b> a trapped person and carry them out of the red circle'],
@@ -6363,13 +6365,13 @@ const HERO_SLOTS = {
   speed: [
     { id: 'blitz', key: 'LMB', name: 'BLITZ', g: '✦' }, { id: 'pluck', key: 'LMB·SLOW', name: 'PLUCK', g: '⊹', lock: 'pluck' }, { id: 'disarm', key: 'E', name: 'DISARM', g: '⊘', lock: 'disarm' },
     { id: 'whirl', key: '2', name: 'WHIRLWIND', g: '◌', lock: 'whirl' }, { id: 'sonic', key: '3', name: 'SONIC', g: '◉', lock: 'sonic' }, { id: 'relay', key: '4', name: 'RELAY', g: '⋯', lock: 'relay' },
-    { id: 'overdrive', key: 'R', name: 'OVERDRIVE', g: '⏵', lock: 'overdrive' }, { id: 'phase', key: 'CTRL·OD', name: 'PHASE', g: '⇢', lock: 'phase' },
+    { id: 'phasing', key: 'Q (hold)', name: 'PHASING', g: '◍' }, { id: 'overdrive', key: 'R', name: 'OVERDRIVE', g: '⏵', lock: 'overdrive' }, { id: 'phase', key: 'CTRL·OD', name: 'PHASE', g: '⇢', lock: 'phase' },
   ],
 };
 const HeroHud = {
   keys() {
     const k = $('keys'); if (!k) return; k.style.display = '';
-    if (G.hero === 'speed') k.innerHTML = '<b>W</b> run — keep going to build <b>VELOCITY</b><br>run into a wall to <b>run up it</b> · <b>SPACE</b> jump / leap off<br><b>LMB</b> blitz the locked target · <b>HOLD LMB</b> chain through a crowd<br>pluck bullets · pick up people<br><b>RMB</b> flick bullets back · <b>E</b> disarm · <b>2 3 4 R</b> powers<br><b>F</b> phone booth: tag team · <b>H</b> help';
+    if (G.hero === 'speed') k.innerHTML = '<b>W</b> run — keep going to build <b>VELOCITY</b><br>run into a wall to <b>run up it</b> · <b>SPACE</b> jump / leap off<br><b>LMB</b> blitz the locked target · <b>HOLD LMB</b> chain through a crowd<br>pluck bullets · pick up people<br><b>RMB</b> flick bullets back · <b>E</b> disarm · <b>2 3 4 R</b> powers<br><b>HOLD Q</b> phasing — run through walls, cars and bullets<br><b>F</b> phone booth: tag team · <b>H</b> help';
     else if (G.hero === 'shift') k.innerHTML = Shift.keysHtml();
     else if (G.hero === 'thread') { k.innerHTML = ''; k.style.display = 'none'; return; }
     else k.innerHTML = '<b>HOLD LMB</b> lift · <b>RELEASE</b> throw · <b>RMB</b> drop<br><b>Q</b> push · <b>CTRL</b> dodge / slam in air<br><b>SPACE ×2</b> telekinetic jump · <b>SHIFT</b> sprint<br><b>E</b> catch · <b>1–4</b> powers · <b>F</b> booth · <b>H</b> help';
@@ -6385,6 +6387,7 @@ const HeroHud = {
     if (s.id === 'pluck') return { locked, active: S.plucked.length > 0, cd: S.ws < 0.6 ? 0 : 1 };
     if (s.id === 'disarm') return { locked, active: false, cd: 1 - clamp(S.v / 0.45, 0, 1) };
     if (s.id === 'phase') return { locked, active: false, cd: S.od ? 0 : 1 };
+    if (s.id === 'phasing') return { locked: false, active: !!S.phasing, cd: 1 - clamp(Player.mind / Player.maxMind, 0, 1) };
     return { locked, active: !!S.target, cd: 0 };
   },
   vitals() {
@@ -6450,6 +6453,7 @@ const Speed = {
   v: 0, s: 0, heading: 0, state: 'ground', wall: null, climbed: 0, od: false, ws: 1, hope: 0, carry: null, plucked: [], tagged: [], relay: false, whirl: null,
   netT: 0, stunT: 0, trail: [], trailI: 0, lastTrail: V3(), ringArmed: true, target: null, glowMats: [], waterRun: 0, wallCount: 0, camT: 0, odArmed: true, dodgeCd: 0, glow: new THREE.Color(0xffb347),
   reset() {
+    if (this.phasing) this.endPhase(true);
     this.v = 0; this.s = 0; this.state = 'ground'; this.wall = null; this.od = false; this.ws = 1; this.relay = false; this.whirl = null; this.netT = 0; this.stunT = 0;
     if (this.carry) this.dropCarry(false); this.plucked = []; this.tagged = []; this.target = null; this.camT = 0; Music.swell(false);
     for (const t of Rain.trail) { t.set(0, -999, 0, 0); } this.trail = [];
@@ -6533,8 +6537,9 @@ const Speed = {
     if (Input.tap('dodge') && this.dodgeCd <= 0) this.dodge(wish);
     // move
     const want = { x: P.vel.x * dt, y: (this.state === 'air' ? P.vel.y : -2) * dt, z: P.vel.z * dt };
-    P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER));
-    const mv = P.ctl.computedMovement(); let grounded = P.ctl.computedGrounded();
+    let mv, grounded;
+    if (this.phasing) { const t0 = P.body.translation(); const fy = this.phaseFloor + 0.9; mv = { x: want.x, y: want.y, z: want.z }; grounded = t0.y + mv.y <= fy + 0.001; if (grounded) mv.y = fy - t0.y; }
+    else { P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER)); mv = P.ctl.computedMovement(); grounded = P.ctl.computedGrounded(); }
     const t = P.body.translation(); let nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
     const wantH = Math.hypot(want.x, want.z), gotH = Math.hypot(mv.x, mv.z);
     // §WALLRUN — hit a wall at speed and keep going: up
@@ -6653,7 +6658,7 @@ const Speed = {
     if (this.v >= 0.95 && this.ringArmed) { this.ringArmed = false; const p = P.pos.clone(); Rings.spawn(p, 18, '#' + this.glow.getHexString(), 0.8); Rings.spawn(p, 10, '#ffffff', 0.5); Mirror.uniforms.uRain.value = 4; Audio.sonic(); Shake.add(0.3); world.intersectionsWithShape({ x: p.x, y: p.y + 0.5, z: p.z }, { x: 0, y: 0, z: 0, w: 1 }, new RAPIER.Ball(8), c => { const o = objByCollider.get(c.handle); if (o && o.body && o.kind !== 'unit' && o.mass < 2000) { const q = o.body.translation(); const d = V3(q.x - p.x, 0, q.z - p.z).normalize(); impulse(o, d.x * o.mass * 7, o.mass * 4, d.z * o.mass * 7); } return true; }); }
     if (this.v < 0.8) this.ringArmed = true;
     // crash into traffic, bodycheck officers, kick debris aside
-    if (this.s > 6 && this.state !== 'wall') this.contacts();
+    if (this.s > 6 && this.state !== 'wall' && !this.phasing) this.contacts();
     // rain tunnel + spray where the speedster runs through hanging drops
     if (this.ws < 0.7 && Player.pos.y > -1.5) {
       const c = P.chest(); if (c.distanceTo(this.lastTrail) > 0.45) { this.lastTrail.copy(c); const tr = Rain.trail; tr[this.trailI % 24].set(c.x, c.y, c.z, 0.85); this.trail[this.trailI % 24] = performance.now(); this.trailI++;
@@ -6731,6 +6736,9 @@ const Speed = {
     LockOn.show(tg && (tg.kind === 'unit' || tg.kind === 'drone' || tg.kind === 'pacer') ? tg.pos : null, this.glow);
     if (Input.tap('throw')) { if (this.plucked.length) this.flick(); else if (this.carry) this.dropCarry(true); }
     if (Input.tap('push') && this.plucked.length) { for (const p of this.plucked) p.life = 0; this.plucked = []; }
+    // §PHASING: hold Q — vibrate out of step with the world
+    else if (Input.down('push') && !this.phasing && !this.plucked.length && this.state !== 'wall' && P.mind > 8) this.startPhase();
+    if (this.phasing) { P.mind -= 20 * rdt; if (!Input.down('push') || P.mind <= 0) this.endPhase(); else this.phaseFX(rdt); }
     if (Input.tap('catch')) this.disarm();
     if (Input.tap('vortex')) this.sonic();
     if (Input.tap('levitate') && !this.whirl) this.startWhirl();
@@ -6763,6 +6771,37 @@ const Speed = {
     this.lastHit = u; Shake.add(0.12 + this.v * 0.2); Hud.ca(0.012);
     FX.sparks(tg.pos.clone(), 10 + n * 2, 0.9, this.glow);
     Score.add(40 * n, tg.pos, this.combo > 1 ? 'COMBO ×' + this.combo : n > 5 ? 'BLITZ ×' + n : null);
+  },
+  startPhase() {
+    const P = Player; this.phasing = true; P.mind -= 4;
+    this.phaseFloor = P.grounded || this.state === 'ground' ? P.pos.y : (() => { const h = castRay(P.pos.x, P.pos.y + 1, P.pos.z, 0, -1, 0, 80, GROUPS.losStatic, P.body); return h ? P.pos.y + 1 - h.toi : 0; })();
+    if (P.collider) P.collider.setCollisionGroups(ig(GRP.PLAYER, 0));
+    const m = P.rig && P.rig.model; this.phaseMats = [];
+    if (m) m.root.traverse(o => { if (o.isMesh && o.material) { const mats = Array.isArray(o.material) ? o.material : [o.material]; for (const mt of mats) { this.phaseMats.push({ mt, t: mt.transparent, o: mt.opacity, e: mt.emissive ? mt.emissive.clone() : null, d: mt.depthWrite }); mt.transparent = true; mt.opacity = 0.42; mt.depthWrite = false; if (mt.emissive) mt.emissive.setRGB(0.25, 0.55, 1.0); mt.needsUpdate = true; } } });
+    Audio.dampOn(); Rings.spawn(P.pos.clone().add(V3(0, 1, 0)), 2.5, '#8fe8ff', 0.3); Tut.done('phasing');
+  },
+  endPhase(quiet) {
+    const P = Player; this.phasing = false;
+    if (P.collider) P.collider.setCollisionGroups(ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER));
+    for (const s of this.phaseMats || []) { s.mt.transparent = s.t; s.mt.opacity = s.o; s.mt.depthWrite = s.d; if (s.e) s.mt.emissive.copy(s.e); s.mt.needsUpdate = true; } this.phaseMats = [];
+    finalPass.uniforms.uCool.value = 0;
+    if (quiet) return;
+    // let go inside something solid and you're pushed out of the nearest face
+    const p = P.pos; const b = City.buildingAt(p.x, p.z);
+    if (b && p.y < b.h - 0.2) {
+      const d = [[p.x - b.x0, -1, 0], [b.x1 - p.x, 1, 0], [p.z - b.z0, 0, -1], [b.z1 - p.z, 0, 1]].sort((a, c) => a[0] - c[0])[0];
+      const out = V3(d[1] ? (d[1] < 0 ? b.x0 - 0.8 : b.x1 + 0.8) : p.x, p.y, d[2] ? (d[2] < 0 ? b.z0 - 0.8 : b.z1 + 0.8) : p.z);
+      const t = { x: out.x, y: out.y + 0.9, z: out.z }; P.body.setTranslation(t, true); P.body.setNextKinematicTranslation(t); P.pos.copy(out); Shake.add(0.25); Toast.show('PUSHED OUT OF THE WALL', 'heat');
+    }
+    Rings.spawn(P.pos.clone().add(V3(0, 1, 0)), 2, '#8fe8ff', 0.25);
+  },
+  phaseFX(rdt) {
+    const P = Player; finalPass.uniforms.uCool.value = 0.35 + Math.sin(G.time * 40) * 0.05;
+    this.phaseGhost = (this.phaseGhost || 0) + rdt; if (this.phaseGhost > 0.05) { this.phaseGhost = 0; Ghosts.capture(); }
+    if (P.rig) { P.rig.mesh.position.x += frnd(-0.03, 0.03); P.rig.mesh.position.z += frnd(-0.03, 0.03); }
+    if (Math.random() < 0.5) FX.tkMote(P.chest().add(V3(frnd(-0.4, 0.4), frnd(-1, 0.6), frnd(-0.4, 0.4))), new THREE.Color(0.5, 1.6, 2.6), 0.12);
+    // inside a wall: everything goes blue-dark
+    const b = City.buildingAt(P.pos.x, P.pos.z); if (b && P.pos.y < b.h) finalPass.uniforms.uCool.value = 0.85;
   },
   dashTo(pos) {
     const P = Player; const d = V3().subVectors(pos, P.pos).setY(0); const L = d.length(); if (L < 1.8) return; d.normalize();
@@ -10215,7 +10254,7 @@ const Mobile = (() => {
   // [label, input, size] — input: 'm0'/'m2' mouse buttons, otherwise a key code
   const SETS = {
     kinetic: [['LIFT', 'm0', 'big'], ['DROP', 'm2'], ['JUMP', 'Space', 'big'], ['PUSH', 'KeyQ'], ['CATCH', 'KeyE'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['1', 'Digit1'], ['2', 'Digit2'], ['3', 'Digit3'], ['4', 'Digit4'], ['FIRE', 'KeyF'], ['BARRIER', 'KeyX']],
-    speed: [['BLITZ', 'm0', 'big'], ['FLICK', 'm2'], ['JUMP', 'Space', 'big'], ['DISARM', 'KeyE'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['WHIRL', 'Digit2'], ['SONIC', 'Digit3'], ['RELAY', 'Digit4'], ['OVERDR', 'KeyR'], ['BOOTH', 'KeyF']],
+    speed: [['BLITZ', 'm0', 'big'], ['FLICK', 'm2'], ['JUMP', 'Space', 'big'], ['DISARM', 'KeyE'], ['PHASE', 'KeyQ'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['WHIRL', 'Digit2'], ['SONIC', 'Digit3'], ['RELAY', 'Digit4'], ['OVERDR', 'KeyR'], ['BOOTH', 'KeyF']],
     shift: [['ACT', 'm0', 'big'], ['ALT', 'm2'], ['JUMP', 'Space', 'big'], ['TOUCH/USE', 'KeyE'], ['FORMS', 'KeyQ'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['BOARD', 'KeyB'], ['ECHO', 'KeyG'], ['1', 'Digit1'], ['2', 'Digit2'], ['BOOTH', 'KeyF']],
     thread: [['SWING', 'm2', 'big'], ['BLADE', 'm0', 'big'], ['JUMP / REEL', 'Space', 'big'], ['ZIP', 'KeyQ'], ['SNARE', 'KeyE'], ['TETHER', 'KeyR'], ['FOCUS', 'KeyF'], ['DODGE', 'ControlLeft'], ['CROUCH', 'KeyC'], ['BARRIER', 'KeyX'], ['SHURIKEN', 'Digit1'], ['SMOKE', 'Digit2'], ['TRIP', 'Digit3'], ['STORM', 'Digit4'], ['LINE', 'KeyZ'], ['SLING', 'KeyG']],
   };
