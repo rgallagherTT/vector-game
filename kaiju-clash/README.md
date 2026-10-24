@@ -26,6 +26,10 @@ Running is automatic. Tap **Attack** for a 3-hit combo and hold it for an upperc
 | Special (+ toward / away = 2nd / 3rd) | E | O | RB |
 | **ULTIMATE** | **T** | **P** | **Y / RT** |
 
+### Phones and tablets
+
+On a touch screen the game shows on-screen controls. Drag anywhere on the left half of the screen to move; the stick appears under your thumb. The buttons on the right are **ATTACK** (hold for the uppercut), **JUMP**, **GRAB**, **BLOCK**, **SPECIAL** and **ULTIMATE**, which glows when it's ready. In Tag Team there is also a **TAG** button. The **❚❚** button pauses. Hold the phone sideways. Tapping "stomp in" switches to full screen where the browser allows it. Phones start on the Low graphics setting; you can change it under Controls & Settings. Add `?touch=1` to the address to force touch controls, or `?touch=0` to turn them off.
+
 ## What's in it
 
 - **Roster:** Granitor, Skitterax, Voltwyrm, Bulwark-9, Mother Brine, Thornback, Pyroclast and Gloomwing, plus the Omega Titan boss. The boss is unlocked by clearing Arcade or buying it. Each monster has a 3-hit light string, a heavy, a launcher, an air attack, five throws, three specials, a rage, a get-up attack and two taunts.
