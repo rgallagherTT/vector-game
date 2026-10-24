@@ -1,0 +1,17 @@
+{
+  "models": {
+    "bike_player_starter": "bikes/bike_player_starter.glb",
+    "bike_racer": "bikes/bike_racer.glb",
+    "bike_hauler": "bikes/bike_hauler.glb",
+    "bike_trick": "bikes/bike_trick.glb",
+    "bike_cruiser": "bikes/bike_cruiser.glb",
+    "bike_outlaw_rattler": "bikes/bike_outlaw_rattler.glb",
+    "bike_outlaw_chrome": "bikes/bike_outlaw_chrome.glb",
+    "bike_outlaw_dust": "bikes/bike_outlaw_dust.glb",
+    "bike_outlaw_basic_1": "bikes/bike_outlaw_basic_1.glb",
+    "bike_outlaw_basic_2": "bikes/bike_outlaw_basic_2.glb",
+    "bike_outlaw_basic_3": "bikes/bike_outlaw_basic_3.glb",
+    "crawler_ironjaw": "bikes/crawler_ironjaw.glb",
+    "pip": "gear/pip.glb"
+  }
+}

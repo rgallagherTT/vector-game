@@ -1,0 +1,67 @@
+{
+  "light": {
+    "noon_sun": "#fff4dc",
+    "golden": "#ffb050",
+    "sunset_orange": "#ff7a2a",
+    "sunset_violet": "#7a4aa0",
+    "night_blue": "#1a2a4a",
+    "starlight": "#cfe0ff",
+    "haze": "#e8cfa0"
+  },
+  "regions": {
+    "golden_dunes": [
+      "#e0a860",
+      "#c8843a",
+      "#8a5a2a"
+    ],
+    "red_canyons": [
+      "#b8502a",
+      "#8a3a1e",
+      "#e0905a"
+    ],
+    "salt_flats": [
+      "#ece6dc",
+      "#c8c0b4",
+      "#9aa4b0"
+    ],
+    "glass_flats": [
+      "#a8e0e8",
+      "#6ab0c8",
+      "#e8f4f8"
+    ],
+    "storm_dunes": [
+      "#3a3438",
+      "#5a4e4a",
+      "#8a6a50"
+    ],
+    "dry_riverbed": [
+      "#9a7a5a",
+      "#6a5038",
+      "#c8a880"
+    ],
+    "old_world_ruins": [
+      "#6a6460",
+      "#3a3a3c",
+      "#a89a80"
+    ],
+    "dustwater_town": [
+      "#8a5a30",
+      "#ff5ab8",
+      "#3ae0ff"
+    ]
+  },
+  "factions": {
+    "player": "#d8a040",
+    "rattlers": "#d8e030",
+    "chrome_saints": "#9a5bff",
+    "dust_kings": "#e4dcc6",
+    "ironjaw": "#ff2a1a"
+  },
+  "ui": {
+    "scanner_green": "#7aff8a",
+    "brass": "#b08a3a",
+    "leather": "#5e3c24",
+    "paper": "#e8dcc0",
+    "ink": "#2a1a10"
+  }
+}
