@@ -19,6 +19,31 @@ Third-person superhero sandbox in a rain-soaked neon city. One self-contained `i
 
 Phone booths around the city switch heroes mid-run (Tag Team, `F`).
 
+## Life in the city (career)
+
+- **Police.** In career you're a hero living a normal life: the MRA only come after you if you hurt people or attack them. Smashed property and spectacle don't count. Villains still hunt you.
+- **Day and night.** Days are long and bright (about 16 real minutes) and nights are short (about 3), with a sun, sky, sun shadows and dimmed neon by day.
+- **A bigger city.** The city is 16×10 blocks (about 1.3 km × 0.8 km) across 7 districts: Neon Row, the Financial Core (dense towers), Midtown, Old Town (with a park), the Underworks, the Heights and the Harbour (warehouses and container yards).
+- **52 buildings you can walk into**, each with something to do:
+  - **Food and drink:** diners (eat to heal), cafes (coffee refills your energy), corner shops (snacks, restock gear).
+  - **Training and games:** gyms (a reps mini-game earns kinesis), arcades (a timing game pays cash), a club (dance, or clear the back room).
+  - **Money and health:** banks (keep your cash safe), clinics and hospitals.
+  - **Travel and shopping:** office towers (elevator to the roof), a tailor (scarves).
+  - **Harbour warehouses:** gang stashes to bust.
+- **Defence power** (phone → Hero):
+  - **Tough Skin:** less damage and knockback.
+  - **Rapid Healing:** faster regeneration.
+  - **Kinetic Barrier:** press `X`.
+
+  Health also comes back fast for every hero.
+- **Knocked out?** You wake up at the nearest hospital and pay the bill. Banked cash is safe.
+- **The Threadrunner climbs walls.** Push into one to climb hand over hand; Space leaps off.
+- **Design kit** (`design/`):
+  - PBR window facades and surface detail
+  - 60 real neon signs (lit at night, off by day, flickering, animated)
+  - rooftop billboards
+  - posters, flyers, graffiti, street-name and traffic signs
+
 ## The living city (career)
 
 - **Factions.** The MRA, Vantablack Holdings, the Hollow Lanterns, the Dock Rats, the Underline Saints, Tower Watch, and rival runners.
