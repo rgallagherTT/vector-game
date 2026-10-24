@@ -49,6 +49,9 @@ Phone booths around the city switch heroes mid-run (Tag Team, `F`).
   - 60 real neon signs (lit at night, off by day, flickering, animated)
   - rooftop billboards
   - posters, flyers, graffiti, street-name and traffic signs
+- **Interiors kit** (`design/int/`):
+  - every window in the city shows a real room with parallax depth (offices, flats, shops, gyms); about a third are lit at night
+  - walk-in buildings and apartments use the kit's floors, walls, ceilings and signage (diner tiles, checker floors, floral wallpaper, carpet, wood, concrete)
 
 ## The living city (career)
 
