@@ -131,6 +131,18 @@ html,body{margin:0;height:100%;overflow:hidden;background:#140d09;color:var(--hu
 .trophy.gold{background:#ffd84a}.trophy.silver{background:#d8dee6}.trophy.bronze{background:#d88a4a}.trophy.none{background:transparent;opacity:.35}
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:10px 0}
 .podium div{width:120px;text-align:center;background:#5b3a20;color:var(--paper);font:700 14px "Rockwell",Georgia,serif;padding:6px 4px}
+/* ---------- PARTY / ONLINE ---------- */
+.pslots{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:10px 0}
+.pslot{border:3px dashed #8a6a44;padding:10px;background:#f2e2c0;min-height:82px}
+.pslot.on{border-style:solid;background:#fff2d4}
+.pslot b{font:900 22px "Rockwell",Georgia,serif;margin-right:6px}
+.pslot .pkeys{font:12px Verdana;opacity:.7;margin-top:6px}
+.pslot kbd{border:1px solid #2a1a12;padding:0 6px;border-radius:3px;font:700 13px Consolas,monospace}
+.hud.small .kpos{font-size:52px;right:12px;bottom:8px}.hud.small .kpos sup{font-size:22px}
+.hud.small .kitem{transform:scale(.6);transform-origin:top left;left:8px;top:8px}.hud.small .kitem .key{display:none}
+.hud.small .kboard{display:none}.hud.small .klap{font-size:20px;right:10px;top:8px}.hud.small .klap small{font-size:13px}.hud.small .klap i{display:none}
+.hud.small .minimap{width:96px;height:96px;top:62px!important;right:8px}.hud.small .kbanner{font-size:40px}.hud.small .kbanner.count,.hud.small .kbanner.go{font-size:80px}
+.hud.small .speedo .v{font-size:30px}.hud.small .bars{display:none}.hud.small .radio{display:none!important}.hud.small .notes .note{font-size:14px}.hud.small .notes .note.big{font-size:22px}
 /* ---------- MENUS ---------- */
 .menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(40,20,10,.55),rgba(10,5,3,.92))}
 .title{font:900 min(13vw,120px)/0.9 "Rockwell","Georgia",serif;letter-spacing:.06em;color:var(--sun);text-shadow:0 6px 0 var(--rust2),0 12px 30px rgba(0,0,0,.8);text-align:center}
@@ -470,7 +482,7 @@ const Audio = {
       const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 2200;
       this.echo.connect(ef); ef.connect(fb); fb.connect(this.echo); ef.connect(this.music);
       this.wind = this.loopNoise('bandpass', 500, 0.6); this.hiss = this.loopNoise('highpass', 3500, 0.7);
-      for (let i = 0; i < 2; i++) this.engines.push(this.makeEngine(i));
+      for (let i = 0; i < 4; i++) this.engines.push(this.makeEngine(i));
       this.other = this.makeEngine(2, 0.5);
       this.nextTime = ctx.currentTime + 0.1; this.ready = true;
     } catch (e) { console.warn('audio init failed', e); }
@@ -618,12 +630,19 @@ const KEYMAPS = {
     up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], boost: ['ShiftRight'], drift: ['ControlRight'], hop: ['Slash'],
     interact: ['Enter', 'NumpadEnter'], item: ['Period', 'KeyL', 'Numpad0'],
   },
+  // party mode: four riders on one keyboard (drive · item · drift · boost)
+  party1: { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], item: ['KeyQ'], drift: ['ShiftLeft'], boost: ['KeyE'] },
+  party2: { up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], item: ['Slash', 'ControlRight'], drift: ['ShiftRight'], boost: ['Period'] },
+  party3: { up: ['KeyI'], down: ['KeyK'], left: ['KeyJ'], right: ['KeyL'], item: ['KeyU'], drift: ['KeyO'], boost: ['KeyP'] },
+  party4: { up: ['KeyT', 'Numpad8'], down: ['KeyG', 'Numpad5'], left: ['KeyF', 'Numpad4'], right: ['KeyH', 'Numpad6'], item: ['KeyR', 'Numpad7'], drift: ['KeyY', 'Numpad9'], boost: ['KeyV', 'Numpad0'] },
+  none: {},
 };
+const PARTY_KEYS = ['W A S D · Q item · L-Shift drift · E boost', '↑ ↓ ← → · / item · R-Shift drift · . boost', 'I J K L · U item · O drift · P boost', 'T F G H (or numpad 8456) · R item · Y drift · V boost'];
 const ACTIONS = ['boost', 'drift', 'hop', 'interact', 'item'];
 const PAD = { boost: 0, drift: 1, hop: 2, item: 3, item2: 5, brakeT: 6, throttleT: 7, map: 8, pause: 9, interact: 12 };
 const Input = {
   keys: new Set(), mouse: { x: innerWidth / 2, y: innerHeight / 2, b0: false, b2: false, lastMove: -10, inside: true, wheel: 0 },
-  prev: [{}, {}], cur: [{}, {}], listeners: [],
+  prev: [{}, {}, {}, {}], cur: [{}, {}, {}, {}], listeners: [],
   init() {
     addEventListener('keydown', (e) => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -643,15 +662,14 @@ const Input = {
   onKey(fn) { this.listeners.push(fn); },
   any(codes) { for (const c of codes) if (this.keys.has(c)) return true; return false; },
   pads() { try { return Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter((p) => p && p.connected); } catch (e) { return []; } },
-  // Poll the action state for player i (0/1). coop decides which keymap is used.
-  poll(i, coop) {
-    const map = coop ? (i === 0 ? KEYMAPS.p1 : KEYMAPS.p2) : KEYMAPS.solo;
+  // Poll the action state for player i (0..3) from a keymap name and a gamepad index (null = none).
+  poll(i, mapName, padIdx) {
+    const map = KEYMAPS[mapName] || KEYMAPS.solo;
     const a = { throttle: 0, steer: 0, pause: false, map: false };
-    const k = (n) => this.any(map[n]);
+    const k = (n) => !!map[n] && this.any(map[n]);
     a.throttle = (k('up') ? 1 : 0) - (k('down') ? 1 : 0); a.steer = (k('right') ? 1 : 0) - (k('left') ? 1 : 0);
     for (const n of ACTIONS) a[n] = k(n);
-    const pads = this.pads(); let pad = null;
-    if (!coop) pad = pads[0]; else if (pads.length >= 2) pad = pads[i]; else if (pads.length === 1 && i === 1) pad = pads[0];
+    const pads = this.pads(); const pad = padIdx == null ? null : pads[padIdx] || null;
     if (pad) {
       const b = (n) => pad.buttons[n] && pad.buttons[n].pressed; const bv = (n) => (pad.buttons[n] ? pad.buttons[n].value : 0);
       const ax = pad.axes[0] || 0; if (Math.abs(ax) > 0.15) a.steer = clamp(a.steer + ax, -1, 1);
@@ -3002,16 +3020,16 @@ const Items = {
     const w = {}; for (const k in ITEMS) w[k] = lerp(a.w[k] || 0, b.w[k] || 0, t); if (Circuit.st && Circuit.st.racers.some((o) => o.item === 'lance' || this.lances.length)) w.lance = 0; if (r.place <= 2) w.lance = 0;
     let tot = 0; for (const k in w) tot += w[k]; let x = Math.random() * tot; for (const k in w) { x -= w[k]; if (x <= 0) return k; } return 'nitro';
   },
-  use(r, back) {
-    const id = r.item; if (!id) return; const b = r.bike; const lg = Circuit.st && Circuit.st.log; if (lg) lg.use[id] = (lg.use[id] || 0) + 1; const f = b.forward(_v1); f.y = 0; f.normalize(); const st = Circuit.st; const up = G.save && r.P ? G.save.upgrades : null;
+  use(r, back, netTgt) {
+    const id = r.item; if (!id) return; if (Circuit.st && Circuit.st.opts.seats && r.P) Net.send({ t: 'item', id: r.id, item: id, back: !!back, tgt: id === 'missile' ? Circuit.st.racers.find((o) => o.place === r.place - 1)?.id : id === 'lance' ? (Circuit.st.racers.find((o) => o.place === 1 && o !== r && !o.finished) || Circuit.st.racers.find((o) => o.place === 2 && o !== r))?.id : undefined }); const b = r.bike; const lg = Circuit.st && Circuit.st.log; if (lg) lg.use[id] = (lg.use[id] || 0) + 1; const f = b.forward(_v1); f.y = 0; f.normalize(); const st = Circuit.st; const up = G.save && r.P ? G.save.upgrades : null;
     if (id === 'nitro' || id === 'nitro3') { b.nitroT = Math.max(b.nitroT || 0, 1.7 * (1 + (up ? up.cooling * 0.08 : 0))); if (r.P) Audio.play('boost'); }
     else if (id === 'rockets') this.fire(r, back ? -1 : 1, null);
-    else if (id === 'missile') { const tgt = st.racers.find((o) => o.place === r.place - 1) || null; this.fire(r, 1, tgt); }
+    else if (id === 'missile') { const tgt = netTgt !== undefined ? st.racers.find((o) => o.id === netTgt) || null : st.racers.find((o) => o.place === r.place - 1) || null; this.fire(r, 1, tgt); }
     else if (id === 'mine') { const p = b.pos.clone().addScaledVector(f, -3.6); this.dropMine(r, p); }
     else if (id === 'shield') { r.shieldT = 10 * (1 + (up ? up.armour * 0.06 : 0)); Audio.play('zap', r.P ? 0.8 : 0.3); }
     else if (id === 'emp') { FX.ring(V3(b.pos.x, b.pos.y, b.pos.z), { color: 0x9ad8ff, speed: 70, max: 40, thick: 0.25 }); Audio.play('zap', clamp(1.2 - G.camDist(b.pos) / 200, 0.1, 1)); let n = 0; for (const o of st.racers) if (o !== r && o.bike.pos.distanceTo(b.pos) < 40 && this.hit(o, 'emp', r)) n++; if (r.P && n >= 3) G.stats('empTriple'); }
     else if (id === 'dust') { for (const o of st.racers) if (o !== r && o.place < r.place && o.prog - r.prog < 600) { o.blindT = 3.6; FX.puff(o.bike.pos.clone().add(V3(0, 2, 0)), V3(0, 2, 0), [0.6, 0.45, 0.28], 6, 2.5, 0.8); if (o.P) o.P.hud.kbanner('DUST BOMB!', 'warn'); } if (r.P) Audio.play('splash'); }
-    else if (id === 'lance') { let tgt = st.racers.find((o) => o.place === 1 && o !== r && !o.finished); if (!tgt) tgt = st.racers.find((o) => o.place === 2 && o !== r && !o.finished); if (tgt) this.callLance(r, tgt); }
+    else if (id === 'lance') { let tgt = netTgt !== undefined ? st.racers.find((o) => o.id === netTgt) : st.racers.find((o) => o.place === 1 && o !== r && !o.finished); if (!tgt) tgt = st.racers.find((o) => o.place === 2 && o !== r && !o.finished); if (tgt) this.callLance(r, tgt); }
     r.count--; if (r.count <= 0) { r.item = null; r.count = 0; } r.itemCD = 0.3;
   },
   fire(r, dir, target) {
@@ -3027,8 +3045,10 @@ const Items = {
   callLance(r, tgt) { const M = itemMats(); const ring = new THREE.Mesh(new THREE.RingGeometry(5, 6.5, 32), M.mark); ring.rotation.x = -Math.PI / 2; WORLD.add(ring); this.lances.push({ r, tgt, t: 2.4, ring, beam: null, bt: 0 }); if (tgt.P) tgt.P.hud.kbanner('SKY LANCE INCOMING!', 'warn'); for (const P of G.players) if (P !== tgt.P) P.hud.note(`${r.name} called the Sky Lance on ${tgt.name}`, ''); Audio.play('warn', 0.6); },
   remove(arr, i) { const o = arr[i]; WORLD.remove(o.g || o.ring); if (o.beam) WORLD.remove(o.beam); arr.splice(i, 1); },
   // a hit: spin-out (shield absorbs it). Returns true if it landed.
-  hit(o, kind, by) {
-    if (o.respawnT > 0 || (o.bike.invuln > 0 && kind !== 'lance')) return false; const b = o.bike;
+  hit(o, kind, by, fromNet) {
+    const net = Circuit.st && Circuit.st.opts.seats; if (net && o.remote && !fromNet) return false; /* online: the victim's own game decides */
+    if (!fromNet && (o.respawnT > 0 || (o.bike.invuln > 0 && kind !== 'lance'))) return false; const b = o.bike;
+    if (net && o.P) Net.send({ t: 'hit', id: o.id, kind, by: by ? by.id : null, blocked: o.shieldT > 0 });
     if (o.shieldT > 0) { o.shieldT = 0; FX.ring(b.pos.clone(), { color: 0x5ff5e8, speed: 30, max: 6, thick: 0.2 }); Audio.play('zap', clamp(1.2 - G.camDist(b.pos) / 150, 0.1, 1)); if (o.P) { o.P.hud.note('Shield blocked it!', 'good'); G.stats('blocks'); } return false; }
     const dur = { missile: 1.7, rocket: 1.35, mine: 1.4, emp: 1.0, lance: 2.1 }[kind] * (o.P ? 1 - (G.save.upgrades.armour || 0) * 0.06 : 1);
     const lg = Circuit.st && Circuit.st.log; if (lg) lg.hit[kind] = (lg.hit[kind] || 0) + 1; b.spinT = dur; b.spinDur = dur; b.spinDir = Math.random() < 0.5 ? -1 : 1; const v = b.body.v; b.body.setVel(V3(v.x * 0.3, Math.max(0, v.y) + (kind === 'emp' ? 1 : 5), v.z * 0.3)); b.nitroT = 0; b.invuln = dur + 0.5;
@@ -3117,18 +3137,21 @@ const Circuit = {
   start(def, opts = {}) {
     this.end(true); const t0 = performance.now(); G.loading = true; const cls = CLASSES[opts.cls || 'rookie'];
     Track.build(def); Weather.clearForStage(); Sky.dayT = def.hour; G.dayScale = 0.02;
-    const humans = G.players; const ents = this.entrants(8 - humans.length, def, cls); const racers = [];
-    humans.forEach((P) => racers.push({ id: 'p' + P.idx, name: P.idx ? 'Player 2' : (G.save.name || 'You'), P, e: { id: 'p' + P.idx, name: P.idx ? 'Player 2' : 'You', color: P.bike.color, portrait: { seed: 42 + P.idx, mouth: 'smile', helmet: '#d9692b' } }, bike: P.bike, skill: 0.9 }));
+    const humans = G.players; const ents = opts.noAI || opts.seats ? [] : this.entrants(8 - humans.length, def, cls); const racers = [];
+    const pname = (P) => (G.party ? `P${P.idx + 1}` : P.idx ? 'Player 2' : (G.save.name || 'You'));
+    if (opts.seats) { for (const seat of opts.seats) { if (seat.id === Net.myId) { const P = humans[0]; racers.push({ id: seat.id, name: seat.name, P, e: { id: seat.id, name: seat.name, color: P.bike.color, portrait: { seed: strHash(seat.name) & 0xffff, mouth: 'smile', helmet: '#d9692b' } }, bike: P.bike, skill: 0.9 }); }
+      else racers.push({ id: seat.id, name: seat.name, remote: true, P: null, e: { id: seat.id, name: seat.name, color: seat.color, portrait: { seed: strHash(seat.name) & 0xffff, mouth: 'grin', helmet: '#3a6ad8' } }, bike: Net.remoteBike(seat), skill: 0.9 }); } }
+    else humans.forEach((P) => racers.push({ id: 'p' + P.idx, name: pname(P), P, e: { id: 'p' + P.idx, name: pname(P), color: P.bike.color, portrait: { seed: 42 + P.idx, mouth: 'smile', helmet: '#d9692b' } }, bike: P.bike, skill: 0.9 }));
     ents.forEach((e) => { const st = { maxSpeed: CONFIG.bike.maxSpeed * cls.speed * (e.legend ? 1.04 : e.speed || 1) * (1 + (e.skill - 0.85) * 0.1), accel: CONFIG.bike.accel * (0.95 + (e.skill || 0.8) * 0.12), grip: 1.0 + (e.skill || 0.8) * 0.1, steer: 1.05, boostCap: 100, boostRegen: 9, health: 100 };
       e.stats = st; if (!Models.has(e.model)) e.model = null; racers.push({ id: e.id, name: e.name, e, P: null, bike: null, skill: clamp((e.skill || 0.8) * cls.skill / 0.86, 0.5, 1.05) }); });
     // grid: cup standings (leader on pole) after the first race; the humans start at the back of race one
-    const cr = G.save.cupRun; if (opts.mode === 'cup' && cr && opts.raceIdx > 0) racers.sort((a, b) => (cr.pts[b.id] || 0) - (cr.pts[a.id] || 0)); else { for (let i = racers.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [racers[i], racers[j]] = [racers[j], racers[i]]; } racers.sort((a, b) => (a.P ? 1 : 0) - (b.P ? 1 : 0)); }
+    const cr = G.save.cupRun; if (opts.seats) { /* host's seat order */ } else if (opts.mode === 'cup' && cr && opts.raceIdx > 0) racers.sort((a, b) => (cr.pts[b.id] || 0) - (cr.pts[a.id] || 0)); else { for (let i = racers.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [racers[i], racers[j]] = [racers[j], racers[i]]; } racers.sort((a, b) => (a.P ? 1 : 0) - (b.P ? 1 : 0)); }
     racers.forEach((r, k) => { const q = Track.gridSlot(k); const pos = V3(q.x, 0, q.z); r.k = k; r.grid = k;
-      if (r.P) { r.bike.setPose(pos, q.yaw); r.P.cam.snap(r.bike); } else { r.bike = RacerPool.get(r.e, pos, q.yaw); r.bike.name = r.name; }
+      if (r.P) { r.bike.setPose(pos, q.yaw); r.P.cam.snap(r.bike); } else if (r.remote) { r.bike.setPose(pos, q.yaw); r.bike.parked = true; } else { r.bike = RacerPool.get(r.e, pos, q.yaw); r.bike.name = r.name; }
       const b = r.bike; b.wearOn = false; b.health = b.stats.health; b.fuel = b.stats.fuel; b.heat = 30; b.overheated = false; b.dead = false; b.spinT = 0; b.nitroT = 0; b.extraSpeedMul = 1; if (b.state !== 'ride') { b.state = 'ride'; b.remount(); } for (const id of PART_IDS) { const pp = b.parts[id]; pp.hp = pp.max; pp.broken = false; b.setPartVisual(id); }
       Object.assign(r, { lap: 0, s: Track.wrap(q.s), hint: Track.idx(q.s), d: 0, lat: k % 2 ? 3.6 : -3.6, prog: -10, halfway: false, finished: false, finishT: null, lapStart: 0, lapTimes: [], best: null, item: null, count: 0, roul: 0, rollItem: null, itemCD: 0, shieldT: 0, blindT: 0, place: k + 1, respawnT: 0, offT: 0, stuckT: 0, wrongT: 0, padCD: 0, lastGood: q.s, hitsDealt: 0, hitsTaken: 0, auto: false, ai: { laneT: 0, base: 0, lane: k % 2 ? 3.6 : -3.6, holdT: 0 }, rocket: null });
       const pr = Track.project(pos.x, pos.z, -1); r.s = pr.s; r.hint = pr.i; r.prog = r.s - Track.L; });
-    const st = this.st = { def, opts, cls, laps: opts.laps || def.laps || 3, racers, clock: 0, phase: 'intro', t: 3.2, doneT: 0, genMs: 0, light: -1, humans: racers.filter((r) => r.P), log: { use: {}, hit: {} } };
+    const st = this.st = { def, opts, cls, laps: opts.laps || def.laps || 3, racers, clock: 0, phase: 'intro', t: opts.seats && !Net.isHost ? 12 : 3.2, doneT: 0, genMs: 0, light: -1, humans: racers.filter((r) => r.P || r.remote), log: { use: {}, hit: {} } };
     for (const P of humans) { P.kart = racers.find((r) => r.P === P); P.hud.showKart(true); P.hud.kbanner(def.name.toUpperCase(), 'title'); }
     rebaseOrigin(humans[0].bike.pos, true); Terrain.update(racers.map((r) => r.bike.pos)); Terrain.updateColliders(racers.map((r) => r.bike.pos)); G.loading = false; st.genMs = performance.now() - t0;
     Radio.control(`${def.name}. ${st.laps} laps, ${racers.length} riders. Lights in a moment.`); Audio.targetIntensity = 0.45; NavDrone.reset(); G.stats('racesStarted');
@@ -3137,7 +3160,8 @@ const Circuit = {
   control(dt) {
     const st = this.st; if (!st) return;
     for (const r of st.racers) {
-      const b = r.bike; if (st.phase !== 'race') { b.ctrl.boost = false; b.ctrl.drift = false; if (!r.P) { b.ctrl.throttle = 0; b.ctrl.steer = 0; } b.body.setVel(V3(0, Math.min(0, b.body.v.y), 0)); continue; }
+      const b = r.bike; if (r.remote && st.phase !== 'race') { Net.follow(r, dt); continue; } if (st.phase !== 'race') { b.ctrl.boost = false; b.ctrl.drift = false; if (!r.P) { b.ctrl.throttle = 0; b.ctrl.steer = 0; } b.body.setVel(V3(0, Math.min(0, b.body.v.y), 0)); continue; }
+      if (r.remote) { Net.follow(r, dt); continue; }
       if (r.respawnT > 0) { b.ctrl.throttle = 0; b.ctrl.steer = 0; b.ctrl.boost = false; continue; }
       if (!r.P || r.auto) KartAI.control(r, dt);
       else if (r.item && r.itemCD <= 0 && Input.pressed(r.P.idx, 'item')) Items.use(r, (r.P.input.throttle || 0) < -0.3);
@@ -3147,14 +3171,15 @@ const Circuit = {
   // after physics: progress, laps, crates, pads, recovery, positions
   update(dt) {
     const st = this.st; if (!st) return; const T = Track, L = T.L; T.update(dt);
-    if (st.phase === 'intro') { st.t -= dt; if (st.t <= 0) { st.phase = 'count'; st.t = 3.99; st.light = -1; } for (const r of st.racers) if (r.P) this.trackThrottle(r, st); return; }
-    if (st.phase === 'count') { st.t -= dt; const nRed = clamp(5 - Math.ceil(st.t / 0.8) + 1, 0, 5); T.setLights(nRed, false); const cd = Math.ceil(st.t); if (cd !== st.light && cd > 0 && cd <= 3) { st.light = cd; Audio.play('countdown'); for (const r of st.humans) r.P.hud.kbanner(String(cd), 'count'); }
+    if (st.phase === 'intro') { st.t -= dt; if (st.t <= 0) { st.phase = 'count'; st.t = 3.99; st.light = -1; if (st.opts.seats && Net.isHost) Net.send({ t: 'count' }); } for (const r of st.racers) if (r.P) this.trackThrottle(r, st); return; }
+    if (st.phase === 'count') { st.t -= dt; const nRed = clamp(5 - Math.ceil(st.t / 0.8) + 1, 0, 5); T.setLights(nRed, false); const cd = Math.ceil(st.t); if (cd !== st.light && cd > 0 && cd <= 3) { st.light = cd; Audio.play('countdown'); for (const r of st.humans) if (r.P) r.P.hud.kbanner(String(cd), 'count'); }
       for (const r of st.racers) if (r.P) this.trackThrottle(r, st);
-      if (st.t <= 0) { st.phase = 'race'; st.clock = 0; T.setLights(0, true); Audio.play('go'); for (const r of st.racers) { r.lapStart = 0; if (r.P) { r.P.hud.kbanner('GO!', 'go'); this.rocketStart(r); } else if (Math.random() < r.skill * 0.6) r.bike.nitroT = 0.8; } }
+      if (st.t <= 0) { st.phase = 'race'; st.clock = 0; T.setLights(0, true); Audio.play('go'); for (const r of st.racers) { r.lapStart = 0; if (r.P) { r.P.hud.kbanner('GO!', 'go'); this.rocketStart(r); } else if (!r.remote && Math.random() < r.skill * 0.6) r.bike.nitroT = 0.8; } }
       return; }
     st.clock += dt; const n = st.racers.length;
     for (const r of st.racers) {
-      const b = r.bike; const pr = T.project(b.pos.x, b.pos.z, r.hint, r._pr || (r._pr = {})); r.hint = pr.i; const s = pr.s; r.d = pr.d; r.lat = pr.lat;
+      const b = r.bike; const pr = T.project(b.pos.x, b.pos.z, r.hint, r._pr || (r._pr = {})); r.hint = pr.i; r.d = pr.d; r.lat = pr.lat;
+      if (r.remote) { for (const cr of T.crates) { if (cr.on && (b.pos.x - cr.x) ** 2 + (b.pos.z - cr.z) ** 2 < 10) { cr.on = false; cr.t = 2.4; } } continue; } const s = pr.s;
       // laps: crossing the line forward after passing half distance counts; crossing back undoes it
       if (r.s > L * 0.75 && s < L * 0.25) { if (r.lap === 0 || r.halfway) { r.lap++; r.halfway = false; this.onLap(r); } }
       else if (r.s < L * 0.25 && s > L * 0.75 && r.lap > 0 && !r.finished) { r.lap--; r.halfway = true; }
@@ -3181,8 +3206,9 @@ const Circuit = {
     const order = [...st.racers].sort((a, b) => (a.finished && b.finished ? a.finishT - b.finishT : b.prog - a.prog)); order.forEach((r, i) => { const was = r.place; r.place = i + 1; if (r.P && was && r.place < was && st.clock > 3) G.stats('overtakes'); });
     Items.update(dt); this.chatter(dt);
     // the race ends when every human is home (the AI's remaining laps are projected)
-    if (st.phase === 'race' && st.humans.every((r) => r.finished)) { st.doneT += dt; if (st.doneT > 4) this.results(); }
-    const lastAI = st.racers.filter((r) => !r.P).every((r) => r.finished); if (lastAI && st.phase === 'race') { st.aiDoneT = (st.aiDoneT || 0) + dt; if (st.aiDoneT > 45) for (const r of st.humans) if (!r.finished) this.finish(r); }
+    if (st.phase === 'race' && st.humans.every((r) => r.finished || r.gone)) { st.doneT += dt; if (st.doneT > 4) this.results(); }
+    if (st.phase === 'race' && st.opts.seats) { Net.tick(dt); const first = st.humans.some((r) => r.finished); if (first) { st.firstT = (st.firstT || 0) + dt; if (st.firstT > 60) for (const r of st.humans) if (r.P && !r.finished) this.finish(r); } }
+    const lastAI = st.racers.filter((r) => !r.P && !r.remote).every((r) => r.finished); if (lastAI && st.phase === 'race' && st.racers.some((r) => !r.P && !r.remote)) { st.aiDoneT = (st.aiDoneT || 0) + dt; if (st.aiDoneT > 45) for (const r of st.humans) if (!r.finished) this.finish(r); }
     Audio.targetIntensity = st.phase === 'race' ? 0.6 + (st.humans.some((r) => r.lap >= st.laps) ? 0.3 : 0) : 0.3;
   },
   trackThrottle(r, st) { const on = (r.P.input.throttle || 0) > 0.3; if (on && r.thrFrom == null) r.thrFrom = st.phase === 'intro' ? 9 : st.t; if (!on) r.thrFrom = null; },
@@ -3193,23 +3219,23 @@ const Circuit = {
     if (r.P) { if (r.lap === st.laps) { r.P.hud.kbanner('FINAL LAP!', 'final'); Audio.play('win', 0.5); } else if (r.lap > 1) r.P.hud.kbanner(`LAP ${r.lap}/${st.laps}`, 'lap'); }
   },
   finish(r) {
-    const st = this.st; if (r.finished) return; r.finished = true; r.finishT = st.clock; r.lap = st.laps + 1; r.auto = true;
+    const st = this.st; if (r.finished) return; r.finished = true; r.finishT = st.clock; r.lap = st.laps + 1; r.auto = true; if (st.opts.seats && r.P) Net.send({ t: 'fin', id: r.id, ft: r.finishT, best: r.best });
     if (r.P) { const place = st.racers.filter((o) => o.finished).length; r.P.hud.kbanner(place === 1 ? 'YOU WIN!' : `${ordinal(place)} PLACE`, place <= 3 ? 'go' : 'lap'); Audio.play('win'); r.P.finishCam = { t: 6, pos: r.bike.pos.clone() }; G.stats('racesFinished'); }
   },
   beginRespawn(r) { if (r.respawnT > 0) return; r.respawnT = 1.3; r.respN = (r.respN || 0) + 1; r.offT = 0; r.stuckT = 0; if (r.P) { r.P.hud.kbanner('RECOVERING…', 'warn', 1.2); Audio.play('chirp'); G.stats('recoveries'); NavDrone.fetch(r); } },
   respawn(r) { const T = Track; const q = T.pointLat(r.lastGood - 4, clamp(r.lat, -T.half * 0.4, T.half * 0.4)); const b = r.bike; b.setPose(V3(q.x, 0, q.z), q.yaw); if (b.state !== 'ride') { b.state = 'ride'; b.remount(); } b.spinT = 0; b.invuln = 2; r.hint = T.idx(q.s); r.s = q.s; FX.ring(V3(q.x, q.h + 1, q.z), { color: 0x5ff5e8, speed: 20, max: 5, thick: 0.15 }); if (r.P) r.P.cam.snap(b); },
-  chatter(dt) { const st = this.st; this.chatT = (this.chatT || 8) - dt; if (this.chatT > 0) return; this.chatT = 10 + Math.random() * 12; const me = st.humans[0]; if (!me) return;
+  chatter(dt) { const st = this.st; this.chatT = (this.chatT || 8) - dt; if (this.chatT > 0) return; this.chatT = 10 + Math.random() * 12; const me = st.humans.find((r) => r.P); if (!me) return;
     const near = st.racers.filter((o) => !o.P && Math.abs(o.prog - me.prog) < 60 && RIVALS.some((x) => x.id === o.id)); if (!near.length) return; const o = pick(near); const rv = RIVALS.find((x) => x.id === o.id); Radio.say(o.e, pick(o.place < me.place ? rv.lines.ahead : rv.lines.behind), o.name); },
   results() {
     const st = this.st; if (st.phase === 'results') return; st.phase = 'results'; const L = Track.L;
-    for (const r of st.racers) if (!r.finished) { r.finished = true; r.finishT = st.clock + Math.max(0, (st.laps * L - r.prog)) / 42; }
+    for (const r of st.racers) if (!r.finished || r.gone) { r.finished = true; r.finishT = r.gone ? 1e9 : st.clock + Math.max(0, (st.laps * L - r.prog)) / 42; }
     const rows = [...st.racers].sort((a, b) => a.finishT - b.finishT); rows.forEach((r, i) => { r.place = i + 1; r.pts = POINTS[i] || 0; });
     const sv = G.save; const def = st.def; const cls = st.cls; const out = { def, cls, rows, mode: st.opts.mode, players: [] };
     Rivals.afterRace(rows);
-    for (const h of st.humans) { const lines = []; let prize = 0, rep = 0; const P = h.P;
-      if (st.opts.mode !== 'versus') { prize = Math.round(PRIZE[h.place - 1] * cls.prize * (st.opts.mode === 'single' ? 0.35 : 1) / 10) * 10; rep = Math.round((9 - h.place) * 4 * cls.rep); lines.push([`${ordinal(h.place)} place`, prize]); if (sv.team) { const bonus = Math.round(prize * 0.15); lines.push([`${TEAMS[sv.team].name} bonus`, bonus]); prize += bonus; } if (h.hitsDealt >= 3) { rep += 10; lines.push([`${h.hitsDealt} item hits`, '+10 rep']); } if (h.hitsTaken === 0) { rep += 10; lines.push(['Untouched (never hit)', '+10 rep']); G.stats('cleanRaces'); } }
-      const beaten = []; const lr = rows.find((x) => x.e && x.e.legend); if (lr && h.place < lr.place && P.idx === 0 && st.opts.mode !== 'versus') { const l = LEGENDS.find((x) => x.id === lr.id); beaten.push(l); if (!sv.legends[l.id]) { sv.legends[l.id] = true; sv.cosmetics.push(l.id); rep += 60; lines.push([`Beat the legend: ${l.name}`, '+60 rep']); } }
-      if (P.idx === 0 && st.opts.mode !== 'versus') { sv.prize += prize; sv.rep += rep; G.stats('prizeWon', prize); if (h.place === 1) G.stats('raceWins'); if (h.place <= 3) G.stats('podiums'); if (h.hitsDealt >= 3) G.stats('hat3');
+    for (const h of st.humans) { if (h.remote) continue; const lines = []; let prize = 0, rep = 0; const P = h.P;
+      if (!['versus', 'party', 'online'].includes(st.opts.mode)) { prize = Math.round(PRIZE[h.place - 1] * cls.prize * (st.opts.mode === 'single' ? 0.35 : 1) / 10) * 10; rep = Math.round((9 - h.place) * 4 * cls.rep); lines.push([`${ordinal(h.place)} place`, prize]); if (sv.team) { const bonus = Math.round(prize * 0.15); lines.push([`${TEAMS[sv.team].name} bonus`, bonus]); prize += bonus; } if (h.hitsDealt >= 3) { rep += 10; lines.push([`${h.hitsDealt} item hits`, '+10 rep']); } if (h.hitsTaken === 0) { rep += 10; lines.push(['Untouched (never hit)', '+10 rep']); G.stats('cleanRaces'); } }
+      const beaten = []; const lr = rows.find((x) => x.e && x.e.legend); if (P && lr && h.place < lr.place && P.idx === 0 && st.opts.mode === 'cup') { const l = LEGENDS.find((x) => x.id === lr.id); beaten.push(l); if (!sv.legends[l.id]) { sv.legends[l.id] = true; sv.cosmetics.push(l.id); rep += 60; lines.push([`Beat the legend: ${l.name}`, '+60 rep']); } }
+      if (P && P.idx === 0 && !['versus', 'party', 'online'].includes(st.opts.mode)) { sv.prize += prize; sv.rep += rep; G.stats('prizeWon', prize); if (h.place === 1) G.stats('raceWins'); if (h.place <= 3) G.stats('podiums'); if (h.hitsDealt >= 3) G.stats('hat3');
         const tb = sv.trackBest[def.id] || (sv.trackBest[def.id] = {}); if (h.best != null && (tb.lap == null || h.best < tb.lap)) { tb.lap = h.best; out.newLap = true; } if (tb.race == null || h.finishT < tb.race) { tb.race = h.finishT; out.newRace = true; } }
       out.players.push({ P, r: h, prize, rep, lines, beaten }); }
     // cup progress
@@ -3222,10 +3248,10 @@ const Circuit = {
   },
   // tear down; humans are flown back to the circuit's town
   end(silent) {
-    const st = this.st; if (!st && !silent) return; if (st) for (const r of st.racers) { if (r.shieldMesh) WORLD.remove(r.shieldMesh); if (!r.P && r.bike) { r.bike.spinT = 0; r.bike.nitroT = 0; RacerPool.put(r.bike); } }
+    const st = this.st; if (!st && !silent) return; if (st) for (const r of st.racers) { if (r.shieldMesh) WORLD.remove(r.shieldMesh); if (r.remote && r.bike) r.bike.destroy(); else if (!r.P && r.bike) { r.bike.spinT = 0; r.bike.nitroT = 0; RacerPool.put(r.bike); } }
     Items.clear(); const def = Track.def; Track.clear(); for (const P of G.players) { P.kart = null; P.hud.showKart(false); P.finishCam = null; P.bike.extraSpeedMul = 1; P.bike.spinT = 0; P.bike.nitroT = 0; P.bike.dead = false; }
     this.st = null; G.dayScale = 1; Weather.stormT = 120;
-    if (def && !silent) { const t = TOWNS.find((x) => x.id === def.town) || TOWNS[0]; Game.fastTravel(t, true); }
+    if (def && !silent && !G.party) { const t = TOWNS.find((x) => x.id === def.town) || TOWNS[0]; Game.fastTravel(t, true); }
   },
 };
 // the recovery drone (Pip): follows you around, swoops in to put you back on the line
@@ -3353,6 +3379,95 @@ const OnFoot = {
   },
 };
 
+// §NET — online races over WebRTC, the same way Brawler does it: PeerJS (cloud broker), one lobby per room code.
+// Everyone in a room tries to claim the peer id sandline-v1-<room>; whoever gets it first hosts, the rest connect
+// to the host (star). The host runs the lobby (up to 4 riders, track, laps) and starts the race; during the race
+// each rider drives their own bike locally and streams its state at 20 Hz (the host relays), item use and hits
+// are events — a hit is decided by the victim's own game. ?room=<code> in the link joins that room.
+const NET_MAX = 4;
+const Net = {
+  Peer: null, peer: null, isHost: false, conns: new Map(), myId: null, room: '', name: '', players: [], lobby: { track: 'dustloop', laps: 3 }, status: '', inRace: false, sendT: 0,
+  async lib() { if (!this.Peer) { const m = await import('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/+esm'); this.Peer = m.Peer || m.default; } return this.Peer; },
+  code(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16); },
+  randomCode() { const a = 'bcdfghjkmnpqrstvwxz'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)]; return s; },
+  link() { const u = new URL(location.href); u.search = ''; u.searchParams.set('room', this.room); return u.toString(); },
+  brokerOpts() { const b = QS.get('broker'); if (!b) return { debug: 0 }; const [host, port] = b.split(':'); return { debug: 1, host: host || 'localhost', port: Number(port || 9000), path: '/', secure: location.protocol === 'https:' }; },
+  me() { const P = G.players[0]; return { name: this.name, frame: G.save.frame, color: P ? P.bike.color : 0xc8562a, decal: G.save.decal }; },
+  // connect: host if the room id is free, else join whoever holds it
+  join(room, name) {
+    this.leave(); this.room = this.code(room) || this.randomCode(); this.name = (name || 'Rider').slice(0, 14); this.status = 'connecting…'; UI.onlineLobby();
+    return this.lib().then((Peer) => new Promise((resolve, reject) => {
+      const id = 'sandline-v1-' + this.room; let decided = false; const p = new Peer(id, this.brokerOpts()); this.peer = p;
+      const fail = (why) => { if (decided) return; decided = true; this.leave(); this.status = why; UI.onlineLobby(); reject(new Error(why)); };
+      p.on('open', () => { if (decided) return; decided = true; this.isHost = true; this.myId = id; this.players = [Object.assign({ id, host: true }, this.me())]; p.on('connection', (c) => this.accept(c)); this.status = 'hosting · share the link'; UI.onlineLobby(); resolve(true); });
+      p.on('error', (e) => { const t = e.type || ''; if (t === 'unavailable-id' && !decided) { decided = true; p.destroy(); this.guest(id).then(resolve, reject); } else if (!decided) fail('could not reach the peer broker (' + (t || 'error') + ')'); else console.warn('[net]', t, e); });
+      setTimeout(() => fail('timed out reaching the peer broker'), 12000);
+    }));
+  },
+  guest(hostId) {
+    return new Promise((resolve, reject) => {
+      const g = new this.Peer(this.brokerOpts()); this.peer = g; this.isHost = false; let ok = false;
+      g.on('open', (gid) => { this.myId = gid; const c = g.connect(hostId, { reliable: true }); this.conns.set('host', c);
+        c.on('open', () => c.send(Object.assign({ t: 'hello' }, this.me())));
+        c.on('data', (d) => { if (!ok && d && d.t === 'lobby') { ok = true; resolve(true); } this.onMsg('host', d); });
+        c.on('close', () => this.hostLost()); c.on('error', () => this.hostLost()); });
+      g.on('error', (e) => { if (!ok) { this.status = 'could not join (' + (e.type || 'error') + ')'; UI.onlineLobby(); reject(e); } });
+      setTimeout(() => { if (!ok) { this.status = 'no answer from the host'; UI.onlineLobby(); reject(new Error('no answer')); } }, 10000);
+    });
+  },
+  accept(c) {
+    c.on('data', (d) => this.onMsg(c.peer, d, c));
+    c.on('close', () => this.drop(c.peer)); c.on('error', () => this.drop(c.peer));
+  },
+  drop(id) { if (!this.conns.has(id)) return; this.conns.delete(id); this.players = this.players.filter((p) => p.id !== id); this.gone(id); this.broadcast({ t: 'left', id }); this.pushLobby(); },
+  gone(id) { const st = Circuit.st; const r = st && st.racers.find((o) => o.id === id); if (r) { r.gone = true; r.finished = true; r.finishT = 1e9; r.bike.visible = false; for (const P of G.players) P.hud.note(`${r.name} left the race`, 'bad'); } },
+  hostLost() { if (!this.peer) return; this.status = 'the host left'; const racing = Circuit.on; this.leave(); if (racing) Circuit.end(); UI.toast('The host left the room'); UI.onlineMenu(); },
+  leave() { try { if (this.peer) this.peer.destroy(); } catch (e) {} this.peer = null; this.conns.clear(); this.players = []; this.isHost = false; this.myId = null; this.inRace = false; G.online = false; },
+  // host → everyone; guest → host (who relays)
+  send(m) { if (this.isHost) this.broadcast(m); else { const c = this.conns.get('host'); if (c && c.open) c.send(m); } },
+  broadcast(m, except) { for (const [id, c] of this.conns) if (id !== except && c.open) c.send(m); },
+  pushLobby() { if (!this.isHost) return; this.broadcast({ t: 'lobby', players: this.players, lobby: this.lobby, racing: this.inRace }); if (!Circuit.on) UI.onlineLobby(); },
+  setLobby(o) { Object.assign(this.lobby, o); this.pushLobby(); },
+  onMsg(from, d, conn) {
+    if (!d || typeof d !== 'object') return;
+    if (this.isHost) {
+      if (d.t === 'hello') { if (this.players.length >= NET_MAX) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); return; } if (this.inRace) { conn.send({ t: 'busy' }); setTimeout(() => conn.close(), 300); return; }
+        this.conns.set(from, conn); this.players.push({ id: from, name: String(d.name || 'Rider').slice(0, 14), frame: CONFIG.frames[d.frame] ? d.frame : 'drifter', color: Number(d.color) || 0x2a6ac8, decal: d.decal || 'none' }); Audio.play('ping'); this.pushLobby(); return; }
+      if (['st', 'item', 'hit', 'fin'].includes(d.t)) { d.id = from; this.broadcast(d, from); } // relay, with the sender's real id
+    }
+    if (d.t === 'lobby') { this.players = d.players; this.lobby = d.lobby; if (!this.isHost) this.status = `in the lobby · ${d.players.length}/${NET_MAX} riders`; if (!Circuit.on) UI.onlineLobby(); }
+    else if (d.t === 'full') { this.status = 'that room is full (4 riders)'; this.leave(); UI.onlineLobby(); }
+    else if (d.t === 'busy') { this.status = 'a race is running in that room — try again in a minute'; this.leave(); UI.onlineLobby(); }
+    else if (d.t === 'start') this.startRace(d);
+    else if (d.t === 'count') { const st = Circuit.st; if (st && st.phase === 'intro') st.t = 0; }
+    else if (d.t === 'left') this.gone(d.id);
+    else if (d.t === 'back') { if (Circuit.on) { UI.close(true); Circuit.end(); } this.inRace = false; UI.onlineLobby(); }
+    else this.raceMsg(d);
+  },
+  // host: everyone on the grid in join order
+  hostStart() { if (!this.isHost) return; const def = trackById(this.lobby.track) || TRACKS[0]; const seats = this.players.map((p) => ({ id: p.id, name: p.name, frame: p.frame, color: p.color, decal: p.decal })); const m = { t: 'start', track: def.id, laps: this.lobby.laps, seats }; this.inRace = true; this.broadcast(m); this.startRace(m); },
+  startRace(m) { const def = trackById(m.track); if (!def) return; this.inRace = true; G.online = true; UI.close(true); UI.goRace(def, { mode: 'online', seats: m.seats, laps: m.laps, cls: 'pro' }); },
+  backToLobby() { if (this.isHost) { this.inRace = false; this.broadcast({ t: 'back' }); } if (Circuit.on) Circuit.end(); this.pushLobby(); UI.onlineLobby(); },
+  // ---- in the race
+  remoteBike(seat) { const b = new Bike({ kind: 'rival', frame: seat.frame, model: Models.forFrame(seat.frame), color: seat.color, decal: seat.decal, rider: { jacket: 0x2a4a7a, helmet: 0xd8e0f0, visor: 0x3a2a1a }, pos: V3(0, 0, 0), yaw: 0 }); b.remote = true; b.parked = true; b.name = seat.name; return b; },
+  tick(dt) { this.sendT -= dt; if (this.sendT > 0) return; this.sendT = 0.05; const st = Circuit.st; for (const r of st.racers) { if (!r.P) continue; const b = r.bike, p = b.body.p, q = b.body.q, v = b.body.v; const f = (x) => Math.round(x * 100) / 100;
+    this.send({ t: 'st', id: r.id, p: [f(p.x), f(p.y), f(p.z)], q: [f(q.x), f(q.y), f(q.z), f(q.w)], v: [f(v.x), f(v.y), f(v.z)], sp: f(b.speed), lap: r.lap, s: Math.round(r.s), prog: Math.round(r.prog), fin: r.finished ? 1 : 0, ft: r.finishT, best: r.best, spin: f(b.spinT), nit: f(b.nitroT), sh: f(r.shieldT), resp: r.respawnT > 0 ? 1 : 0 }); } },
+  raceMsg(d) {
+    const st = Circuit.st; if (!st || !d.id) return; const r = st.racers.find((o) => o.id === d.id); if (!r || !r.remote) return;
+    if (d.t === 'st') { r.net = { p: d.p, q: d.q, v: d.v, at: performance.now() }; r.lap = d.lap; r.s = d.s; r.best = d.best; r.shieldT = d.sh; if (!r.finished) r.prog = d.prog; if (d.fin && !r.finished) { r.finished = true; r.finishT = d.ft; } r.bike.speed = d.sp; r.bike.nitroT = d.nit; if (d.spin > 0.1 && r.bike.spinT <= 0) { r.bike.spinT = d.spin; r.bike.spinDur = Math.max(1, d.spin); } }
+    else if (d.t === 'item') { r.item = d.item; r.count = 1; Items.use(r, d.back, d.tgt); }
+    else if (d.t === 'hit') { const by = d.by ? st.racers.find((o) => o.id === d.by) : null; if (d.blocked) { r.shieldT = 0; FX.ring(r.bike.pos.clone(), { color: 0x5ff5e8, speed: 30, max: 6, thick: 0.2 }); } else { r.shieldT = 0; Items.hit(r, d.kind, by, true); } }
+    else if (d.t === 'fin') { r.finished = true; r.finishT = d.ft; r.best = d.best; r.lap = st.laps + 1; }
+  },
+  // remote bikes chase the latest state, extrapolated by its age
+  follow(r, dt) {
+    const b = r.bike, n = r.net; if (!n) return; const age = Math.min(0.3, (performance.now() - n.at) / 1000); const tx = n.p[0] + n.v[0] * age, ty = n.p[1] + n.v[1] * age, tz = n.p[2] + n.v[2] * age; const p = b.body.p;
+    const far = (p.x - tx) ** 2 + (p.z - tz) ** 2 > 100; const k = far ? 1 : 1 - Math.exp(-14 * dt); _v1.set(lerp(p.x, tx, k), lerp(p.y, ty, k), lerp(p.z, tz, k)); b.body.setPos(_v1);
+    _q1.set(n.q[0], n.q[1], n.q[2], n.q[3]).normalize(); b.body.setRot(far ? _q1 : b.body.q.clone().slerp(_q1, k)); b.body.setVel(_v2.set(n.v[0], n.v[1], n.v[2])); b.body.setAngVel(_v3.set(0, 0, 0));
+    b.grounded = true; b.groundY = heightAt(_v1.x, _v1.z); b.ctrl.throttle = b.speed > 2 ? 1 : 0; if (far) b.prevP.copy(_v1);
+  },
+};
+
 // §HUD -------------------------------------------------------------------------------------
 // Free roam: compass, minimap, speed, boost. In a circuit race (.kart): item slot (top left), lap + time (top right),
 // standings column, the big position number (bottom right), banners (countdown, laps, warnings) and the track minimap.
@@ -3376,7 +3491,7 @@ class Hud {
     this.ticks = []; for (let i = 0; i < 24; i++) { const t = el('div', { class: 'tick' }, ['N', '', 'NE', '', 'E', '', 'SE', '', 'S', '', 'SW', '', 'W', '', 'NW', ''][i % 16] || ''); this.el.compass.appendChild(t); this.ticks.push(t); }
     this.markers = []; this.t = 0; this.promptSet = false; this.miniT = 0; this.miniBase = makeCanvas(40, 40); this.itemKey = ''; this.lastPlace = 0; this.boardRows = []; this.portraits = {};
   }
-  setRect(x, y, w, h) { Object.assign(this.root.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); this.rect = { x, y, w, h }; }
+  setRect(x, y, w, h) { Object.assign(this.root.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); this.rect = { x, y, w, h }; this.root.classList.toggle('small', w < 760 || h < 460); }
   note(text, cls = '') { const n = el('div', { class: 'note ' + cls }, text); this.el.notes.appendChild(n); setTimeout(() => n.remove(), 3300); while (this.el.notes.children.length > 4) this.el.notes.firstChild.remove(); }
   radio(e) { if (!e) { this.el.radio.style.display = 'none'; return; } this.el.radio.style.display = 'block'; this.el.radio.classList.remove('static'); void this.el.radio.offsetWidth; this.el.radio.classList.add('static');
     const g = this.el.radioC.getContext('2d'); g.fillStyle = '#222'; g.fillRect(0, 0, 64, 64); if (e.who) g.drawImage(portraitCanvas(e.who, 64), 0, 0);
@@ -3411,7 +3526,7 @@ class Hud {
     if (r.place !== this.lastPlace) { this.el.pos.innerHTML = `${r.place}<sup>${ordinal(r.place).slice(-2)}</sup>`; this.el.pos.className = 'kpos k p' + r.place + (this.lastPlace ? ' pop' : ''); void this.el.pos.offsetWidth; this.lastPlace = r.place; }
     // standings column
     const order = [...st.racers].sort((a, b) => a.place - b.place); if (this.boardRows.length !== order.length) { this.el.board.innerHTML = ''; this.boardRows = order.map(() => { const d = el('div', {}, '<b></b><canvas width="22" height="22"></canvas><span></span>'); this.el.board.appendChild(d); return { d, key: '' }; }); }
-    order.forEach((o, i) => { const row = this.boardRows[i]; const key = o.id + (o === r ? 'me' : '') + (o.finished ? 'f' : ''); if (row.key !== key) { row.key = key; row.d.className = o === r ? 'me' : ''; row.d.querySelector('b').textContent = i + 1; row.d.querySelector('span').textContent = (o.P ? (o.P.idx ? 'Player 2' : 'You') : o.name.replace(/"[^"]*"\s*/, '').slice(0, 16)) + (o.finished ? ' ✓' : ''); const cv = row.d.querySelector('canvas').getContext('2d'); cv.drawImage(this.portrait(o), 0, 0, 22, 22); } if (o.bike.spinT > 0 && o.bike.spinT > o.bike.spinDur - 0.1) { row.d.classList.remove('hit'); void row.d.offsetWidth; row.d.classList.add('hit'); } });
+    order.forEach((o, i) => { const row = this.boardRows[i]; const key = o.id + (o === r ? 'me' : '') + (o.finished ? 'f' : ''); if (row.key !== key) { row.key = key; row.d.className = o === r ? 'me' : ''; row.d.querySelector('b').textContent = i + 1; row.d.querySelector('span').textContent = (o.P && !G.party && !G.online ? (o.P.idx ? 'Player 2' : 'You') : o.name.replace(/"[^"]*"\s*/, '').slice(0, 16)) + (o.finished ? ' ✓' : ''); const cv = row.d.querySelector('canvas').getContext('2d'); cv.drawImage(this.portrait(o), 0, 0, 22, 22); } if (o.bike.spinT > 0 && o.bike.spinT > o.bike.spinDur - 0.1) { row.d.classList.remove('hit'); void row.d.offsetWidth; row.d.classList.add('hit'); } });
     this.el.kdust.style.opacity = r.blindT > 0 ? Math.min(1, r.blindT / 1.2) * 0.95 : 0;
     const locked = Items.shots.some((s) => s.target === r && s.p.distanceTo(r.bike.pos) < 160) || Items.lances.some((l) => l.tgt === r); this.el.kwarn.classList.toggle('on', locked);
   }
@@ -3451,7 +3566,7 @@ const degOf = (yaw) => ((Math.round(yaw * 180 / Math.PI) % 360) + 360) % 360;
 // §UI --------------------------------------------------------------------------------------
 const UI = {
   root: document.getElementById('ui'), cur: null, onClose: null, rcTab: 'cups', cls: 'rookie',
-  open(html, cls = 'menu', onClose = null) { this.close(true); const d = el('div', { class: cls }); d.innerHTML = html; this.root.appendChild(d); this.cur = d; this.onClose = onClose; G.paused = true; return d; },
+  open(html, cls = 'menu', onClose = null) { this.close(true); this.sticky = false; const d = el('div', { class: cls }); d.innerHTML = html; this.root.appendChild(d); this.cur = d; this.onClose = onClose; G.paused = !(G.online && Circuit.on); return d; },
   close(silent = false) { if (this.cur) { this.cur.remove(); this.cur = null; const cb = this.onClose; this.onClose = null; if (cb && !silent) cb(); } G.paused = false; Audio.init(); },
   get isOpen() { return !!this.cur; },
   toast(text) { const t = el('div', { style: 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(20,12,8,.9);color:#fff4dc;padding:8px 16px;border:1px solid #d9692b;z-index:60;font:14px Verdana' }, text); document.body.appendChild(t); setTimeout(() => t.remove(), 2600); },
@@ -3470,7 +3585,7 @@ const UI = {
     const d = this.open(`<div style="text-align:center">${logo ? `<img src="${logo.src}" style="max-width:min(80vw,640px)">` : `<div class="title">${GAME_TITLE}</div>`}
       <div class="subtitle">Hoverbike circuit racing on the frontier. Eight riders, three laps, and a crate full of trouble.</div>
       <div class="btncol">${has ? '<button class="b" data-a="continue">Continue career</button>' : ''}${legacy ? '<button class="b" data-a="migrate">Continue from BOUNTY RUN</button>' : ''}<button class="b ${has || legacy ? 'alt' : ''}" data-a="new">New career</button>
-      <button class="b alt" data-a="quick">Quick race</button><button class="b alt" data-a="versus">Versus (split screen)</button>
+      <button class="b alt" data-a="quick">Quick race</button><button class="b alt" data-a="party">Party — up to 4 on one keyboard</button><button class="b alt" data-a="online">Online — up to 4, any device</button>
       <button class="b dim" data-a="help">Controls &amp; items</button><button class="b dim" data-a="settings">Settings</button><button class="b dim" data-a="import">Import save</button></div>
       <div style="margin-top:16px;font-size:12px;opacity:.6">Gamepads supported · Q fires your item</div></div>`);
     d.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => { Audio.init(); Audio.play('ui'); const a = b.dataset.a;
@@ -3478,7 +3593,8 @@ const UI = {
       if (a === 'migrate') { Save.migrateLegacy(); this.close(); Game.start(false, false); setTimeout(() => this.migrated(), 400); }
       if (a === 'new') { if (has && !confirm('Start over? Your current career will be replaced.')) return; Save.reset(); this.close(); Game.start(false, false); }
       if (a === 'quick') { if (has) Save.load(); else Save.reset(); this.close(); Game.start(false, false); setTimeout(() => this.goRace(pick(TRACKS.filter((t) => this.trackOpen(t))), { mode: 'single', cls: 'rookie' }), 300); }
-      if (a === 'versus') { if (has) Save.load(); else Save.reset(); this.close(); Game.start(true, true); setTimeout(() => this.versusPick(), 300); }
+      if (a === 'party') { if (has) Save.load(); else Save.reset(); this.partyLobby(); }
+      if (a === 'online') { if (has) Save.load(); else Save.reset(); this.close(); Game.start(false, false); setTimeout(() => this.onlineMenu(), 200); }
       if (a === 'help') this.help(() => this.title()); if (a === 'settings') this.settings(() => this.title()); if (a === 'import') this.importSave(() => this.title()); }));
   },
   migrated() { const m = G.save.migrated; if (!m) return; const d = this.open(this.panel('Welcome to the circuit', `<p>Your BOUNTY RUN hunter has hung up the net launcher and signed up to race.</p><table class="lb">
@@ -3500,12 +3616,12 @@ const UI = {
   pause() {
     const racing = Circuit.on;
     const d = this.open(this.panel('Paused', `<div class="btncol"><button class="b" data-close>Resume</button>${racing ? '' : '<button class="b alt" data-a="map">Map</button>'}<button class="b alt" data-a="help">Controls &amp; items</button><button class="b dim" data-a="settings">Settings</button>
-      ${racing ? '<button class="b dim" data-a="restart">Restart race</button><button class="b dim" data-a="quitrace">Quit race</button>' : ''}<button class="b dim" data-a="export">Export save</button><button class="b dim" data-a="import">Import save</button><button class="b dim" data-a="quit">Save &amp; quit to title</button></div>
+      ${racing && !G.online ? '<button class="b dim" data-a="restart">Restart race</button>' : ''}${racing ? `<button class="b dim" data-a="quitrace">${G.online ? 'Leave the online race' : 'Quit race'}</button>` : ''}<button class="b dim" data-a="export">Export save</button><button class="b dim" data-a="import">Import save</button><button class="b dim" data-a="quit">Save &amp; quit to title</button></div>
       <p style="margin-top:12px">${fmtMoney(G.save.prize)} · ${G.repTitle()} (${G.save.rep} rep) · ${Object.keys(G.save.legends).length}/${LEGENDS.length} legends beaten · ${Object.keys(G.save.ach).length}/${ACHIEVEMENTS.length} achievements</p>`)); this.wire(d);
     d.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => { Audio.play('ui'); const a = b.dataset.a;
       if (a === 'map') this.map(); if (a === 'help') this.help(() => this.pause()); if (a === 'settings') this.settings(() => this.pause()); if (a === 'import') this.importSave(() => this.pause());
       if (a === 'restart') { const st = Circuit.st; this.close(true); this.goRace(st.def, st.opts); }
-      if (a === 'quitrace') { if (Circuit.st && Circuit.st.opts.mode === 'cup' && !confirm('Quit the race? Your cup run ends here.')) return; if (Circuit.st && Circuit.st.opts.mode === 'cup') G.save.cupRun = null; this.close(true); Circuit.end(); }
+      if (a === 'quitrace') { if (Circuit.st && Circuit.st.opts.mode === 'cup' && !confirm('Quit the race? Your cup run ends here.')) return; if (Circuit.st && Circuit.st.opts.mode === 'cup') G.save.cupRun = null; this.close(true); if (G.party) { Game.clearPlayers(); G.mode = 'boot'; this.partyLobby(); } else if (G.online) { Net.leave(); Circuit.end(); this.onlineMenu(); } else Circuit.end(); }
       if (a === 'export') { const txt = Save.exportText(); const blob = new Blob([txt], { type: 'application/json' }); const u = URL.createObjectURL(blob); const aa = el('a', { href: u, download: 'sandline-save.json' }); document.body.appendChild(aa); aa.click(); aa.remove(); try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {} UI.toast('Save exported (downloaded + copied)'); }
       if (a === 'quit') { Save.save(); location.reload(); } }));
   },
@@ -3544,6 +3660,7 @@ const UI = {
   },
   // ---- results: the race, rewards, cup standings
   raceResults(out) {
+    if (out.mode === 'party' || out.mode === 'online') return this.groupResults(out);
     const me = out.players[0]; const r = me.r; const row = (x) => `<tr class="${x.P ? 'me' : ''}"><td>${x.place}</td><td>${x.P ? (x.P.idx ? 'Player 2' : 'You') : x.name}${x.e && x.e.legend ? ' <i>(legend)</i>' : ''}</td><td class="r">${fmtLap(x.finishT)}</td><td class="r">${fmtLap(x.best)}</td><td class="r">${out.mode === 'single' || out.mode === 'versus' ? '' : '+' + x.pts}</td></tr>`;
     const cup = out.cup; let cupHtml = ''; if (cup) { cupHtml = `<h3>${cup.cup.name} standings — after race ${cup.idx + 1} of ${cup.total}</h3><table class="lb">${cup.standings.map((s, i) => `<tr class="${s.id === 'p0' ? 'me' : ''}"><td>${i + 1}</td><td>${s.id === 'p0' ? 'You' : s.name}</td><td class="r">${s.pts} pts</td></tr>`).join('')}</table>`;
       if (cup.final) { const f = cup.final; cupHtml = `<h3>${cup.cup.name} — ${f.trophy ? `<span class="trophy ${f.trophy}"></span> ${f.trophy.toUpperCase()} TROPHY` : `you finished ${ordinal(f.place)}`}</h3><div class="podium">${cup.standings.slice(0, 3).map((s, i) => `<div style="height:${[90, 70, 55][i]}px">${i + 1}. ${s.id === 'p0' ? 'You' : s.name}<br>${s.pts} pts</div>`).join('')}</div>${f.bonus ? `<p>Cup bonus <b>${fmtMoney(f.bonus)}</b> · +${f.rep} rep</p>` : ''}` + cupHtml; } }
@@ -3616,6 +3733,59 @@ const MapView = {
     for (const t of TRACKS) { const pl = Track.placeCache[t.id]; if (!pl) continue; g.fillStyle = '#e8803a'; g.beginPath(); g.arc(tx(pl.cx), tx(pl.cz), 5, 0, TAU); g.fill(); g.fillStyle = '#5a2a10'; g.font = 'italic 11px Georgia'; g.fillText(t.name, tx(pl.cx), tx(pl.cz) - 8); }
     for (const p of G.players) { g.fillStyle = p.idx ? '#9aa7ff' : '#fff'; g.beginPath(); g.arc(tx(p.bike.pos.x), tx(p.bike.pos.z), 5, 0, TAU); g.fill(); g.strokeStyle = '#000'; g.stroke(); } },
 };
+
+// ---- party (one keyboard, up to 4) and online (up to 4 devices) lobbies
+Object.assign(UI, {
+  party: { slots: [null, null, null, null], track: 'dustloop', laps: 3 },
+  partyLobby() {
+    const pt = this.party; const pads = Input.pads(); const n = pt.slots.filter(Boolean).length;
+    const slot = (i) => { const sl = pt.slots[i]; const col = '#' + PARTY_COLORS[i].toString(16).padStart(6, '0'); return `<div class="pslot ${sl ? 'on' : ''}" style="border-color:${col}"><b style="color:${col}">P${i + 1}</b> ${sl ? `<span>${sl.pad != null ? 'Gamepad ' + (sl.pad + 1) : 'Keyboard'} — ready</span> <button class="b dim" data-out="${i}">✕</button>` : `<span>press <kbd>${KEYMAPS['party' + (i + 1)].item[0].replace('Key', '').replace('Slash', '/')}</kbd> to join</span>`}<div class="pkeys">${PARTY_KEYS[i]}</div></div>`; };
+    const d = this.open(this.panel('Party — up to 4 riders, one keyboard', `<p>Each rider presses their <b>item</b> key to join (or <b>A</b> on a gamepad). Humans only, split screen.</p><div class="pslots">${[0, 1, 2, 3].map(slot).join('')}</div>
+      <p>${pads.length ? pads.length + ' gamepad(s) connected' : 'Gamepads work too — press A to join.'}</p>
+      <p>Circuit <select id="ptrack">${TRACKS.map((t) => `<option value="${t.id}" ${pt.track === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select> Laps <select id="plaps">${[1, 2, 3, 5].map((l) => `<option ${pt.laps === l ? 'selected' : ''}>${l}</option>`).join('')}</select></p>
+      <p><button class="b" id="pgo" ${n ? '' : 'disabled'}>Start race (${n} rider${n === 1 ? '' : 's'})</button> <button class="b dim" id="pback">Back</button></p>`), 'menu'); this.sticky = true;
+    d.querySelector('#ptrack').onchange = (e) => { pt.track = e.target.value; }; d.querySelector('#plaps').onchange = (e) => { pt.laps = +e.target.value; };
+    d.querySelectorAll('[data-out]').forEach((b) => (b.onclick = () => { pt.slots[+b.dataset.out] = null; this.partyLobby(); }));
+    d.querySelector('#pback').onclick = () => { this.stopPartyJoin(); this.close(true); Game.clearPlayers(); G.mode = 'boot'; this.title(); };
+    d.querySelector('#pgo').onclick = () => { const slots = pt.slots.filter(Boolean); if (!slots.length) return; this.stopPartyJoin(); this.close(true); Game.startParty(slots); this.goRace(trackById(pt.track), { mode: 'party', noAI: true, laps: pt.laps, cls: 'pro' }); };
+    if (!this.partyJoin) { this.partyJoin = true; this.partyKey = (code) => { if (!this.partyJoin || !this.cur) return; for (let i = 0; i < 4; i++) { const km = KEYMAPS['party' + (i + 1)]; if ((km.item.includes(code) || km.boost.includes(code)) && !pt.slots[i]) { pt.slots[i] = { keys: 'party' + (i + 1), pad: null }; Audio.init(); Audio.play('ping'); this.partyLobby(); return; } } };
+      if (!this.partyKeyBound) { this.partyKeyBound = true; Input.onKey((c) => this.partyKey && this.partyKey(c)); }
+      this.padTimer = setInterval(() => { const ps = Input.pads(); ps.forEach((p, pi) => { if (!p.buttons[0] || !p.buttons[0].pressed) return; if (pt.slots.some((sl) => sl && sl.pad === pi)) return; const free = pt.slots.findIndex((sl) => !sl); if (free < 0) return; pt.slots[free] = { keys: 'none', pad: pi }; Audio.play('ping'); this.partyLobby(); }); }, 120); }
+  },
+  stopPartyJoin() { this.partyJoin = false; clearInterval(this.padTimer); },
+  onlineMenu() {
+    const qsRoom = Net.code(QS.get('room') || ''); const name = G.save.name && G.save.name !== 'You' ? G.save.name : 'Rider' + Math.floor(Math.random() * 90 + 10);
+    const d = this.open(this.panel('Online — up to 4 riders', `<p>Same as Brawler: everyone opens the same room link. The first one in hosts; the others join the lobby. Humans only.</p>
+      <p>Your name <input id="oname" maxlength="14" value="${name}"></p><p>Room code <input id="oroom" maxlength="16" value="${qsRoom || Net.randomCode()}"> <button class="b dim" id="onew">New code</button></p>
+      <p><button class="b" id="ojoin">Join / host this room</button> <button class="b dim" id="oback">Back</button></p><p style="font-size:12px">Uses the free PeerJS broker to connect browsers directly (WebRTC).</p>`), 'menu'); this.sticky = true;
+    d.querySelector('#onew').onclick = () => { d.querySelector('#oroom').value = Net.randomCode(); };
+    d.querySelector('#oback').onclick = () => { Net.leave(); this.close(true); Game.clearPlayers(); G.mode = 'boot'; this.title(); };
+    d.querySelector('#ojoin').onclick = () => { const nm = d.querySelector('#oname').value.trim() || 'Rider'; G.save.name = nm; Save.save(); Net.join(d.querySelector('#oroom').value, nm).catch((e) => console.warn('[net]', e)); };
+  },
+  onlineLobby() {
+    if (Circuit.on) return; const host = Net.isHost; const ps = Net.players; const L = Net.lobby; const link = Net.room ? Net.link() : '';
+    const d = this.open(this.panel(`Online lobby — room ${Net.room || '…'}`, `<p><b>${Net.status}</b></p>${link ? `<p>Share this link: <input id="olink" readonly value="${link}" style="width:min(520px,80vw)"> <button class="b dim" id="ocopy">Copy</button></p>` : ''}
+      <div class="pslots">${[0, 1, 2, 3].map((i) => { const p = ps[i]; const col = p ? '#' + (p.color >>> 0).toString(16).padStart(6, '0') : '#777'; return `<div class="pslot ${p ? 'on' : ''}" style="border-color:${col}"><b style="color:${col}">${i + 1}</b> ${p ? `${p.name}${p.host ? ' <i>(host)</i>' : ''}${p.id === Net.myId ? ' <i>— you</i>' : ''}<div class="pkeys">${CONFIG.frames[p.frame]?.name || ''}</div>` : '<span>waiting for a rider…</span>'}</div>`; }).join('')}</div>
+      <p>Circuit ${host ? `<select id="otrack">${TRACKS.map((t) => `<option value="${t.id}" ${L.track === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select> Laps <select id="olaps">${[1, 2, 3, 5].map((l) => `<option ${L.laps === l ? 'selected' : ''}>${l}</option>`).join('')}</select>` : `<b>${trackById(L.track)?.name || ''}</b> · ${L.laps} laps (the host picks)`}</p>
+      <p>${host ? `<button class="b" id="ostart" ${ps.length ? '' : 'disabled'}>Start race (${ps.length} rider${ps.length === 1 ? '' : 's'})</button> ` : Net.peer ? '<i>Waiting for the host to start…</i> ' : ''}<button class="b dim" id="oleave">Leave</button></p>`), 'menu'); this.sticky = true;
+    const cp = d.querySelector('#ocopy'); if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(link); UI.toast('Link copied'); } catch (e) { d.querySelector('#olink').select(); } };
+    const tr = d.querySelector('#otrack'); if (tr) tr.onchange = (e) => Net.setLobby({ track: e.target.value }); const lp = d.querySelector('#olaps'); if (lp) lp.onchange = (e) => Net.setLobby({ laps: +e.target.value });
+    const go = d.querySelector('#ostart'); if (go) go.onclick = () => Net.hostStart();
+    d.querySelector('#oleave').onclick = () => { Net.leave(); this.onlineMenu(); };
+  },
+  groupResults(out) {
+    const online = out.mode === 'online'; const win = out.rows[0];
+    const d = this.open(this.panel(`${out.def.name} — results`, `<h3>${win.gone ? 'No winner' : `${win.name.toUpperCase()} WINS!`}</h3>
+      <div class="podium">${out.rows.slice(0, 3).map((x, i) => `<div style="height:${[90, 70, 55][i]}px">${i + 1}. ${x.name}<br>${x.gone ? 'left' : fmtLap(x.finishT)}</div>`).join('')}</div>
+      <table class="lb results"><tr><th></th><th>Rider</th><th class="r">Time</th><th class="r">Best lap</th><th class="r">Hits</th></tr>${out.rows.map((x) => `<tr class="${x.P ? 'me' : ''}"><td>${x.place}</td><td>${x.name}</td><td class="r">${x.gone ? 'left' : fmtLap(x.finishT)}</td><td class="r">${fmtLap(x.best)}</td><td class="r">${x.remote ? '' : x.hitsDealt || 0}</td></tr>`).join('')}</table>
+      <p>${online ? (Net.isHost ? '<button class="b" id="globby">Back to the lobby</button> ' : '<i>The host takes everyone back to the lobby.</i> ') + '<button class="b dim" id="gleave">Leave the room</button>' : '<button class="b" id="gagain">Race again</button> <button class="b alt" id="globby">Back to the lobby</button> <button class="b dim" id="gquit">Quit to title</button>'}</p>`), 'menu'); this.sticky = true;
+    const q = (s) => d.querySelector(s);
+    if (online) { if (q('#globby')) q('#globby').onclick = () => { this.close(true); Net.backToLobby(); }; q('#gleave').onclick = () => { this.close(true); Net.leave(); Circuit.end(); this.onlineMenu(); }; return; }
+    q('#gagain').onclick = () => { const st = Circuit.st; this.close(true); this.goRace(st.def, st.opts); };
+    q('#globby').onclick = () => { this.close(true); Game.clearPlayers(); G.mode = 'boot'; this.partyLobby(); };
+    q('#gquit').onclick = () => { this.close(true); Game.clearPlayers(); G.mode = 'boot'; this.title(); };
+  },
+});
 
 // §SAVE ------------------------------------------------------------------------------------
 // v3 is SANDLINE's save (circuit career: cup trophies per class, track records, a cup in progress). A BOUNTY RUN save
@@ -3693,8 +3863,9 @@ const ACHIEVEMENTS = [
 // §MAIN ------------------------------------------------------------------------------------
 const NORENDER = QS.get('norender') === '1';
 const TURBO = NORENDER ? clamp(+(QS.get('turbo') || 1), 1, 16) : 1; // test hook: several logic steps per frame without rendering
+const PARTY_COLORS = [0xc8562a, 0x2a6ac8, 0x3aa84a, 0xe8c030];
 const G = {
-  time: 0, loading: true, paused: false, freezeTime: false, mode: 'boot', coop: false, versus: false, players: [], extraBikes: new Set(),
+  time: 0, loading: true, paused: false, freezeTime: false, mode: 'boot', coop: false, versus: false, party: false, online: false, players: [], extraBikes: new Set(),
   perf: { logic: 0, render: 0, calls: 0, tris: 0 }, save: null, settings: { vol: CONFIG.audio.master, music: CONFIG.audio.music, post: true, shadows: true, scale: 1 }, timeScale: 1, benchMode: null, god: false, dayScale: 1, mirageBoost: 0,
   camDist(p) { let d = 1e9; for (const pl of this.players) { const c = pl.cam.cam.position; const dd = Math.hypot(c.x - p.x, c.y - p.y, c.z - p.z); if (dd < d) d = dd; } return d; },
   allBikes() { const out = []; for (const p of this.players) out.push(p.bike); for (const b of Circuit.aiBikes()) out.push(b); for (const b of this.extraBikes) out.push(b); return out; },
@@ -3717,11 +3888,14 @@ const G = {
   tuneBike(b) { const T = this.save.tuning; b.stiffMul = T.stiffness; b.boostMul = T.boostMap; b.armour = this.save.upgrades.armour; },
 };
 class Player {
-  constructor(idx) { this.idx = idx; this.bike = null; this.cam = new ChaseCam(); this.hud = new Hud(this);
+  constructor(idx, slot = null) { this.idx = idx; this.slot = slot; this.bike = null; this.cam = new ChaseCam(); this.hud = new Hud(this);
     this.headlight = new THREE.SpotLight(0xfff0d8, 0, 160, 0.42, 0.55, 1.4); this.headlight.position.set(0, 0.9, 1.4); this.headlight.target.position.set(0, -2.5, 40); /* night races; created up front so no shader recompiles later */ this.kart = null; this.onFoot = false; this.input = {}; this.viewport = { x: 0, y: 0, w: innerWidth, h: innerHeight }; this.ramCD = new Map(); this.regionIdx = -1; this.focusFx = 0; this.trimT = 0; }
+  // keyboard map + gamepad for this rider: solo (pad 0), split-screen versus (P1/P2), party slots (picked in the lobby)
+  keymap() { if (this.slot) return this.slot.keys || 'none'; return G.coop ? (this.idx === 0 ? 'p1' : 'p2') : 'solo'; }
+  padIdx() { if (this.slot) return this.slot.pad; if (!G.coop) return 0; const n = Input.pads().length; return n >= 2 ? this.idx : n === 1 && this.idx === 1 ? 0 : null; }
   makeBike(pos, yaw) {
     const old = this.bike; const sv = G.save; const team = sv.team ? TEAMS[sv.team] : null; const paint = sv.paint === 'team' && team ? { c: team.color } : (PAINTS.find((p) => p.id === sv.paint) || PAINTS[0]);
-    let color = this.idx === 0 ? paint.c : 0x2a6ac8, decal = sv.decal; const rider = this.idx === 0 ? { jacket: 0x8a4a2a, helmet: 0xe8d8b8, visor: 0x2a3a4a, coat: false } : { jacket: 0x2a4a7a, helmet: 0xd8e0f0, visor: 0x3a2a1a };
+    let color = this.idx === 0 ? paint.c : PARTY_COLORS[this.idx], decal = sv.decal; const rider = this.idx === 0 ? { jacket: 0x8a4a2a, helmet: 0xe8d8b8, visor: 0x2a3a4a, coat: false } : { jacket: [0, 0x2a4a7a, 0x2a6a3a, 0x8a6a1a][this.idx], helmet: 0xd8e0f0, visor: 0x3a2a1a };
     if (this.idx === 0) for (const id of sv.wear) { const c = LEGENDS.find((l) => l.id === id)?.cosmetic; if (!c) continue; if (c.helmet) rider.helmet = c.helmet; if (c.visor) rider.visor = c.visor; if (c.jacket) rider.jacket = c.jacket; if (c.hat) rider.hat = c.hat; if (c.coat) rider.coat = true; if (c.decal) decal = c.decal; if (c.paint) color = (PAINTS.find((p) => p.id === c.paint) || paint).c; }
     if (team && this.idx === 0) rider.jacket = team.rider.jacket;
     this.bike = new Bike({ kind: 'player', frame: sv.frame, color, decal, pos, yaw, rider, stats: G.playerStats(this.idx) }); G.tuneBike(this.bike); this.bike.visual.add(this.headlight); this.bike.visual.add(this.headlight.target);
@@ -3743,11 +3917,19 @@ const Game = {
     Audio.init(); this.applySettings();
   },
   layout() {
-    const W = innerWidth, H = innerHeight; const n = G.players.length; const split = document.getElementById('split');
-    G.players.forEach((p, i) => { const vp = n === 1 ? { x: 0, y: 0, w: W, h: H } : { x: i * W / 2, y: 0, w: W / 2, h: H }; p.viewport = vp; p.cam.cam.aspect = vp.w / vp.h; p.cam.cam.updateProjectionMatrix(); p.hud.setRect(vp.x, vp.y, vp.w, vp.h); });
-    if (n > 1) { split.style.cssText = `display:block;left:${W / 2 - 2}px;top:0;width:4px;height:${H}px`; } else split.style.display = 'none';
-    Post.mat.uniforms.uSplit.value = n > 1 ? 1 : 0;
+    const W = innerWidth, H = innerHeight; const n = G.players.length; const split = document.getElementById('split'); const quad = n > 2;
+    G.players.forEach((p, i) => { const vp = n === 1 ? { x: 0, y: 0, w: W, h: H } : !quad ? { x: i * W / 2, y: 0, w: W / 2, h: H } : { x: (i % 2) * W / 2, y: Math.floor(i / 2) * H / 2, w: W / 2, h: H / 2 }; p.viewport = vp; p.cam.cam.aspect = vp.w / vp.h; p.cam.cam.updateProjectionMatrix(); p.hud.setRect(vp.x, vp.y, vp.w, vp.h); });
+    split.innerHTML = ''; if (n > 1) { split.style.cssText = `display:block;left:${W / 2 - 2}px;top:0;width:4px;height:${H}px`; if (quad) split.appendChild(el('div', { style: `position:fixed;left:0;top:${H / 2 - 2}px;width:${W}px;height:4px;background:#000` })); } else split.style.display = 'none';
+    Post.mat.uniforms.uSplit.value = n === 2 ? 1 : 0; renderer.shadowMap.enabled = G.settings.shadows && n <= 2; sun.castShadow = renderer.shadowMap.enabled;
   },
+  // party mode (same keyboard, up to 4, humans only): slots = [{ keys: 'party1'… | 'none', pad: index | null }]
+  startParty(slots) {
+    this.clearPlayers(); G.coop = slots.length > 1; G.versus = true; G.party = true; G.online = false; G.mode = 'play';
+    const t = TOWNS[0]; const pos = V3(t.x - 62, 0, t.z + 3);
+    slots.forEach((sl, i) => { const P = new Player(i, sl); G.players.push(P); P.makeBike(pos.clone().add(V3(i * 6, 0, i * 4)), Math.PI / 2); });
+    rebaseOrigin(pos, true); this.layout(); Audio.init(); this.applySettings();
+  },
+  clearPlayers() { if (Circuit.on) Circuit.end(true); for (const P of G.players) { P.bike.destroy(); P.hud.destroy(); } G.players.length = 0; G.party = false; G.online = false; },
   applySettings() { const s = G.settings; if (Audio.master) { Audio.master.gain.value = s.vol; Audio.music.gain.value = s.music; } Post.enabled = s.post; renderer.shadowMap.enabled = s.shadows; sun.castShadow = s.shadows; renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CONFIG.render.pixelRatioMax) * s.scale); renderer.setSize(innerWidth, innerHeight, false); Post.resize(); },
   rebuildPlayerBikes() { for (const p of G.players) p.makeBike(p.bike.pos.clone(), p.bike.yaw()); },
   fastTravel(t, force) {
@@ -3830,7 +4012,7 @@ function frame() {
   const dt = NORENDER && TURBO > 1 ? FIXED : Math.min(0.05, realDt);
   const tLogic0 = performance.now(); let alpha = 0;
   for (let k = 0; k < TURBO; k++) {
-    for (const P of G.players) P.input = Input.poll(P.idx, G.coop);
+    for (const P of G.players) P.input = Input.poll(P.idx, P.keymap(), P.padIdx());
     if (G.benchMode) Bench.frame(realDt);
     if (G.inputHook) for (const P of G.players) G.inputHook(P, dt);
     if (!G.paused) try { logicStep(dt); } catch (e) { reportError(e); }
@@ -3850,7 +4032,7 @@ function frame() {
     else if (P.onFoot) { const fp = OnFoot.pos; const des = V3(fp.x - Math.sin(P.cam.yaw) * 5, fp.y + 2.6, fp.z - Math.cos(P.cam.yaw) * 5); P.cam.pos.lerp(des, 1 - Math.exp(-6 * cdt)); P.cam.cam.position.copy(P.cam.pos); P.cam.cam.lookAt(fp.x - ORIGIN.x, fp.y + 1.4, fp.z - ORIGIN.z); }
     else if (Circuit.st && Circuit.st.phase === 'intro') P.cam.update(cdt, P.bike, { target: P.bike.mesh.position, radius: 9, height: 2.8, orbitSpeed: 0.45 });
     else P.cam.update(cdt, P.bike);
-    const b = P.bike; Audio.engineUpdate(P.idx, b.speed, b.ctrl.throttle, b.boosting, !b.grounded, G.coop ? (P.idx ? 0.5 : -0.5) : 0, P.onFoot);
+    const b = P.bike; Audio.engineUpdate(P.idx, b.speed, b.ctrl.throttle, b.boosting, !b.grounded, G.coop ? (P.idx % 2 ? 0.5 : -0.5) : 0, P.onFoot);
     P.headlight.intensity = smoothstep(0.15, 0.7, Sky.night) * 2600 * (b.state === 'ride' && !b.dead ? 1 : 0.2);
   }
   const P0 = G.players[0]; const reg = regionAt(P0.bike.pos.x, P0.bike.pos.z); Sky.update(cdt * G.dayScale, P0.cam.cam.position, reg, Weather.stormAmt * (G.save.frame === 'tempest' ? 0.55 : 1)); Sky.fogBase = scene.fog.density;
@@ -3881,7 +4063,7 @@ function render() {
     renderer.setRenderTarget(null); const u = Post.mat.uniforms; u.uTime.value = G.time; const P0 = G.players[0], P1 = G.players[1] || P0;
     const reg = regionAt(P0.bike.pos.x, P0.bike.pos.z); u.uHaze.value = (REG[reg].haze + Sky.colors.int * 0.6 + Weather.heatAmb * 0.8) * (1 - Sky.night) * (1 - Weather.stormAmt);
     u.uMirage.value = ((reg === R_GLASS ? 0.6 : reg === R_ASH ? 0.25 : 0) + G.mirageBoost * 0.5) * (1 - Sky.night) * Sky.colors.int; u.uHorizon.value.set(P0.cam.horizonY, P1.cam.horizonY);
-    u.uBlurA.value = P0.bike.boosting || P0.bike.nitroT > 0 ? 1 : P0.bike.driftBoostT > 0 ? 0.5 : clamp((P0.bike.speed - 60) / 30, 0, 0.4); u.uBlurB.value = P1.bike.boosting || P1.bike.nitroT > 0 ? 1 : 0;
+    u.uBlurA.value = G.players.length > 2 ? 0 : P0.bike.boosting || P0.bike.nitroT > 0 ? 1 : P0.bike.driftBoostT > 0 ? 0.5 : clamp((P0.bike.speed - 60) / 30, 0, 0.4); u.uBlurB.value = G.players.length > 2 ? 0 : P1.bike.boosting || P1.bike.nitroT > 0 ? 1 : 0;
     u.uStorm.value = Weather.stormAmt * (G.save.frame === 'tempest' ? 0.5 : 1); u.uFlash.value = FX.flash; u.uEmp.value.set(0, 0);
     const calls = renderer.info.render.calls, tris = renderer.info.render.triangles; renderer.render(Post.scene, Post.cam); renderer.info.render.calls = calls; renderer.info.render.triangles = tris;
   }
@@ -3959,7 +4141,7 @@ function reportError(e) { console.error(e); const d = document.getElementById('e
 window.addEventListener('error', (e) => { const d = document.getElementById('err'); d.style.display = 'block'; d.textContent = 'Error: ' + e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno; });
 addEventListener('beforeunload', () => { if (G.mode === 'play') Save.save(); });
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight, false); Post.resize(); titleCam.aspect = innerWidth / innerHeight; titleCam.updateProjectionMatrix(); if (G.mode === 'play') Game.layout(); });
-Input.onKey((code) => { if (G.mode !== 'play') return; if (code === 'Escape') { if (UI.isOpen) UI.close(); else UI.pause(); } if (code === 'KeyM' && !UI.isOpen) UI.map(); if (code === 'F1') UI.help(); });
+Input.onKey((code) => { if (G.mode !== 'play') return; if (code === 'Escape') { if (UI.isOpen) { if (!UI.sticky) UI.close(); } else UI.pause(); } if (code === 'KeyM' && !UI.isOpen && !G.party) UI.map(); if (code === 'F1') UI.help(); });
 async function boot() {
   const lb = document.getElementById('loadbar'), lm = document.getElementById('loadmsg'); const step = async (pct, msg) => { lb.style.width = pct + '%'; lm.textContent = msg; await new Promise((r) => setTimeout(r, 0)); };
   Input.init(); Save.loadSettings();
@@ -3975,7 +4157,7 @@ async function boot() {
   if (QS.get('debug') === '1') setTimeout(() => DebugUI.init(), 50);
   const bench = QS.get('bench');
   if (bench) Bench.setup(bench);
-  else { if (Save.exists()) Save.load(); else Save.reset(); UI.title(); }
+  else { if (Save.exists()) Save.load(); else Save.reset(); if (QS.get('room')) { Game.start(false, false); UI.onlineMenu(); } else UI.title(); }
   window.SL = { setTime: (h) => { Sky.dayT = h; }, heightAt, terrainSample, regionAt, G, Game, Circuit, Track, TRACKS, CUPS, CLASSES, ITEMS, Items, KartAI, LEGENDS, RIVALS, TEAMS, Phys, UI, Bench, DebugUI, Weather, Monorail, OnFoot, Save, NavDrone, Radio, V3, FX, Terrain, renderer, ORIGIN, WORLD, rebaseOrigin, defaultSave, trackById, TOWNS };
   frame();
 }
