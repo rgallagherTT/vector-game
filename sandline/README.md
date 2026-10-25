@@ -34,7 +34,17 @@ Ride to **Race Control** in any town and enter a cup, or pick **Quick race** on 
   A hit spins you out for a second or two. Blue chevron **boost pads** give nitro, and yellow-striped **ramps** launch you.
 - **Starts and recovery.** Hold the throttle as the last light goes out for a **rocket start**; hold it too early and you stall. Off the world, outside the walls or stuck: Pip, the recovery drone, puts you back on the track.
 - **Career.** Each cup is three races scored 15-12-10-8-6-4-2-1, with a gold, silver or bronze trophy for the top three. The **Sand Cup** is open from the start; a Sand Cup podium opens the **Thunder Cup**. There are three classes: Rookie, Pro and Legend. A podium in one class opens the next. Legendary racers enter Pro and Legend races on their home circuit: finish ahead of one to earn their cosmetic. Spend prize money at the **Service Park**, sign for a works team at the **Cantina**, and check lap records at the **Timing Hall**.
-- **Versus.** Two players race split screen against six AI riders.
+- **Party (one keyboard, up to 4).** Humans only, split screen (2×2 for three or four riders). In the lobby each rider presses their item key to join (gamepads press A). The keys are:
+
+  | Rider | Drive | Item | Drift | Boost |
+  |---|---|---|---|---|
+  | P1 | W A S D | Q | Left Shift | E |
+  | P2 | arrows | / | Right Shift | . |
+  | P3 | I J K L | U | O | P |
+  | P4 | T F G H (or numpad 8 4 5 6) | R | Y | V |
+
+  Pick a circuit and the number of laps, then start.
+- **Online (up to 4 devices).** Humans only, set up the same way as Brawler. Pick a room code (or open a link with `?room=CODE`). The first player in the room hosts and the others join the lobby. The host picks the circuit and laps and starts the race, then brings everyone back to the lobby afterwards. The browsers connect directly over WebRTC, using the free PeerJS broker to find each other. Each rider drives their own bike and streams its position 20 times a second. Item use and hits are sent as events, and a hit is decided by the victim's own game. `?broker=host:port` points at your own PeerJS server.
 
 ## Controls
 
@@ -57,6 +67,7 @@ Player 2: arrow keys, Right Shift boost, Right Ctrl drift, `/` hop, `.` (or L) f
 |---|---|
 | `?debug=1` | Overlay with FPS, logic ms and race state. Buttons start any track in any class (F2), skip a lap (F3), finish now, toggle autopilot, give any item and take a hit. There are also cheats, time of day, teleports and the parked on-foot walk. |
 | `?bench=race` | Your bike on autopilot in a full 8-rider race with items (the Grand Prix). Logs average, p95 and worst frame time, hitches (frames over 50 ms or 2.5× the average), logic ms, draw calls and triangles (`BENCH {...}`). `?dur=N` sets the length in seconds; `&track=<id>` picks the circuit. |
+| `?room=<code>` | Open the online lobby for that room. |
 | `?bench=versus` / `night` | The same in split screen, or on the night circuit. |
 | `?norender=1` | Logic only, with no rendering, for tests. `&turbo=N` runs N logic steps per frame. |
 | `?design=<dir>` | Load design assets from another folder. |
