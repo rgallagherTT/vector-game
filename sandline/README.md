@@ -17,7 +17,16 @@ If the design pack is missing, the game uses procedural bikes. If Rapier can't l
 
 Ride to **Race Control** in any town and enter a cup, or pick **Quick race** on the title screen.
 
-- **Circuits.** Six walled tracks, each laid into the desert next to a town: Dustwater Loop, Saltline Speedway, Scrapyard Scramble, Redrock Canyon Run, Last Light Nights (a floodlit night race) and the Ashfall Grand Prix. Every race is three laps with eight riders. A start/finish gantry has countdown lights, and the grid is painted on the asphalt. The sand off the track slows you right down.
+- **Tracks.** Nine tracks, each laid into the desert next to a town. Every race has eight riders, a start/finish gantry with countdown lights, and a grid painted on the asphalt.
+  - **Sand Cup:** three short circuits of three laps each.
+  - **Thunder Cup and Odyssey Cup:** long single-lap tours of 7.6–10.5 km.
+- **Track features.**
+  - **Corkscrews:** the road rolls a full 360° and you ride upside down.
+  - **Wall-ride banks:** banked up to 70°. Both corkscrews and banks are magnetic sections: the bike sticks to the road and the camera rolls with it.
+  - **Rock tunnels** with lamps.
+  - **Cliff runs** with no walls. Ride off the edge and Pip, the drone, swoops down and carries you back up in about a second.
+  - **Walls are bumpers:** you glance off and keep most of your speed instead of stopping dead.
+  - The sand off the track slows you right down.
 - **Items.** Ride through the glowing **?** crates to spin your item slot. Leaders draw defensive items; the back of the pack draws the heavy weapons.
 
   | Item | What it does |
@@ -32,8 +41,8 @@ Ride to **Race Control** in any town and enter a cup, or pick **Quick race** on 
   | Sky Lance | Rare, back of the pack only. An orbital strike on the race leader after a warning. |
 
   A hit spins you out for a second or two. Blue chevron **boost pads** give nitro, and yellow-striped **ramps** launch you.
-- **Starts and recovery.** Hold the throttle as the last light goes out for a **rocket start**; hold it too early and you stall. Off the world, outside the walls or stuck: Pip, the recovery drone, puts you back on the track.
-- **Career.** Each cup is three races scored 15-12-10-8-6-4-2-1, with a gold, silver or bronze trophy for the top three. The **Sand Cup** is open from the start; a Sand Cup podium opens the **Thunder Cup**. There are three classes: Rookie, Pro and Legend. A podium in one class opens the next. Legendary racers enter Pro and Legend races on their home circuit: finish ahead of one to earn their cosmetic. Spend prize money at the **Service Park**, sign for a works team at the **Cantina**, and check lap records at the **Timing Hall**.
+- **Starts and recovery.** Hold the throttle as the last light goes out for a **rocket start**; hold it too early and you stall. Fall off a cliff run, end up outside the walls or get stuck, and Pip, the recovery drone, carries you back to the track in about a second.
+- **Career.** Each cup is three races scored 15-12-10-8-6-4-2-1, with a gold, silver or bronze trophy for the top three. The **Sand Cup** is open from the start. A Sand Cup podium opens the **Thunder Cup**, and a Thunder Cup podium opens the **Odyssey Cup**. There are three classes: Rookie, Pro and Legend. A podium in one class opens the next. Legendary racers enter Pro and Legend races on their home circuit: finish ahead of one to earn their cosmetic. Spend prize money at the **Service Park**, sign for a works team at the **Cantina**, and check lap records at the **Timing Hall**.
 - **Party (one keyboard, up to 4).** Humans only, split screen (2×2 for three or four riders). In the lobby each rider presses their item key to join (gamepads press A). The keys are:
 
   | Rider | Drive | Item | Drift | Boost |
@@ -55,7 +64,7 @@ Player 2: arrow keys, Right Shift boost, Right Ctrl drift, `/` hop, `.` (or L) f
 ## HUD
 
 - Item slot, top left (it spins when you pick up a crate).
-- Lap counter, race time and best lap, top right.
+- Lap counter (distance in km on single-lap tours), race time and best lap, top right.
 - Minimap of the whole circuit.
 - The running order down the left.
 - Your position, bottom right.
@@ -74,13 +83,16 @@ Player 2: arrow keys, Right Shift boost, Right Ctrl drift, `/` hop, `.` (or L) f
 
 ## Finding your way around the code
 
-There's a manifest at the top of the script. Search for `// §NAME` anchors such as `§TRACKS`, `§TRACK`, `§ITEMS`, `§KARTAI`, `§CIRCUIT RACE`, `§HUD`, `§HOVER` and `§FLOATING ORIGIN`. Circuits are data in `TRACKS`: control points (any scale), lap length, width, hour, wall colours, and fractions along the lap for jumps, boost pads and crate rows. Add an entry and give it a cup in `CUPS`. Item odds by position are in `ITEM_ODDS`.
+There's a manifest at the top of the script. Search for `// §NAME` anchors such as `§TRACKS`, `§TRACK`, `§ITEMS`, `§KARTAI`, `§CIRCUIT RACE`, `§HUD`, `§HOVER` and `§FLOATING ORIGIN`. Tracks are data in `TRACKS`. Each entry has control points (any scale) or a `gen` seed for a long tour, plus lap length, laps, width, hour and wall colours. It also lists `features` (corkscrew, bank, tunnel, chasm) and fractions along the lap for jumps, boost pads and crate rows. Add an entry and give it a cup in `CUPS`. Item odds by position are in `ITEM_ODDS`.
 
 ## How the circuits work
 
-- **Layout.** The control points become a closed Catmull-Rom spline, scaled to the lap length and sampled every 4 m. Corners tighter than the bikes can take are rounded off. The start line goes a third of the way down the longest straight.
+- **Layout.** The control points become a closed Catmull-Rom spline, scaled to the lap length and sampled every 4 m. Long tours use a seeded star-shaped curve (the radius wobbles 2, 3 and 5 times per lap), so they never cross themselves. Corners tighter than the bikes can take are rounded off. The start line goes a third of the way down the longest straight.
 - **Placement.** Each circuit is placed beside its town at the spot that avoids towns, the monorail, landmarks, camps, slot canyons and water, and needs the least cut and fill. The spot is cached, so a track sits in the same place every time.
-- **Road bed.** While a race runs, `terrainSample` flattens a corridor to the road's height profile: the ground along the line, smoothed, grade-limited, plus the jump kickers. The chunks under the corridor are rebuilt. The road is a textured ribbon with kerbs and lines on top. Instanced barriers on both sides each have a collider. When the race ends, the ground goes back to normal.
+- **Road bed.** While a race runs, `terrainSample` shapes a corridor around the road. It flattens the ground to the road's height profile (the ground along the line, smoothed and grade-limited, plus the jump kickers), raises a rock mound over the tunnels, and cuts a 26 m drop beside the cliff runs. The chunks under the corridor are rebuilt. When the race ends, the ground goes back to normal.
+- **Frames.** Every road sample has a frame: a centre point (the bed plus a lift), forward, up (rolled for banks and corkscrews) and right. The road ribbon is built from these frames, so it climbs, banks and turns upside down. Corkscrews get hoops and legs, banks get pylons, and tunnels get an arched tube with portals.
+- **Magnetic riding.** On a corkscrew or bank the bike leaves the hover physics. Throttle, brake, boost and nitro drive it along the road (gravity still acts on the climbs), and steering slides it across. Its position and orientation come from the frame.
+- **Walls.** The walls have no colliders. The race code pushes you back inside, takes away most of your sideways speed, keeps your forward speed and turns your nose back along the track.
 - **AI.** Riders follow a racing line toward the inside of the next corner and brake to the speed the curvature allows. They drift the hairpins, pass around riders and mines, go after crates when their slot is empty, and use items with simple intent. A light rubber band keeps the pack near the humans.
 - **Laps.** Positions come from laps plus distance. A lap counts only after you pass half distance, so you can't cut back over the line.
 
