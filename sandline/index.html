@@ -859,7 +859,7 @@ function regAshfall(x, z, o) {
   const pm = smoothstep(0.44, 0.54, Noise.s2(x / 1500 - 40, z / 1500 + 77));
   if (pm > 0) {
     const c = Math.abs(Noise.s2(x / 520 + 3, z / 520 - 8)) + Math.abs(Noise.s2(x / 140, z / 140)) * 0.02;
-    const ramp = smoothstep(0.55, 0.8, Noise.s2(x / 220 - 3.3, z / 220 + 8.8)); const cm = 1 - smoothstep(0.035, 0.085 + ramp * 0.4, c);
+    const cliff = smoothstep(0.15, 0.45, Noise.s2(x / 260 - 3.3, z / 260 + 8.8)); const cm = 1 - smoothstep(0.035, lerp(0.22, 0.085, cliff), c);
     const floor = big * 0.6 + Noise.fbm(x / 160, z / 160, 2) * 1.0;
     const top = big * 0.6 + 26 + Noise.fbm(x / 210, z / 210, 2) * 4;
     const plate = lerp(top, floor, cm);
@@ -883,9 +883,9 @@ function regRedrock(x, z, o) {
   const baseN = Noise.fbm(x / 1200, z / 1200, 3);
   let base = 52 + baseN * 14; base = Math.floor(base / 9) * 9 + smoothstep(0, 1, (base / 9) % 1) * 9; // terraced strata
   const c1 = Math.abs(Noise.s2(x / 700, z / 700)), c2 = Math.abs(Noise.s2(x / 430 + 50, z / 430 - 20)) * 1.15;
-  // ramps: here and there the canyon wall slumps into a long slope, so the Maze can be ridden in and out of
-  const ramp = smoothstep(0.55, 0.8, Noise.s2(x / 240 + 9.1, z / 240 - 4.7));
-  const c = Math.min(c1, c2); const cm = 1 - smoothstep(0.05, 0.13 + ramp * 0.55, c);
+  // SANDLINE: most canyon walls are steep but rideable slopes; sheer cliffs only where `cliff` is high (~1/3 of the length)
+  const cliff = smoothstep(0.15, 0.45, Noise.s2(x / 300 + 9.1, z / 300 - 4.7));
+  const c = Math.min(c1, c2); const cm = 1 - smoothstep(0.05, lerp(0.32, 0.13, cliff), c);
   const floor = 4 + Noise.fbm(x / 300, z / 300, 2) * 3 + dunes(x, z, 26, 2.2);
   o.h = lerp(base, floor, cm); o.canyon = cm; o.floor = floor; o.s = cm > 0.55 ? S_RIVER : S_ROCK;
 }
@@ -1432,6 +1432,7 @@ const Props = {
       if (t.s === S_ROAD || t.s === S_WATER || t.slot > 0.2) continue;
       let near = false; for (const f of FLATS) if (Math.abs(x - f.x) < f.r2 && Math.abs(z - f.z) < f.r2 && Math.hypot(x - f.x, z - f.z) < f.r2 - 20) { near = true; break; } if (near) continue;
       if (polyQuery(HIGHWAY, x, z, 20)?.d < 14) continue;
+      if (typeof Route !== 'undefined' && Route.nearLine(x, z, 9)) continue; // the organiser cleared the stage line of boulders
       const roll = r.next(); let type = null, sc = 1, col = 0;
       if (t.region === R_ASH) {
         if (t.s === S_ROCK || t.canyon > 0.3) { if (roll < 0.35) { type = 'rock'; sc = r.range(0.8, 3.2); } else if (roll < 0.4) { type = 'rock'; sc = r.range(4, 7); } }
@@ -2561,11 +2562,13 @@ const STAGE_EVENTS = {
   mirage: { name: 'Mirage', brief: 'Heat mirages on the flats. A false flag may shimmer where no waypoint is — check your roadbook.',
     weight(st, R) { return R.share((s) => s.region === R_GLASS) > 0.25 ? 1 : R.share((s) => s.surf === S_SALT) > 0.15 ? 0.45 : 0.1; },
     place(R, rng) { const hid = Route.wps.filter((w) => w.kind === 'wpm' && w.s > R.L * 0.15); if (!hid.length) return null; const w = rng.pick(hid); return Math.max(0, w.s - 1400); },
-    start(ev) { const w = Route.wps.find((x) => x.kind === 'wpm' && x.s > ev.s); if (!w) return; ev.wp = w; const side = Math.random() < 0.5 ? -1 : 1; const p = Route.pointAt(w.s - 150); const a = p.yaw + side * Math.PI / 2;
-      const fx = w.x + Math.sin(a) * 320, fz = w.z + Math.cos(a) * 320; ev.fake = Route.makeBeacon(fx, fz, 0x9ad8ff, true); G.mirageBoost = 1; },
+    start(ev) { /* shimmer beside the next hidden waypoint, else the next waypoint of any kind, else just up the route */
+      const w = Route.wps.find((x) => x.kind === 'wpm' && x.s > ev.s) || Route.wps.find((x) => x.s > ev.s + 300 && x.kind !== 'finish'); ev.wp = w || null;
+      const ws = w ? w.s : Math.min(Route.L - 500, ev.s + 1500); const c = w || Route.pointAt(ws); const side = Math.random() < 0.5 ? -1 : 1; const p = Route.pointAt(Math.max(0, ws - 150)); const a = p.yaw + side * Math.PI / 2;
+      const fx = c.x + Math.sin(a) * 320, fz = c.z + Math.cos(a) * 320; ev.fake = Route.makeBeacon(fx, fz, 0x9ad8ff, true); G.mirageBoost = 1; },
     update(ev, dt) { if (!ev.fake) return true; ev.fake.group.visible = Math.random() > 0.08; ev.fake.group.position.y = ev.fake.y0 + Math.sin(G.time * 3) * 0.6;
       for (const P of G.players) if (distXZ(P.bike.pos, ev.fake.group.position) < 70) { if (!ev.told) { ev.told = true; P.hud.note('Mirage! There\'s nothing there.', 'bad'); G.stats('mirages'); } return true; }
-      return G.players.every((P) => !P.rs || P.rs.wpDone[ev.wp.idx] !== undefined) || ev.t > 150; },
+      return (ev.wp ? G.players.every((P) => { const e = Field.playerEntrant(P); return !e || e.wpDone[Route.wps.indexOf(ev.wp)] !== undefined; }) : G.players.every((P) => !P.rs || P.rs.s > ev.s + 2000)) || ev.t > 150; },
     end(ev) { if (ev.fake) Route.removeBeacon(ev.fake); G.mirageBoost = 0; } },
   collapse: { name: 'Canyon collapse', brief: 'Loose canyon walls on this stage. If the line is blocked, the roadbook gives a detour.', slow: { len: 900, mul: 0.6 },
     weight(st, R) { return R.share((s) => s.canyon > 0.5) > 0.06 ? 0.9 : 0; },
@@ -2816,7 +2819,7 @@ const NAMES = {
   first: ['Cass', 'Dell', 'Fen', 'Gideon', 'Hattie', 'Ira', 'Jessamy', 'Kit', 'Lark', 'Milo', 'Nell', 'Orrin', 'Pell', 'Quill', 'Reba', 'Sol', 'Tess', 'Ulla', 'Vance', 'Wren', 'Yara', 'Zeke', 'Abner', 'Bettina', 'Clem', 'Eulalie', 'Flint', 'Gus', 'Inez', 'Juno', 'Knox', 'Lupe', 'Mercer', 'Odette', 'Percy', 'Rosalind', 'Silvio', 'Thaddeus', 'Veda'],
   last: ['Ashby', 'Barrow', 'Coyle', 'Darrow', 'Ember', 'Finch', 'Gault', 'Harrow', 'Ives', 'Jessop', 'Kettle', 'Lockhart', 'Mavrick', 'Nettles', 'Orvis', 'Pike', 'Quarry', 'Roan', 'Sallow', 'Thorne', 'Umber', 'Vargas', 'Wick', 'Yates', 'Zane', 'Brimley', 'Cotter', 'Drummond', 'Faraday', 'Grist', 'Hale', 'Kincaid', 'Larkspur', 'Mudd', 'Pellham', 'Rusk', 'Tallow', 'Whitlock'],
 };
-function entrantStats(e) { return { maxSpeed: CONFIG.bike.maxSpeed * e.speed, accel: CONFIG.bike.accel * (0.9 + e.skill * 0.15), grip: 0.95 + e.skill * 0.12, steer: 1, boostCap: 100, boostRegen: 8 + e.skill * 3, health: 100 }; }
+function entrantStats(e) { return { maxSpeed: CONFIG.bike.maxSpeed * e.speed * 0.74, accel: CONFIG.bike.accel * (0.9 + e.skill * 0.15), grip: 0.95 + e.skill * 0.12, steer: 1, boostCap: 100, boostRegen: 8 + e.skill * 3, health: 100 }; }
 // racer card (the old wanted poster, reprinted as a rally entry card)
 const cardCache = new Map();
 function racerCardCanvas(e) {
@@ -2833,16 +2836,16 @@ function racerCardCanvas(e) {
 // §CALENDAR --------------------------------------------------------------------------------
 // Events are rallies of 1–2 stages; every stage is generated from its seed (same route every time).
 const CALENDAR = [
-  { id: 'ashfall', name: 'Ashfall Rally', rep: 0, prize: 900, desc: 'The season opener around the Ashfall Basin.', stages: [
+  { id: 'ashfall', name: 'Ashfall Rally', rep: 0, prize: 900, field: 0.84, desc: 'The season opener around the Ashfall Basin.', stages: [
     { id: 'ash1', name: 'Dustwater Prologue', from: 'dustwater', to: 'dustwater', km: 22, hour: 9.5, seed: 11 },
     { id: 'ash2', name: 'The Glass Run', from: 'dustwater', to: 'prism', km: 26, hour: 14, seed: 12, eventBias: { mirage: 2, heatwave: 1.5 } } ] },
-  { id: 'redrock', name: 'Redrock Raid', rep: 120, prize: 1400, desc: 'Canyons, slot gorges and the wreck fields of the Scrapsea.', stages: [
+  { id: 'redrock', name: 'Redrock Raid', rep: 120, prize: 1400, field: 0.9, desc: 'Canyons, slot gorges and the wreck fields of the Scrapsea.', stages: [
     { id: 'red1', name: 'The Maze', from: 'dustwater', to: 'hangman', km: 28, hour: 10, seed: 21, eventBias: { collapse: 2 } },
     { id: 'red2', name: 'Scrapsea Crossing', from: 'hangman', to: 'rustharbor', km: 32, hour: 15.5, seed: 22 } ] },
-  { id: 'storm', name: 'Storm Belt Marathon', rep: 320, prize: 2200, desc: 'Black dunes, lightning and the 40 km Long Dark.', stages: [
+  { id: 'storm', name: 'Storm Belt Marathon', rep: 320, prize: 2200, field: 0.96, desc: 'Black dunes, lightning and the 40 km Long Dark.', stages: [
     { id: 'storm1', name: 'Black Dunes', from: 'rustharbor', to: 'lastlight', km: 30, hour: 17.5, seed: 31, eventBias: { sandstorm: 2 } },
     { id: 'storm2', name: 'The Long Dark', from: 'lastlight', to: 'lastlight', km: 40, hour: 19.5, seed: 32, night: true, marathon: true } ] },
-  { id: 'legends', name: 'Frontier Legends Cup', rep: 650, prize: 3600, desc: 'Invitation only. The legends ride.', stages: [
+  { id: 'legends', name: 'Frontier Legends Cup', rep: 650, prize: 3600, field: 1.02, desc: 'Invitation only. The legends ride.', stages: [
     { id: 'leg1', name: 'Salt Highway', from: 'prism', to: 'dustwater', km: 34, hour: 11, seed: 41 },
     { id: 'leg2', name: 'Off the Map', from: 'dustwater', to: 'lastlight', km: 36, hour: 16, seed: 42, eventBias: { sandstorm: 1.5, devils: 1.5 } } ] },
 ];
@@ -2855,7 +2858,7 @@ const Calendar = {
     for (const ev of CALENDAR) if (!G.save.events[ev.id] && this.unlocked(ev)) return this.stage(ev.stages[0].id); return null; },
   boardStages() { const out = []; for (const ev of CALENDAR) for (const s of ev.stages) out.push(Object.assign({ locked: !this.unlocked(ev), event: ev }, s)); return out; },
   daily() { const d = new Date(); const key = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); const r = new RNG(key); const a = r.pick(TOWNS), b = r.pick(TOWNS);
-    return { id: 'daily' + key, name: 'Daily Stage ' + key, from: a.id, to: b.id, km: Math.round(r.range(20, 30)), hour: r.range(8, 17), seed: key, daily: key, event: { id: 'daily', name: 'Daily Stage', prize: 400, stages: [] }, idx: 0 }; },
+    return { id: 'daily' + key, name: 'Daily Stage ' + key, from: a.id, to: b.id, km: Math.round(r.range(20, 30)), hour: r.range(8, 17), seed: key, daily: key, event: { id: 'daily', name: 'Daily Stage', prize: 400, field: 0.92, stages: [] }, idx: 0 }; },
 };
 function stagePosterCanvas(st) {
   const W = 300, H = 430; const { c, g } = makeCanvas(W, H); const r = new RNG(strHash(st.id)); const paper = Assets.img('poster');
@@ -2887,6 +2890,8 @@ const Field = {
     const st = sv.career.standings || {}; const hasSt = Object.keys(st).length > 0 && stage.idx > 0;
     out.forEach((e) => { e.order = hasSt ? (st[e.id] ?? 1e6) : (e.isPlayer ? 20 - clamp(Math.floor(sv.rep / 160), 0, 12) : e.legend ? 1 + r.next() : e.kind === 'team' ? 4 + r.next() * 4 : e.kind === 'rival' ? 6 + r.next() * 12 : 10 + r.next() * 20); if (e.isPlayer && e.P.idx === 1) e.order += 0.5; });
     out.sort((a, b) => a.order - b.order);
+    // field strength: early events have slower fields, the Legends Cup the fastest (legends keep most of their edge)
+    const fs = stage.event?.field ?? 1; for (const e of out) if (!e.isPlayer) e.speed *= e.legend ? (fs + 1) / 2 : fs;
     out.forEach((e, i) => { e.slot = i; e.num = i + 1; e.startAt = i * CONFIG.field.interval; Object.assign(e, { status: 'waiting', s: 0, wp: 0, wpDone: {}, wpTimes: [], pens: 0, finishT: null, racer: null, lost: null, lostRolled: {}, rep: 0, lane: (r.next() - 0.5) * 20, noiseP: r.next() * 100, hint: 0, incT: 0, wear: { thrusters: 0, stabilisers: 0, fuel: 0, engine: 0 } }); if (!e.isPlayer) { e.stats = entrantStats(e); if (!Models.has(e.model)) e.model = null; } this.byId[e.id] = e; });
     this.list = out; return out;
   },
@@ -2897,8 +2902,12 @@ const Field = {
   makeStuck(e, pos, t) { e.status = 'stuck'; e.stuckT = t; e.stuckAt = { x: pos.x, z: pos.z }; },
   // a rival bogged in ahead of the lead player — the 'stuck' stage event
   pickStuckRival(s) {
-    const cand = this.list.filter((e) => !e.isPlayer && e.status === 'racing' && !e.racer && e.s > s + 300 && e.s < s + 4000); const e = cand.find((x) => x.kind === 'rival') || cand[0]; if (!e) return null;
-    const at = Route.pointAt(s + 900); const p = V3(at.x + Math.cos(at.yaw) * 22, 0, at.z - Math.sin(at.yaw) * 22); e.s = s + 900; this.makeStuck(e, p, 240); e.helpable = true; this.forceSpawn = e; return e;
+    const cand = this.list.filter((e) => !e.isPlayer && e.status === 'racing' && e.s > s + 200 && e.s < s + 8000).sort((a, b) => a.s - b.s);
+    /* nobody ahead (lead player at the front of the road): bog the nearest rider behind instead — 240 s in the sand costs them more than the jump forward gains */
+    const behind = this.list.filter((e) => !e.isPlayer && e.status === 'racing').sort((a, b) => b.s - a.s);
+    const e = cand.find((x) => x.kind === 'rival') || cand[0] || behind[0]; if (!e) return null;
+    const ss = Math.max(e.s, s + 700); const at = Route.pointAt(ss); const p = V3(at.x + Math.cos(at.yaw) * 22, 0, at.z - Math.sin(at.yaw) * 22);
+    if (e.racer) this.demote(e); e.s = ss; this.makeStuck(e, p, 240); e.helpable = true; this.forceSpawn = e; return e;
   },
   help(e, P) { if (e.status !== 'stuck') return; e.status = 'racing'; e.stuckT = 0; e.helpable = false; const rv = RIVALS.find((x) => x.id === e.id); if (rv) { Rivals.respect(rv.id, 15); Radio.say(e, pick(rv.lines.help), e.name); } else Radio.say(e, 'Thanks, friend. I won\'t forget it.', e.name);
     const ps = Race.ps(P); if (ps) { ps.repBonus += 40; ps.helped.push(e.name); } P.hud.note(`Towed ${e.name} out of the fesh-fesh — +40 reputation`, 'good'); G.stats('helped'); Audio.play('win', 0.5); },
@@ -3044,9 +3053,15 @@ const Route = {
     for (let s = R.refuelEvery; s < this.L - 3000; s += R.refuelEvery) addZone('fuel', s); if (this.L < R.refuelEvery + 3000 && this.L > 18000) addZone('fuel', this.L * 0.55);
     for (let s = R.assistEvery; s < this.L - 3000; s += R.assistEvery) addZone('assist', s);
     wps.sort((a, b) => a.s - b.s); let num = 0; wps.forEach((w, i) => { w.idx = i; if (w.kind === 'wpv' || w.kind === 'wpm') w.num = ++num; }); this.wps = wps;
-    Roadbook.build(this); this.buildMeshes(); StageEvents.roll(stage, this, r);
+    this.buildGrid(); this.refreshProps(); Roadbook.build(this); this.buildMeshes(); StageEvents.roll(stage, this, r);
     return this;
   },
+  // spatial hash of line samples (64 m cells) for "is this near the line?" queries
+  buildGrid() { this.grid = new Map(); for (let i = 0; i < this.xs.length; i++) { const k = Math.floor(this.xs[i] / 64) + ',' + Math.floor(this.zs[i] / 64); let a = this.grid.get(k); if (!a) this.grid.set(k, a = []); a.push(i); } },
+  nearLine(x, z, r) { if (!this.grid || !this.stage) return false; const cx = Math.floor(x / 64), cz = Math.floor(z / 64); for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const a = this.grid.get((cx + i) + ',' + (cz + j)); if (!a) continue; for (const k of a) { const n = Math.min(k + 1, this.xs.length - 1); if (segDist2(x, z, this.xs[k], this.zs[k], this.xs[n], this.zs[n]).d2 < r * r) return true; } } return false; },
+  // regenerate props (and their colliders) of already-generated chunks the line passes through
+  refreshProps() { const S = CONFIG.world.chunk; const hit = new Set(); for (let i = 0; i < this.xs.length; i++) for (const [dx, dz] of [[0, 0], [12, 12], [-12, -12], [12, -12], [-12, 12]]) hit.add(Math.floor((this.xs[i] + dx) / S) + ',' + Math.floor((this.zs[i] + dz) / S));
+    for (const k of hit) { const ch = Terrain.chunks.get(k); if (!ch) continue; if (ch.colliders) { for (const h of ch.colliders) Phys.removeStatic(h); ch.colliders = null; } ch.props = null; } Terrain.lastKeyset = ''; this.clearedChunks = hit; },
   siteScore(x, z) {
     const T = terrainSample(x, z, {}); let s = 0; if (T.wet > T.h) return -50; const n = normalAt(x, z, _v1); if (n.y < 0.9) s -= (0.9 - n.y) * 40;
     let relief = 0; for (const [dx, dz] of [[70, 0], [-70, 0], [0, 70], [0, -70]]) relief += heightAt(x + dx, z + dz); relief = T.h - relief / 4; if (relief > 7) s -= 3;
@@ -3059,15 +3074,16 @@ const Route = {
     const C = 30, pad = 800; const x0 = Math.min(a.x, b.x) - pad, z0 = Math.min(a.z, b.z) - pad; const W = Math.ceil((Math.max(a.x, b.x) + pad - x0) / C) + 1, H = Math.ceil((Math.max(a.z, b.z) + pad - z0) / C) + 1; const N = W * H;
     const hh = new Float32Array(N).fill(NaN), fl = new Uint8Array(N); const T = {}; const half = CONFIG.world.half - 1200;
     const hAt = (k) => { if (Number.isNaN(hh[k])) { const x = x0 + (k % W) * C, z = z0 + Math.floor(k / W) * C; terrainSample(x, z, T); hh[k] = T.h; fl[k] = (T.wet > T.h ? 1 : 0) | (T.s === S_BULL ? 2 : 0) | (Math.abs(x) > half || Math.abs(z) > half ? 4 : 0); } return hh[k]; };
+    const W2 = 2 * W, hm = new Float32Array(W2 * 2 * H).fill(NaN); const mAt = (i2, j2) => { const k = j2 * W2 + i2; if (Number.isNaN(hm[k])) hm[k] = terrainSample(x0 + i2 * C / 2, z0 + j2 * C / 2, T).h; return hm[k]; }; // half-cell heights: edge midpoints
     const ci = (p) => clamp(Math.round((p.x - x0) / C), 0, W - 1) + clamp(Math.round((p.z - z0) / C), 0, H - 1) * W; const s0 = ci(a), g0 = ci(b);
     const g = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), closed = new Uint8Array(N); const heap = [], hk = []; // binary heap of f / cell
     const push = (f, k) => { heap.push(f); hk.push(k); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p] <= heap[i]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; [hk[p], hk[i]] = [hk[i], hk[p]]; i = p; } };
     const pop = () => { const k = hk[0]; const lf = heap.pop(), lk = hk.pop(); if (heap.length) { heap[0] = lf; hk[0] = lk; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l] < heap[m]) m = l; if (r < heap.length && heap[r] < heap[m]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; [hk[m], hk[i]] = [hk[i], hk[m]]; i = m; } } return k; };
-    const gx = g0 % W, gz = Math.floor(g0 / W); const heur = (k) => Math.hypot((k % W) - gx, Math.floor(k / W) - gz) * C;
+    const gx = g0 % W, gz = Math.floor(g0 / W); const heur = (k) => Math.hypot((k % W) - gx, Math.floor(k / W) - gz) * C * 1.15; // slightly greedy: fast, near-optimal
     g[s0] = 0; push(heur(s0), s0); let it = 0; const D = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
     while (heap.length && it++ < 160000) { const k = pop(); if (k === g0) break; if (closed[k]) continue; closed[k] = 1; const i = k % W, j = Math.floor(k / W); const h0 = hAt(k);
-      for (const [di, dj] of D) { const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue; const n = nj * W + ni; if (closed[n]) continue; if (di && dj && (hAt(j * W + ni) - h0 > 10 || hAt(nj * W + i) - h0 > 10)) continue; const len = di && dj ? C * 1.4142 : C; /* no diagonal corner-cutting past a wall */ const dh = hAt(n) - h0; const sl = dh / len;
-        let pen = 1 + Math.max(0, sl) * 5 + (sl > 0.62 ? 400 : sl > 0.45 ? 25 : 0) + (sl < -0.6 ? 30 : Math.max(0, -sl) * 2.5); if (fl[n] & 1) pen *= 4; if (fl[n] & 2) pen += 0.25; if (fl[n] & 4) pen += 100;
+      for (const [di, dj] of D) { const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue; const n = nj * W + ni; if (closed[n]) continue; if (di && dj && (hAt(j * W + ni) - h0 > 10 || hAt(nj * W + i) - h0 > 10)) continue; const len = di && dj ? C * 1.4142 : C; /* no diagonal corner-cutting past a wall */ const h1 = hAt(n), hmid = mAt(2 * i + di, 2 * j + dj); const s1 = (hmid - h0) / (len / 2), s2 = (h1 - hmid) / (len / 2); const sl = Math.max(s1, s2), sd = Math.min(s1, s2);
+        let pen = 1 + Math.max(0, sl) * 5 + (sl > 0.62 ? 400 : sl > 0.45 ? 25 : 0) + (sd < -0.6 ? 30 : Math.max(0, -sd) * 2.5) + (hmid < Math.min(h0, h1) - 6 ? 300 : 0); /* a slot between two rims */ if (fl[n] & 1) pen *= 4; if (fl[n] & 2) pen += 0.25; if (fl[n] & 4) pen += 100;
         const ng = g[k] + len * pen; if (ng < g[n]) { g[n] = ng; came[n] = k; push(ng + heur(n), n); } } }
     if (came[g0] < 0 && g0 !== s0) return [[a.x, a.z], [b.x, b.z]]; // no path found in budget: straight line
     const cells = []; for (let k = g0; k >= 0; k = came[k]) { cells.push(k); if (k === s0) break; } cells.reverse();
@@ -3080,7 +3096,7 @@ const Route = {
     const sm = this.samples[i], N = this.samples.length; const S = SURF_PROPS[sm.surf]; let f = Math.pow(S.speedMul, 1.6) * (0.75 + 0.25 * Math.min(1, S.grip / 0.8));
     const nx = this.samples[Math.min(N - 1, i + 1)], pv = this.samples[Math.max(0, i - 1)]; const dh = nx.h - sm.h; f *= 1 - clamp(dh / 40 * 1.6, 0, 0.35); if (dh < -6) f *= 0.85;
     const K = Math.max(1, Math.round(40 / CONFIG.route.sample)); const a = this.samples[Math.max(0, i - 3 * K)], b = this.samples[Math.min(N - 1, i + 3 * K)]; const turn = Math.abs(wrapAngle(b.yaw - a.yaw)); f *= 1 - clamp(turn / 1.4, 0, 0.45);
-    if (sm.surf === S_BULL) f *= 0.72; if (Math.abs(dh) > 2.5 && Math.abs(pv.h - sm.h) > 2.5) f *= 0.92; return 76 * f; // 76: calibrated against physical AI riders (test/s_sl_calib.js)
+    if (sm.surf === S_BULL) f *= 0.72; if (Math.abs(dh) > 2.5 && Math.abs(pv.h - sm.h) > 2.5) f *= 0.92; return 72 * f; // 72: calibrated so simulated riders match physical AI riders (test/s_sl_calib.js)
   },
   vAt(s) { const i = this.idxAt(s); return this.samples[i].v; },
   refAt(s) { const i = this.idxAt(s); const i2 = Math.min(i + 1, this.samples.length - 1); const t = (s - this.cum[i]) / ((this.cum[i2] - this.cum[i]) || 1); return lerp(this.refT[i], this.refT[i2], clamp(t, 0, 1)); },
@@ -3124,15 +3140,16 @@ const Route = {
       const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 60, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0x5ff5e8, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })); col.position.y = 30; col.visible = false; g.add(col); o.reveal = col; }
     else { // refuel zone / assistance point: trucks, tents, flags marking the zone
       const mb = new MeshBuilder(); const fuel = w.kind === 'fuel';
-      for (let k = 0; k < 2; k++) { const a = k * Math.PI + 0.6; const x = Math.cos(a) * 18, z = Math.sin(a) * 18; mb.add(fuel ? MAT.metal : MAT.corr, GEO.box, mtx(x, 1.6, z, 0, a, 0, 2.6, 3.2, 8)); mb.add(MAT.darkMetal, GEO.box, mtx(x + Math.cos(a) * 0, 0.6, z, 0, a, 0, 2.8, 1.2, 8.4)); if (fuel) mb.add(MAT.metal, GEO.cyl, mtx(x, 3.6, z, Math.PI / 2, a, 0, 1.3, 6, 1.3)); Phys.addStatic({ type: 'box', x: w.x + x, y: y0 + 1.6, z: w.z + z, hx: 1.3, hy: 1.6, hz: 4, yaw: a }); }
-      if (!fuel) { mb.add(MAT.cloth, GEO.cone, mtx(0, 2.5, -24, 0, 0.3, 0, 7, 5, 7)); }
+      const ry = this.pointAt(w.s).yaw; for (let k = 0; k < 2; k++) { const a = Math.PI / 2 - ry + k * Math.PI; const x = Math.cos(a) * 26, z = Math.sin(a) * 26; /* beside the line, never on it */ mb.add(fuel ? MAT.metal : MAT.corr, GEO.box, mtx(x, 1.6, z, 0, a, 0, 2.6, 3.2, 8)); mb.add(MAT.darkMetal, GEO.box, mtx(x + Math.cos(a) * 0, 0.6, z, 0, a, 0, 2.8, 1.2, 8.4)); if (fuel) mb.add(MAT.metal, GEO.cyl, mtx(x, 3.6, z, Math.PI / 2, a, 0, 1.3, 6, 1.3)); Phys.addStatic({ type: 'box', x: w.x + x, y: y0 + 1.6, z: w.z + z, hx: 1.3, hy: 1.6, hz: 4, yaw: a }); }
+      if (!fuel) { const a = Math.PI / 2 - ry; mb.add(MAT.cloth, GEO.cone, mtx(Math.cos(a) * 40, 2.5, Math.sin(a) * 40, 0, 0.3, 0, 7, 5, 7)); }
       for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; mb.add(MAT.glowOrange, GEO.cyl, mtx(Math.cos(a) * w.r, 0.8, Math.sin(a) * w.r, 0, 0, 0, 0.08, 1.6, 0.08)); }
       mb.build(g); const s = makeSign(fuel ? 'REFUEL · 50' : 'ASSISTANCE', 6, 1.4, fuel ? '#2a5a8a' : '#2a6a3a', '#fff'); s.position.set(0, 4.5, 0); g.add(s); }
     return o;
   },
   makeBeacon(x, z, color, fake) { const g = new THREE.Group(); const y0 = heightAt(x, z); g.position.set(x, y0, z); const mb = new MeshBuilder(); mb.add(MAT.darkMetal, GEO.cyl, mtx(0, 8, 0, 0, 0, 0, 0.18, 16, 0.18)); mb.add(MAT.glowOrange, GEO.box, mtx(1.5, 15, 0, 0, 0, 0, 3, 2, 0.05)); mb.build(g, { cast: !fake }); WORLD.add(g); return { group: g, y0 }; },
   removeBeacon(b) { WORLD.remove(b.group); },
-  clear() { for (const o of this.objs) WORLD.remove(o); for (const b of this.beacons) WORLD.remove(b.group); this.objs = []; this.beacons = []; Cloths.clear(); StageEvents.clear(); this.wps = []; this.stage = null; },
+  clear() { const cleared = this.clearedChunks; this.stage = null; if (cleared) { for (const k of cleared) { const ch = Terrain.chunks.get(k); if (!ch) continue; if (ch.colliders) { for (const h of ch.colliders) Phys.removeStatic(h); ch.colliders = null; } ch.props = null; } Terrain.lastKeyset = ''; this.clearedChunks = null; }
+    for (const o of this.objs) WORLD.remove(o); for (const b of this.beacons) WORLD.remove(b.group); this.objs = []; this.beacons = []; Cloths.clear(); StageEvents.clear(); this.wps = []; this.stage = null; },
 };
 
 // §ROADBOOK --------------------------------------------------------------------------------
@@ -3261,7 +3278,7 @@ const Race = {
     // ---- stuck or crashing in a loop? hold E to be put back on the line (time penalty), like a marshal recovery
     if (b.wipeT > 0 && b.state === 'wipeout' && !rs.inWipe) { rs.inWipe = true; rs.wipes.push(st.clock); } else if (b.state !== 'wipeout') rs.inWipe = false;
     rs.wipes = rs.wipes.filter((t) => st.clock - t < 25); const tryingNoGo = b.speed < 2.5 && Math.abs(P.input.throttle || 0) > 0.5 && rs.repairT <= 0 && !b.dead;
-    rs.stuckT = tryingNoGo ? rs.stuckT + dt : Math.max(0, rs.stuckT - dt * 2); rs.canRecover = rs.stuckT > 4 || rs.wipes.length >= 3;
+    rs.stuckT = tryingNoGo ? rs.stuckT + dt : Math.max(0, rs.stuckT - dt * 2); if (rs.stuckT > 4 || rs.wipes.length >= 3 || (!b.grounded && b.speed < 1.5 && b.air > 3)) rs.recWin = 6; rs.recWin = Math.max(0, (rs.recWin || 0) - dt); rs.canRecover = rs.recWin > 0; /* stays offered for 6 s so holding E alone works */
     if (rs.canRecover) { P.hud.prompt(P.idx ? 'Enter' : 'E', `Hold: recover to the roadbook line (+${CONFIG.race.recoverPenalty}s)`); if (P.input.interact) { rs.recT = (rs.recT || 0) + dt; if (rs.recT > 1.2) this.recover(P); } else rs.recT = 0; }
     // ---- help a bogged rival (hold E next to them)
     for (const o of Field.phys) { if (o.status !== 'stuck' || !o.helpable) continue; const d = distXZ(o.racer.bike.pos, b.pos); if (d < 14 && b.speed < 3) { P.hud.prompt(P.idx ? 'Enter' : 'E', `Hold to tow ${o.name} out`); if (P.input.interact) { o.helpT = (o.helpT || 0) + dt; if (o.helpT > 2.5) Field.help(o, P); } else o.helpT = 0; } }
@@ -3291,8 +3308,8 @@ const Race = {
     G.stats('waypoints'); if (w.kind === 'wpm') G.stats('wpm');
   },
   recover(P) {
-    const rs = P.rs, b = P.bike; const q = Route.pointAt(Math.max(0, rs.s - 30)); const pos = V3(q.x, 0, q.z); b.setPose(pos, q.yaw); if (b.state !== 'ride') { b.state = 'ride'; b.remount(); } b.invuln = 2;
-    rs.e.pens += CONFIG.race.recoverPenalty; rs.pens = rs.e.pens; rs.stuckT = 0; rs.wipes = []; rs.recT = 0; rs.canRecover = false; rs.last.copy(b.pos); rs.hint = Route.idxAt(q.s); P.cam.snap(b);
+    const rs = P.rs, b = P.bike; let q = Route.pointAt(rs.s + 25); for (let k = 0; k < 8; k++) { const near = Phys.nearStatics(q.x, q.z, []).some((h) => Math.hypot(h.def.x - q.x, h.def.z - q.z) < h.rad + 4); if (!near) break; q = Route.pointAt(rs.s + 25 + (k + 1) * 15); } const pos = V3(q.x, 0, q.z); /* a marshal pushes you on, clear of whatever stopped you */ b.setPose(pos, q.yaw); if (b.state !== 'ride') { b.state = 'ride'; b.remount(); } b.invuln = 2;
+    rs.e.pens += CONFIG.race.recoverPenalty; rs.pens = rs.e.pens; rs.stuckT = 0; rs.wipes = []; rs.recT = 0; rs.recWin = 0; rs.canRecover = false; rs.last.copy(b.pos); rs.hint = Route.idxAt(q.s); P.cam.snap(b);
     P.hud.note(`Recovered to the line: +${CONFIG.race.recoverPenalty}s`, 'bad'); Audio.play('penalty'); G.stats('recoveries');
   },
   finishPlayer(P) {
@@ -3690,8 +3707,8 @@ const UI = {
     d.querySelector('#go').onclick = () => { this.close(); this.goStage(st, !isNext); };
   },
   goStage(st, practice) {
-    const f = document.getElementById('fade'); f.classList.add('on');
-    setTimeout(() => { try { if (practice) st = Object.assign({}, st, { event: Object.assign({}, st.event, { id: 'practice', prize: Math.round((st.event.prize || 400) * 0.25) }) }); Race.start(st); } catch (e) { reportError(e); } setTimeout(() => { f.classList.remove('on'); this.briefing(); }, 250); }, 480);
+    const f = document.getElementById('fade'); f.innerHTML = `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:700 22px Rockwell,Georgia,serif;color:#ffc35a;letter-spacing:.1em">${st.name.toUpperCase()}<div style="font:14px Verdana;color:#efe0c0;margin-top:8px;letter-spacing:0">marking the route and writing the roadbook…</div></div>`; f.classList.add('on');
+    setTimeout(() => { try { if (practice) st = Object.assign({}, st, { event: Object.assign({}, st.event, { id: 'practice', prize: Math.round((st.event.prize || 400) * 0.25) }) }); Race.start(st); } catch (e) { reportError(e); } setTimeout(() => { f.classList.remove('on'); setTimeout(() => { f.innerHTML = ''; }, 500); this.briefing(); }, 250); }, 520);
   },
   // the stage briefing (was the outlaw dossier): route map, forecast, the field
   briefing() {
@@ -4151,9 +4168,10 @@ const Bench = {
     const b = P.bike; const rs = P.rs; if (!rs) return;
     const needFix = (b.dead || b.health < b.stats.health * 0.2 || b.cond('engine') < 0.2 || b.parts.thrusters.broken) && rs.kits > 0;
     if (needFix || rs.repairT > 0) { P.input.throttle = b.speed > 1 ? -1 : 0; P.input.steer = 0; P.input.boost = false; P.input.drift = false; P.input.repair = b.speed < 2 && rs.repairT <= 0 && !P._rp; P._rp = P.input.repair; if (P.input.repair) { Input.cur[P.idx].repair = true; Input.prev[P.idx].repair = false; } return; }
-    if (b.dead && rs.kits <= 0 || rs.canRecover) { P.input.interact = true; return; } const w = Route.wps[rs.e.wp] || Route.finish; const pr = Route.project(b.pos.x, b.pos.z, rs.hint);
+    if (b.dead && rs.kits <= 0 || rs.canRecover) { P.input.interact = true; P.input.throttle = 0; return; } const w = Route.wps[rs.e.wp] || Route.finish; const pr = Route.project(b.pos.x, b.pos.z, rs.hint);
     const tight = Route.sampleAt(pr.s).canyon > 0.35 || Route.sampleAt(pr.s + 100).canyon > 0.35; const aim = distXZ(w, b.pos) < (tight ? 90 : 250) ? w : Route.pointAt(Math.min(pr.s + (tight ? 45 + b.speed * 0.8 : 100 + b.speed * 1.4), w.s ?? Route.L)); const yaw = AIDrive.avoid(b, Math.atan2(aim.x - b.pos.x, aim.z - b.pos.z)); const diff = wrapAngle(yaw - b.yaw());
     P.input.throttle = Math.abs(diff) > 1.5 && b.speed > 20 ? 0.2 : 1; P.input.steer = clamp(-diff * 2.2, -1, 1); P.input.boost = b.boost > 40 && Math.abs(diff) < 0.3 && b.heat < 80; P.input.drift = Math.abs(diff) > 0.9 && b.speed > 25;
+    if (this.careful) { const cap = Route.sampleAt(pr.s).canyon > 0.3 ? 28 : 40; if (b.speed > cap) P.input.throttle = b.speed > cap + 6 ? -0.5 : 0; P.input.boost = false; if (Math.abs(diff) > 0.5 && b.speed > 24) P.input.throttle = Math.min(P.input.throttle, 0); }
     const z = Route.zoneAt(b.pos); if (z && z.kind === 'fuel' && b.speed > 12.5) { P.input.throttle = -0.7; P.input.boost = false; }
     // ease off before drops and big crests, like a rider reading the ground ahead
     const f = b.forward(_v1); const h0 = heightAt(b.pos.x, b.pos.z); let drop = 0; for (const d of [25, 50, 80]) drop = Math.max(drop, h0 - heightAt(b.pos.x + f.x * d * (0.5 + b.speed / 80), b.pos.z + f.z * d * (0.5 + b.speed / 80)));

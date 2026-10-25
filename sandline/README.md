@@ -34,7 +34,7 @@ Enter rallies at **Race Control** in any town. Each stage is a 20–40 km open r
 
 ## Controls
 
-W/S throttle and brake · A/D steer · Shift boost · Space drift · C hop · Z/X, mouse wheel or PgUp/PgDn scroll the roadbook · T reset the partial trip · `[` `]` adjust the trip meter · R roadside repair (when stopped) · E interact (hold it to tow a bogged rival, or with no kits left to call the sweeper) · Y ask the nav drone · M map · Esc pause. In split screen, player 2 uses the arrow keys plus Right Shift, Right Ctrl, `/`, Enter, L, K, `,`, J, 9, 0 and U. Gamepads are supported.
+W/S throttle and brake · A/D steer · Shift boost · Space drift · C hop · Z/X, mouse wheel or PgUp/PgDn scroll the roadbook · T reset the partial trip · `[` `]` adjust the trip meter · R roadside repair (when stopped) · E interact (hold it to tow a bogged rival, to recover to the line when stuck (+20 s), or with no kits left to call the sweeper) · Y ask the nav drone · M map · Esc pause. In split screen, player 2 uses the arrow keys plus Right Shift, Right Ctrl, `/`, Enter, L, K, `,`, J, 9, 0 and U. Gamepads are supported.
 
 **Assist levels** (Settings):
 
@@ -64,11 +64,12 @@ The Stage 1 design document wasn't available, so these choices were made from th
 - **World size.** The playable area grew to ±24 km so marathon routes can range beyond the five region centres. Terrain far from the centres continues the nearest region. A floating origin re-centres the render world every 1.5 km; physics and logic keep true coordinates.
 - **Route generation.**
   - Waypoints come from a seeded walk that wanders while there's distance to spare, then homes in on the finish.
-  - The organiser's reference line is an A* path over a 30 m grid that refuses climbs steeper than about 30°.
+  - The organiser's reference line is an A* path over a 30 m grid. It samples edge midpoints, so it won't bridge slot canyons, and it refuses climbs steeper than about 30°.
   - Refuel zones sit every ~14 km and assistance points every ~11 km.
   - The roadbook is read off the terrain along that line.
-- **Terrain changes for rallying.** The Redrock Maze and the Ashfall plateaus gained occasional ramps in their canyon walls, so the maze can be ridden in and out of. Bulldust (fesh-fesh) patches were added on the open flats.
+- **Terrain changes for rallying.** BOUNTY RUN's Redrock Maze and Ashfall plateaus were a canyon network with sheer walls (good for chases, impassable point to point). In SANDLINE most canyon walls are steep but rideable, and sheer cliffs remain on about a third of their length. Bulldust (fesh-fesh) patches were added on the open flats.
 - **Pace model.** The simulated field uses a reference speed per route sample, from surface, slope and turns. It's calibrated against physical AI riders: they average about 47 m/s on a typical stage.
 - **Kept scenery.** The monorail runs as scenery and can't be ridden. Team camps replace the old gang hideouts. The walking code is parked behind `?debug=1`.
 - **Timing.** During a stage the day runs at 12% speed, so a stage lasts one to two in-game hours instead of half a day.
-- **Not in Stage 1.** Night navigation aids beyond the headlight glow, multi-day bivouac management, and team-orders gameplay were left for later stages.
+- **Recovery.** A stuck or crash-looping rider can hold E to be put back on the line for +20 s, like a marshal recovery. Night stages get a headlight.
+- **Not in Stage 1.** Multi-day bivouac management and team-orders gameplay are left for later stages.
