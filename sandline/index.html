@@ -2196,7 +2196,7 @@ class Bike {
   physStep(dt) {
     const b = this.body, H = CONFIG.hover, B = CONFIG.bike, c = this.ctrl;
     this.prevP.copy(b.p); this.prevQ.copy(b.q);
-    if (this.parked) return;
+    if (this.parked || this.mag) return;
     const q = b.q, p = b.p; const up = this.up(_v1), fwd = this.forward(_v2);
     const m = b.mass, g = Phys.gravity;
     const range = H.range, ride = H.rideHeight; const k = m * g / (4 * (range - ride)) * H.stiffness * (this.stiffMul || 1); const cdamp = H.damping * 2 * Math.sqrt(k * m / 4);
@@ -2341,7 +2341,7 @@ class Bike {
   }
   // after Phys.step: terrain walls + hard ground contact + impact detection
   postStep(dt) {
-    const b = this.body; if (this.parked) return;
+    const b = this.body; if (this.parked || this.mag) return;
     const q = b.q, p = b.p; const pts = [[0, -0.3, 1.45 * this.L], [0, -0.3, -1.35 * this.L], [0.6, -0.25, 0], [-0.6, -0.25, 0], [0, 0.45, 0]];
     let worst = 0;
     for (const lp of pts) {
@@ -2464,7 +2464,7 @@ class Bike {
 }
 
 // §CAMERA (chase cam; start / finish cams use the orbit override) ----------------------------------------------------------------------------------
-const _camNear = [];
+const _camNear = []; const _qc = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 function camBlock(a, b) { // segment a→b vs static boxes (local slab test); returns hit fraction (1 = clear)
   let best = 1; const near = Phys.nearStatics((a.x + b.x) / 2, (a.z + b.z) / 2, _camNear);
   for (const h of near) { const d = h.def; if (d.type !== 'box' || d.hy < 1.5) continue;
@@ -2481,6 +2481,8 @@ class ChaseCam {
     this.streaks = FX.makeStreaks(this.cam); this.init = false;
   }
   snap(bike) { this.init = false; this.update(1 / 60, bike); }
+  // rotate the camera's up vector toward `to` by fraction k (a rotation, so it never collapses through zero when flipping over)
+  turnUp(to, k) { _qc.setFromUnitVectors(this.upv, to); _qi.identity().slerp(_qc, k); this.upv.applyQuaternion(_qi).normalize(); }
   addShake(v) { this.kick = Math.min(1.5, this.kick + v); }
   update(dt, bike, opts = {}) {
     const C = CONFIG.camera; const bp = bike.mesh.position; const sN = clamp(bike.speed / 70, 0, 1.4);
@@ -2491,6 +2493,12 @@ class ChaseCam {
       des.y = Math.max(des.y, heightAt(des.x, des.z) + 1.5); this.pos.lerp(des, 1 - Math.exp(-4 * dt)); this.cam.position.copy(this.pos); this.cam.lookAt(t.x - ORIGIN.x, t.y + 1, t.z - ORIGIN.z); // lookAt wants render space
       this.fovCur = damp(this.fovCur, 55, 3, dt); this.cam.fov = this.fovCur; this.cam.updateProjectionMatrix(); return;
     }
+    // magnetic sections: ride behind and above along the bike's own up vector (the camera rolls with the road)
+    if (!this.upv) this.upv = V3(0, 1, 0);
+    if (bike.mag) { const u = bike.up(_v3); this.turnUp(u, 1 - Math.exp(-8 * dt)); const d = C.dist + C.distSpeed * sN * 0.6; const des = _v2.copy(bp).addScaledVector(fwd, -d).addScaledVector(this.upv, C.height + 0.6);
+      this.pos.lerp(des, 1 - Math.exp(-12 * dt)); this.cam.position.copy(this.pos); this.cam.up.copy(this.upv); const lk = _v5.copy(bp).addScaledVector(fwd, C.look * (1 + sN)).addScaledVector(this.upv, 1.0); this.look.copy(lk); this.cam.lookAt(_v6.copy(lk).sub(ORIGIN)); this.yaw = fyaw; this.init = true;
+      this.fovCur = damp(this.fovCur, C.fov + C.fovSpeed * Math.min(1.2, sN) + (bike.boosting || bike.nitroT > 0 ? C.fovBoost : 0), 4, dt); this.cam.fov = this.fovCur; this.cam.updateProjectionMatrix(); FX.updateStreaks(this.streaks, bike.speed, bike.boosting); return; }
+    this.turnUp(_v3.set(0, 1, 0), 1 - Math.exp(-5 * dt)); this.cam.up.copy(this.upv);
     if (!this.init) { this.yaw = fyaw; this.pos.set(bp.x - Math.sin(fyaw) * C.dist, bp.y + C.height, bp.z - Math.cos(fyaw) * C.dist); this.init = true; }
     // follow heading with lag, swing into drifts
     let vyaw = fyaw; const hv = Math.hypot(bike.vel.x, bike.vel.z);
@@ -2744,34 +2752,50 @@ function trackPosterCanvas(def, opts = {}) {
 // Fractions along the lap mark jumps, boost pads and item-crate rows (each snaps to the nearest straight).
 const TSTEP = 4; // centreline sample spacing (m)
 const TRACKS = [
-  { id: 'dustloop', name: 'Dustwater Loop', cup: 'sand', town: 'dustwater', len: 2500, half: 12, hour: 10, laps: 3, legend: 'gale', walls: [0xd8342a, 0xf4ece0],
-    desc: 'The season opener. One long straight, a hairpin and a fast S through the dunes.',
+  // ---- Sand Cup: short classics, three laps
+  { id: 'dustloop', name: 'Dustwater Loop', cup: 'sand', town: 'dustwater', len: 2600, half: 12, hour: 10, laps: 3, legend: 'gale', walls: [0xd8342a, 0xf4ece0],
+    desc: 'The season opener. A long straight, a hairpin, a rock tunnel and a cliff-edge run with no walls.',
     pts: [[0, 0], [520, 0], [700, 40], [780, 170], [720, 300], [560, 330], [420, 280], [300, 330], [250, 470], [110, 560], [-60, 520], [-120, 390], [-60, 260], [-200, 180], [-330, 220], [-420, 120], [-330, 10], [-180, -10]],
-    jumps: [0.47], boosts: [0.04, 0.6], crates: [0.18, 0.52, 0.8] },
-  { id: 'saltline', name: 'Saltline Speedway', cup: 'sand', town: 'prism', len: 3100, half: 14, hour: 13, laps: 3, legend: 'vesper', walls: [0x2a6ad8, 0xf0f4f8],
-    desc: 'Flat-out on the salt. Two huge straights, a kink and a banked-feeling sweeper. Draft, boost, repeat.',
+    features: [{ t: 'tunnel', at: 0.3, len: 200 }, { t: 'chasm', at: 0.62, len: 260 }], jumps: [0.47], boosts: [0.04, 0.8], crates: [0.18, 0.52, 0.88] },
+  { id: 'saltline', name: 'Saltline Speedway', cup: 'sand', town: 'prism', len: 3200, half: 14, hour: 13, laps: 3, legend: 'vesper', walls: [0x2a6ad8, 0xf0f4f8],
+    desc: 'Flat-out on the salt, with a magnetic wall-ride bank you can take flat out and a corkscrew down the back straight.',
     pts: [[0, 0], [900, 0], [1060, 60], [1110, 200], [1040, 330], [880, 370], [500, 360], [350, 420], [200, 380], [-100, 380], [-240, 320], [-290, 190], [-230, 60], [-120, 10]],
-    jumps: [0.66], boosts: [0.06, 0.38, 0.72], crates: [0.22, 0.5, 0.86] },
-  { id: 'scrapyard', name: 'Scrapyard Scramble', cup: 'sand', town: 'rustharbor', len: 2400, half: 12, hour: 16.5, laps: 3, legend: 'tide', walls: [0xe8b020, 0x1a1a1a],
-    desc: 'Tight and twisty between the wrecks. Brake late, drift everything, watch for mines.',
+    features: [{ t: 'bank', at: 0.3 }, { t: 'corkscrew', at: 0.58 }], jumps: [0.86], boosts: [0.06, 0.45], crates: [0.2, 0.5, 0.78] },
+  { id: 'scrapyard', name: 'Scrapyard Scramble', cup: 'sand', town: 'rustharbor', len: 2500, half: 12, hour: 16.5, laps: 3, legend: 'tide', walls: [0xe8b020, 0x1a1a1a],
+    desc: 'Tight and twisty between the wrecks, through a scrap-metal tunnel and over a gully with no walls.',
     pts: [[0, 0], [300, -20], [420, 60], [400, 180], [280, 220], [260, 330], [380, 420], [360, 540], [220, 580], [80, 520], [20, 400], [-120, 380], [-220, 460], [-340, 420], [-360, 290], [-260, 200], [-280, 80], [-160, 10]],
-    jumps: [0.3, 0.74], boosts: [0.03], crates: [0.2, 0.46, 0.7] },
-  { id: 'canyon', name: 'Redrock Canyon Run', cup: 'thunder', town: 'hangman', len: 2900, half: 12, hour: 9.5, laps: 3, legend: 'hangfire', walls: [0xe86a2a, 0xf6e8d0],
-    desc: 'Flowing curves cut through red rock, with a big jump over the gully.',
-    pts: [[0, 0], [400, -80], [640, 20], [700, 200], [600, 360], [700, 520], [620, 680], [420, 700], [300, 580], [140, 620], [-40, 560], [-80, 400], [40, 280], [-60, 140], [-120, 40]],
-    jumps: [0.36, 0.82], boosts: [0.05, 0.55], crates: [0.16, 0.45, 0.72] },
-  { id: 'lastlight', name: 'Last Light Nights', cup: 'thunder', town: 'lastlight', len: 2700, half: 12, hour: 21.5, laps: 3, legend: 'preacher', night: true, walls: [0x26d8c8, 0x14181c],
-    desc: 'Floodlit black sand under a storm sky. Your headlight and the track lights are all you get.',
-    pts: [[0, 0], [480, 0], [620, 100], [600, 260], [460, 300], [400, 420], [480, 560], [400, 680], [220, 660], [160, 520], [0, 480], [-140, 560], [-280, 500], [-300, 340], [-180, 260], [-240, 120], [-140, 20]],
-    jumps: [0.58], boosts: [0.04, 0.42], crates: [0.2, 0.5, 0.8] },
-  { id: 'grandprix', name: 'Ashfall Grand Prix', cup: 'thunder', town: 'dustwater', len: 3700, half: 13, hour: 15, laps: 3, legend: 'dust', walls: [0xf2f2f2, 0xc8202a],
-    desc: 'The big one. Everything the frontier can throw at you, on one long lap.',
-    pts: [[0, 0], [700, -40], [1000, 60], [1080, 260], [960, 420], [760, 440], [640, 560], [700, 740], [580, 880], [360, 860], [260, 700], [60, 680], [-120, 780], [-320, 700], [-360, 500], [-220, 380], [-300, 220], [-260, 60], [-120, 0]],
-    jumps: [0.28, 0.64], boosts: [0.04, 0.47, 0.86], crates: [0.14, 0.38, 0.6, 0.8] },
+    features: [{ t: 'tunnel', at: 0.45, len: 180 }, { t: 'chasm', at: 0.8, len: 180 }], jumps: [0.3], boosts: [0.03], crates: [0.2, 0.6, 0.9] },
+  // ---- Thunder Cup: long single-lap tours packed with features
+  { id: 'canyon', name: 'Redrock Rollercoaster', cup: 'thunder', town: 'hangman', len: 7600, half: 12, hour: 9.5, laps: 1, legend: 'hangfire', walls: [0xe86a2a, 0xf6e8d0], gen: { seed: 21, w: [0.18, 0.12, 0.07], ax: 1.3 },
+    desc: 'One long lap through the Maze: two corkscrews, rock tunnels, cliff runs and a wall-ride bank.',
+    features: [{ t: 'tunnel', at: 0.1, len: 260 }, { t: 'corkscrew', at: 0.22 }, { t: 'chasm', at: 0.34, len: 420 }, { t: 'bank', at: 0.47 }, { t: 'tunnel', at: 0.6, len: 340 }, { t: 'corkscrew', at: 0.73 }, { t: 'chasm', at: 0.86, len: 360 }],
+    jumps: [0.05, 0.41, 0.66, 0.93], boosts: [0.03, 0.18, 0.3, 0.52, 0.69, 0.8, 0.97], crates: [0.07, 0.16, 0.28, 0.4, 0.55, 0.64, 0.78, 0.9] },
+  { id: 'lastlight', name: 'Last Light Nights', cup: 'thunder', town: 'lastlight', len: 8000, half: 12, hour: 21.5, laps: 1, legend: 'preacher', night: true, walls: [0x26d8c8, 0x14181c], gen: { seed: 47, w: [0.14, 0.16, 0.06], ax: 1.15 },
+    desc: 'A floodlit night tour of the Storm Belt: tunnels, a corkscrew under the lightning, black-sand cliffs.',
+    features: [{ t: 'chasm', at: 0.12, len: 380 }, { t: 'tunnel', at: 0.25, len: 300 }, { t: 'corkscrew', at: 0.38 }, { t: 'bank', at: 0.52 }, { t: 'tunnel', at: 0.65, len: 260 }, { t: 'chasm', at: 0.78, len: 420 }, { t: 'bank', at: 0.9 }],
+    jumps: [0.07, 0.45, 0.72], boosts: [0.03, 0.2, 0.33, 0.48, 0.6, 0.85], crates: [0.08, 0.18, 0.3, 0.43, 0.57, 0.7, 0.83, 0.95] },
+  { id: 'grandprix', name: 'Ashfall Grand Tour', cup: 'thunder', town: 'dustwater', len: 9200, half: 13, hour: 15, laps: 1, legend: 'dust', walls: [0xf2f2f2, 0xc8202a], gen: { seed: 5, w: [0.2, 0.1, 0.08], ax: 1.4 },
+    desc: 'The big one: nine kilometres, three corkscrews, three tunnels and the long cliff road.',
+    features: [{ t: 'corkscrew', at: 0.08 }, { t: 'tunnel', at: 0.17, len: 300 }, { t: 'chasm', at: 0.28, len: 500 }, { t: 'bank', at: 0.39 }, { t: 'corkscrew', at: 0.48 }, { t: 'tunnel', at: 0.58, len: 360 }, { t: 'bank', at: 0.68 }, { t: 'chasm', at: 0.77, len: 380 }, { t: 'corkscrew', at: 0.86 }, { t: 'tunnel', at: 0.94, len: 220 }],
+    jumps: [0.04, 0.34, 0.63, 0.81], boosts: [0.02, 0.13, 0.24, 0.36, 0.45, 0.55, 0.66, 0.75, 0.9], crates: [0.05, 0.12, 0.21, 0.31, 0.42, 0.52, 0.62, 0.72, 0.83, 0.92] },
+  // ---- Odyssey Cup: three more long tours
+  { id: 'prismrun', name: 'Crystal Corkscrew Run', cup: 'odyssey', town: 'prism', len: 8400, half: 14, hour: 11.5, laps: 1, legend: 'mora', walls: [0x9ad8ff, 0xffffff], gen: { seed: 88, w: [0.16, 0.14, 0.09], ax: 1.25 },
+    desc: 'Across the Glass Flats: wide, fast, three corkscrews and two wall-ride banks.',
+    features: [{ t: 'bank', at: 0.1 }, { t: 'corkscrew', at: 0.2 }, { t: 'chasm', at: 0.32, len: 400 }, { t: 'corkscrew', at: 0.45 }, { t: 'tunnel', at: 0.57, len: 300 }, { t: 'bank', at: 0.68 }, { t: 'corkscrew', at: 0.8 }, { t: 'chasm', at: 0.9, len: 300 }],
+    jumps: [0.05, 0.38, 0.62, 0.95], boosts: [0.03, 0.15, 0.27, 0.4, 0.52, 0.63, 0.75, 0.86], crates: [0.07, 0.17, 0.29, 0.37, 0.5, 0.6, 0.72, 0.84, 0.93] },
+  { id: 'wreckrun', name: 'Scrapsea Wreck Run', cup: 'odyssey', town: 'rustharbor', len: 8200, half: 12, hour: 17.5, laps: 1, legend: 'ironjaw', walls: [0xe8b020, 0x2a2a2a], gen: { seed: 63, w: [0.2, 0.08, 0.1], ax: 1.35 },
+    desc: 'Through the wreck fields at sunset: hull tunnels, gully jumps, a corkscrew over the junk.',
+    features: [{ t: 'tunnel', at: 0.08, len: 280 }, { t: 'chasm', at: 0.2, len: 360 }, { t: 'corkscrew', at: 0.32 }, { t: 'tunnel', at: 0.44, len: 320 }, { t: 'bank', at: 0.56 }, { t: 'chasm', at: 0.67, len: 440 }, { t: 'corkscrew', at: 0.8 }, { t: 'tunnel', at: 0.91, len: 240 }],
+    jumps: [0.14, 0.38, 0.62, 0.74], boosts: [0.03, 0.16, 0.28, 0.4, 0.51, 0.63, 0.76, 0.88], crates: [0.05, 0.13, 0.25, 0.36, 0.48, 0.6, 0.71, 0.84, 0.95] },
+  { id: 'odyssey', name: 'Frontier Odyssey', cup: 'odyssey', town: 'hangman', len: 10500, half: 13, hour: 18.5, laps: 1, legend: 'cartographer', walls: [0xd8342a, 0xffd84a], gen: { seed: 101, w: [0.17, 0.13, 0.09], ax: 1.3 },
+    desc: 'Ten and a half kilometres of everything: corkscrews, banks, tunnels, cliffs and jumps, into the dusk.',
+    features: [{ t: 'corkscrew', at: 0.06 }, { t: 'chasm', at: 0.14, len: 420 }, { t: 'tunnel', at: 0.23, len: 320 }, { t: 'bank', at: 0.32 }, { t: 'corkscrew', at: 0.41 }, { t: 'chasm', at: 0.5, len: 480 }, { t: 'tunnel', at: 0.6, len: 300 }, { t: 'bank', at: 0.69 }, { t: 'corkscrew', at: 0.78 }, { t: 'chasm', at: 0.86, len: 360 }, { t: 'tunnel', at: 0.94, len: 220 }],
+    jumps: [0.03, 0.2, 0.37, 0.55, 0.74, 0.91], boosts: [0.02, 0.1, 0.18, 0.27, 0.36, 0.45, 0.54, 0.64, 0.73, 0.82, 0.9], crates: [0.04, 0.11, 0.19, 0.27, 0.35, 0.44, 0.53, 0.62, 0.7, 0.79, 0.88, 0.96] },
 ];
 const CUPS = [
-  { id: 'sand', name: 'Sand Cup', desc: 'Three circuits around the basin, the salt and the scrapyard.', tracks: ['dustloop', 'saltline', 'scrapyard'], icon: '#e8a040' },
-  { id: 'thunder', name: 'Thunder Cup', desc: 'Canyons, a night race in the Storm Belt and the Grand Prix.', tracks: ['canyon', 'lastlight', 'grandprix'], icon: '#7a8ae8', needs: 'sand' },
+  { id: 'sand', name: 'Sand Cup', desc: 'Three short circuits, three laps each: the basin, the salt and the scrapyard.', tracks: ['dustloop', 'saltline', 'scrapyard'], icon: '#e8a040' },
+  { id: 'thunder', name: 'Thunder Cup', desc: 'Long single-lap tours: the Maze, a night race in the Storm Belt and the Grand Tour.', tracks: ['canyon', 'lastlight', 'grandprix'], icon: '#7a8ae8', needs: 'sand' },
+  { id: 'odyssey', name: 'Odyssey Cup', desc: 'The longest tours on the frontier: the Glass Flats, the Scrapsea and the Odyssey.', tracks: ['prismrun', 'wreckrun', 'odyssey'], icon: '#d8342a', needs: 'thunder' },
 ];
 const CLASSES = {
   rookie: { id: 'rookie', name: 'Rookie', speed: 0.88, skill: 0.72, prize: 1, rep: 1 },
@@ -2787,12 +2811,16 @@ const fmtLap = (t) => (t == null || !isFinite(t) ? '—' : fmtTime(t) + '.' + St
 
 // §TRACK — geometry, terrain shaping, meshes, crates, pads -----------------------------------
 const _tq = { d: 0, i: 0, t: 0, s: 0, h: 0, lat: 0 };
+const _tf = { c: V3(), f: V3(), u: V3(), r: V3(), i: 0 }; const _mf = { c: V3(), f: V3(), u: V3(), r: V3(), i: 0 };
 const Track = {
   def: null, n: 0, X: null, Z: null, H: null, YAW: null, K: null, cum: null, L: 0, half: 12, blend: 44, cx: 0, cz: 0, grid: null, bb: null,
   objs: [], statics: [], crates: [], crateMesh: null, pads: [], padMat: null, lights: [], sectors: 6, mini: null, placeCache: {},
   // ---- layout: control points → closed spline → uniform samples, corners eased to a minimum radius
+  // long tours: a star-shaped closed curve (radius wobbles at 2, 3 and 5 turns per lap), so it never crosses itself
+  genShape(g) { const r = new RNG(g.seed); const N = 36; const ph = [r.range(0, TAU), r.range(0, TAU), r.range(0, TAU)]; const w = g.w; const out = [];
+    for (let i = 0; i < N; i++) { const a = i / N * TAU; const rad = 1 + w[0] * Math.sin(2 * a + ph[0]) + w[1] * Math.sin(3 * a + ph[1]) + w[2] * Math.sin(5 * a + ph[2]) + r.range(-0.04, 0.04); out.push([Math.cos(a) * rad * (g.ax || 1) * 500, Math.sin(a) * rad * 500]); } return out; },
   layout(def) {
-    let pts = catmull(def.pts, 16, true); const per = (a) => { let L = 0; for (let i = 0; i < a.length; i++) { const b = a[(i + 1) % a.length]; L += Math.hypot(b[0] - a[i][0], b[1] - a[i][1]); } return L; };
+    let pts = catmull(def.pts || this.genShape(def.gen), 16, true); const per = (a) => { let L = 0; for (let i = 0; i < a.length; i++) { const b = a[(i + 1) % a.length]; L += Math.hypot(b[0] - a[i][0], b[1] - a[i][1]); } return L; };
     let k = def.len / per(pts); pts = pts.map((p) => [p[0] * k, p[1] * k]); pts = this.resample(pts, TSTEP);
     const minR = def.half + 22; const n = pts.length; const rad = (i) => { const a = pts[(i - 4 + n) % n], b = pts[i], c = pts[(i + 4) % n]; const ab = Math.hypot(b[0] - a[0], b[1] - a[1]), bc = Math.hypot(c[0] - b[0], c[1] - b[1]), ca = Math.hypot(a[0] - c[0], a[1] - c[1]); const cr = Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])); return cr < 1e-6 ? 1e9 : ab * bc * ca / (2 * cr); };
     for (let pass = 0; pass < 80; pass++) { let tight = 0; const o = pts.map((p) => p.slice()); for (let i = 0; i < n; i++) { if (rad(i) >= minR) continue; tight++; for (let j = -3; j <= 3; j++) { const q = (i + j + n) % n, a = pts[(q - 1 + n) % n], c = pts[(q + 1) % n]; o[q][0] = pts[q][0] * 0.5 + (a[0] + c[0]) * 0.25; o[q][1] = pts[q][1] * 0.5 + (a[1] + c[1]) * 0.25; } } pts = o; if (!tight) break; }
@@ -2810,13 +2838,13 @@ const Track = {
     const mono = []; for (let i = 0; i < MONO.pts.length; i += 3) mono.push(MONO.pts[i]); const T = {}; let best = null;
     // anything solid already in the world (wrecks, landmarks, camp walls, pillars) — small prop colliders are cleared off the corridor anyway
     for (const h of Phys.statics) { const d = h.def; const r = Math.max(d.r || 0, d.hx || 0, d.hz || 0); if (r >= 2.5 && !this.statics.includes(h)) lm.push([d.x, d.z, r + this.half + 30]); }
-    const sub = local.filter((_, i) => i % 5 === 0);
+    const sub = local.filter((_, i) => i % Math.max(5, Math.round(local.length / 240)) === 0);
     for (const extra of [180, 420, 700]) for (let a = 0; a < 16; a++) for (let r = 0; r < 8; r++) {
       const ang = a / 16 * TAU, rot = r / 8 * TAU, dist = ext + town.r + extra; const cx = town.x + Math.sin(ang) * dist, cz = town.z + Math.cos(ang) * dist; const c = Math.cos(rot), sn = Math.sin(rot);
-      let pen = extra * 0.004; const hs = [];
+      let pen = extra * 0.004; const hs = []; const lmC = lm.filter((q) => Math.abs(q[0] - cx) < ext + q[2] + 50 && Math.abs(q[1] - cz) < ext + q[2] + 50); const monoC = mono.filter((q) => Math.abs(q[0] - cx) < ext + 120 && Math.abs(q[1] - cz) < ext + 120);
       for (const p of sub) { const x = cx + p[0] * c - p[1] * sn, z = cz + p[0] * sn + p[1] * c; if (Math.abs(x) > CONFIG.world.half - 2500 || Math.abs(z) > CONFIG.world.half - 2500) { pen += 50; continue; }
-        for (const q of lm) { const dd = Math.hypot(q[0] - x, q[1] - z); if (dd < q[2]) pen += 6 * (1 - dd / q[2]) + 2; }
-        for (const q of mono) { if (Math.abs(q[0] - x) < 70 && Math.abs(q[1] - z) < 70) pen += 4; }
+        for (const q of lmC) { const dd = Math.hypot(q[0] - x, q[1] - z); if (dd < q[2]) pen += 6 * (1 - dd / q[2]) + 2; }
+        for (const q of monoC) { if (Math.abs(q[0] - x) < 70 && Math.abs(q[1] - z) < 70) pen += 4; }
         if (polyQuery(HIGHWAY, x, z, 60)?.d < 60) pen += 3; for (const sl of LANDMARKS.slots) if (polyQuery(sl, x, z, 150)?.d < 150) pen += 4;
         terrainSample(x, z, T); if (T.wet > T.h) pen += 20; hs.push(T.h); }
       // cut / fill: how far the ground strays from a smooth road
@@ -2842,8 +2870,9 @@ const Track = {
     const T = {}; const raw = new Float32Array(n); for (let i = 0; i < n; i++) { const rx = Math.cos(this.YAW[i]), rz = -Math.sin(this.YAW[i]); let s = 0; for (const o of [-this.half, 0, this.half]) s += terrainSample(this.X[i] + rx * o, this.Z[i] + rz * o, T).h; raw[i] = s / 3; }
     let h = raw; for (let pass = 0; pass < 5; pass++) { const o = new Float32Array(n); for (let i = 0; i < n; i++) { let s = 0; for (let j = -14; j <= 14; j++) s += h[(i + j + n) % n]; o[i] = s / 29; } h = o; }
     const g = 0.09 * TSTEP; for (let pass = 0; pass < 6; pass++) for (let i = 0; i < 2 * n; i++) { const a = i % n, b = (i + 1) % n; if (h[b] - h[a] > g) h[b] = h[a] + g; else if (h[a] - h[b] > g) h[b] = h[a] - g; }
-    this.jumps = (def.jumps || []).map((f) => this.straightNear(f, 26)); for (const j of this.jumps) { const R = 5; for (let k = 0; k <= R; k++) h[(j + k) % n] += 2.7 * k / R; h[(j + R + 1) % n] += 0.6; }
-    this.H = h;
+    this.H = h; this.buildFeatures(def);
+    this.jumps = (def.jumps || []).map((f) => this.straightNear(f, 26)); for (const j of this.jumps) { const R = 5; for (let k = 0; k <= R + 1; k++) this.busy[(j + k) % n] = 1; for (let k = 0; k <= R; k++) h[(j + k) % n] += 2.7 * k / R; h[(j + R + 1) % n] += 0.6; }
+    this.buildFrames();
     // spatial grid of segments for terrain queries (corridor = road + blend)
     this.grid = new Map(); const CELL = 32, rr = this.half + this.blend; let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
     for (let i = 0; i < n; i++) { const j = (i + 1) % n; const ax = Math.min(this.X[i], this.X[j]) - rr, bx = Math.max(this.X[i], this.X[j]) + rr, az = Math.min(this.Z[i], this.Z[j]) - rr, bz = Math.max(this.Z[i], this.Z[j]) + rr; x0 = Math.min(x0, ax); x1 = Math.max(x1, bx); z0 = Math.min(z0, az); z1 = Math.max(z1, bz);
@@ -2852,6 +2881,35 @@ const Track = {
     ACTIVE_TRACK = this; this.invalidate(); this.buildMeshes(); this.buildMini();
     return this;
   },
+  // ---- features: corkscrews and wall-ride banks (magnetic: the bike sticks to the road, any way up), rock tunnels,
+  // cliff-edge runs with no walls (fall off and Pip carries you back). E = road height above the bed, ROLL = bank.
+  buildFeatures(def) {
+    const n = this.n, half = this.half; this.E = new Float32Array(n); this.ROLL = new Float32Array(n); this.MAG = new Uint8Array(n); this.OPEN = new Uint8Array(n); this.TUN = new Uint8Array(n); this.busy = new Uint8Array(n);
+    for (let k = -40; k < 30; k++) this.busy[(k + n) % n] = 1; // the grid and the start line
+    const freeAt = (f, len, straight) => { const c = Math.floor(f * n); let best = -1, bs = 1e9; for (let d = -60; d <= 60; d += 2) { const i = (c + d + n) % n; let sc = Math.abs(d) * 0.01, clash = false; for (let k = -6; k < len + 6; k++) { const q = (i + k + n) % n; if (this.busy[q]) { clash = true; break; } if (straight) sc += Math.abs(this.K[q]) * 40; } if (!clash && sc < bs) { bs = sc; best = i; } } return best; };
+    const mark = (i0, len) => { for (let k = -4; k < len + 4; k++) this.busy[(i0 + k + n) % n] = 1; };
+    for (const f of def.features || []) {
+      if (f.t === 'corkscrew') { const len = 76, ramp = 18; const i0 = freeAt(f.at, len, true); if (i0 < 0) continue; mark(i0, len); const dir = (i0 % 2) ? 1 : -1; const lift = half + 6;
+        for (let k = 0; k <= len; k++) { const i = (i0 + k) % n; const up = smoothstep(0, ramp, k) * smoothstep(len, len - ramp, k); const rr = clamp((k - ramp) / (len - 2 * ramp), 0, 1); this.E[i] = lift * up; this.ROLL[i] = dir * TAU * (rr * rr * (3 - 2 * rr)); this.MAG[i] = 1; } }
+      else if (f.t === 'bank') { const c = Math.floor(f.at * n); let ap = c, bk = 0; for (let d = -80; d <= 80; d++) { const i = (c + d + n) % n; let k2 = 0; for (let k = -10; k <= 10; k++) k2 += this.K[(i + k + n) % n]; if (Math.abs(k2) > Math.abs(bk) && !this.busy[i]) { bk = k2; ap = i; } }
+        const span = 32; let clash = false; for (let k = -span - 6; k <= span + 6; k++) if (this.busy[(ap + k + n) % n]) clash = true; if (clash) continue; mark((ap - span + n) % n, 2 * span);
+        for (let k = -span; k <= span; k++) { const i = (ap + k + n) % n; const w = smoothstep(span, span * 0.45, Math.abs(k)); const roll = Math.sign(bk) * 1.2 * w; this.ROLL[i] = roll; this.E[i] = half * Math.abs(Math.sin(roll)) + 0.4 * w; this.MAG[i] = 1; } }
+      else if (f.t === 'tunnel' || f.t === 'chasm') { const len = Math.round((f.len || 240) / TSTEP); const i0 = freeAt(f.at, len, false); if (i0 < 0) continue; mark(i0, len); for (let k = 0; k < len; k++) (f.t === 'tunnel' ? this.TUN : this.OPEN)[(i0 + k) % n] = 1; }
+    }
+  },
+  // per-sample road frame: centre (bed + E), forward, up (rolled), right
+  buildFrames() {
+    const n = this.n; this.C = new Float32Array(n * 3); this.FW = new Float32Array(n * 3); this.UP = new Float32Array(n * 3); this.RT = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { this.C[i * 3] = this.X[i]; this.C[i * 3 + 1] = this.H[i] + this.E[i]; this.C[i * 3 + 2] = this.Z[i]; }
+    const f = V3(), u0 = V3(), r0 = V3(), u = V3(), r = V3();
+    for (let i = 0; i < n; i++) { const a = (i - 1 + n) % n, b = (i + 1) % n; f.set(this.C[b * 3] - this.C[a * 3], this.C[b * 3 + 1] - this.C[a * 3 + 1], this.C[b * 3 + 2] - this.C[a * 3 + 2]).normalize();
+      u0.set(0, 1, 0).addScaledVector(f, -f.y).normalize(); r0.crossVectors(u0, f).normalize(); const ro = this.ROLL[i]; u.copy(u0).multiplyScalar(Math.cos(ro)).addScaledVector(r0, Math.sin(ro)).normalize(); r.crossVectors(u, f).normalize();
+      this.FW.set([f.x, f.y, f.z], i * 3); this.UP.set([u.x, u.y, u.z], i * 3); this.RT.set([r.x, r.y, r.z], i * 3); }
+  },
+  frame(s, out) { s = this.wrap(s); const i = this.idx(s), j = (i + 1) % this.n; const t = (s - this.cum[i]) / ((this.cum[i + 1] - this.cum[i]) || 1);
+    const L = (A, o) => o.set(lerp(A[i * 3], A[j * 3], t), lerp(A[i * 3 + 1], A[j * 3 + 1], t), lerp(A[i * 3 + 2], A[j * 3 + 2], t));
+    L(this.C, out.c); L(this.FW, out.f).normalize(); L(this.UP, out.u).normalize(); out.r.crossVectors(out.u, out.f).normalize(); out.u.crossVectors(out.f, out.r).normalize(); out.i = i; return out; },
+  surfacePoint(s, lat, hgt, out = V3()) { const f = this.frame(s, _tf); return out.copy(f.c).addScaledVector(f.r, lat).addScaledVector(f.u, hgt); },
   // nearest segment to (x, z) inside the corridor, or null
   query(x, z, out = _tq) {
     if (x < this.bb[0] || x > this.bb[2] || z < this.bb[1] || z > this.bb[3]) return null; const a = this.grid.get(Math.floor(x / this.CELL) * 100003 + Math.floor(z / this.CELL)); if (!a) return null;
@@ -2864,7 +2922,9 @@ const Track = {
   // terrain hook (called from terrainSample while a track is active): flatten the corridor to the road profile
   shapeAt(x, z, o, h) {
     const q = this.query(x, z, _tq); if (!q) return h; const flat = this.half + 7, edge = this.half + this.blend; if (q.d >= edge) return h;
+    if (this.OPEN[q.i] && q.d > this.half + 0.8) { const drop = q.h - 26 * smoothstep(this.half + 0.8, this.half + 5, q.d); h = lerp(drop, h, smoothstep(this.half + 30, edge, q.d)); o.wet = -1e9; o.s = S_ROCK; return h; }
     const m = 1 - smoothstep(flat, edge, q.d); h += (q.h - h) * m; if (m > 0.4) o.wet = -1e9;
+    if (this.TUN[q.i] && q.d > this.half + 4.5) { h = Math.max(h, q.h + 11 * smoothstep(this.half + 4.5, this.half + 10, q.d) * (1 - smoothstep(this.half + 22, edge, q.d))); o.s = S_ROCK; return h; }
     if (q.d < this.half + 0.6) o.s = S_TRACK; else if (m > 0.55 && (o.s === S_BULL || o.s === S_ROCK || o.s === S_RIVER)) o.s = this.def.night ? S_BLACK : S_SAND; return h;
   },
   // ---- sampling along the lap (s wraps)
@@ -2873,9 +2933,9 @@ const Track = {
   pointLat(s, lat, out = {}) { s = this.wrap(s); const i = this.idx(s), j = (i + 1) % this.n; const t = (s - this.cum[i]) / ((this.cum[i + 1] - this.cum[i]) || 1); const yaw = this.YAW[i] + wrapAngle(this.YAW[j] - this.YAW[i]) * t;
     out.x = lerp(this.X[i], this.X[j], t) + Math.cos(yaw) * lat; out.z = lerp(this.Z[i], this.Z[j], t) - Math.sin(yaw) * lat; out.h = lerp(this.H[i], this.H[j], t); out.yaw = yaw; out.s = s; return out; },
   curvAt(s) { return this.K[this.idx(s)]; },
-  maxCurv(s0, s1) { let m = 0; for (let s = s0; s <= s1; s += TSTEP) { const k = Math.abs(this.K[this.idx(s)]); if (k > m) m = k; } return m; },
+  maxCurv(s0, s1) { let m = 0; for (let s = s0; s <= s1; s += TSTEP) { const i = this.idx(s); const k = Math.abs(this.K[i]) * (this.MAG[i] ? 0.3 : 1); if (k > m) m = k; } return m; },
   // index of the straightest stretch near fraction f of the lap (for jumps, pads, crates)
-  straightNear(f, span) { const n = this.n; const c = Math.floor(f * n); let best = c, bs = 1e9; for (let d = -30; d <= 30; d++) { const i = (c + d + n) % n; let s = Math.abs(d) * 0.002; for (let k = -6; k <= span; k++) s += Math.abs(this.K[(i + k + n) % n]); if (s < bs) { bs = s; best = i; } } return best; },
+  straightNear(f, span) { const n = this.n; const c = Math.floor(f * n); let best = c, bs = 1e9; for (let d = -40; d <= 40; d++) { const i = (c + d + n) % n; let s = Math.abs(d) * 0.002; for (let k = -6; k <= span; k++) { const q = (i + k + n) % n; s += Math.abs(this.K[q]) + (this.busy && this.busy[q] ? 1 : 0); } if (s < bs) { bs = s; best = i; } } return best; },
   // local projection from a hint (index), full scan when lost
   project(x, z, hint = -1, out = {}) {
     const n = this.n, X = this.X, Z = this.Z; let bd = 1e18, bi = 0, bt = 0;
@@ -2895,17 +2955,39 @@ const Track = {
   buildMeshes() {
     const n = this.n, half = this.half, ox = this.cx, oz = this.cz, def = this.def; const root = new THREE.Group(); root.position.set(ox, 0, oz); WORLD.add(root); this.objs.push(root); this.root = root;
     const R = (i) => [Math.cos(this.YAW[i]), -Math.sin(this.YAW[i])];
-    // road ribbon (kerbs, edge lines and asphalt are in the texture; v runs along the lap)
-    { const cols = 7, W = half + 0.4; const pos = new Float32Array((n + 1) * cols * 3), uv = new Float32Array((n + 1) * cols * 2), nor = new Float32Array((n + 1) * cols * 3); const idx = [];
-      for (let k = 0; k <= n; k++) { const i = k % n; const [rx, rz] = R(i); for (let c2 = 0; c2 < cols; c2++) { const u = c2 / (cols - 1); const o = (u * 2 - 1) * W; const q = (k * cols + c2); pos[q * 3] = this.X[i] + rx * o - ox; pos[q * 3 + 1] = this.H[i] + 0.1; pos[q * 3 + 2] = this.Z[i] + rz * o - oz; uv[q * 2] = u; uv[q * 2 + 1] = this.cum[k] / 16; nor[q * 3 + 1] = 1; } }
-      for (let k = 0; k < n; k++) for (let c2 = 0; c2 < cols - 1; c2++) { const a = k * cols + c2, b = a + 1, d = a + cols, e = d + 1; idx.push(a, d, b, b, d, e); }
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setIndex(idx); g.computeVertexNormals(); g.computeBoundingSphere();
-      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: roadTexture(def), roughness: 0.82, metalness: 0.05, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4, emissive: def.night ? 0x0a0c10 : 0x000000 })); m.receiveShadow = true; root.add(m); this.road = m; }
-    // barriers (instanced, two-tone) + colliders
-    { const segs = []; for (const sd of [-1, 1]) for (let i = 0; i < n; i += 2) { const j = (i + 2) % n; const [ax, az] = R(i), [bx, bz] = R(j); const off = (half + 1.9) * sd; const p = [this.X[i] + ax * off, this.Z[i] + az * off], q = [this.X[j] + bx * off, this.Z[j] + bz * off]; const L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 0.5) continue; segs.push({ x: (p[0] + q[0]) / 2, z: (p[1] + q[1]) / 2, y: (this.H[i] + this.H[j]) / 2, L, yaw: Math.atan2(q[0] - p[0], q[1] - p[1]), k: segs.length }); }
-      const im = new THREE.InstancedMesh(GEO.box, new THREE.MeshStandardMaterial({ roughness: 0.7, emissive: def.night ? 0x061a1a : 0x000000 }), segs.length); const col = new THREE.Color();
-      segs.forEach((s, k) => { _m1.compose(_v1.set(s.x - ox, s.y + 0.75, s.z - oz), _q1.setFromAxisAngle(UP, s.yaw), _v2.set(0.8, 1.5, s.L + 0.4)); im.setMatrixAt(k, _m1); im.setColorAt(k, col.setHex(def.walls[k % 2])); this.statics.push(Phys.addStatic({ type: 'box', x: s.x, y: s.y + 1.4, z: s.z, hx: 0.45, hy: 1.7, hz: s.L / 2 + 0.2, yaw: s.yaw })); });
+    // road ribbon from the per-sample frames (so it climbs, banks and rolls through corkscrews); kerbs/lines in the texture
+    { const cols = 7, W = half + 0.4; const pos = new Float32Array((n + 1) * cols * 3), uv = new Float32Array((n + 1) * cols * 2), nor = new Float32Array((n + 1) * cols * 3); const idx = []; const C = this.C, U = this.UP, RT = this.RT;
+      for (let k = 0; k <= n; k++) { const i = k % n; for (let c2 = 0; c2 < cols; c2++) { const u = c2 / (cols - 1); const o = (u * 2 - 1) * W; const q = (k * cols + c2);
+        pos[q * 3] = C[i * 3] + RT[i * 3] * o + U[i * 3] * 0.1 - ox; pos[q * 3 + 1] = C[i * 3 + 1] + RT[i * 3 + 1] * o + U[i * 3 + 1] * 0.1; pos[q * 3 + 2] = C[i * 3 + 2] + RT[i * 3 + 2] * o + U[i * 3 + 2] * 0.1 - oz; uv[q * 2] = u; uv[q * 2 + 1] = this.cum[k] / 16; nor[q * 3] = U[i * 3]; nor[q * 3 + 1] = U[i * 3 + 1]; nor[q * 3 + 2] = U[i * 3 + 2]; } }
+      for (let k = 0; k < n; k++) for (let c2 = 0; c2 < cols - 1; c2++) { const a2 = k * cols + c2, b2 = a2 + 1, d2 = a2 + cols, e2 = d2 + 1; idx.push(a2, d2, b2, b2, d2, e2); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setIndex(idx); g.computeBoundingSphere();
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: roadTexture(def), roughness: 0.82, metalness: 0.05, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4, emissive: def.night ? 0x0a0c10 : 0x000000 })); m.receiveShadow = true; root.add(m); this.road = m; }
+    // walls: bumpers along the ground sections (none on the cliff runs; the magnetic sections have glowing rails). No colliders — the race code makes them glance you off.
+    { const segs = []; for (const sd of [-1, 1]) for (let i = 0; i < n; i += 2) { const j = (i + 2) % n; if (this.OPEN[i] || this.OPEN[j] || this.MAG[i] || this.MAG[j]) continue; const [ax, az] = R(i), [bx, bz] = R(j); const off = (half + 1.9) * sd; const p = [this.X[i] + ax * off, this.Z[i] + az * off], q = [this.X[j] + bx * off, this.Z[j] + bz * off]; const L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 0.5) continue; segs.push({ x: (p[0] + q[0]) / 2, z: (p[1] + q[1]) / 2, y: (this.H[i] + this.H[j]) / 2, L, yaw: Math.atan2(q[0] - p[0], q[1] - p[1]), k: segs.length }); }
+      const im = new THREE.InstancedMesh(GEO.box, new THREE.MeshStandardMaterial({ roughness: 0.7, emissive: def.night ? 0x061a1a : 0x000000 }), Math.max(1, segs.length)); const col = new THREE.Color();
+      segs.forEach((sg, k) => { _m1.compose(_v1.set(sg.x - ox, sg.y + 0.6, sg.z - oz), _q1.setFromAxisAngle(UP, sg.yaw), _v2.set(0.9, 1.2, sg.L + 0.4)); im.setMatrixAt(k, _m1); im.setColorAt(k, col.setHex(def.walls[k % 2])); });
       im.castShadow = true; im.receiveShadow = true; root.add(im); }
+    // magnetic sections: glowing rails on both edges, hoops + legs under corkscrews, pylons under banks
+    { const rails = [], hoops = [], legs = []; const fr = { c: V3(), f: V3(), u: V3(), r: V3(), i: 0 }; const qy = new THREE.Quaternion(), mtxB = new THREE.Matrix4();
+      for (let i = 0; i < n; i += 2) { if (!this.MAG[i]) continue; this.frame(this.cum[i] + 1, fr); mtxB.makeBasis(fr.r, fr.u, fr.f); qy.setFromRotationMatrix(mtxB);
+        for (const sd of [-1, 1]) rails.push({ p: fr.c.clone().addScaledVector(fr.r, sd * (half + 0.6)).addScaledVector(fr.u, 0.45), q: qy.clone() });
+        if (Math.abs(this.ROLL[i]) > 0.05 && this.E[i] > half + 3 && i % 10 === 0 && Math.abs(Math.abs(this.ROLL[i]) - Math.abs(this.ROLL[(i + 10) % n])) > 0.01) { hoops.push({ p: fr.c.clone(), q: qy.clone() }); const bot = fr.c.y - (half + 2.6); for (const sd of [-1, 1]) legs.push({ x: fr.c.x + Math.cos(this.YAW[i]) * sd * (half * 0.7), z: fr.c.z - Math.sin(this.YAW[i]) * sd * (half * 0.7), y0: this.H[i] - 1, y1: bot + 1.5 }); }
+        else if (this.E[i] > 2 && i % 8 === 0) { const e = this.ROLL[i] >= 0 ? -1 : 1; const top = fr.c.clone().addScaledVector(fr.r, e * half * 0.9); legs.push({ x: top.x, z: top.z, y0: this.H[i] - 1, y1: top.y - 0.4 }); } }
+      const rm = new THREE.InstancedMesh(GEO.box, new THREE.MeshBasicMaterial({ color: 0x5ff5e8 }), Math.max(1, rails.length)); rails.forEach((r2, k) => { _m1.compose(_v1.set(r2.p.x - ox, r2.p.y, r2.p.z - oz), r2.q, _v2.set(0.35, 0.9, 8.4)); rm.setMatrixAt(k, _m1); }); root.add(rm);
+      const hg = new THREE.TorusGeometry(half + 2.6, 0.55, 8, 40); const hm = new THREE.InstancedMesh(hg, new THREE.MeshStandardMaterial({ color: 0xd8dee6, metalness: 0.6, roughness: 0.35, emissive: 0x0a2a2a }), Math.max(1, hoops.length)); hoops.forEach((h2, k) => { _m1.compose(_v1.set(h2.p.x - ox, h2.p.y, h2.p.z - oz), h2.q, _v2.set(1, 1, 1)); hm.setMatrixAt(k, _m1); }); hm.castShadow = true; root.add(hm);
+      const lm2 = new THREE.InstancedMesh(GEO.cyl, MAT.darkMetal, Math.max(1, legs.length)); legs.forEach((l2, k) => { const hh = Math.max(0.5, l2.y1 - l2.y0); _m1.compose(_v1.set(l2.x - ox, l2.y0 + hh / 2, l2.z - oz), _q1.identity(), _v2.set(0.55, hh, 0.55)); lm2.setMatrixAt(k, _m1); }); lm2.castShadow = true; root.add(lm2); }
+    // tunnels: an arched rock tube with lamps along the roof and portal frames; the terrain mounds over it
+    { const segsT = []; let i0 = -1; for (let i = 0; i <= n; i++) { const on = i < n && this.TUN[i]; if (on && i0 < 0) i0 = i; if (!on && i0 >= 0) { segsT.push([i0, i - 1]); i0 = -1; } }
+      const rockIn = new THREE.MeshStandardMaterial({ color: def.night ? 0x2a2630 : 0x7a4a34, map: TEX.rock, roughness: 0.95, side: THREE.DoubleSide }); const lampM = new THREE.MeshBasicMaterial({ color: 0xffe8b0 }); const mb = new MeshBuilder();
+      for (const [a2, b2] of segsT) { const N = 12, Rx = half + 2.6, Ry = 8.5; const cnt = b2 - a2 + 1; const pos = new Float32Array(cnt * (N + 1) * 3), uv = new Float32Array(cnt * (N + 1) * 2); const idx = [];
+        for (let k = 0; k < cnt; k++) { const i = a2 + k; const [rx, rz] = R(i); for (let j = 0; j <= N; j++) { const ang = j / N * Math.PI; const q = k * (N + 1) + j; pos[q * 3] = this.X[i] + rx * Math.cos(ang) * Rx - ox; pos[q * 3 + 1] = this.H[i] + Math.sin(ang) * Ry - 0.3; pos[q * 3 + 2] = this.Z[i] + rz * Math.cos(ang) * Rx - oz; uv[q * 2] = j / N * 6; uv[q * 2 + 1] = this.cum[i] / 8; }
+          if (k % 4 === 0) mb.add(lampM, GEO.box, mtx(this.X[i] - ox, this.H[i] + Ry - 0.6, this.Z[i] - oz, 0, this.YAW[i], 0, 0.6, 0.15, 2.4)); }
+        for (let k = 0; k < cnt - 1; k++) for (let j = 0; j < N; j++) { const q0 = k * (N + 1) + j; idx.push(q0, q0 + N + 1, q0 + 1, q0 + 1, q0 + N + 1, q0 + N + 2); }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); g.computeBoundingSphere(); const tm = new THREE.Mesh(g, rockIn); tm.receiveShadow = true; root.add(tm);
+        for (const e of [a2, b2]) { const yaw = this.YAW[e]; for (const sd of [-1, 1]) mb.add(MAT.concrete, GEO.box, mtx(this.X[e] + Math.cos(yaw) * sd * (Rx + 0.6) - ox, this.H[e] + 5, this.Z[e] - Math.sin(yaw) * sd * (Rx + 0.6) - oz, 0, yaw, 0, 1.8, 10.5, 2.4)); mb.add(MAT.concrete, GEO.box, mtx(this.X[e] - ox, this.H[e] + Ry + 1.2, this.Z[e] - oz, 0, yaw, 0, 2 * Rx + 3, 2.2, 2.4)); } }
+      mb.build(root, { cast: false }); }
+    // cliff runs: hazard posts along the drop
+    { const mb = new MeshBuilder(); const hz = new THREE.MeshBasicMaterial({ color: 0xffc020 }); for (let i = 0; i < n; i += 5) { if (!this.OPEN[i]) continue; const [rx, rz] = R(i); for (const sd of [-1, 1]) mb.add(hz, GEO.cyl, mtx(this.X[i] + rx * sd * (half + 0.9) - ox, this.H[i] + 0.35, this.Z[i] + rz * sd * (half + 0.9) - oz, 0, 0, 0, 0.18, 0.7, 0.18)); } mb.build(root, { cast: false }); }
     // start / finish: gantry with five lights, checkered line, grid boxes
     { const p = this.pointLat(0, 0); const yaw = p.yaw; const g = new THREE.Group(); g.position.set(p.x - ox, p.h, p.z - oz); g.rotation.y = yaw; root.add(g); const mb = new MeshBuilder(); const wd = half + 3.4;
       for (const sd of [-1, 1]) { mb.add(MAT.darkMetal, GEO.box, mtx(sd * wd, 5, 0, 0, 0, 0, 1.2, 10, 1.2)); this.statics.push(Phys.addStatic({ type: 'box', x: p.x + Math.cos(yaw) * sd * wd, y: p.h + 5, z: p.z - Math.sin(yaw) * sd * wd, hx: 0.6, hy: 5, hz: 0.6, yaw })); }
@@ -2929,7 +3011,7 @@ const Track = {
         if (def.night && i % 21 === 0) { const side = (i / 21) % 2 ? 1 : -1; const q = this.pointLat(s, side * (half + 6)); mb.add(MAT.darkMetal, GEO.cyl, mtx(q.x - ox, q.h + 7, q.z - oz, 0, 0, 0, 0.25, 14, 0.25)); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xfff2d0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); sp.scale.setScalar(9); sp.position.set(q.x - ox, q.h + 14.2, q.z - oz); root.add(sp); } }
       mb.build(root, { cast: false }); }
     // item crates (instanced) and boost pads
-    { this.crates = []; for (const f of def.crates || []) { const i = this.straightNear(f, 10); const s = this.cum[i]; const cnt = half >= 14 ? 5 : 4; for (let k = 0; k < cnt; k++) { const lat = (k / (cnt - 1) - 0.5) * half * 1.25; const q = this.pointLat(s, lat); this.crates.push({ s, lat, x: q.x, z: q.z, y: q.h + 1.5, on: true, t: 0, k: this.crates.length, row: i }); } }
+    { this.crates = []; for (const f of def.crates || []) { const i = this.straightNear(f, 10); this.busy[i] = 1; const s = this.cum[i]; const cnt = half >= 14 ? 5 : 4; for (let k = 0; k < cnt; k++) { const lat = (k / (cnt - 1) - 0.5) * half * 1.25; const q = this.pointLat(s, lat); this.crates.push({ s, lat, x: q.x, z: q.z, y: q.h + 1.5, on: true, t: 0, k: this.crates.length, row: i }); } }
       const tex = canvasTex(crateCanvas(), 1); tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.repeat.set(1, 1);
       this.crateMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 1.7, 1.7), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.55, transparent: true, opacity: 0.92, roughness: 0.3 }), Math.max(1, this.crates.length)); this.crateMesh.frustumCulled = false; root.add(this.crateMesh);
       const ptex = canvasTex(padCanvas(), 1); ptex.wrapS = THREE.ClampToEdgeWrapping; ptex.wrapT = THREE.RepeatWrapping; ptex.repeat.set(1, 1); this.padMat = new THREE.MeshBasicMaterial({ map: ptex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
@@ -3041,7 +3123,7 @@ const Items = {
     if (r.P) Audio.play('boost', 0.6); if (target && target.P) target.P.hud.kbanner('MISSILE LOCK!', 'warn');
   },
   dropMine(r, p) { const M = itemMats(); const g = new THREE.Group(); const m = new THREE.Mesh(GEO.dodec, M.mine); m.scale.setScalar(0.75); g.add(m); for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(GEO.cone, M.mine); sp.scale.set(0.16, 0.5, 0.16); const a = k / 6 * TAU; sp.position.set(Math.cos(a) * 0.72, 0.1, Math.sin(a) * 0.72); sp.rotation.set(0, -a, Math.PI / 2); g.add(sp); } const bl = new THREE.Mesh(GEO.sphere, M.blink); bl.scale.setScalar(0.18); bl.position.y = 0.72; g.add(bl);
-    p.y = heightAt(p.x, p.z) + 0.55; g.position.copy(p); WORLD.add(g); const q = Track.project(p.x, p.z, r.hint); this.mines.push({ r, g, p, t: 0, bl, s: q.s, lat: q.lat }); if (this.mines.length > 14) this.remove(this.mines, 0); if (r.P) Audio.play('beep'); },
+    if (r.mag) Track.surfacePoint(r.s - 4, r.lat, 0.55, p); else p.y = heightAt(p.x, p.z) + 0.55; g.position.copy(p); WORLD.add(g); const q = Track.project(p.x, p.z, r.hint); this.mines.push({ r, g, p, t: 0, bl, s: q.s, lat: q.lat }); if (this.mines.length > 14) this.remove(this.mines, 0); if (r.P) Audio.play('beep'); },
   callLance(r, tgt) { const M = itemMats(); const ring = new THREE.Mesh(new THREE.RingGeometry(5, 6.5, 32), M.mark); ring.rotation.x = -Math.PI / 2; WORLD.add(ring); this.lances.push({ r, tgt, t: 2.4, ring, beam: null, bt: 0 }); if (tgt.P) tgt.P.hud.kbanner('SKY LANCE INCOMING!', 'warn'); for (const P of G.players) if (P !== tgt.P) P.hud.note(`${r.name} called the Sky Lance on ${tgt.name}`, ''); Audio.play('warn', 0.6); },
   remove(arr, i) { const o = arr[i]; WORLD.remove(o.g || o.ring); if (o.beam) WORLD.remove(o.beam); arr.splice(i, 1); },
   // a hit: spin-out (shield absorbs it). Returns true if it landed.
@@ -3051,7 +3133,7 @@ const Items = {
     if (net && o.P) Net.send({ t: 'hit', id: o.id, kind, by: by ? by.id : null, blocked: o.shieldT > 0 });
     if (o.shieldT > 0) { o.shieldT = 0; FX.ring(b.pos.clone(), { color: 0x5ff5e8, speed: 30, max: 6, thick: 0.2 }); Audio.play('zap', clamp(1.2 - G.camDist(b.pos) / 150, 0.1, 1)); if (o.P) { o.P.hud.note('Shield blocked it!', 'good'); G.stats('blocks'); } return false; }
     const dur = { missile: 1.7, rocket: 1.35, mine: 1.4, emp: 1.0, lance: 2.1 }[kind] * (o.P ? 1 - (G.save.upgrades.armour || 0) * 0.06 : 1);
-    const lg = Circuit.st && Circuit.st.log; if (lg) lg.hit[kind] = (lg.hit[kind] || 0) + 1; b.spinT = dur; b.spinDur = dur; b.spinDir = Math.random() < 0.5 ? -1 : 1; const v = b.body.v; b.body.setVel(V3(v.x * 0.3, Math.max(0, v.y) + (kind === 'emp' ? 1 : 5), v.z * 0.3)); b.nitroT = 0; b.invuln = dur + 0.5;
+    const lg = Circuit.st && Circuit.st.log; if (lg) lg.hit[kind] = (lg.hit[kind] || 0) + 1; b.spinT = dur; b.spinDur = dur; b.spinDir = Math.random() < 0.5 ? -1 : 1; const v = b.body.v; if (o.mag) o.mag.v *= 0.35; else b.body.setVel(V3(v.x * 0.3, Math.max(0, v.y) + (kind === 'emp' ? 1 : 5), v.z * 0.3)); b.nitroT = 0; b.invuln = dur + 0.5;
     if (kind !== 'emp') FX.explosion(b.pos.clone().add(V3(0, 0.8, 0)), kind === 'lance' ? 1.1 : 0.45); else FX.sparks(b.pos.clone(), 20, 8, [0.6, 0.85, 1]);
     const what = kind === 'emp' ? 'EMP' : kind === 'lance' ? 'Sky Lance' : kind === 'mine' ? 'mine' : kind === 'missile' ? 'seeker' : 'rocket';
     if (o.P) { o.P.hud.note(by && by !== o ? `Hit by ${by.name}'s ${what}!` : `Hit by a ${what}!`, 'bad'); o.P.cam.addShake(1.1); o.hitsTaken++; }
@@ -3066,7 +3148,7 @@ const Items = {
       else { // homing a little toward a rider in the cone ahead
         let best = null, bd = 70; for (const o of racers) { if (o === s.r || o.respawnT > 0) continue; const d = _v2.subVectors(o.bike.pos, p); d.y = 0; const L = d.length(); if (L > bd) continue; if (d.dot(s.v) / (L * s.v.length() || 1) > 0.8) { bd = L; best = o; } }
         if (best && s.t > 0.1) { const d = _v2.subVectors(best.bike.pos, p); d.y = 0; d.normalize().multiplyScalar(s.v.length()); s.v.lerp(d, 1 - Math.exp(-s.home * 2 * dt)); } p.addScaledVector(s.v, dt); }
-      const q = Track.project(p.x, p.z, s.hint); s.hint = q.i; if (!s.seek) s.s = q.s; p.y = damp(p.y, q.h + 1.2, 10, dt); s.g.position.copy(p); s.g.rotation.y = Math.atan2(s.v.x, s.v.z);
+      const q = Track.project(p.x, p.z, s.hint); s.hint = q.i; if (!s.seek) s.s = q.s; p.y = damp(p.y, q.h + 1.2, 10, dt); if (Track.MAG[q.i]) Track.surfacePoint(q.s, clamp(q.lat, -Track.half + 1, Track.half - 1), 1.3, p); s.g.position.copy(p); s.g.rotation.y = Math.atan2(s.v.x, s.v.z);
       if (Math.random() < 0.8) FX.flame(p, _v3.copy(s.v).multiplyScalar(-0.15), 0.5, s.seek ? [1, 0.3, 0.2] : [1, 0.6, 0.2], 0.25);
       let boom = s.t > s.life || (q.d > Track.half + 1.6 && !s.seek); for (const o of racers) { if ((o === s.r && s.t < 0.6) || o.respawnT > 0) continue; if (o.bike.pos.distanceTo(p) < 2.6) { this.hit(o, s.seek ? 'missile' : 'rocket', s.r); boom = true; break; } }
       for (let k = this.mines.length - 1; k >= 0 && !boom; k--) if (this.mines[k].p.distanceTo(p) < 2) { FX.explosion(this.mines[k].p, 0.35); this.remove(this.mines, k); boom = true; }
@@ -3093,6 +3175,7 @@ const KartAI = {
     const b = r.bike, c = b.ctrl, T = Track, ai = r.ai, sk = r.skill; const sp = b.speed;
     if (b.spinT > 0 || r.respawnT > 0) { c.throttle = 0; c.steer = 0; c.boost = false; c.drift = false; c.hop = false; return; }
     ai.laneT -= dt; if (ai.laneT <= 0) { ai.laneT = 1.5 + Math.random() * 2.5; ai.base = (Math.random() - 0.5) * T.half * 0.8; }
+    if (r.mag) { c.throttle = 1; c.drift = false; c.hop = false; c.boost = b.boost > 45 && r.skill > 0.8; c.steer = clamp((r.lat - clamp(ai.lane, -T.half + 2.5, T.half - 2.5)) * 0.3, -1, 1); return; }
     const kAhead = T.curvAt(r.s + 25 + sp * 0.7); let lane = ai.base * 0.5 + clamp(kAhead * 900, -1, 1) * T.half * 0.5 * sk; // inside of the coming corner (K > 0: right-hander → +lat)
     if (!r.item && r.roul <= 0) { let bc = null, bd = 160; for (const cr of T.crates) { if (!cr.on) continue; const d = T.wrap(cr.s - r.s); if (d > 15 && d < bd) { bd = d; bc = cr; } else if (bc && Math.abs(d - bd) < 2 && Math.abs(cr.lat - lane) < Math.abs(bc.lat - lane)) bc = cr; } if (bc) lane = bc.lat; }
     for (const o of Circuit.st.racers) { if (o === r) continue; const d = o.prog - r.prog; if (d > 2 && d < 16 + sp * 0.2 && Math.abs(o.lat - lane) < 2.8) lane = o.lat + (lane >= o.lat ? 3.4 : -3.4); }
@@ -3166,6 +3249,7 @@ const Circuit = {
       if (!r.P || r.auto) KartAI.control(r, dt);
       else if (r.item && r.itemCD <= 0 && Input.pressed(r.P.idx, 'item')) Items.use(r, (r.P.input.throttle || 0) < -0.3);
       if (r.itemCD > 0) r.itemCD -= dt;
+      if (r.mag) this.magStep(r, dt);
     }
   },
   // after physics: progress, laps, crates, pads, recovery, positions
@@ -3179,12 +3263,16 @@ const Circuit = {
     st.clock += dt; const n = st.racers.length;
     for (const r of st.racers) {
       const b = r.bike; const pr = T.project(b.pos.x, b.pos.z, r.hint, r._pr || (r._pr = {})); r.hint = pr.i; r.d = pr.d; r.lat = pr.lat;
-      if (r.remote) { for (const cr of T.crates) { if (cr.on && (b.pos.x - cr.x) ** 2 + (b.pos.z - cr.z) ** 2 < 10) { cr.on = false; cr.t = 2.4; } } continue; } const s = pr.s;
+      if (r.remote) { for (const cr of T.crates) { if (cr.on && (b.pos.x - cr.x) ** 2 + (b.pos.z - cr.z) ** 2 < 10) { cr.on = false; cr.t = 2.4; } } continue; }
+      if (!r.mag && r.respawnT <= 0 && T.MAG[pr.i] && Math.abs(pr.lat) < T.half - 0.5 && b.state === 'ride') this.enterMag(r, pr);
+      if (r.mag) { r.lat = r.mag.lat; r.d = Math.abs(r.lat); } const s = r.mag ? T.wrap(r.mag.s) : pr.s;
       // laps: crossing the line forward after passing half distance counts; crossing back undoes it
       if (r.s > L * 0.75 && s < L * 0.25) { if (r.lap === 0 || r.halfway) { r.lap++; r.halfway = false; this.onLap(r); } }
       else if (r.s < L * 0.25 && s > L * 0.75 && r.lap > 0 && !r.finished) { r.lap--; r.halfway = true; }
       if (s > L * 0.45 && s < L * 0.6) r.halfway = true; r.s = s; r.prog = r.finished ? st.laps * L + 1e6 - r.finishT : r.lap === 0 ? s - L : (r.lap - 1) * L + s;
-      if (r.d < T.half) r.lastGood = s;
+      if (r.d < T.half && !T.MAG[pr.i] && !r.mag) r.lastGood = s;
+      if (r.P && st.laps === 1 && r.lap === 1 && !r.halfShown && s > L * 0.5) { r.halfShown = true; r.P.hud.kbanner('HALFWAY!', 'lap'); }
+      if (!r.mag && r.respawnT <= 0) this.softWall(r, pr);
       // off the road: slower; rubber band for the AI (pulls the pack together around the humans)
       let mul = r.d > T.half + 0.8 ? 0.62 : 1; if (!r.P && !r.finished) { let gap = 1e9; for (const h of st.humans) { const g = r.prog - h.prog; if (Math.abs(g) < Math.abs(gap)) gap = g; } if (gap < 1e8) mul *= gap > 0 ? 1 - Math.min(0.1, gap / 3000) : 1 + Math.min(0.14, -gap / 1600); }
       b.extraSpeedMul = mul;
@@ -3194,10 +3282,11 @@ const Circuit = {
       if (r.roul > 0) { r.roul -= dt; if (r.roul <= 0) { r.item = r.rollItem; r.count = ITEMS[r.item].n; r.itemCD = r.P ? 0.25 : 0.5 + Math.random(); r.ai.holdT = 0; if (r.P) Audio.play('note'); } }
       if (r.blindT > 0) r.blindT -= dt;
       // recovery: outside the barriers, fallen, flipped/wiped out too long, or stuck
-      if (r.respawnT > 0) { r.respawnT -= dt; b.body.setVel(V3(0, 0, 0)); if (r.respawnT <= 0) this.respawn(r); continue; }
-      const out = r.d > T.half + 8 || b.pos.y < pr.h - 7; r.offT = out ? r.offT + dt : 0;
+      if (r.respawnT > 0) { r.respawnT -= dt; this.carry(r); if (r.respawnT <= 0) this.respawn(r); continue; }
+      if (r.mag) continue;
+      const fell = b.pos.y < pr.h - (T.OPEN[pr.i] ? 4 : 7); const out = fell || r.d > T.half + 8; r.offT = out ? r.offT + dt : 0;
       const stuck = b.speed < 2.5 && (r.P ? Math.abs(r.P.input.throttle || 0) > 0.3 || r.auto : true) && b.spinT <= 0; r.stuckT = stuck ? r.stuckT + dt : Math.max(0, r.stuckT - dt);
-      const why = r.offT > 0.5 ? (b.pos.y < pr.h - 7 ? 'fell' : 'out') : r.stuckT > 3.2 ? 'stuck' : b.state === 'wipeout' && b.wipeT < CONFIG.hover.wipeoutTime - 1.4 ? 'wipe' : null;
+      const why = r.offT > (fell ? 0.2 : 0.5) ? (fell ? 'fell' : 'out') : r.stuckT > 3.2 ? 'stuck' : b.state === 'wipeout' && b.wipeT < CONFIG.hover.wipeoutTime - 1.4 ? 'wipe' : null;
       if (why) { const lg = st.log; lg.resp = lg.resp || {}; lg.resp[why] = (lg.resp[why] || 0) + 1; lg.where = lg.where || []; if (lg.where.length < 12) lg.where.push([why, Math.round(r.s), +r.d.toFixed(1), Math.round(b.speed)]); this.beginRespawn(r); }
       // wrong way (humans)
       if (r.P && !r.finished) { const f = b.forward(_v1); const fwd = f.x * Math.sin(pr.yaw) + f.z * Math.cos(pr.yaw); r.wrongT = fwd < -0.35 && b.speed > 6 ? r.wrongT + dt : 0; if (r.wrongT > 1) r.P.hud.kbanner('WRONG WAY', 'warn', 0.3); }
@@ -3222,8 +3311,35 @@ const Circuit = {
     const st = this.st; if (r.finished) return; r.finished = true; r.finishT = st.clock; r.lap = st.laps + 1; r.auto = true; if (st.opts.seats && r.P) Net.send({ t: 'fin', id: r.id, ft: r.finishT, best: r.best });
     if (r.P) { const place = st.racers.filter((o) => o.finished).length; r.P.hud.kbanner(place === 1 ? 'YOU WIN!' : `${ordinal(place)} PLACE`, place <= 3 ? 'go' : 'lap'); Audio.play('win'); r.P.finishCam = { t: 6, pos: r.bike.pos.clone() }; G.stats('racesFinished'); }
   },
-  beginRespawn(r) { if (r.respawnT > 0) return; r.respawnT = 1.3; r.respN = (r.respN || 0) + 1; r.offT = 0; r.stuckT = 0; if (r.P) { r.P.hud.kbanner('RECOVERING…', 'warn', 1.2); Audio.play('chirp'); G.stats('recoveries'); NavDrone.fetch(r); } },
-  respawn(r) { const T = Track; const q = T.pointLat(r.lastGood - 4, clamp(r.lat, -T.half * 0.4, T.half * 0.4)); const b = r.bike; b.setPose(V3(q.x, 0, q.z), q.yaw); if (b.state !== 'ride') { b.state = 'ride'; b.remount(); } b.spinT = 0; b.invuln = 2; r.hint = T.idx(q.s); r.s = q.s; FX.ring(V3(q.x, q.h + 1, q.z), { color: 0x5ff5e8, speed: 20, max: 5, thick: 0.15 }); if (r.P) r.P.cam.snap(b); },
+  // Pip swoops in and carries you back up to the track (about a second)
+  beginRespawn(r) { if (r.respawnT > 0) return; const T = Track; this.exitMag(r); r.respawnT = 1.15; r.respN = (r.respN || 0) + 1; r.offT = 0; r.stuckT = 0; const q = T.pointLat(r.lastGood - 3, clamp(r.lat, -T.half * 0.4, T.half * 0.4));
+    r.resp = { from: r.bike.pos.clone(), to: V3(q.x, q.h + CONFIG.hover.rideHeight + 0.5, q.z), yaw: q.yaw, s: q.s }; if (r.P) { r.P.hud.kbanner('PIP TO THE RESCUE!', 'warn', 1.2); Audio.play('chirp'); G.stats('recoveries'); NavDrone.fetch(r); } },
+  carry(r) { const b = r.bike, c = r.resp; if (!c) return; const t = clamp(1 - r.respawnT / 1.15, 0, 1); const e = t * t * (3 - 2 * t); _v1.lerpVectors(c.from, c.to, e); _v1.y += Math.sin(t * Math.PI) * 7; b.body.setPos(_v1); b.body.setVel(_v2.set(0, 0, 0)); b.body.setAngVel(_v2); b.body.setRot(_q1.setFromAxisAngle(UP, c.yaw)); b.prevP.copy(_v1); b.prevQ.copy(b.body.q); },
+  respawn(r) { const T = Track; const c = r.resp || {}; const q = T.pointLat(c.s ?? (r.lastGood - 3), 0); const b = r.bike; b.setPose(c.to ? c.to.clone() : V3(q.x, 0, q.z), c.yaw ?? q.yaw); r.resp = null; if (b.state !== 'ride') { b.state = 'ride'; b.remount(); } b.spinT = 0; b.invuln = 2; r.hint = T.idx(q.s); r.s = q.s; FX.ring(V3(q.x, q.h + 1, q.z), { color: 0x5ff5e8, speed: 20, max: 5, thick: 0.15 }); if (r.P) r.P.cam.snap(b); },
+  // walls are bumpers: you glance off and keep your speed, and the nose swings back along the track
+  softWall(r, pr) {
+    const T = Track; if (T.OPEN[pr.i] || T.MAG[pr.i]) return; const lim = T.half + 0.7; if (Math.abs(pr.lat) <= lim || Math.abs(pr.lat) > T.half + 6) return;
+    const b = r.bike, sg = Math.sign(pr.lat), rx = Math.cos(pr.yaw), rz = -Math.sin(pr.yaw), tx = Math.sin(pr.yaw), tz = Math.cos(pr.yaw); const over = Math.abs(pr.lat) - lim; const p = b.body.p; p.x -= rx * sg * over; p.z -= rz * sg * over; b.body.setPos(p);
+    const v = b.body.v; let vl = v.x * rx + v.z * rz, vt = v.x * tx + v.z * tz;
+    if (vl * sg > 0) { const hit = Math.abs(vl); vl = -sg * Math.min(hit * 0.3, 5); vt *= 1 - Math.min(0.1, hit * 0.004); if (hit > 7) { FX.sparks(V3(p.x + rx * sg * 1.2, p.y, p.z + rz * sg * 1.2), Math.min(24, hit), 7); if (r.P) { Audio.play('hit', clamp(hit / 30, 0.15, 0.7)); r.P.cam.addShake(Math.min(0.5, hit / 50)); } } }
+    b.body.setVel(_v2.set(tx * vt + rx * vl, v.y, tz * vt + rz * vl));
+    const yaw = b.yaw(); const want = vt >= 0 ? pr.yaw : pr.yaw + Math.PI; const d = wrapAngle(want - yaw); if (Math.abs(d) > 0.12) b.body.setRot(_q1.setFromAxisAngle(UP, yaw + d * 0.3));
+  },
+  // magnetic sections (corkscrews, wall-ride banks): the bike is held on the road at any angle; throttle, brake, boost and nitro
+  // drive it along, steering slides it across, gravity still pulls on the climbs
+  enterMag(r, pr) { const b = r.bike; const tx = Math.sin(pr.yaw), tz = Math.cos(pr.yaw); r.mag = { s: pr.s, lat: clamp(pr.lat, -Track.half + 1, Track.half - 1), v: Math.max(18, b.body.v.x * tx + b.body.v.z * tz), lv: 0 }; b.mag = true; b.drifting = false; if (b.body.rb) b.body.rb.setGravityScale(0, true); if (r.P) G.stats('magRides'); },
+  exitMag(r) { if (!r.mag) return; const b = r.bike; b.mag = false; r.mag = null; if (b.body.rb) b.body.rb.setGravityScale(1, true); },
+  magStep(r, dt) {
+    const T = Track, b = r.bike, c = b.ctrl, m = r.mag, B = CONFIG.bike; const spinning = b.spinT > 0; if (spinning) b.spinT -= dt; if (b.nitroT > 0) b.nitroT -= dt; if (b.stallT > 0) b.stallT -= dt;
+    const thr = spinning || b.stallT > 0 ? 0 : c.throttle || 0; const vmax = b.effMaxSpeed() * 1.08 + (b.boosting ? B.boostSpeed : 0) + (b.nitroT > 0 ? 14 : 0);
+    let a = thr > 0 ? b.stats.accel * thr * (1 - Math.pow(clamp(m.v / vmax, 0, 1), 2.2)) : thr < 0 ? -B.brake * -thr : -m.v * B.coastDrag;
+    const wantB = c.boost && b.boost > 0 && !spinning; b.boosting = wantB; if (wantB) { b.boost = Math.max(0, b.boost - B.boostDrain * dt); a += B.boostAccel; } else b.boost = Math.min(b.stats.boostCap, b.boost + b.stats.boostRegen * dt);
+    if (b.nitroT > 0) a += 26; const f0 = T.frame(m.s, _mf); a -= Phys.gravity * f0.f.y; if (m.v > vmax) a -= (m.v - vmax) * 0.7; if (spinning) a -= m.v * 1.1;
+    m.v = clamp(m.v + a * dt, 4, 150); const steer = spinning ? 0 : c.steer || 0; m.lv = damp(m.lv, -steer * 11, 6, dt); const lim = T.half - 1; m.lat = clamp(m.lat + m.lv * dt, -lim, lim); if (Math.abs(m.lat) >= lim) m.lv *= 0.3;
+    m.s += m.v * dt; const g = T.frame(m.s, _mf); _v1.copy(g.c).addScaledVector(g.r, m.lat).addScaledVector(g.u, CONFIG.hover.rideHeight + 0.35); _m1.makeBasis(g.r, g.u, g.f); _q1.setFromRotationMatrix(_m1);
+    b.body.setPos(_v1); b.body.setRot(_q1); b.body.setVel(_v2.copy(g.f).multiplyScalar(m.v)); b.body.setAngVel(_v3.set(0, 0, 0)); b.speed = m.v; b.vf = m.v; b.grounded = true; b.surface = S_TRACK; b.groundY = _v1.y - 1.3; b.lean = damp(b.lean, steer * 0.3, 8, dt);
+    if (!T.MAG[g.i] && !T.MAG[(g.i + 1) % T.n]) this.exitMag(r);
+  },
   chatter(dt) { const st = this.st; this.chatT = (this.chatT || 8) - dt; if (this.chatT > 0) return; this.chatT = 10 + Math.random() * 12; const me = st.humans.find((r) => r.P); if (!me) return;
     const near = st.racers.filter((o) => !o.P && Math.abs(o.prog - me.prog) < 60 && RIVALS.some((x) => x.id === o.id)); if (!near.length) return; const o = pick(near); const rv = RIVALS.find((x) => x.id === o.id); Radio.say(o.e, pick(o.place < me.place ? rv.lines.ahead : rv.lines.behind), o.name); },
   results() {
@@ -3249,7 +3365,7 @@ const Circuit = {
   // tear down; humans are flown back to the circuit's town
   end(silent) {
     const st = this.st; if (!st && !silent) return; if (st) for (const r of st.racers) { if (r.shieldMesh) WORLD.remove(r.shieldMesh); if (r.remote && r.bike) r.bike.destroy(); else if (!r.P && r.bike) { r.bike.spinT = 0; r.bike.nitroT = 0; RacerPool.put(r.bike); } }
-    Items.clear(); const def = Track.def; Track.clear(); for (const P of G.players) { P.kart = null; P.hud.showKart(false); P.finishCam = null; P.bike.extraSpeedMul = 1; P.bike.spinT = 0; P.bike.nitroT = 0; P.bike.dead = false; }
+    if (st) for (const r of st.racers) this.exitMag(r); Items.clear(); const def = Track.def; Track.clear(); for (const P of G.players) { P.kart = null; P.hud.showKart(false); P.finishCam = null; P.bike.extraSpeedMul = 1; P.bike.spinT = 0; P.bike.nitroT = 0; P.bike.dead = false; }
     this.st = null; G.dayScale = 1; Weather.stormT = 120;
     if (def && !silent && !G.party) { const t = TOWNS.find((x) => x.id === def.town) || TOWNS[0]; Game.fastTravel(t, true); }
   },
@@ -3521,7 +3637,7 @@ class Hud {
   }
   updateKart(P, r) {
     const st = Circuit.st; if (!st) return; const laps = st.laps; const lap = clamp(r.lap, 1, laps);
-    this.el.lap.textContent = r.finished ? 'FINISHED' : `LAP ${lap}/${laps}`; const t = r.finished ? r.finishT : st.phase === 'race' ? st.clock : 0; this.el.time.textContent = fmtLap(t);
+    this.el.lap.textContent = r.finished ? 'FINISHED' : laps === 1 ? `${(clamp(r.lap >= 1 ? r.s : 0, 0, Track.L) / 1000).toFixed(1)} / ${(Track.L / 1000).toFixed(1)} km` : `LAP ${lap}/${laps}`; const t = r.finished ? r.finishT : st.phase === 'race' ? st.clock : 0; this.el.time.textContent = fmtLap(t);
     const cur = st.phase === 'race' && !r.finished && r.lap >= 1 ? st.clock - r.lapStart : null; this.el.best.textContent = (cur != null ? `lap ${fmtLap(cur)}` : '') + (r.best != null ? `  best ${fmtLap(r.best)}` : '');
     if (r.place !== this.lastPlace) { this.el.pos.innerHTML = `${r.place}<sup>${ordinal(r.place).slice(-2)}</sup>`; this.el.pos.className = 'kpos k p' + r.place + (this.lastPlace ? ' pop' : ''); void this.el.pos.offsetWidth; this.lastPlace = r.place; }
     // standings column
@@ -3604,7 +3720,7 @@ const UI = {
     const rows = [['W / S', 'Throttle / brake & reverse'], ['A / D', 'Steer'], ['Shift', 'Boost (meter refills)'], ['Space', 'Drift — hold through a corner, release for a drift boost'], ['C', 'Hop'], ['Q (or F)', 'Fire your item'], ['S + Q', 'Fire rockets backwards'], ['W at "1"', 'Hold throttle as the last light goes out: rocket start (too early stalls)'], ['E', 'Interact in towns'], ['M', 'Map'], ['Esc', 'Pause'], ['?debug=1', 'Debug overlay'], ['?bench=race', 'Performance benchmark']];
     const it = Object.keys(ITEMS).map((k) => `<div style="display:flex;gap:8px;align-items:center;margin:4px 0"><canvas data-icon="${k}" width="40" height="40"></canvas><span><b>${ITEMS[k].name}</b> — ${ITEM_HELP[k]}</span></div>`).join('');
     const d = this.open(this.panel('Controls & items', `<div class="help">${rows.map((r) => `<div><span class="kbd">${r[0]}</span> ${r[1]}</div>`).join('')}</div>
-      <h3>Racing</h3><p>Three laps of a walled circuit against seven riders. Stay on the asphalt — the sand slows you right down. Ride through <b>item crates</b> to spin your item slot; the further back you are, the stronger the items. Blue chevron <b>boost pads</b> give a burst of nitro; yellow-striped ramps launch you. Fall off the world, get stuck or end up outside the walls and Pip, the recovery drone, puts you back on the line.</p>
+      <h3>Racing</h3><p>Seven riders and you: three laps on the short circuits, one long lap on the tours. Stay on the asphalt — the sand slows you right down. Walls are bumpers: you glance off and keep going. <b>Corkscrews</b> and <b>wall-ride banks</b> are magnetic — the bike sticks to the road, upside down if need be. Cliff runs have no walls: go over the edge and Pip carries you back up. Ride through <b>item crates</b> to spin your item slot; the further back you are, the stronger the items. Blue chevron <b>boost pads</b> give a burst of nitro; yellow-striped ramps launch you. Fall off the world, get stuck or end up outside the walls and Pip, the recovery drone, puts you back on the line.</p>
       <h3>Items</h3>${it}
       <h3>Career</h3><p>Race Control in any town runs the cups: three races each, points 15-12-10-8-6-4-2-1, a trophy for the top three. Win prize money and reputation, upgrade the bike at the Service Park, sign for a works team at the Cantina. A podium opens the next class (Rookie → Pro → Legend); legendary racers enter Pro and Legend races on their home circuit — beat them for their cosmetics.</p>
       <h3>Player 2</h3><p>Arrows drive · Right Shift boost · Right Ctrl drift · / hop · . (or L) fire item · Enter interact. Gamepads: RT/LT throttle, A boost, B drift, X hop, Y / RB fire item.</p>`), 'menu', back); this.wire(d);
