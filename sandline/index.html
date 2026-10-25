@@ -2354,6 +2354,7 @@ class Bike {
   onImpact(v) {
     this.lastImpact = v; this.impactT = 0.4; this.events.push({ type: 'impact', v });
     const over = v - CONFIG.bike.crashThreshold;
+    if (Circuit.on) { this.wobble = Math.min(0.6, this.wobble + over * 0.01); return; } // circuit walls bounce you, they don't throw you off
     if (this.wearOn) {
       const arm = 1 + (this.armour || 0) * 0.15; this.health -= over * CONFIG.bike.crashDamage / arm;
       this.wearPart(v > 24 ? 'fuel' : 'stabilisers', over * 1.2 / arm);
@@ -2789,6 +2790,8 @@ const Track = {
     const town = TOWNS.find((t) => t.id === def.town) || TOWNS[0]; let ext = 0; for (const p of local) ext = Math.max(ext, Math.hypot(p[0], p[1]));
     const lm = [...LANDMARKS.arches.map((a) => [a.x, a.z, 140]), [LANDMARKS.starship.x, LANDMARKS.starship.z, 260], [LANDMARKS.windfarm.x, LANDMARKS.windfarm.z, 260], [LANDMARKS.oasis.x, LANDMARKS.oasis.z, 220], ...LANDMARKS.fuel.map((f) => [f.x, f.z, 90]), ...CAMPS.map((c) => [c.x, c.z, 190]), ...TOWNS.map((t) => [t.x, t.z, t.r + 170])];
     const mono = []; for (let i = 0; i < MONO.pts.length; i += 3) mono.push(MONO.pts[i]); const T = {}; let best = null;
+    // anything solid already in the world (wrecks, landmarks, camp walls, pillars) — small prop colliders are cleared off the corridor anyway
+    for (const h of Phys.statics) { const d = h.def; const r = Math.max(d.r || 0, d.hx || 0, d.hz || 0); if (r >= 2.5 && !this.statics.includes(h)) lm.push([d.x, d.z, r + this.half + 30]); }
     const sub = local.filter((_, i) => i % 5 === 0);
     for (const extra of [180, 420, 700]) for (let a = 0; a < 16; a++) for (let r = 0; r < 8; r++) {
       const ang = a / 16 * TAU, rot = r / 8 * TAU, dist = ext + town.r + extra; const cx = town.x + Math.sin(ang) * dist, cz = town.z + Math.cos(ang) * dist; const c = Math.cos(rot), sn = Math.sin(rot);
