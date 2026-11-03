@@ -521,7 +521,7 @@ const Audio = {
   listener() { const P = G.players[0]; return P ? P.eyePos : V3(); },
   dist(p) { let d = 1e9; for (const P of G.players) d = Math.min(d, Math.hypot(p.x - P.eyePos.x, p.y - P.eyePos.y, p.z - P.eyePos.z)); return d; },
   panOf(p) { const P = G.players[0]; if (!P || G.players.length > 1) return 0; const dx = p.x - P.eyePos.x, dz = p.z - P.eyePos.z; const yaw = P.camYaw; const r = -(dx * Math.cos(yaw) - dz * Math.sin(yaw)); return clamp(r / (Math.hypot(dx, dz) + 3), -0.9, 0.9); },
-  env(g, t, a, peak, d, end = 0.0001) { peak = Math.max(peak, 0.0002); g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(end, t + a + d); },
+  env(g, t, a, peak, d, end = 0.0001) { if (!Number.isFinite(peak) || !Number.isFinite(t) || !Number.isFinite(a) || !Number.isFinite(d)) return; peak = Math.max(peak, 0.0002); g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(end, t + a + d); },
   noise(dur, type, freq, q, peak, a = 0.004, dest = null, sweepTo = 0, when = 0, panV = 0) {
     const ctx = this.ctx, t = ctx.currentTime + when; const s = ctx.createBufferSource(); s.buffer = this.noiseBuf;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); f.Q.value = q;
@@ -979,7 +979,7 @@ const World = {
   },
   // dam breach: water rises over every cell of a valley below `to`, spreading from the dam
   startFlood(f) {
-    const cells = []; const r = f.r || 600; this.stamp(f.x - r, f.z - r, f.x + r, f.z + r, (k, x, z) => { if (this.H[k] < f.to && Math.hypot(x - f.x, z - f.z) < r) cells.push(k, x, z); });
+    if (f.to == null && f.rel != null) f.to = this.rawH(f.x, f.z) + f.rel; const cells = []; const r = f.r || 600; this.stamp(f.x - r, f.z - r, f.x + r, f.z + r, (k, x, z) => { if (this.H[k] < f.to && Math.hypot(x - f.x, z - f.z) < r) cells.push(k, x, z); });
     this.floods.push({ f, cells, level: f.from ?? (this.minH(cells) - 0.5), t: 0 });
   },
   minH(cells) { let m = 1e9; for (let i = 0; i < cells.length; i += 3) m = Math.min(m, this.H[cells[i]]); return m; },
@@ -1678,11 +1678,11 @@ const Build = {
     const top = base + floors * FH;
     if (kit.roof === 'pitched') {
       const rh = Math.min(w, d) * 0.35; const ang = Math.atan2(rh, w / 2);
-      for (const sd of [-1, 1]) this.box(cx, cz, c, s, yaw, sd * w / 4, top + rh / 2, 0, w / 4 / Math.cos(ang) + 0.3, 0.1, d / 2 + 0.35, { mat: kit.mat, render: kit.roofRender || 'tiles', color: kit.roofColor ?? 0x8a3a2a, rz: sd * ang, walk: false, noCover: true });
+      for (const sd of [-1, 1]) this.box(cx, cz, c, s, yaw, sd * w / 4, top + rh / 2, 0, w / 4 / Math.cos(ang) + 0.3, 0.1, d / 2 + 0.35, { mat: kit.mat, render: kit.roofRender || 'tiles', color: kit.roofColor ?? 0x8a3a2a, rz: -sd * ang, walk: false, noCover: true });
       B(0, top - 0.1, 0, w / 2, 0.1, d / 2, { noCover: true });
     } else if (kit.roof === 'thatch') {
       const rh = Math.min(w, d) * 0.45; const ang = Math.atan2(rh, w / 2);
-      for (const sd of [-1, 1]) this.box(cx, cz, c, s, yaw, sd * w / 4, top + rh / 2, 0, w / 4 / Math.cos(ang) + 0.5, 0.12, d / 2 + 0.5, { mat: 'wood', render: 'tarp', color: 0x9a8a50, rz: sd * ang, walk: false, noCover: true });
+      for (const sd of [-1, 1]) this.box(cx, cz, c, s, yaw, sd * w / 4, top + rh / 2, 0, w / 4 / Math.cos(ang) + 0.5, 0.12, d / 2 + 0.5, { mat: 'wood', render: 'tarp', color: 0x9a8a50, rz: -sd * ang, walk: false, noCover: true });
       B(0, top - 0.06, 0, w / 2, 0.06, d / 2, { noCover: true });
     } else {
       if (stairs) { B(sw / 2 + 0.05, top - 0.12, 0, (w - sw) / 2 - 0.1, 0.12, d / 2, { noCover: true }); B(sx, top - 0.12, (sz0 + run + d / 2) / 2, sw / 2 + 0.05, 0.12, (d / 2 - sz0 - run) / 2, { noCover: true }); }
@@ -1710,7 +1710,7 @@ const Build = {
   container(x, z, yaw, stack = 1, color) { let gy = World.heightAt(x, z); for (let i = 0; i < stack; i++) { const g = Blocks.newGroup({ hp: 2600, mat: 'metal', kind: 'container' }); Blocks.add({ x, y: gy + 1.3 + i * 2.6, z, hx: 1.22, hy: 1.3, hz: 6.05, yaw, mat: 'metal', render: 'container', color: color ?? [0xb84a2a, 0x2a6a9a, 0x3a8a4a, 0xc8a030, 0x6a6a6a][(Math.abs(x * 7 + z * 13 + i) | 0) % 5], group: g }); } },
   barrel(x, z, explosive = false) { const gy = World.heightAt(x, z); const g = Blocks.newGroup({ hp: explosive ? 40 : 200, mat: 'metal', kind: explosive ? 'fuel' : 'barrel', onDestroy: explosive ? (gg) => Explosion.at(V3(x, gy + 0.5, z), { r: 7, dmg: 120, owner: null, kind: 'barrel' }) : null }); Blocks.add({ x, y: gy + 0.45, z, hx: 0.3, hy: 0.45, hz: 0.3, mat: 'metal', render: 'dark', color: explosive ? 0xc0301a : 0x4a5a3a, group: g }); },
   tent(x, z, yaw, w = 4, d = 5) { const gy = World.heightAt(x, z); const c = Math.cos(yaw), s = Math.sin(yaw); const ang = 0.7;
-    for (const sd of [-1, 1]) { const [px, pz] = this.w(x, z, c, s, sd * w / 4, 0); const g = Blocks.newGroup({ hp: 60, mat: 'tarp', kind: 'tarp' }); Blocks.add({ x: px, y: gy + 1.1, z: pz, hx: w / 4 / Math.cos(ang) + 0.1, hy: 0.04, hz: d / 2, yaw, rz: sd * ang, mat: 'tarp', render: 'tarp', color: 0x6a6448, walk: false, opaque: true, group: g, noCover: true }); } },
+    for (const sd of [-1, 1]) { const [px, pz] = this.w(x, z, c, s, sd * w / 4, 0); const g = Blocks.newGroup({ hp: 60, mat: 'tarp', kind: 'tarp' }); Blocks.add({ x: px, y: gy + 1.1, z: pz, hx: w / 4 / Math.cos(ang) + 0.1, hy: 0.04, hz: d / 2, yaw, rz: -sd * ang, mat: 'tarp', render: 'tarp', color: 0x6a6448, walk: false, opaque: true, group: g, noCover: true }); } },
   // ---- site generators (biome kits) ------------------------------------------------------
   kitFor(site, biome, rng) {
     const B = biome.buildings; const style = site.style || B.style; const colors = B.colors.map(parseHex); const color = rng.pick(colors);
@@ -1762,7 +1762,7 @@ const Build = {
     }
     if (kind === 'base' || kind === 'outpost' || kind === 'camp') {
       const c = Math.cos(yaw0), s = Math.sin(yaw0); const wallR = R * 0.85;
-      if (kind !== 'camp') for (let a = 0; a < TAU; a += 4.2 / wallR) { if (Math.abs(wrapAngle(a - yaw0)) < 0.18 || Math.abs(wrapAngle(a - yaw0 - Math.PI)) < 0.12) continue; const x = site.x + Math.cos(a) * wallR, z = site.z + Math.sin(a) * wallR; if (World.waterAt(x, z) > -1e8) continue; const g = Blocks.newGroup({ hp: 2600, mat: 'sandbag', explosiveMul: 0.5 }); const gy = World.heightAt(x, z); Blocks.add({ x, y: gy + 1.1, z, hx: 2.1, hy: 1.1, hz: 0.7, yaw: -a + Math.PI / 2, mat: 'sandbag', render: 'sandbag', color: 0x9a8a62, group: g }); }
+      if (kind !== 'camp') for (let a = 0; a < TAU; a += 4.2 / wallR) { let gate = false; for (let g = 0; g < 4; g++) if (Math.abs(wrapAngle(a - yaw0 - g * Math.PI / 2)) < 16 / wallR) gate = true; if (gate) continue; const x = site.x + Math.cos(a) * wallR, z = site.z + Math.sin(a) * wallR; if (World.waterAt(x, z) > -1e8) continue; const g = Blocks.newGroup({ hp: 2600, mat: 'sandbag', explosiveMul: 0.5 }); const gy = World.heightAt(x, z); Blocks.add({ x, y: gy + 1.1, z, hx: 2.1, hy: 1.1, hz: 0.7, yaw: -a + Math.PI / 2, mat: 'sandbag', render: 'sandbag', color: 0x9a8a62, group: g }); }
       tryPlace(Math.round(2 + dens * 4), [8, 14], [8, 16], [1, 2], (x, z, yaw, w, d, f) => out.buildings.push(this.house(x, z, yaw, w, d, f, Object.assign(this.kitFor(site, biome, rng), { mat: 'concrete', render: 'concrete', color: 0x8a8a74, roof: 'flat' }), rng)));
       tryPlace(Math.round(3 + dens * 5), [4, 5], [5, 7], [1, 1], (x, z, yaw, w, d) => this.tent(x, z, yaw, w, d));
       if (kind !== 'camp') for (let i = 0; i < 2; i++) { const a = yaw0 + Math.PI / 4 + i * Math.PI; this.watchtower(site.x + Math.cos(a) * wallR * 0.9, site.z + Math.sin(a) * wallR * 0.9, rng); }
@@ -1968,12 +1968,12 @@ function folGeo(id) {
   return mergeGeos(P, true);
 }
 const FOL_DEF = { // near = full-mesh radius · col = trunk collider at scale 1 · tall = gets an impostor · h = impostor height
-  shrub: { near: 140, cap: 9000 }, bush: { near: 160, cap: 9000 }, snowshrub: { near: 140, cap: 6000 }, fern: { near: 90, cap: 14000 },
-  rock: { near: 260, cap: 7000, col: { r: 0.85, h: 0.9, rock: true } }, deadtree: { near: 260, cap: 3000, col: { r: 0.14, h: 2.6 }, tall: true, h: 3 },
-  cactus: { near: 220, cap: 3000, col: { r: 0.22, h: 2.6 }, tall: true, h: 2.8 }, palm: { near: 300, cap: 4000, col: { r: 0.22, h: 7 }, tall: true, h: 8 },
-  pine: { near: 300, cap: 8000, col: { r: 0.25, h: 8 }, tall: true, h: 9.5 }, oak: { near: 300, cap: 6000, col: { r: 0.32, h: 4 }, tall: true, h: 7.5 },
-  streettree: { near: 260, cap: 2000, col: { r: 0.2, h: 3 }, tall: true, h: 5 }, jungletree: { near: 280, cap: 7000, col: { r: 0.38, h: 9 }, tall: true, h: 11.5 },
-  bigtree: { near: 420, cap: 1200, col: { r: 1.2, h: 18 }, tall: true, h: 22, w: 18 }, bamboo: { near: 200, cap: 4000, col: { r: 0.5, h: 6 }, tall: true, h: 7 },
+  shrub: { near: 110, cap: 5000 }, bush: { near: 130, cap: 5000 }, snowshrub: { near: 110, cap: 4000 }, fern: { near: 55, cap: 5000 },
+  rock: { near: 220, cap: 5000, col: { r: 0.85, h: 0.9, rock: true }, shadow: true }, deadtree: { near: 200, cap: 1500, col: { r: 0.14, h: 2.6 }, tall: true, h: 3 },
+  cactus: { near: 180, cap: 1500, col: { r: 0.22, h: 2.6 }, tall: true, h: 2.8 }, palm: { near: 200, cap: 2000, col: { r: 0.22, h: 7 }, tall: true, h: 8 },
+  pine: { near: 200, cap: 3500, col: { r: 0.25, h: 8 }, tall: true, h: 9.5 }, oak: { near: 200, cap: 3000, col: { r: 0.32, h: 4 }, tall: true, h: 7.5 },
+  streettree: { near: 200, cap: 1500, col: { r: 0.2, h: 3 }, tall: true, h: 5 }, jungletree: { near: 170, cap: 2600, col: { r: 0.38, h: 9 }, tall: true, h: 11.5 },
+  bigtree: { near: 320, cap: 600, col: { r: 1.2, h: 18 }, tall: true, h: 22, w: 18 }, bamboo: { near: 130, cap: 1600, col: { r: 0.5, h: 6 }, tall: true, h: 7 },
 };
 function impostorTex(id) {
   const { c, g } = makeCanvas(64, 128); g.clearRect(0, 0, 64, 128); const cg = (col) => { g.fillStyle = col; };
@@ -1989,7 +1989,7 @@ function impostorTex(id) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 const Foliage = {
-  tiles: new Map(), meshes: {}, imps: {}, windU: { value: 0 }, windStr: { value: 0.3 }, lastKey: '', total: 0,
+  tiles: new Map(), meshes: {}, imps: {}, nearMul: 1, windU: { value: 0 }, windStr: { value: 0.3 }, lastKey: '', total: 0,
   init() {
     for (const id in FOL_DEF) {
       const D = FOL_DEF[id]; const geo = folGeo(id);
@@ -1999,7 +1999,7 @@ const Foliage = {
           vec3 ip = instanceMatrix[3].xyz; float sw = sin(uWind*1.7 + ip.x*0.13 + ip.z*0.11) + 0.4*sin(uWind*3.1 + ip.z*0.3);
           transformed.x += sw * uWindStr * position.y * position.y * 0.012; transformed.z += cos(uWind*1.3 + ip.x*0.2) * uWindStr * position.y * position.y * 0.008;
         #endif`); };
-      const m = new THREE.InstancedMesh(geo, mat, D.cap); m.count = 0; m.castShadow = id !== 'fern' && id !== 'shrub'; m.receiveShadow = true; m.frustumCulled = false; WORLD.add(m); this.meshes[id] = m;
+      const m = new THREE.InstancedMesh(geo, mat, D.cap); m.count = 0; m.castShadow = !!D.shadow || id === 'bigtree'; m.receiveShadow = true; m.frustumCulled = false; WORLD.add(m); this.meshes[id] = m;
       if (D.tall) { const pg = new THREE.PlaneGeometry(1, 1); pg.translate(0, 0.5, 0); const pg2 = pg.clone(); pg2.rotateY(Math.PI / 2); const cross = mergeGeos([{ geo: pg, m: new THREE.Matrix4() }, { geo: pg2, m: new THREE.Matrix4() }]);
         const im = new THREE.InstancedMesh(cross, new THREE.MeshLambertMaterial({ map: impostorTex(id), alphaTest: 0.5, side: THREE.DoubleSide }), 30000); im.count = 0; im.frustumCulled = false; WORLD.add(im); this.imps[id] = im; }
     }
@@ -2024,11 +2024,13 @@ const Foliage = {
         const y = World.heightAt(x, z); const sc = r.range(v.scale[0], v.scale[1]) * (isRock && r.next() < 0.1 ? 2.2 : 1);
         if (Col.occupied(x, y + 0.5, z, 1.2)) continue;
         const it = { type: v.type, x, y, z, sc, yaw: r.next() * TAU }; items.push(it);
-        const D = FOL_DEF[v.type]; if (D && D.col) { const cr = D.col.r * sc, ch = D.col.h * sc; if (D.col.rock) { if (sc > 1.1) cols.push(Col.addCyl({ x, y: y + ch * 0.4, z, r: cr * 0.9, hh: ch * 0.5, mat: 'rock', walk: true })); } else cols.push(Col.addCyl({ x, y: y + ch / 2, z, r: cr, hh: ch / 2, mat: 'wood', walk: false })); }
+        const D = FOL_DEF[v.type]; if (D && D.col) { const cr = D.col.r * sc, ch = D.col.h * sc; if (D.col.rock) { if (sc > 1.1) cols.push(Col.addCyl({ x, y: y + ch * 0.4, z, r: cr * 0.9, hh: ch * 0.5, mat: 'rock', walk: true })); } else { const c = Col.addCyl({ x, y: y + ch / 2, z, r: cr, hh: ch / 2, mat: 'wood', walk: false }); c.fol = it; cols.push(c); } }
       }
     }
     this.total += items.length; this.tiles.set(ti + ',' + tj, { ti, tj, cx: x0 + 32, cz: z0 + 32, items, cols });
   },
+  // a heavy vehicle (or a big blast) knocks a tree over: collider gone, trunk lies along the push direction
+  fell(c, dirYaw) { if (!c.alive || !c.fol) return; Col.remove(c); const it = c.fol; it.yaw = dirYaw; it.down = 1.45; this.lastKey = null; FX.debris(V3(it.x, it.y + 2, it.z), 8, 0x6a4a2a, 'wood'); Audio.at('crumble', V3(it.x, it.y, it.z), 0.5); },
   nearWater(x, z) { for (let a = 0; a < 6; a++) if (World.waterAt(x + Math.cos(a) * 26, z + Math.sin(a) * 26) > -1e8) return true; return false; },
   // rebuild instance buffers when the focus moves to another tile
   update(dt, focusPts, windDir, windStr) {
@@ -2041,8 +2043,8 @@ const Foliage = {
       if (d > far + 64) break;
       for (const it of t.items) {
         const D = FOL_DEF[it.type]; let dd = 1e9; for (const f of focusPts) dd = Math.min(dd, Math.hypot(it.x - f.x, it.z - f.z));
-        if (dd < D.near) { const m = this.meshes[it.type]; if (counts[it.type] >= D.cap) continue; _m1.compose(_v1.set(it.x, it.y - 0.1, it.z), _q1.setFromAxisAngle(UP, it.yaw), _v2.set(it.sc, it.sc, it.sc)); m.setMatrixAt(counts[it.type]++, _m1); }
-        else if (D.tall && dd < far) { const im = this.imps[it.type]; if (ic[it.type] >= 30000) continue; const h = D.h * it.sc, w = (D.w || D.h * 0.6) * it.sc; _m1.compose(_v1.set(it.x, it.y - 0.1, it.z), _q1.setFromAxisAngle(UP, it.yaw), _v2.set(w, h, w)); im.setMatrixAt(ic[it.type]++, _m1); }
+        if (dd < D.near * Foliage.nearMul) { const m = this.meshes[it.type]; if (counts[it.type] >= D.cap) continue; if (it.down) _q1.setFromEuler(_e1.set(it.down, it.yaw, 0, 'YXZ')); else _q1.setFromAxisAngle(UP, it.yaw); _m1.compose(_v1.set(it.x, it.y - 0.1, it.z), _q1, _v2.set(it.sc, it.sc, it.sc)); m.setMatrixAt(counts[it.type]++, _m1); }
+        else if (D.tall && dd < far && !it.down) { const im = this.imps[it.type]; if (ic[it.type] >= 30000) continue; const h = D.h * it.sc, w = (D.w || D.h * 0.6) * it.sc; _m1.compose(_v1.set(it.x, it.y - 0.1, it.z), _q1.setFromAxisAngle(UP, it.yaw), _v2.set(w, h, w)); im.setMatrixAt(ic[it.type]++, _m1); }
       }
     }
     for (const id in this.meshes) { const m = this.meshes[id]; m.count = counts[id]; m.instanceMatrix.needsUpdate = true; }
@@ -3723,7 +3725,7 @@ class BotCtl {
     if (this.target && k && (k.aware >= 1 || k.vis)) { this.state = hpFrac < 0.3 && D.tactics > 0.4 && Math.random() < 0.5 ? 'retreat' : 'combat'; return; }
     if (k && k.conf > 0.3) { this.state = 'investigate'; this.investigate = k.pos.clone(); return; }
     // vehicle: grab a free one near the objective route
-    if (this.vehWant && G.mode?.vehiclesForBots && Math.random() < 0.3 && !this.vehGoal) { const v = G.mode.vehicleForBot(s); if (v) { this.vehGoal = v; } }
+    if (this.vehWant && G.mode?.vehiclesForBots && !this.vehChecked && !this.vehGoal) { this.vehChecked = true; if (Math.random() < 0.35) { const v = G.mode.vehicleForBot(s); if (v) this.vehGoal = v; } }
     if (this.vehGoal) { if (this.vehGoal.dead || this.vehGoal.freeSeat(s) < 0) this.vehGoal = null; else { this.state = 'board'; return; } }
     if (this.goal) { this.state = 'move'; return; }
     if (this.hunt && G.players.length) { const P = G.players.find((p) => p.soldier.state === 'alive'); if (P && (G.time - (this.huntT || -99) > 20)) { this.huntT = G.time; this.goal = { type: 'move', pos: P.soldier.pos.clone().add(V3(rand(-40, 40), 0, rand(-40, 40))), r: 20 }; } }
@@ -3843,7 +3845,7 @@ class BotCtl {
     if (s.tool?.id === 'defib' && s.tool.charges > 0 && a.pos.distanceTo(s.pos) < 2.2) { Operators.useTool(s); return; }
     if (this.moveTo(a.pos, dt, 1.4, true)) { s.ctl.crouchHold = true; this.revT = (this.revT || 0) + dt; a.beingRevived = true; a.reviveProg = this.revT / (s.op?.id === 'mercy6' ? 1.2 : CONFIG.body.reviveTime); s.reviving = true; this.turnTo(Math.atan2(a.pos.x - s.pos.x, a.pos.z - s.pos.z), -0.5, dt);
       if (this.revT >= (s.op?.id === 'mercy6' ? 1.2 : CONFIG.body.reviveTime)) { a.revive(s, s.op?.id === 'mercy6' ? 60 : CONFIG.body.reviveHp); this.revT = 0; s.reviving = false; a.reviver = null; this.reviveTarget = null; Radio.callout(s, 'revived'); } } else { this.revT = 0; s.reviving = false; } }
-  doBoard(dt) { const s = this.s, v = this.vehGoal; if (!v || v.dead) { this.vehGoal = null; this.state = 'patrol'; return; } if (this.moveTo(v.pos, dt, v.radius + 2, true)) { const seat = v.freeSeat(s); if (seat >= 0) v.enter(s, seat); this.vehGoal = null; } }
+  doBoard(dt) { const s = this.s, v = this.vehGoal; this.boardT = (this.boardT || 0) + dt; if (!v || v.dead || this.boardT > 20 || v.freeSeat(s) < 0 || v.speed > 3) { this.vehGoal = null; this.boardT = 0; this.vehChecked = true; this.state = 'patrol'; return; } if (this.moveTo(v.pos, dt, v.radius + 2, true)) { const seat = v.freeSeat(s); if (seat >= 0) v.enter(s, seat); this.vehGoal = null; this.boardT = 0; } }
   // ---- gadgets + ultimates (heuristics per operator) ------------------------------------------------------
   gadgets(dt) {
     const s = this.s; if (!s.op || s.state !== 'alive') return; this.gadgetT -= dt; if (this.gadgetT > 0) return; this.gadgetT = rand(2, 5) / this.D.gadget; const k = this.target && this.known.get(this.target); const vis = k && k.vis; const dist = k ? Math.hypot(k.pos.x - s.pos.x, k.pos.z - s.pos.z) : 999;
@@ -3896,10 +3898,12 @@ const VehicleAI = {
   crew(brain, dt) {
     const s = brain.s, v = s.vehicle, C = s.ctl; if (!v || v.dead) return; const seat = s.seat; const D = brain.D;
     const tgt = this.pickTarget(brain, v); brain.vTarget = tgt;
-    if (seat === 0) this.drive(brain, v, dt, tgt); else this.gunner(brain, v, dt, tgt, seat);
+    if (seat === 0) this.drive(brain, v, dt, tgt); else if (v.def.seats[seat].turret) this.gunner(brain, v, dt, tgt, seat);
     // bail out of a burning wreck-to-be, or when the mode wants us on foot
     if (v.hp < v.maxHp * 0.12 && !v.def.air && Math.random() < dt * 2) v.exit(s);
     if (seat > 0 && !v.def.seats[seat].turret && !v.def.seats[seat].exposed && v.driver() == null) v.exit(s);
+    // passengers dismount near the objective or when the ride has stalled
+    if (seat > 0 && !v.def.seats[seat].turret && !v.def.air) { const g = this.goalOf(brain, v); brain.rideT = (v.speed < 1.5 ? (brain.rideT || 0) + dt : 0); if ((g && Math.hypot(v.pos.x - g.x, v.pos.z - g.z) < 70) || brain.rideT > 5 || (brain.target && brain.known.get(brain.target)?.vis && Math.hypot(v.pos.x - brain.target.pos.x, v.pos.z - brain.target.pos.z) < 60)) { v.exit(s); brain.rideT = 0; return; } }
     // dropship passengers rappel / jump out over the objective
     if (seat > 0 && v.def.air && !v.def.seats[seat].turret && brain.goal && brain.goal.pos) { const d = Math.hypot(v.pos.x - brain.goal.pos.x, v.pos.z - brain.goal.pos.z); if (d < 70 && v.speed < 14) { if (!v.rappelOut(s)) v.exit(s); } }
   },
@@ -3923,7 +3927,12 @@ const VehicleAI = {
     if (dest) { if (!brain.vPath || !brain.vPathGoal || brain.vPathGoal.distanceTo(dest) > 30 || (brain.vPathT -= dt) < 0) { brain.vPath = Nav.coarsePath(p, dest).slice(1); brain.vPathGoal = dest.clone(); brain.vPathT = 6; }
       let wp = brain.vPath[0]; while (wp && Math.hypot(wp.x - p.x, wp.z - p.z) < 14) { brain.vPath.shift(); wp = brain.vPath[0]; } if (!wp) wp = dest;
       const want = Math.atan2(wp.x - p.x, wp.z - p.z); const cur = def.phys === 'walker' ? v.yaw : v.yawOf(); const dy = wrapAngle(want - cur); const far = Math.hypot(dest.x - p.x, dest.z - p.z);
-      C.mx = clamp(-dy * 2.2, -1, 1); C.mz = far < 12 ? 0 : Math.abs(dy) > 1.2 ? 0.35 : 1; C.sprint = far > 120 && Math.abs(dy) < 0.3; if (v.speed < 1 && C.mz > 0.5) { brain.vStuck = (brain.vStuck || 0) + dt; if (brain.vStuck > 2.5) { C.mz = -1; C.mx = -C.mx; if (brain.vStuck > 4) brain.vStuck = 0; } } else brain.vStuck = 0; }
+      C.mx = clamp(-dy * 2.2, -1, 1); C.mz = far < 12 ? 0 : Math.abs(dy) > 1.2 ? 0.35 : 1; C.sprint = far > 120 && Math.abs(dy) < 0.3; if (brain.vBack > 0) { brain.vBack -= dt; C.mz = -1; C.mx = brain.vBackSteer; C.sprint = false; }
+      else if (v.speed < 1.2 && C.mz > 0.3) { brain.vStuck = (brain.vStuck || 0) + dt; if (brain.vStuck > 2) { brain.vStuck = 0; brain.vBack = 1.6; brain.vBackSteer = Math.random() < 0.5 ? 1 : -1; brain.vStucks = (brain.vStucks || 0) + 1;
+        // detour: drop a waypoint off to the side, and after repeated failures give up on the vehicle
+        const side = cur + (brain.vBackSteer > 0 ? -1 : 1) * 1.2; brain.vPath.unshift(V3(p.x + Math.sin(side) * 25, 0, p.z + Math.cos(side) * 25)); brain.vPathT = 8;
+        if (brain.vStucks > 5 && def.class !== 'armour' && def.class !== 'walker') { brain.vStucks = 0; v.exit(brain.s); } } }
+      else { brain.vStuck = 0; if (v.speed > 4) brain.vStucks = 0; } }
     else { C.mz = 0; C.mx = 0; }
     // main weapon
     if (armed) { if (tgt) { const o = v.mountOrigin(-1, V3()); const W = v.driverWeapons[v.dw]; if (W.def.type === 'cannon' && W.def.shells) W.shell = tgt.veh ? 0 : 1; const on = this.aimCtl(brain, o, tgt.pos, tgt.vel, W.def.vel || 300, dt, brain.D.turn * 0.8); const ty = v.yawOf() + v.turretYaw; const aimed = !def.turret || Math.abs(wrapAngle(ty - C.yaw)) < 0.08;
@@ -3936,10 +3945,12 @@ const VehicleAI = {
     let dest = goal || p; let alt = dropship ? 26 : def.phys === 'jetbike' ? 8 : 70;
     // gunships orbit the fight; dropships fly to the objective and hover low for the squad
     if (!dropship && tgt && def.phys === 'heli') { brain.orbit = (brain.orbit || rand(0, TAU)) + dt * 0.25; dest = V3(tgt.pos.x + Math.cos(brain.orbit) * 140, 0, tgt.pos.z + Math.sin(brain.orbit) * 140); alt = 55; }
-    if (dropship) { const pass = v.occupants.slice(1).some((o) => o && !v.def.seats[v.occupants.indexOf(o)].turret); if (!pass) { dest = brain.home || p; alt = 60; } else if (Math.hypot(dest.x - p.x, dest.z - p.z) < 40) alt = 18; }
+    if (dropship) { const pass = v.occupants.slice(1).some((o) => o && !v.def.seats[v.occupants.indexOf(o)].turret); if (!pass) { const h = brain.home || (brain.home = p.clone()); if (goal) { const dx = goal.x - h.x, dz = goal.z - h.z, L = Math.hypot(dx, dz) || 1; const back = Math.min(L * 0.6, 220); dest = V3(goal.x - dx / L * back, 0, goal.z - dz / L * back); } else dest = h; alt = 60; } else if (Math.hypot(dest.x - p.x, dest.z - p.z) < 40) alt = 18; }
     const to = _v1.set(dest.x - p.x, 0, dest.z - p.z); const d = to.length(); const want = d > 2 ? Math.atan2(to.x, to.z) : C.yaw;
     if (!tgt || dropship || def.phys === 'jetbike') { C.yaw = dampAngle(C.yaw, want, 1.5, dt); }
-    C.mz = d > 30 ? 1 : d > 8 ? 0.4 : 0; C.mx = 0; const lookAhead = World.heightAt(p.x + Math.sin(C.yaw) * 60, p.z + Math.cos(C.yaw) * 60); const ty = Math.max(gy, lookAhead) + alt;
+    // helis fly straight at the destination whatever the nose does (strafe + forward), slowing on approach
+    if (def.phys === 'heli') { const k = clamp(d / 90, 0, 1); const tn = d > 1e-3 ? _v2.set(to.x / d, 0, to.z / d) : _v2.set(0, 0, 0); const yw = v.yaw; C.mz = clamp((tn.x * Math.sin(yw) + tn.z * Math.cos(yw)) * k, -1, 1); C.mx = clamp((tn.x * -Math.cos(yw) + tn.z * Math.sin(yw)) * k / 0.6, -1, 1); }
+    else { C.mz = d > 30 ? 1 : d > 8 ? 0.4 : 0; C.mx = 0; } const lookAhead = World.heightAt(p.x + Math.sin(C.yaw) * 60, p.z + Math.cos(C.yaw) * 60); const ty = Math.max(gy, lookAhead) + alt;
     C.jump = p.y < ty - 3; C.crouchHold = p.y > ty + 6; C.up = C.jump; C.down = C.crouchHold;
     if (tgt && !dropship) { const o = v.mountOrigin(-1, V3()); const W = v.driverWeapons[v.dw]; if (W) { const on = this.aimCtl(brain, o, tgt.pos, tgt.vel, W.def.vel || 200, dt, 2.5); const f = v.fwd(_v2); const to2 = _v3.subVectors(tgt.pos, o).normalize(); if (def.phys === 'heli') C.yaw = dampAngle(C.yaw, Math.atan2(to2.x, to2.z), 1.2, dt);
         if (on && f.dot(to2) > 0.8) { C.fire = true; C.firePressed = true; } if (v.driverWeapons.length > 1) v.dw = tgt.veh ? (v.driverWeapons.findIndex((w) => w.def.type === 'missiles') >= 0 ? v.driverWeapons.findIndex((w) => w.def.type === 'missiles') : 0) : 0; } }
@@ -4078,7 +4089,7 @@ class Vehicle {
   canHijack(s) { const d = this.driver(); return !!(this.def.hijack && this.stunT > 0 && d && d.team !== s.team); }
   hijack(s) { const d = this.driver(); if (d) { this.exit(d, true); d.stunT = 2; d.takeDamage(25, { kind: 'melee', part: 'chest', from: s, weapon: { name: 'Hijack' } }); } this.enter(s, 0); Challenges.track('hijack', s); if (s.player) s.player.note('Hijacked!', 'good'); }
   enter(s, seat) {
-    if (seat < 0 || this.occupants[seat] || s.vehicle) return false; this.occupants[seat] = s; s.vehicle = this; s.seat = seat; const S = this.def.seats[seat];
+    if (seat < 0 || !this.def.seats || !this.def.seats[seat] || this.occupants[seat] || s.vehicle) return false; this.occupants[seat] = s; s.vehicle = this; s.seat = seat; const S = this.def.seats[seat];
     s.seatExposed = !!S.exposed && !S.turret; s.seatVisible = !!S.visible; s.stance = 'stand'; s.moveState = 'vehicle'; s.grapple = null; s.rappel = null; s.mantle = null; s.adsAmt = 0; s.vel.set(0, 0, 0); Grapples.remove(s); Chutes.remove(s);
     if (seat === 0 || this.team == null || !this.occupied()) this.team = s.team; this.engineOn = true; if (s.player) { s.player.onEnterVehicle(this); Audio.play('swap', 0.6); } Challenges.track('vehicle', s, { id: this.def.id }); return true;
   }
@@ -4264,6 +4275,8 @@ class Vehicle {
   // keep the hull out of walls / terrain, push other vehicles and soldiers away
   collideWorld(dt) {
     if (this.def.phys === 'jet') return; const p = this.pos; const q = this.q; const corners = this.cornerPts || (this.cornerPts = [[1, 1], [-1, 1], [1, -1], [-1, -1], [0, 1], [0, -1]].map(([x, z]) => V3(x * this.half.x * 0.9, 0, z * this.half.z * 0.9)));
+    // armour and walkers flatten trees in their way
+    if (this.def.mass >= 4000 && this.speed > 1.5 && this.def.phys !== 'heli') { const f = this.def.phys === 'walker' ? dirFromYaw(this.yaw, _v3) : this.fwd(_v3); const R = this.radius + 1.5; for (const o of Col.near(p.x - R, p.z - R, p.x + R, p.z + R, [])) if (o.fol && o.alive && o.y0 < p.y + 1 && (o.x - p.x) * f.x + (o.z - p.z) * f.z > -1) Foliage.fell(o, Math.atan2(f.x, f.z)); }
     const n = _v1; for (const c of corners) { const wp = _v2.copy(c).applyQuaternion(q).add(p); const before = wp.clone(); const r = Math.min(this.half.x, 1.2); const y0 = p.y - this.half.y * 0.5; Col.push(wp, r, y0, p.y + this.half.y, 0.9, n.set(0, 0, 0)); const dx = wp.x - before.x, dz = wp.z - before.z;
       if (dx || dz) { p.x += dx; p.z += dz; const vn = this.vel.x * n.x + this.vel.z * n.z; if (vn < 0) { const impact = -vn; this.vel.x -= n.x * vn * 1.2; this.vel.z -= n.z * vn * 1.2; if (impact > 12) this.damage(impact * 6, { kind: 'explosive', direct: true }); if (impact > 5) { Audio.at('crumble', p, 0.4); FX.sparks(wp, 6, 5); }
         // ram through destructible walls
@@ -4506,7 +4519,7 @@ function respawnSoldier(s, pos, yaw, loadout) {
   s.state = 'alive'; s.hp = s.maxHp; s.deadT = 0; s.pos.copy(pos); s.vel.set(0, 0, 0); s.yaw = s.ctl.yaw = yaw; s.pitch = s.ctl.pitch = 0; s.stance = 'stand'; s.stanceH = CONFIG.move.height.stand; s.moveState = 'ground'; s.grounded = false; s.stamina = CONFIG.move.stamina;
   s.action = null; s.healQ.length = 0; s.blindT = s.empT = s.stunT = s.cloakT = 0; s.grapple = s.rappel = s.mantle = null; s.adsAmt = 0; s.spawnProtect = 2.5; s.lastHitBy = null; s.chute = 0; s.fromAircraft = false;
   if (loadout) s.equip(loadout); Operators.init(s); SoldierGfx.release(s); s.look = null;
-  if (s.brain) { s.brain.known.clear(); s.brain.target = null; s.brain.path = []; s.brain.cover = null; s.brain.state = 'patrol'; s.brain.reviveTarget = null; s.brain.vehGoal = null; s.brain.home = pos.clone(); }
+  if (s.brain) { s.brain.known.clear(); s.brain.target = null; s.brain.path = []; s.brain.cover = null; s.brain.state = 'patrol'; s.brain.reviveTarget = null; s.brain.vehGoal = null; s.brain.vehChecked = false; s.brain.home = pos.clone(); }
   if (s.player) s.player.onRespawn();
 }
 const OPS_BY_CLASS = () => { const out = {}; for (const o of Object.values(DATA.operators)) (out[o.class] ||= []).push(o.id); return out; };
@@ -4540,7 +4553,12 @@ class GameMode {
   }
   // ---- vehicle pads ----------------------------------------------------------------------------------
   setupPads(filter = () => true) {
-    for (const pd of World.def.pads || []) { if (pd.modes && !pd.modes.includes(this.kind)) continue; if (!filter(pd)) continue; const pad = Object.assign({ v: null, t: 0 }, pd); this.pads.push(pad); this.spawnPad(pad); }
+    const counts = new Map();
+    for (const pd of World.def.pads || []) { if (pd.modes && !pd.modes.includes(this.kind)) continue; if (!filter(pd)) continue; const pad = Object.assign({ v: null, t: 0 }, pd);
+      // pads inside a walled base move out past the wall, spread along an arc facing the map centre
+      const site = World.sites.find((st) => (st.kind === 'base' || st.kind === 'outpost') && Math.hypot(pad.x - st.x, pad.z - st.z) < (st.r || 100) * 0.95);
+      if (site && !/boat|hovercraft/.test(pad.type)) { const k = counts.get(site) || 0; counts.set(site, k + 1); const a = Math.atan2(-site.x, -site.z) + ((k % 2 ? 1 : -1) * Math.ceil(k / 2)) * 0.16; const R = (site.r || 100) + (pad.air ? 60 : 28); pad.x = site.x + Math.sin(a) * R; pad.z = site.z + Math.cos(a) * R; pad.yaw = a; }
+      this.pads.push(pad); this.spawnPad(pad); }
   }
   spawnPad(pad) { const y = World.heightAt(pad.x, pad.z) + (pad.air ? 1.5 : 2); pad.v = Vehicles.spawn(pad.type, V3(pad.x, y, pad.z), pad.yaw || 0, pad.team, { camo: Loadouts.camoFor(World.biomeAt(pad.x, pad.z)), pad }); pad.t = 0; }
   updatePads(dt) { for (const pad of this.pads) { if (!pad.v || pad.v.removed || (pad.v.dead && pad.v.wreckT > 8) || (pad.v.pos.distanceTo(V3(pad.x, pad.v.pos.y, pad.z)) > 400 && !pad.v.occupied() && G.time - (pad.v.leftT || 0) > 90)) { pad.t += dt; if (pad.t > (pad.respawn || CONFIG.vehicle.respawn)) { if (pad.v && !pad.v.removed && !pad.v.dead && !pad.v.occupied()) pad.v.remove(); this.spawnPad(pad); } } } }
@@ -4671,6 +4689,148 @@ class VehicleTraining extends GameMode {
   dispose() { for (const r of this.rings) WORLD.remove(r.m); }
   playerDied(P) { setTimeout(() => { if (!this.over) this.end(-1, 'Crashed'); }, 1500); }
   rewards() { return G.players.map((P) => ({ P, xp: this.result?.winner === 0 ? 300 : 50, credits: this.result?.winner === 0 ? 150 : 0 })); }
+}
+
+// §WARFARE -----------------------------------------------------------------------------------------------
+// 32 vs 32 combined arms with bots. Breakthrough: attackers push through a chain of sectors, capturing every
+// objective to advance; defenders hold each sector with a limited reinforcement pool. Conquest: five to seven flags,
+// holding more of them bleeds the enemy's tickets. Squads of four with orders, spawning on base / objectives /
+// squadmates / APCs / dropships / beacons, commander support earned by score, destructible objectives.
+const SUPPORT = [
+  { id: 'artillery', name: 'Artillery barrage', cost: 40, desc: '14 shells walk across the target over 6 s' },
+  { id: 'supply', name: 'Supply drop', cost: 20, desc: 'An ammo and armour crate under a parachute' },
+  { id: 'uav', name: 'UAV scan', cost: 30, desc: 'Marks every enemy on the map for 20 s' },
+  { id: 'mech', name: 'Mech drop', cost: 60, desc: 'An assault mech dropped at the target' },
+];
+class Warfare extends GameMode {
+  constructor(o) {
+    super(o); this.kind = 'warfare'; this.variantW = o.warfare || 'breakthrough'; this.perTeam = clamp(o.perTeam || CONFIG.warfare.players, 4, 40); this.botRespawn = 9; this.vehiclesForBots = true; this.airBots = true;
+    this.points = []; this.sectors = []; this.sector = 0; this.support = [{ points: 10 }, { points: 10 }]; this.beacons = []; this.bleedT = 0; this.aiSupportT = 30; this.destroyed = new Set();
+  }
+  name() { return this.variantW === 'conquest' ? 'Warfare · Conquest' : 'Warfare · Breakthrough'; }
+  setup() {
+    const def = World.def; const B = def.breakthrough; this.attacker = this.variantW === 'breakthrough' ? (B?.attacker ?? 0) : -1; const T = CONFIG.warfare;
+    if (this.variantW === 'breakthrough' && B) {
+      this.sectors = B.sectors.map((sc, i) => ({ name: sc.name, destroy: sc.destroy || null, points: sc.objs.map((o, j) => new CapturePoint({ id: String(i + 1) + String.fromCharCode(65 + j), name: o.name, x: o.x, z: o.z, owner: 1 - this.attacker, locked: i > 0, time: T.capTime * (sc.objs.length > 2 ? 1.1 : 1) })), pool: 90 + 30 * sc.objs.length }));
+      this.points = this.sectors.flatMap((s) => s.points); this.teams[this.attacker].tickets = T.tickets; this.teams[1 - this.attacker].tickets = this.sectors[0].pool;
+    } else { this.variantW = 'conquest'; this.points = (def.conquest || []).map((c) => new CapturePoint(c)); for (const t of this.teams) t.tickets = T.conquestTickets; }
+    // pads + extra machines for the bench
+    this.setupPads(); if (this.o.allVehicles) this.spawnAllVehicles();
+    // players
+    const pt = this.playerTeam = this.o.side ?? 0; G.players.forEach((P) => { const sp = this.variantW === 'breakthrough' && pt !== this.attacker ? { pos: this.cur.points[0].pos, r: 20, yaw: 0 } : this.baseSpawn(pt); this.playerSoldier(P, pt, this.spawnAt(sp), sp.yaw); });
+    // defenders start dug in at the first sector; attackers start at their base
+    const D = this.variantW === 'breakthrough' ? 1 - this.attacker : -1;
+    for (const t of [0, 1]) this.addBots(t, this.perTeam - (t === pt ? G.players.length : 0), (i, rng) => t === D && i % 4 !== 3 ? this.spawnAt({ pos: this.cur.points[i % this.cur.points.length].pos, r: 30 }) : this.spawnAt(this.baseSpawn(t, 40)), { opChance: 0.8 });
+    // player joins the first squad of their team (as its leader)
+    for (const P of G.players) { const sq = this.squads.find((q) => q.team === pt && q.members.length < 4) || this.squads.find((q) => q.team === pt); if (sq) { if (sq.members.length >= 4) { const bot = sq.members.find((m) => m.brain); sq.remove(bot); const s2 = new Squad(pt); s2.add(bot); this.squads.push(s2); } sq.add(P.soldier); sq.leader = P.soldier; P.soldier.squad = sq; } }
+    Radio.say('Command', this.variantW === 'breakthrough' ? (pt === this.attacker ? 'Attack! Take every objective in ' + this.sectors[0].name + '.' : 'Hold ' + this.sectors[0].name + '. They can\'t have it.') : 'Capture and hold the flags.');
+  }
+  baseSpawn(t, r = 25) { const b = World.def.bases[t] || World.def.bases[0]; return { label: 'Main base', kind: 'base', pos: V3(b.x, 0, b.z), r, yaw: b.yaw || 0 }; }
+  spawnAllVehicles() { const have = new Set(this.pads.map((p) => p.type)); let k = 0; for (const id of Object.keys(DATA.vehicles)) { if (DATA.vehicles[id].class === 'drone' || have.has(id)) continue; for (const t of [0, 1]) { const b = World.def.bases[t]; const a = k * 0.7 + t * 3; const pad = { type: id, x: b.x + Math.cos(a) * 70, z: b.z + Math.sin(a) * 70, yaw: b.yaw || 0, team: t, air: !!DATA.vehicles[id].air, v: null, t: 0 }; this.pads.push(pad); this.spawnPad(pad); } k++; } }
+  // ---- sectors -------------------------------------------------------------------------------------------
+  get cur() { return this.sectors[this.sector]; }
+  activePoints() { return this.variantW === 'breakthrough' ? (this.cur ? this.cur.points : []) : this.points; }
+  onCaptured(p, t) {
+    Audio.play(t === this.playerTeam ? 'capture' : 'lost', 0.8); this.support[t].points = Math.min(100, this.support[t].points + 10);
+    if (this.variantW === 'breakthrough') { if (t === this.attacker && this.cur && this.cur.points.every((q) => q.owner === this.attacker)) this.sectorFalls(); else Radio.say('Command', (t === this.playerTeam ? 'Objective ' + p.name + ' taken.' : 'We lost ' + p.name + '!')); }
+    else Radio.say('Command', (t === this.playerTeam ? 'We captured ' : 'We lost ') + p.name + '.');
+  }
+  sectorFalls() {
+    const s = this.cur; for (const p of s.points) p.locked = true; this.sector++; const A = this.attacker; this.teams[A].tickets += 60;
+    if (this.sector >= this.sectors.length) { this.end(A, this.teams[A].name + ' broke through'); return; }
+    const n = this.cur; n.points.forEach((p) => { p.locked = false; }); this.teams[1 - A].tickets = n.pool;
+    for (const P of G.players) P.note('Sector ' + this.sector + ' captured — next: ' + n.name, 'big'); Radio.say('Command', A === this.playerTeam ? 'Sector taken. Push on to ' + n.name + '!' : 'Fall back to ' + n.name + '!'); Audio.play('uiBig', 1);
+    // defenders left behind in the fallen sector try to fall back
+    for (const s2 of Soldiers.list) if (s2.team !== A && s2.brain) s2.brain.newOrder = true;
+  }
+  onKill(v, k, info) {
+    super.onKill(v, k, info); if (k && k.team !== v.team) this.support[k.team].points = Math.min(100, this.support[k.team].points + 2);
+    const t = this.teams[v.team]; t.tickets = Math.max(0, t.tickets - 1);
+    if (this.variantW === 'breakthrough') { if (v.team === this.attacker && t.tickets <= 0) this.end(1 - this.attacker, this.teams[1 - this.attacker].name + ' held the line'); }
+    else if (t.tickets <= 0) this.end(1 - v.team, this.teams[1 - v.team].name + ' wins');
+  }
+  canRespawn(s) { if (this.variantW === 'breakthrough' && s.team !== this.attacker && this.teams[s.team].tickets <= 0) return false; if (this.variantW === 'breakthrough' && s.team === this.attacker && this.teams[s.team].tickets <= 0) return false; return true; }
+  // ---- spawning --------------------------------------------------------------------------------------------
+  spawnOptions(team, s) {
+    const opts = [this.baseSpawn(team)];
+    // Breakthrough: attackers get a forward staging area a short run behind the active sector
+    if (this.variantW === 'breakthrough' && team === this.attacker && this.cur) { const c = V3(); for (const p of this.cur.points) c.add(p.pos); c.divideScalar(this.cur.points.length); const b = this.baseSpawn(team).pos; const d = V3(b.x - c.x, 0, b.z - c.z); const L = d.length(); if (L > 300) { d.divideScalar(L); const f = V3(c.x + d.x * 230, 0, c.z + d.z * 230); if (!Soldiers.near(f.x, f.z, 60).some((e) => e.team !== team && e.state === 'alive')) opts.push({ label: 'Forward staging', kind: 'forward', pos: f, r: 20, yaw: Math.atan2(-d.x, -d.z) }); } }
+    for (const p of this.points) { if (p.owner !== team || p.contested || p.locked && this.variantW === 'breakthrough' && !(team === this.attacker && this.sectors.indexOf(this.sectors.find((x) => x.points.includes(p))) === this.sector - 1)) continue; if (Soldiers.near(p.pos.x, p.pos.z, 35).some((e) => e.team !== team && e.state === 'alive')) continue; opts.push({ label: 'Objective ' + p.name, kind: 'obj', pos: p.pos.clone(), r: 14 }); }
+    if (s && s.squad) for (const m of s.squad.members) { if (m === s || m.state !== 'alive' || m.vehicle && m.vehicle.freeSeat(s) < 0) continue; const hot = G.time - m.lastHitT < 6 || m.lastShotT > G.time - 4; opts.push({ label: 'Squadmate ' + m.name, kind: 'squad', mate: m.vehicle ? null : m, vehicle: m.vehicle || null, pos: m.pos.clone(), disabled: hot && !m.vehicle }); }
+    for (const v of Vehicles.list) { if (v.dead || v.team !== team || !v.def.mobileSpawn || v.freeSeat(s || { team }) < 0) continue; opts.push({ label: v.def.name, kind: 'vehicle', vehicle: v, pos: v.pos.clone() }); }
+    for (const b of this.beacons) if (b.team === team && !b.dead) opts.push({ label: 'Beacon · ' + b.squad.name, kind: 'beacon', pos: b.pos.clone(), r: 4 });
+    return opts;
+  }
+  botSpawn(s) {
+    const opts = this.spawnOptions(s.team, s).filter((o) => !o.disabled); const goal = s.squad && this.objectiveFor(s.squad); let best = opts[0], bs = -1e9;
+    for (const o of opts) { let sc = Math.random() * 30; if (goal && o.pos) sc -= o.pos.distanceTo(goal.pos) * 0.15; if (o.kind === 'squad' && o.mate?.squad === s.squad) sc += 40; if (o.kind === 'beacon') sc += 25; if (o.kind === 'vehicle') sc += 10; if (sc > bs) { bs = sc; best = o; } }
+    return best ? { pos: this.spawnAt(best, s), yaw: best.yaw ?? rand(0, TAU) } : null;
+  }
+  playerDied(P) { P.respawnWait = 8; UI.deploy(P, () => this.spawnOptions(P.soldier.team, P.soldier), (o) => { if (!this.canRespawn(P.soldier)) { P.note('No reinforcements left', 'bad'); return; } respawnSoldier(P.soldier, this.spawnAt(o, P.soldier), o.yaw ?? P.soldier.yaw, Loadouts.forPlayer(P.operator || G.save.lastOperator)); }); }
+  placeBeacon(s) { const sq = s.squad; if (!sq) return; for (const b of this.beacons) if (b.squad === sq) { b.dead = true; WORLD.remove(b.mesh); } const m = new THREE.Group(); const mb = new MeshBuilder(); mb.box(MAT.darkMetal, 0, 0.4, 0, 0.3, 0.8, 0.3); mb.add(s.team === 0 ? MAT.glowCyan : MAT.glowRed, GEO.sphere, mtx(0, 0.9, 0, 0, 0, 0, 0.08, 0.08, 0.08)); mb.build(m, { static: false }); const p = s.pos.clone(); m.position.copy(p); WORLD.add(m);
+    const b = { team: s.team, squad: sq, pos: p, mesh: m, dead: false }; this.beacons.push(b); if (s.player) s.player.note('Spawn beacon placed', 'good'); }
+  // ---- squad AI orders ---------------------------------------------------------------------------------------
+  objectiveFor(sq) {
+    const t = sq.team; const pts = this.activePoints().filter((p) => !p.locked); if (!pts.length) return null; const l = sq.leader || sq.members[0]; const idx = this.squads.filter((q) => q.team === t).indexOf(sq);
+    if (this.variantW === 'breakthrough') {
+      const att = t === this.attacker; const cur = this.cur;
+      if (att && cur.destroy && !this.destroyed.has(cur.destroy) && idx % 4 === 3) { const st = Build.structures.find((x) => x.id === cur.destroy); if (st && !st.dead) return { type: 'demolish', pos: st.center.clone().setY(0), r: 10, structure: st }; }
+      const want = att ? pts.filter((p) => p.owner !== t) : pts; const p = (want.length ? want : pts)[idx % (want.length || pts.length)]; return { type: att ? 'attack' : 'defend', pos: p.pos.clone(), r: p.r * 0.8, obj: p };
+    }
+    // conquest: spread across points, prefer nearby uncaptured / contested ones
+    const scored = pts.map((p) => ({ p, sc: (p.owner !== t ? 60 : 0) + (p.contested ? 40 : 0) - (l ? p.pos.distanceTo(l.pos) * 0.05 : 0) + ((idx * 7 + this.points.indexOf(p) * 13) % 23) })).sort((a, b) => b.sc - a.sc);
+    const p = scored[0].p; return { type: p.owner === t && !p.contested ? 'defend' : 'attack', pos: p.pos.clone(), r: p.r * 0.8, obj: p };
+  }
+  squadTick(sq, dt) {
+    super.squadTick(sq, dt); const o = sq.order; if (!o) return;
+    // demolition squads plant charges on the structure
+    if (o.type === 'demolish' && o.structure && !o.structure.dead) for (const m of sq.members) { if (!m.brain || m.state !== 'alive') continue; if (!(m.throwables.c4 > 0)) m.throwables.c4 = 2; if (m.pos.distanceTo(o.structure.center) < (o.structure.type === 'dam' ? 30 : 18) && !m.action && Math.random() < 0.3) { m.throwSel = 'c4'; const p2 = o.structure.center; m.yaw = m.ctl.yaw = Math.atan2(p2.x - m.pos.x, p2.z - m.pos.z); m.pitch = m.ctl.pitch = -0.4; if (m.throwItem()) setTimeout(() => Throwables.detonateRemote(m), 4500); } }
+    // AI leaders drop beacons near the fight
+    if (!sq.members.some((m) => m.player) && sq.leader && sq.leader.state === 'alive' && o.pos && sq.leader.pos.distanceTo(o.pos) < 90 && !this.beacons.some((b) => b.squad === sq && !b.dead) && Math.random() < 0.2) this.placeBeacon(sq.leader);
+  }
+  vehicleGoal(v, s) { const o = s.squad?.order; if (o && o.pos) return o.pos; const p = this.activePoints().find((q) => q.owner !== v.team && !q.locked) || this.activePoints()[0]; return p ? p.pos : null; }
+  // ---- commander support ------------------------------------------------------------------------------------
+  supportList() { return SUPPORT; }
+  callSupport(s, id, at = null) {
+    const S = SUPPORT.find((x) => x.id === id); const sp = this.support[s.team]; if (!S || sp.points < S.cost) return false;
+    const target = at || (Pings.list.filter((p) => p.team === s.team && p.by === s).pop()?.pos) || s.designate || s.aimPoint(V3()); if (!target) return false; sp.points -= S.cost;
+    const T = target.clone(); const team = s.team;
+    if (id === 'artillery') { for (let i = 0; i < 14; i++) setTimeout(() => { if (this.over || G.mode !== this) return; const p = T.clone().add(V3(rand(-22, 22), 0, rand(-22, 22))); p.y = World.heightAt(p.x, p.z) + 0.3; Explosion.at(p, { r: 9, dmg: 160, owner: s, vehicle: 380, structure: 800, kind: 'artillery' }); }, 1500 + i * 420); Audio.at('alarm', T, 0.6); }
+    if (id === 'supply') SupplyDrop.call(T, team);
+    if (id === 'uav') { for (const e of Soldiers.list) if (e.team !== team && e.state === 'alive') Spotting.mark(e, team, 20, 'uav'); for (const v of Vehicles.list) if (v.team !== team && !v.dead) Spotting.mark(v, team, 20, 'uav'); }
+    if (id === 'mech') { const v = Vehicles.spawn('assault_mech', V3(T.x, World.heightAt(T.x, T.z) + 120, T.z), s.yaw, team, { camo: Loadouts.camoFor(World.biomeAt(T.x, T.z)) }); if (v) { v.vel.y = -30; FX.smokeVolume(V3(T.x, World.heightAt(T.x, T.z) + 1, T.z), 4, 20); } }
+    for (const P of G.players) if (P.soldier.team === team) P.note('Commander: ' + S.name + ' inbound', 'good'); else P.note('Enemy ' + S.name.toLowerCase() + ' inbound!', 'bad'); Radio.say(team === this.playerTeam ? 'Command' : 'Enemy radio', S.name + ' inbound.'); return true;
+  }
+  aiSupport(dt) {
+    this.aiSupportT -= dt; if (this.aiSupportT > 0) return; this.aiSupportT = rand(25, 45);
+    for (const t of [0, 1]) { if (G.players.some((P) => P.soldier.team === t) && Math.random() < 0.5) continue; const sp = this.support[t]; const opts = SUPPORT.filter((x) => sp.points >= x.cost); if (!opts.length) continue; const S = pick(opts);
+      // target: biggest enemy cluster near an active objective
+      let best = null, bn = 0; for (const p of this.activePoints()) { const n = Soldiers.near(p.pos.x, p.pos.z, 30).filter((e) => e.team !== t && e.state === 'alive').length; if (n > bn) { bn = n; best = p.pos; } }
+      const caller = Soldiers.list.find((x) => x.team === t && x.state === 'alive' && x.brain); if (!caller) continue; const target = S.id === 'artillery' ? best : S.id === 'supply' || S.id === 'mech' ? (this.activePoints().find((p) => p.owner === t)?.pos || caller.pos) : caller.pos;
+      if (target && (S.id !== 'artillery' || bn >= 3)) this.callSupport(caller, S.id, target.clone()); }
+  }
+  // ---- per tick ------------------------------------------------------------------------------------------------
+  update(dt) {
+    super.update(dt); if (this.over) return;
+    for (const p of this.points) p.update(dt, this);
+    for (const sp of this.support) sp.points = Math.min(100, sp.points + dt * 0.25);
+    if (this.variantW === 'conquest') { this.bleedT += dt; if (this.bleedT >= 1) { this.bleedT = 0; const own = [0, 0]; for (const p of this.points) if (p.owner >= 0) own[p.owner]++; const d = own[0] - own[1]; if (d !== 0) { const loser = d > 0 ? 1 : 0; this.teams[loser].tickets -= Math.abs(d) * 0.35 + (own[1 - loser] > this.points.length / 2 ? 0.5 : 0); if (this.teams[loser].tickets <= 0) this.end(1 - loser, this.teams[1 - loser].name + ' wins'); } } }
+    else if (this.cur) { // defenders out of reinforcements in a sector → it falls
+      const D = 1 - this.attacker; if (this.teams[D].tickets <= 0 && !Soldiers.list.some((s) => s.team === D && s.state === 'alive' && this.cur.points.some((p) => p.pos.distanceTo(s.pos) < 60))) { for (const p of this.cur.points) p.setOwner(this.attacker); this.sectorFalls(); }
+      const st = this.cur.destroy && Build.structures.find((x) => x.id === this.cur.destroy); if (st && st.dead && !this.destroyed.has(st.id)) { this.destroyed.add(st.id); this.teams[this.attacker].tickets += 40; for (const P of G.players) P.note(st.name + ' destroyed', P.soldier.team === this.attacker ? 'good' : 'bad'); Radio.say('Command', st.name + ' is down!'); } }
+    this.aiSupport(dt);
+    for (const b of this.beacons) if (!b.dead && Soldiers.near(b.pos.x, b.pos.z, 2).some((e) => e.team !== b.team && e.state === 'alive')) { b.dead = true; WORLD.remove(b.mesh); }
+  }
+  hud(P) {
+    const s = P.soldier; const flags = this.variantW === 'breakthrough' ? (this.cur ? this.cur.points : []) : this.points; flags.forEach((f) => { f.current = this.variantW === 'breakthrough'; });
+    const markers = []; if (this.variantW === 'breakthrough' && this.cur?.destroy) { const st = Build.structures.find((x) => x.id === this.cur.destroy); if (st && !st.dead) markers.push({ pos: st.center, label: (s.team === this.attacker ? 'DESTROY ' : 'DEFEND ') + st.name.toUpperCase(), short: '✕', kind: 'enemy' }); }
+    for (const b of this.beacons) if (!b.dead && b.team === s.team) markers.push({ pos: b.pos, label: 'BEACON', short: 'B', kind: 'mate', maxD: 400 });
+    const info = this.variantW === 'breakthrough' ? `SECTOR ${Math.min(this.sector + 1, this.sectors.length)}/${this.sectors.length} · ${(this.cur?.name || '').toUpperCase()} · ${s.team === this.attacker ? 'ATTACK' : 'DEFEND'} · SUPPORT ${Math.floor(this.support[s.team].points)}` : `CONQUEST · SUPPORT ${Math.floor(this.support[s.team].points)} · O commander`;
+    return { tickets: [this.teams[0].tickets, this.teams[1].tickets], flags, info, markers };
+  }
+  benchFocus() { const pts = this.activePoints(); if (!pts.length) return V3(); const c = V3(); for (const p of pts) c.add(p.pos); return c.divideScalar(pts.length); }
+  dispose() { for (const p of this.points) p.dispose(); for (const b of this.beacons) WORLD.remove(b.mesh); }
+  rewards() { return G.players.map((P) => { const s = P.soldier; const win = this.result?.winner === s.team; const xp = Math.round(s.score * 1.2 + (win ? 800 : 300)); return { P, xp, credits: Math.round(xp * 0.5) }; }); }
 }
 
 // §HUD -------------------------------------------------------------------------------------------------
@@ -5115,7 +5275,7 @@ class Player {
   carryWeight() { return G.mode?.carryWeight?.(this) || 0; }
   // ---- input → controller -----------------------------------------------------------------------------
   input(dt) {
-    const s = this.soldier; if (!s) return; const a = Input.poll(this.idx, this.src, dt); const i = this.idx; const C = s.ctl; const pr = (n) => Input.pressed(i, n);
+    const s = this.soldier; if (!s || this.botCtl) return; const a = Input.poll(this.idx, this.src, dt); const i = this.idx; const C = s.ctl; const pr = (n) => Input.pressed(i, n);
     if (pr('pause') && this.idx === 0) { if (UI.screen === 'mini') return; UI.pause(); return; }
     if (UI.blocking() && UI.screen !== 'mini') return;
     // look (ADS slows it per zoom)
@@ -5220,7 +5380,7 @@ const Game = {
     const W = innerWidth, H = innerHeight; const n = G.players.length; G.split = n > 1; document.getElementById('split').innerHTML = n > 1 ? '<div class="v"></div>' : '';
     G.players.forEach((P, i) => { const r = n > 1 ? { x: i * W / 2, y: 0, w: W / 2, h: H } : { x: 0, y: 0, w: W, h: H }; P.rect = r; P.hud.setRect(r.x, r.y, r.w, r.h, n > 1); P.camera.aspect = r.w / r.h; P.camera.updateProjectionMatrix(); P.vm.cam.aspect = r.w / r.h; P.vm.cam.updateProjectionMatrix(); });
   },
-  applyQuality() { const q = G.settings.quality; renderer.setPixelRatio(Math.min(devicePixelRatio || 1, q === 'low' ? 0.75 : q === 'high' ? 1.5 : 1.0)); renderer.shadowMap.enabled = q !== 'low'; CONFIG.world.lod[CONFIG.world.lod.length - 1].ring = q === 'low' ? 8 : q === 'high' ? 14 : 12; onResize(); },
+  applyQuality() { const q = G.settings.quality; Foliage.nearMul = q === 'low' ? 0.6 : q === 'high' ? 1.35 : 1; renderer.setPixelRatio(Math.min(devicePixelRatio || 1, q === 'low' ? 0.75 : q === 'high' ? 1.5 : 1.0)); renderer.shadowMap.enabled = q !== 'low'; CONFIG.world.lod[CONFIG.world.lod.length - 1].ring = q === 'low' ? 8 : q === 'high' ? 14 : 12; onResize(); },
   repaintVehicle(v, camoId) { const m = vehMat(v.team ?? 2, camoId); v.body.traverse((o) => { if (o.isMesh && o.material && o.material.map && o.material !== m && /camo/.test(o.material.map.uuid) === false && vMats.get((v.team ?? 2) + ':' + v.camo + ':hull') === o.material) o.material = m; }); v.camo = camoId; },
 };
 // ---- fixed-step logic ------------------------------------------------------------------------------------------
@@ -5228,7 +5388,8 @@ const FIXED = 1 / 60;
 function logicStep(dt) {
   G.time += dt; G.tick++;
   for (const P of G.players) P.input(dt);
-  for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') s.brain.update(dt);
+  // one misbehaving bot must never freeze the world: isolate each brain, report the first failure
+  for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') { try { s.brain.update(dt); } catch (e) { if (!G.brainErr) { G.brainErr = 1; console.error('bot brain', e); } s.ctl.mz = s.ctl.mx = 0; s.ctl.fire = false; } }
   Soldiers.rebuild(); for (const s of Soldiers.list) s.step(dt);
   Vehicles.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
   if (G.mode) G.mode.update(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
@@ -5359,7 +5520,7 @@ async function boot() {
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();
 
 </script>

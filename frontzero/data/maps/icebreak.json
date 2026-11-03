@@ -1,0 +1,611 @@
+{
+ "id": "icebreak",
+ "name": "Icebreak",
+ "country": "nordheim",
+ "size": 2400,
+ "seed": 505,
+ "biomes": [
+  "arctic"
+ ],
+ "baseHeight": 10,
+ "blurb": "A frozen fjord and a research station that the Mandate wants very badly.",
+ "sea": {
+  "dir": "n",
+  "shore": 0.9,
+  "level": 0,
+  "depth": 12
+ },
+ "rivers": [
+  {
+   "pts": [
+    [
+     0,
+     -1150
+    ],
+    [
+     -80,
+     -700
+    ],
+    [
+     40,
+     -300
+    ],
+    [
+     0,
+     100
+    ],
+    [
+     -100,
+     500
+    ],
+    [
+     -60,
+     1150
+    ]
+   ],
+   "width": 130,
+   "depth": 8,
+   "frozen": true
+  }
+ ],
+ "sites": [
+  {
+   "id": "station",
+   "name": "Halvik Research Station",
+   "kind": "station",
+   "x": 330,
+   "z": 200,
+   "r": 140,
+   "density": 0.75,
+   "ground": "concrete"
+  },
+  {
+   "id": "harbour",
+   "name": "Ice harbour",
+   "kind": "port",
+   "x": 150,
+   "z": -850,
+   "r": 110,
+   "density": 0.5,
+   "ground": "concrete"
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord camp",
+   "kind": "base",
+   "x": -850,
+   "z": 760,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 850,
+   "z": -760,
+   "r": 110,
+   "helipad": true
+  },
+  {
+   "id": "hut",
+   "name": "Trapper huts",
+   "kind": "camp",
+   "x": -500,
+   "z": 400,
+   "r": 60
+  },
+  {
+   "id": "depot",
+   "name": "Fuel depot",
+   "kind": "outpost",
+   "x": -450,
+   "z": -350,
+   "r": 70
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -850,
+     760
+    ],
+    [
+     -500,
+     400
+    ],
+    [
+     -120,
+     300
+    ]
+   ],
+   "width": 8,
+   "surf": "gravel"
+  },
+  {
+   "pts": [
+    [
+     110,
+     220
+    ],
+    [
+     330,
+     200
+    ],
+    [
+     850,
+     -760
+    ]
+   ],
+   "width": 8,
+   "surf": "gravel"
+  },
+  {
+   "pts": [
+    [
+     330,
+     200
+    ],
+    [
+     150,
+     -850
+    ]
+   ],
+   "width": 7,
+   "surf": "gravel"
+  }
+ ],
+ "structures": [
+  {
+   "id": "radar",
+   "type": "radar",
+   "name": "Station radar",
+   "x": 420,
+   "z": 300
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Relay mast",
+   "x": 250,
+   "z": 80,
+   "h": 48
+  },
+  {
+   "id": "fuel",
+   "type": "fuel_depot",
+   "name": "Fuel tanks",
+   "x": -450,
+   "z": -380
+  }
+ ],
+ "bases": [
+  {
+   "x": -850,
+   "z": 760,
+   "yaw": 2.3
+  },
+  {
+   "x": 850,
+   "z": -760,
+   "yaw": -0.8
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -891,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -864,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -836,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -809,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -891,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -864,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "snow_sled",
+   "x": -836,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "snow_sled",
+   "x": -809,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 809,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 836,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 864,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 891,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 809,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 836,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "snow_sled",
+   "x": 864,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "interceptor",
+   "x": 891,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "patrol_boat",
+   "x": 150,
+   "z": -1020,
+   "yaw": 0,
+   "team": null
+  },
+  {
+   "type": "snow_sled",
+   "x": 300,
+   "z": 250,
+   "yaw": 1,
+   "team": null
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Fjord shore",
+    "objs": [
+     {
+      "name": "Trapper huts",
+      "x": -500,
+      "z": 400
+     },
+     {
+      "name": "Shore road",
+      "x": -350,
+      "z": 520
+     }
+    ]
+   },
+   {
+    "name": "Ice crossing",
+    "objs": [
+     {
+      "name": "Mid-fjord",
+      "x": 0,
+      "z": 100
+     },
+     {
+      "name": "Pressure ridge",
+      "x": -40,
+      "z": -120
+     }
+    ]
+   },
+   {
+    "name": "Research station",
+    "objs": [
+     {
+      "name": "Lab block",
+      "x": 330,
+      "z": 200
+     },
+     {
+      "name": "Radar",
+      "x": 420,
+      "z": 300
+     },
+     {
+      "name": "Hangar",
+      "x": 230,
+      "z": 130
+     }
+    ],
+    "destroy": "radar"
+   },
+   {
+    "name": "Ice harbour",
+    "objs": [
+     {
+      "name": "Harbour",
+      "x": 150,
+      "z": -850
+     },
+     {
+      "name": "Breakwater",
+      "x": 280,
+      "z": -780
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 850,
+      "z": -760
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Trapper huts",
+   "x": -500,
+   "z": 400
+  },
+  {
+   "id": "B",
+   "name": "Mid-fjord",
+   "x": 0,
+   "z": 100
+  },
+  {
+   "id": "C",
+   "name": "Station",
+   "x": 330,
+   "z": 200
+  },
+  {
+   "id": "D",
+   "name": "Fuel depot",
+   "x": -450,
+   "z": -350
+  },
+  {
+   "id": "E",
+   "name": "Ice harbour",
+   "x": 150,
+   "z": -850
+  },
+  {
+   "id": "F",
+   "name": "Relay mast",
+   "x": 250,
+   "z": 80
+  }
+ ],
+ "pois": [
+  {
+   "name": "Research labs",
+   "x": 330,
+   "z": 200,
+   "r": 90,
+   "tier": 4,
+   "key": "key_lab"
+  },
+  {
+   "name": "Radar dome",
+   "x": 420,
+   "z": 300,
+   "r": 30,
+   "tier": 3
+  },
+  {
+   "name": "Ice harbour",
+   "x": 150,
+   "z": -850,
+   "r": 80,
+   "tier": 3
+  },
+  {
+   "name": "Fuel depot",
+   "x": -450,
+   "z": -350,
+   "r": 60,
+   "tier": 2
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 850,
+   "z": -760,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  },
+  {
+   "name": "Trapper huts",
+   "x": -500,
+   "z": 400,
+   "r": 50,
+   "tier": 1
+  }
+ ],
+ "extracts": [
+  {
+   "name": "South ridge",
+   "x": -300,
+   "z": 1050,
+   "kind": "open"
+  },
+  {
+   "name": "Harbour boat",
+   "x": 150,
+   "z": -1000,
+   "kind": "flare"
+  },
+  {
+   "name": "Lab tunnel",
+   "x": 340,
+   "z": 210,
+   "kind": "key",
+   "key": "key_lab"
+  },
+  {
+   "name": "East pass",
+   "x": 1050,
+   "z": 200,
+   "kind": "timed",
+   "opens": 420
+  }
+ ],
+ "areas": [
+  {
+   "id": "station",
+   "name": "Research station",
+   "x": 330,
+   "z": 200,
+   "r": 160,
+   "dom": [
+    [
+     270,
+     150
+    ],
+    [
+     330,
+     200
+    ],
+    [
+     400,
+     260
+    ]
+   ],
+   "spawns": [
+    [
+     180,
+     60
+    ],
+    [
+     480,
+     340
+    ]
+   ]
+  },
+  {
+   "id": "fjord",
+   "name": "Mid-fjord",
+   "x": 0,
+   "z": 100,
+   "r": 150,
+   "dom": [
+    [
+     -50,
+     60
+    ],
+    [
+     0,
+     100
+    ],
+    [
+     50,
+     140
+    ]
+   ],
+   "spawns": [
+    [
+     -140,
+     0
+    ],
+    [
+     140,
+     200
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "snow",
+   "name": "Snow",
+   "hour": 13,
+   "weather": "snow"
+  },
+  {
+   "id": "blizzard",
+   "name": "Blizzard",
+   "hour": 15,
+   "weather": "blizzard"
+  },
+  {
+   "id": "night",
+   "name": "Polar night",
+   "hour": 0.5,
+   "weather": "clear"
+  }
+ ]
+}
