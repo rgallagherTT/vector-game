@@ -2289,7 +2289,7 @@ function drawEmblem(g, shape, r) {
 // Weather state (biome weather → gameplay: vision, sound masking, wind, wet ground, lightning)
 const Weather = { id: 'clear', def: null, windDir: V3(1, 0, 0.3).normalize(), windStr: 3, flash: 0, lightT: 6, vis: 1, mask: 0,
   set(id) { this.id = id; this.def = (DATA.weatherTypes && DATA.weatherTypes[id]) || { vis: 1, fog: 1, mask: 0, wind: 3, light: 1 }; this.windStr = this.def.wind; this.vis = this.def.vis; this.mask = this.def.mask; const a = rand(0, TAU); this.windDir.set(Math.cos(a), 0, Math.sin(a)); },
-  update(dt) { this.flash = Math.max(0, this.flash - dt * 2.5); if (this.def && this.def.lightning) { this.lightT -= dt; if (this.lightT <= 0) { this.lightT = rand(5, 16); const P = G.players[0]; if (P) FX.bolt(P.pos.x + rand(-700, 700), P.pos.z + rand(-700, 700)); } }
+  update(dt) { this.flash = Math.max(0, this.flash - dt * 2.5); if (this.def && this.def.lightning) { this.lightT -= dt; if (this.lightT <= 0) { this.lightT = rand(5, 16); const p = G.players[0]?.soldier?.pos; if (p) FX.bolt(p.x + rand(-700, 700), p.z + rand(-700, 700)); } }
     const n = Noise.s2(G.time * 0.05, 3.3); this.windStr = this.def ? this.def.wind * (0.75 + 0.35 * n) : 3; },
   // how far a soldier can be seen (m) in this weather at this time, before camo / stance / foliage
   sightRange() { const night = Sky.night; return lerp(420, 150, night) * this.vis * (Sky.night > 0.5 ? 0.9 : 1); },
@@ -3903,6 +3903,7 @@ const VehicleAI = {
     if (v.hp < v.maxHp * 0.12 && !v.def.air && Math.random() < dt * 2) v.exit(s);
     if (seat > 0 && !v.def.seats[seat].turret && !v.def.seats[seat].exposed && v.driver() == null) v.exit(s);
     // passengers dismount near the objective or when the ride has stalled
+    if (seat > 0 && v.occupants.some((o) => o && o.player)) return; // riding with a player: the player decides when to get out
     if (seat > 0 && !v.def.seats[seat].turret && !v.def.air) { const g = this.goalOf(brain, v); brain.rideT = (v.speed < 1.5 ? (brain.rideT || 0) + dt : 0); if ((g && Math.hypot(v.pos.x - g.x, v.pos.z - g.z) < 70) || brain.rideT > 5 || (brain.target && brain.known.get(brain.target)?.vis && Math.hypot(v.pos.x - brain.target.pos.x, v.pos.z - brain.target.pos.z) < 60)) { v.exit(s); brain.rideT = 0; return; } }
     // dropship passengers rappel / jump out over the objective
     if (seat > 0 && v.def.air && !v.def.seats[seat].turret && brain.goal && brain.goal.pos) { const d = Math.hypot(v.pos.x - brain.goal.pos.x, v.pos.z - brain.goal.pos.z); if (d < 70 && v.speed < 14) { if (!v.rappelOut(s)) v.exit(s); } }
@@ -3950,7 +3951,8 @@ const VehicleAI = {
     if (!tgt || dropship || def.phys === 'jetbike') { C.yaw = dampAngle(C.yaw, want, 1.5, dt); }
     // helis fly straight at the destination whatever the nose does (strafe + forward), slowing on approach
     if (def.phys === 'heli') { const k = clamp(d / 90, 0, 1); const tn = d > 1e-3 ? _v2.set(to.x / d, 0, to.z / d) : _v2.set(0, 0, 0); const yw = v.yaw; C.mz = clamp((tn.x * Math.sin(yw) + tn.z * Math.cos(yw)) * k, -1, 1); C.mx = clamp((tn.x * -Math.cos(yw) + tn.z * Math.sin(yw)) * k / 0.6, -1, 1); }
-    else { C.mz = d > 30 ? 1 : d > 8 ? 0.4 : 0; C.mx = 0; } const lookAhead = World.heightAt(p.x + Math.sin(C.yaw) * 60, p.z + Math.cos(C.yaw) * 60); const ty = Math.max(gy, lookAhead) + alt;
+    else { C.mz = d > 30 ? 1 : d > 8 ? 0.4 : 0; C.mx = 0; } const top = (x, z) => Math.max(World.heightAt(x, z), Col.ground(x, z, 400, 1.5, 500).y); // rooftops count: fly over the city, not into it
+    const vf = Math.hypot(v.vel.x, v.vel.z) > 3 ? Math.atan2(v.vel.x, v.vel.z) : C.yaw; let lookAhead = top(p.x, p.z); for (const dd of [25, 50, 80]) lookAhead = Math.max(lookAhead, top(p.x + Math.sin(vf) * dd, p.z + Math.cos(vf) * dd)); const ty = Math.max(gy, lookAhead) + alt;
     C.jump = p.y < ty - 3; C.crouchHold = p.y > ty + 6; C.up = C.jump; C.down = C.crouchHold;
     if (tgt && !dropship) { const o = v.mountOrigin(-1, V3()); const W = v.driverWeapons[v.dw]; if (W) { const on = this.aimCtl(brain, o, tgt.pos, tgt.vel, W.def.vel || 200, dt, 2.5); const f = v.fwd(_v2); const to2 = _v3.subVectors(tgt.pos, o).normalize(); if (def.phys === 'heli') C.yaw = dampAngle(C.yaw, Math.atan2(to2.x, to2.z), 1.2, dt);
         if (on && f.dot(to2) > 0.8) { C.fire = true; C.firePressed = true; } if (v.driverWeapons.length > 1) v.dw = tgt.veh ? (v.driverWeapons.findIndex((w) => w.def.type === 'missiles') >= 0 ? v.driverWeapons.findIndex((w) => w.def.type === 'missiles') : 0) : 0; } }
@@ -4417,7 +4419,7 @@ class Script {
     if (st && st.fail && this.test(st.fail)) { this.failed = true; this.host.onScriptFail?.(this, st.failText || 'Mission failed'); return; }
     if (st && st.trigger && this.test(st.trigger)) { if (st.after) this.run(st.after); this.next(); }
   }
-  pos(p) { return Array.isArray(p) ? V3(p[0], World.heightAt(p[0], p[1]), p[1]) : p; }
+  pos(p) { if (!Array.isArray(p)) return p; if (p[2] === 'top') return V3(p[0], Math.max(World.heightAt(p[0], p[1]), Col.ground(p[0], p[1], World.heightAt(p[0], p[1]) + 120, 0.3, 200).y), p[1]); return V3(p[0], World.heightAt(p[0], p[1]), p[1]); }
   test(T) {
     if (!T) return false; const P = G.players.filter((q) => q.soldier.state !== 'dead');
     switch (T.type) {
@@ -4447,7 +4449,7 @@ class Script {
       case 'spawn': spawnGroup(Object.assign({}, a, { pos: a.pos }), this.host); break;
       case 'spawnVehicle': { const p = this.pos(a.pos); const v = Vehicles.spawn(a.id, V3(p.x, (a.alt ? p.y + a.alt : p.y + 2), p.z), a.yaw || 0, a.team ?? 1, { camo: Loadouts.camoFor(World.biomeAt(p.x, p.z)) }); if (!v) break; v.tag = a.tag;
         if (a.crew) { const crew = spawnGroup({ n: a.crew, pos: [p.x, p.z], r: 3, team: a.team ?? 1, faction: a.faction, difficulty: a.difficulty, tag: a.tag + '_crew', goal: a.goal }, this.host); crew.forEach((s, i) => { if (i < v.def.seats.length) v.enter(s, i); }); }
-        if (a.player) { const q = G.players[0]; if (q) { q.soldier.pos.copy(v.pos); v.enter(q.soldier, 0); } } if (a.coop && G.players[1]) { const seat = v.freeSeat(G.players[1].soldier); if (seat >= 0) v.enter(G.players[1].soldier, seat); } break; }
+        if (a.player) { const q = G.players[0]; if (q) { if (q.soldier.vehicle) q.soldier.vehicle.exit(q.soldier, true); q.soldier.pos.copy(v.pos); v.enter(q.soldier, a.playerSeat || 0); } this.host.onPlayerVehicle?.(v, a); } if (a.coop && G.players[1]) { const seat = v.freeSeat(G.players[1].soldier); if (seat >= 0) v.enter(G.players[1].soldier, seat); } break; }
       case 'radio': Radio.say(a.who || 'Command', a.text, a.portrait || null); break;
       case 'note': for (const P of G.players) P.note(a.text, a.style || '', 0, a.t || 1.5); break;
       case 'cine': UI.cine(a.title, a.sub); break;
@@ -5112,6 +5114,63 @@ class Extraction extends GameMode {
   rewards() { const out = []; for (const P of G.players) { const s = P.soldier; const xp = Math.round(s.kills * 100 + this.kills.boss * 600 + (this.outcome === 'extracted' ? 500 : 100) + this.visited.size * 40); out.push({ P, xp, credits: 0 }); } return out; }
   resultsExtra() { return `<div class="box"><h2>Raid report</h2>${this.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<p class="dim">Kills: ${this.kills.garrison} garrison · ${this.kills.rival} rival · ${this.kills.boss} boss · visited ${this.visited.size} locations · ${fmtTime(this.t)}</p></div>`; }
 }
+// §CAMPAIGN ---------------------------------------------------------------------------------------------
+// The Accord vs the Iron Mandate: eight scripted missions (data/missions.json) run by the Script runner.
+// Solo with an AI squad (they follow you, revive you, ride in your vehicles) or split-screen co-op.
+// Checkpoints: when every player is down for good, the squad regroups at the last checkpoint.
+class CampaignMode extends GameMode {
+  constructor(o) {
+    super(o); this.kind = 'campaign'; this.def = o.def; this.idx = o.idx; this.mapId = o.def.map; this.variant = o.def.variant; this.botRespawn = 1e9; this.vehiclesForBots = false;
+    this.script = null; this.cp = null; this.next = null; this.deaths = 0; this.playerVeh = null; this.respawnT = 0; this.allyQ = [];
+  }
+  name() { return 'Campaign · ' + this.def.name; }
+  setup() {
+    const D = this.def; if (D.hour != null) Sky.hour = D.hour; const st = V3(D.start[0], 0, D.start[1]);
+    G.players.forEach((P) => this.playerSoldier(P, 0, this.spawnAt({ pos: st, r: 4 }), D.yaw || 0));
+    const sq = new Squad(0, 'Raven'); for (const P of G.players) sq.add(P.soldier); sq.leader = G.players[0].soldier; this.pSquad = sq; this.squads.push(sq);
+    const n = Math.max(0, (D.squad ?? 3) - (G.players.length - 1)); const ops = Object.keys(DATA.operators).filter((id) => id !== (G.players[0].operator || G.save.lastOperator));
+    const mates = n ? spawnGroup({ n, pos: D.start, r: 5, team: 0, faction: 'accord', difficulty: 'hardened', tier: 4, tag: 'squad', ops, yaw: D.yaw || 0 }, this) : [];
+    for (const s of mates) { s.squad?.remove(s); sq.add(s); s.ally = true; if (s.brain) s.brain.goal = null; } sq.leader = G.players[0].soldier;
+    this.script = new Script({ steps: D.steps, events: D.events || [] }, this); this.cp = { step: 0, pos: st.clone() }; this.script.start(0);
+    const c = DATA.countries[World.def.country]; for (const P of G.players) P.note('Objective: ' + (D.steps[0]?.text || ''), 'big', 0, 4); void c;
+  }
+  playerLoadout(P, opId) {
+    const L = Loadouts.forPlayer(opId, 'campaign'); const lo = this.def.loadout || {}; L.vest = 'vest4'; L.helmet = 'helm4'; L.meds = Object.assign({ bandage: 4, medkit: 2, stim: 1 }, L.meds);
+    if (lo.optic && L.primary) { const a = DATA.attachments[lo.optic]; if (a && a.fits.includes(DATA.weapons[L.primary.id].class)) L.primary.att = Object.assign({}, L.primary.att, { optic: lo.optic }); else L.primary = { id: 'warden', att: Object.assign(defaultAttach(DATA.weapons.warden), { optic: lo.optic }) }; }
+    if (lo.throwables) L.throwables = Object.assign({}, L.throwables, lo.throwables); return L;
+  }
+  objectiveFor(sq) { return sq === this.pSquad ? { type: 'regroup', r: 8 } : null; }
+  vehicleGoal(v, s) { return s.brain?.goal?.pos || null; }
+  // ---- script host hooks ----
+  onPlayerVehicle(v, a) { this.playerVeh = { id: a.id, tag: a.tag || null, seat: a.playerSeat || 0, v }; }
+  squadBoard(a) { const v = Vehicles.list.find((x) => x.tag === a.vtag && !x.dead); if (!v) return; for (const s of this.pSquad.members) { if (s.player || s.state !== 'alive' || s.vehicle) continue; const seat = v.freeSeat(s); if (seat >= 0) { s.pos.copy(v.pos); v.enter(s, seat); } } if (G.players[1] && !G.players[1].soldier.vehicle) { const seat = v.freeSeat(G.players[1].soldier); if (seat >= 0) v.enter(G.players[1].soldier, seat); } }
+  squadDismount() { this.playerVeh = null; for (const s of this.pSquad.members) if (!s.player && s.vehicle) s.vehicle.exit(s); }
+  checkpoint(step) { const P = G.players.find((q) => q.soldier.state === 'alive') || G.players[0]; this.cp = { step, pos: P.soldier.pos.clone(), yaw: P.soldier.yaw }; G.save.campaign.checkpoint = { m: this.def.id, step }; if (step > 0) for (const q of G.players) q.note('Checkpoint', 'good'); }
+  onScriptDone() { if (this.over) return; const C = G.save.campaign; if (!C.done.includes(this.def.id)) C.done.push(this.def.id); const best = C.best[this.def.id]; if (!best || this.t < best) C.best[this.def.id] = Math.round(this.t); C.checkpoint = null; this.next = DATA.missions[this.idx + 1] ? this.idx + 1 : null; Save.save(); Challenges.track('mission', G.players[0]?.soldier, { id: this.def.id }); this.end(0, 'MISSION COMPLETE'); }
+  onScriptFail(sc, text) { if (this.over) return; this.end(1, 'MISSION FAILED · ' + text); }
+  // ---- deaths: allies come back after a while; the players restart from the checkpoint ----
+  onKill(v, k, info) { if (v.ally) this.allyQ.push({ s: v, t: 30 }); }
+  playerDied(P) { const alive = G.players.filter((q) => q.soldier.state !== 'dead'); if (alive.length) { P.note('Your partner can bring you back — or wait 20 s to regroup', 'bad'); this.allyQ.push({ s: P.soldier, t: 20, player: true }); return; } this.deaths++; setTimeout(() => this.restoreCheckpoint(), 3000); for (const q of G.players) q.note('Squad wiped — restoring checkpoint', 'bad', 0, 2.5); }
+  restoreCheckpoint() {
+    if (this.over) return; const cp = this.cp; UI.fade(true); setTimeout(() => UI.fade(false), 600);
+    G.players.forEach((P, i) => { const pos = this.spawnAt({ pos: cp.pos, r: 3 }); respawnSoldier(P.soldier, pos, cp.yaw ?? this.def.yaw ?? 0, this.playerLoadout(P, P.operator || G.save.lastOperator)); P.soldier.spawnProtect = 3; void i; });
+    for (const s of this.pSquad.members) if (!s.player) { const pos = this.spawnAt({ pos: cp.pos, r: 6 }); respawnSoldier(s, pos, rand(0, TAU), null); s.hp = s.maxHp; s.ally = true; }
+    this.allyQ = this.allyQ.filter((x) => !x.player); this.reboardPlayerVehicle();
+  }
+  reboardPlayerVehicle() { const pv = this.playerVeh; if (!pv) return; const P = G.players[0]; let v = pv.v; if (!v || v.dead || v.removed || (v.occupants[pv.seat] && !v.occupants[pv.seat].player)) { const p = P.soldier.pos; v = Vehicles.spawn(pv.id, V3(p.x, Math.max(World.heightAt(p.x, p.z), World.waterAt(p.x, p.z)) + 2, p.z), P.soldier.yaw, 0); if (!v) return; v.tag = pv.tag; pv.v = v; } if (P.soldier.vehicle !== v) { P.soldier.pos.copy(v.pos); v.enter(P.soldier, pv.seat); } if (pv.tag) this.squadBoard({ vtag: pv.tag }); }
+  update(dt) {
+    super.update(dt); if (this.over) return; this.script.update(dt);
+    for (let i = this.allyQ.length - 1; i >= 0; i--) { const x = this.allyQ[i]; if (x.s.state !== 'dead') { this.allyQ.splice(i, 1); continue; } x.t -= dt; if (x.t > 0) continue; this.allyQ.splice(i, 1); const L = G.players.find((q) => q.soldier.state === 'alive')?.soldier; if (!L) continue; const pos = this.spawnAt({ pos: L.pos, r: 5 }); if (x.player) respawnSoldier(x.s, pos, L.yaw, this.playerLoadout(x.s.player, x.s.player.operator || G.save.lastOperator)); else { respawnSoldier(x.s, pos, L.yaw, null); x.s.ally = true; } }
+  }
+  hud(P) { const sc = this.script; const cur = sc?.cur; return { info: this.def.name.toUpperCase() + ' · ' + fmtTime(this.t), markers: sc ? sc.markers : [], objectives: cur && cur.text ? [{ text: cur.text, done: false }] : null }; }
+  rewards() { const won = this.result?.winner === 0; return G.players.map((P) => ({ P, xp: Math.round((won ? 1500 : 300) + P.soldier.kills * 80), credits: won ? 2500 : 300 })); }
+  resultsExtra() { const won = this.result?.winner === 0; const D = this.def; return `<div class="box"><h2>${won ? 'Debrief' : 'Mission failed'}</h2><p>${esc(won ? D.debrief : 'Regroup and try again. Checkpoints reset when you restart the mission.')}</p><p class="dim">Time ${fmtTime(this.t)} (par ${fmtTime(D.par || 900)}) · squad wipes ${this.deaths} · kills ${G.players.map((P) => P.soldier.kills).join(' / ')}${won && G.save.campaign.best[D.id] ? ' · best ' + fmtTime(G.save.campaign.best[D.id]) : ''}</p></div>`; }
+  dispose() { this.script?.dispose(); }
+}
+const Campaign = {
+  start(i) { const D = DATA.missions[i]; if (!D) return; Game.start(new CampaignMode({ def: D, idx: i, map: D.map, variant: D.variant })); },
+  unlocked(i) { return i === 0 || G.save.campaign.done.includes(DATA.missions[i - 1]?.id) || G.save.campaign.done.includes(DATA.missions[i]?.id); },
+};
 
 // §HUD -------------------------------------------------------------------------------------------------
 const HUDFeed = {
@@ -5421,8 +5480,8 @@ const UI = {
     const s = this.panel(`<div class="body"><div class="box"><h1 style="font-size:28px;letter-spacing:.25em">${esc(R.text || 'Match over')}</h1><div class="dim">${esc(m.name())} · ${esc(World.def?.name || '')} · ${fmtTime(R.t || m.t)}</div>
       ${o.lines.map((l) => `<p>${esc(l)}</p>`).join('')}${m.resultsExtra ? m.resultsExtra() : ''}</div>
       ${m.kind !== 'extraction' && m.kind !== 'training' && m.kind !== 'range' ? `<div class="cols"><div class="box"><h2>${esc(m.teams[0].name)}</h2><table class="t"><tr><th>Name</th><th>Operator</th><th>K</th><th>D</th><th>A</th><th>Rev</th><th>Score</th></tr>${list.filter((x) => x.team === 0).slice(0, 34).map(row).join('')}</table></div><div class="box"><h2>${esc(m.teams[1].name)}</h2><table class="t"><tr><th>Name</th><th>Operator</th><th>K</th><th>D</th><th>A</th><th>Rev</th><th>Score</th></tr>${list.filter((x) => x.team === 1).slice(0, 34).map(row).join('')}</table></div></div>` : ''}
-      <div class="row"><button class="btn pri" data-act="menu">Continue</button>${m.kind === 'campaign' && m.next ? '<button class="btn" data-act="next">Next mission</button>' : ''}</div></div>`);
-    this.wire(s, { menu: () => Game.quit(m.kind === 'extraction' ? 'hub' : m.kind === 'campaign' ? 'campaign' : 'title'), next: () => { Game.quit('campaign'); setTimeout(() => Campaign.start(m.next), 50); } });
+      <div class="row"><button class="btn pri" data-act="menu">Continue</button>${m.kind === 'campaign' && m.next != null ? '<button class="btn" data-act="next">Next mission</button>' : ''}${m.kind === 'campaign' ? '<button class="btn" data-act="retry">' + (R.winner === 0 ? 'Replay' : 'Retry') + '</button>' : ''}</div></div>`);
+    this.wire(s, { menu: () => Game.quit(m.kind === 'extraction' ? 'hub' : m.kind === 'campaign' ? 'campaign' : 'title'), next: () => { Game.quit('campaign'); setTimeout(() => Campaign.start(m.next), 50); }, retry: () => { Game.quit('campaign'); setTimeout(() => Campaign.start(m.idx), 50); } });
   },
   // deploy map: choose where to spawn (base, objectives, squadmates, vehicles, beacons)
   deploy(P, optsFn, cb) {
@@ -5602,6 +5661,42 @@ Object.assign(UI, {
       box.querySelector('[data-x]').onclick = close; };
     const kh = (e) => { if (e.code === 'Escape' || e.code === 'KeyE' || e.code === 'Tab') { e.preventDefault(); close(); } }; document.addEventListener('keydown', kh); draw();
     const watch = setInterval(() => { if (!box.isConnected) return clearInterval(watch); if (s.state !== 'alive' || s.pos.distanceTo(c.pos) > 4) { clearInterval(watch); close(); } }, 250);
+  },
+});
+// §UI-CAMPAIGN ---------------------------------------------------------------------------------------------
+// World map of the six nations with mission pins; selecting a pin opens its briefing.
+Object.assign(UI, {
+  s_campaign(o = {}) {
+    const ms = DATA.missions; let sel = o.sel ?? Math.min(ms.length - 1, ms.findIndex((m, i) => !G.save.campaign.done.includes(m.id) && Campaign.unlocked(i))); if (sel < 0) sel = 0; const D = ms[sel]; const M = DATA.maps[D.map]; const C = DATA.countries[M.country]; const op = o.op || G.save.lastOperator || 'kestrel'; const diff = o.diff || G.settings.difficulty || 'regular';
+    const s = this.panel(this.topbar('campaign', this.MAIN_TABS) + `<div class="body"><div class="cols"><div class="box" style="flex:1.4"><h2>The Accord campaign <span class="dim" style="font-size:12px">· ${G.save.campaign.done.length}/${ms.length} complete</span></h2><canvas width="900" height="560" style="width:100%;max-width:900px;cursor:pointer"></canvas>
+        <div class="row" style="flex-wrap:wrap;margin-top:6px">${ms.map((m, i) => `<button class="btn ${i === sel ? 'on' : ''} ${Campaign.unlocked(i) ? '' : 'dis'}" data-m="${i}">${i + 1}. ${esc(m.name)}${G.save.campaign.done.includes(m.id) ? ' ✓' : ''}</button>`).join(' ')}</div></div>
+      <div class="box"><div class="tag" style="color:var(--amber);letter-spacing:.2em">MISSION ${sel + 1} · ${esc(C?.name || '')}</div><h1 style="margin:4px 0">${esc(D.name)}</h1><div class="dim">${esc(M.name)} · ${esc((M.variants || []).find((v) => v.id === D.variant)?.name || '')} · ${M.biomes.map((b) => DATA.biomes[b].name).join(' / ')}</div>
+        <p style="line-height:1.5">${esc(D.brief)}</p><p class="dim" style="font-size:12px">${esc(C?.blurb || '')}</p>
+        <p class="dim" style="font-size:12px">${G.players.length > 1 || G.settings.coop ? 'Split-screen co-op: both players in the squad, plus AI riflemen.' : 'Solo: you lead an AI squad of ' + (D.squad ?? 3) + '. They follow you, revive you and ride with you. U gives orders.'}${G.save.campaign.best[D.id] ? ' · Best time ' + fmtTime(G.save.campaign.best[D.id]) : ''} · Par ${fmtTime(D.par || 900)}</p>
+        <h2>Operator</h2><div class="row" style="flex-wrap:wrap">${Object.values(DATA.operators).map((x) => `<button class="btn ${x.id === op ? 'on' : ''}" data-op="${x.id}">${esc(x.name)}</button>`).join(' ')}</div>
+        <h2 style="margin-top:8px">Difficulty</h2><div class="row">${this.diffRow(diff)}</div>
+        <button class="btn pri" data-act="go" style="margin-top:12px;font-size:16px;padding:10px 28px" ${Campaign.unlocked(sel) ? '' : 'disabled'}>${Campaign.unlocked(sel) ? 'Deploy' : 'Complete mission ' + sel + ' first'}</button></div></div></div>`);
+    const cv = s.querySelector('canvas'); this.drawWorld(cv, sel);
+    cv.onclick = (e) => { const b = cv.getBoundingClientRect(); const x = (e.clientX - b.left) / b.width * 900, y = (e.clientY - b.top) / b.height * 560; let best = -1, bd = 40; ms.forEach((m, i) => { const p = this.missionPin(i); const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = i; } }); if (best >= 0) this.open('campaign', { sel: best, op, diff }); };
+    s.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => this.open('campaign', { sel: +b.dataset.m, op, diff }));
+    s.querySelectorAll('[data-op]').forEach((b) => b.onclick = () => this.open('campaign', { sel, op: b.dataset.op, diff }));
+    s.querySelectorAll('[data-diff]').forEach((b) => b.onclick = () => this.open('campaign', { sel, op, diff: b.dataset.diff }));
+    this.wire(s, { back: () => this.open('title'), go: () => { if (!Campaign.unlocked(sel)) return; G.save.lastOperator = op; G.settings.difficulty = diff; Save.save(); Save.saveSettings(); Campaign.start(sel); } });
+  },
+  missionPin(i) { const D = DATA.missions[i]; const c = DATA.countries[DATA.maps[D.map].country]; const k = DATA.missions.filter((m, j) => j < i && DATA.maps[m.map].country === DATA.maps[D.map].country).length; return [c.pos[0] * 900 + (k ? 34 : -14), c.pos[1] * 560 + (k ? 18 : -10)]; },
+  drawWorld(cv, sel) {
+    const g = cv.getContext('2d'); const W = cv.width, H = cv.height; const WM = DATA.worldmap || {}; g.fillStyle = WM.ocean || '#0d1d26'; g.fillRect(0, 0, W, H);
+    const cs = Object.values(DATA.countries); const rng = new RNG(WM.seed || 911); const noise = makeNoise(WM.seed || 911);
+    // landmass: metaballs around each capital, edged by noise
+    const img = g.getImageData(0, 0, W, H); const dat = img.data; const land = new Uint8Array(W * H); const own = new Int8Array(W * H).fill(-1);
+    for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { let f = 0, best = -1, bv = 0; cs.forEach((c, i) => { const dx = x / W - c.pos[0], dy = (y / H - c.pos[1]) * 0.65; const v = 0.034 / (dx * dx + dy * dy + 0.006); f += v; if (v > bv) { bv = v; best = i; } }); f += noise.fbm(x * 0.006, y * 0.006, 4) * 2.2; if (f > 4.2) for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) { const k = (y + yy) * W + x + xx; land[k] = 1; own[k] = best; } }
+    const base = (WM.land || '#2a3a34').match(/\w\w/g).map((h) => parseInt(h, 16)); const tint = cs.map((c) => (c.flag?.stripes?.[0] || '#888').match(/\w\w/g).map((h) => parseInt(h, 16)));
+    for (let k = 0; k < W * H; k++) { if (!land[k]) continue; const t = tint[own[k]]; const x = k % W, y = (k / W) | 0; const border = (x > 0 && own[k - 1] !== own[k]) || (y > 0 && own[k - W] !== own[k]); const coast = !land[k - 1] || !land[k + 1] || !land[k - W] || !land[k + W]; const m = border ? 0.55 : 1; for (let j = 0; j < 3; j++) dat[k * 4 + j] = coast ? 200 : (base[j] * 0.75 + t[j] * 0.25) * m; dat[k * 4 + 3] = 255; }
+    g.putImageData(img, 0, 0); void rng;
+    g.font = '600 13px Inter, sans-serif'; g.textAlign = 'center'; for (const c of cs) { g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText(c.name.toUpperCase(), c.pos[0] * W, c.pos[1] * H + 34); g.fillStyle = 'rgba(255,255,255,.4)'; g.font = '11px Inter, sans-serif'; g.fillText(c.capital || '', c.pos[0] * W, c.pos[1] * H + 48); g.font = '600 13px Inter, sans-serif'; }
+    // campaign route
+    g.strokeStyle = 'rgba(255,180,60,.5)'; g.setLineDash([6, 6]); g.lineWidth = 2; g.beginPath(); DATA.missions.forEach((m, i) => { const p = this.missionPin(i); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); }); g.stroke(); g.setLineDash([]);
+    DATA.missions.forEach((m, i) => { const p = this.missionPin(i); const done = G.save.campaign.done.includes(m.id); const open = Campaign.unlocked(i); g.fillStyle = done ? '#6fe08a' : open ? '#ffb43c' : '#55626a'; g.beginPath(); g.arc(p[0], p[1], i === sel ? 13 : 10, 0, TAU); g.fill(); if (i === sel) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); } g.fillStyle = '#000'; g.font = 'bold 12px monospace'; g.fillText(String(i + 1), p[0], p[1] + 4); });
   },
 });
 
@@ -5947,7 +6042,7 @@ async function boot() {
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();
 
 </script>
