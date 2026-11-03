@@ -7,10 +7,34 @@ A 1v1 (and 2v2, and 4-way) giant-monster fighting game in one self-contained `in
 Serve the folder and open it in a desktop browser:
 
 ```bash
-npx http-server games/kaiju-clash -p 8080   # then open http://localhost:8080
+npx http-server kaiju-clash -p 8080   # from the repo root, then open http://localhost:8080
 ```
 
+Live copy: https://rgallaghertt.github.io/vector-game/kaiju-clash/
+
 Serving is recommended, because some browsers restrict ES modules on `file://` pages. Three.js `0.160.0` and `@dimforge/rapier3d-compat` `0.12.0` load from jsDelivr through the import map, so the first load needs internet access.
+
+## Working on this game
+
+Anyone with write access to `rgallagherTT/vector-game` can change KAIJU CLASH. The repo owner adds people under **Settings → Collaborators → Add people**. Claude Code users: [`CLAUDE.md`](CLAUDE.md) in this folder has the rules and the publish steps, and Claude Code reads it when it works on these files.
+
+The short version:
+
+1. **This folder is the source of truth.** Edit `kaiju-clash/` on the `main` branch. Pull first (`git pull origin main`) so you start from the latest copy.
+2. **Only change files inside `kaiju-clash/`.** Other folders are other people's games.
+3. **Test before you publish.** Serve the folder (see *Run*), play a match, and check the browser console for errors. Try `?touch=1` too if you touched controls or the HUD.
+4. **Publish to both branches.** Push `main`, then copy the folder onto `gh-pages`. That branch is the live site:
+
+   ```bash
+   git push origin main
+   git checkout gh-pages && git pull origin gh-pages
+   git checkout main -- kaiju-clash          # copy just this folder from main
+   git commit -m "kaiju-clash: <what changed>" && git push origin gh-pages
+   git checkout main
+   ```
+
+5. **Check it went live.** On GitHub, open **Actions**, find the newest **"pages build and deployment"** run on `gh-pages` and wait for a green tick. The site updates a minute or two later. Ignore the **"Deploy to GitHub Pages"** workflow; it always fails and isn't used.
+6. **Never force-push**, and never rewrite history on `main` or `gh-pages`.
 
 ## Controls
 
