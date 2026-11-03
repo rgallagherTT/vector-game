@@ -119,7 +119,7 @@ class ViewModel {
     // recoil kick decays back
     this.kick.multiplyScalar(Math.exp(-14 * dt)); this.kickR.multiplyScalar(Math.exp(-12 * dt));
     // hip / ads base positions: ADS puts the sight line on the view axis
-    const rear = M.rz1 ?? 0.15; const hip = gun.def.model.pistol ? [0.12, -0.13, -0.34] : [0.16, -0.17, -0.3 - rear]; const adsP = [0, -M.sightY, gun.def.model.pistol ? -0.3 : -0.12 - rear];
+    const rear = M.rz1 ?? 0.15; const hip = gun.def.model.pistol ? [0.12, -0.13, -0.36] : [0.15, -0.165, -0.34 - rear]; const adsP = [0, -M.sightY, gun.def.model.pistol ? -0.3 : -0.12 - rear];
     const leanX = s.leanAmt * 0.04;
     let px = lerp(hip[0], adsP[0], adsT) + this.sway.x + Math.cos(this.bob) * bobA + leanX, py = lerp(hip[1], adsP[1], adsT) + this.sway.y + Math.abs(Math.sin(this.bob)) * bobA * 0.8, pz = lerp(hip[2], adsP[2], adsT);
     let rx = 0, ry = 0, rz = -s.leanAmt * 0.15 * (1 - adsT);

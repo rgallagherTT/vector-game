@@ -265,7 +265,7 @@ const GAME_TITLE = "FRONT ZERO";  // placeholder
 // §CONFIG ------------------------------------------------------------------------------
 const CONFIG = {
   seed: 7177,
-  render: { pixelRatioMax: 1.5, shadowSize: 2048, shadowArea: 70, viewFar: 2600, fov: 76, vmFov: 54, fog: 0.0009 },
+  render: { pixelRatioMax: 1.5, shadowSize: 2048, shadowArea: 70, viewFar: 2600, fov: 76, vmFov: 60, fog: 0.0009 },
   world: { cell: 4, chunk: 128, lod: [{ ring: 1, step: 1 }, { ring: 3, step: 2 }, { ring: 6, step: 4 }, { ring: 12, step: 8 }], streamPerFrame: 3, streamBudgetMs: 3, skirt: 6 },
   gravity: 9.81,
   move: {
@@ -2661,7 +2661,7 @@ class ViewModel {
     // recoil kick decays back
     this.kick.multiplyScalar(Math.exp(-14 * dt)); this.kickR.multiplyScalar(Math.exp(-12 * dt));
     // hip / ads base positions: ADS puts the sight line on the view axis
-    const rear = M.rz1 ?? 0.15; const hip = gun.def.model.pistol ? [0.12, -0.13, -0.34] : [0.16, -0.17, -0.3 - rear]; const adsP = [0, -M.sightY, gun.def.model.pistol ? -0.3 : -0.12 - rear];
+    const rear = M.rz1 ?? 0.15; const hip = gun.def.model.pistol ? [0.12, -0.13, -0.36] : [0.15, -0.165, -0.34 - rear]; const adsP = [0, -M.sightY, gun.def.model.pistol ? -0.3 : -0.12 - rear];
     const leanX = s.leanAmt * 0.04;
     let px = lerp(hip[0], adsP[0], adsT) + this.sway.x + Math.cos(this.bob) * bobA + leanX, py = lerp(hip[1], adsP[1], adsT) + this.sway.y + Math.abs(Math.sin(this.bob)) * bobA * 0.8, pz = lerp(hip[2], adsP[2], adsT);
     let rx = 0, ry = 0, rz = -s.leanAmt * 0.15 * (1 - adsT);
@@ -3619,21 +3619,24 @@ const Nav = {
   nearestFree(x, z, r = 6) { if (this.free(x, z)) return V3(x, 0, z); for (let d = 1; d <= r; d++) for (let a = 0; a < 8; a++) { const px = x + Math.cos(a / 8 * TAU) * d, pz = z + Math.sin(a / 8 * TAU) * d; if (this.free(px, pz)) return V3(px, 0, pz); } return null; },
   lineFree(ax, az, bx, bz) { const d = Math.hypot(bx - ax, bz - az); const n = Math.ceil(d / 0.7); for (let i = 1; i < n; i++) { const t = i / n; if (!this.free(lerp(ax, bx, t), lerp(az, bz, t))) return false; } return true; },
   // generic A* on a grid; cost(i) < 0 = blocked
-  astar(w, h, si, gi, cost, nodeXY, maxNodes) {
+  // grid A* (8-neighbour, no corner cutting). cost(x, z) → step cost, or < 0 when blocked. No allocation per node.
+  astar(w, h, si, gi, cost, maxNodes) {
     const st = ++this.stamp; const G2 = this.gScore, FR = this.from, SA = this.stampA; const H = this.heap; H.clear();
-    const [gx, gz] = nodeXY(gi); const hfn = (i) => { const [x, z] = nodeXY(i); const dx = Math.abs(x - gx), dz = Math.abs(z - gz); return (dx + dz - 0.59 * Math.min(dx, dz)) * 1.05; };
-    SA[si] = st; G2[si] = 0; FR[si] = -1; H.push(hfn(si), si); let exp = 0; let best = si, bestH = 1e9;
+    const gx = gi % w, gz = (gi / w) | 0; const hfn = (x, z) => { const dx = Math.abs(x - gx), dz = Math.abs(z - gz); return (dx + dz - 0.59 * (dx < dz ? dx : dz)) * 1.05; };
+    SA[si] = st; G2[si] = 0; FR[si] = -1; H.push(hfn(si % w, (si / w) | 0), si); let exp = 0; let best = si, bestH = 1e9;
     while (H.size && exp++ < maxNodes) {
-      const c = H.pop(); if (c === gi) { best = gi; break; } const [cx, cz] = nodeXY(c); const hc = hfn(c); if (hc < bestH) { bestH = hc; best = c; }
-      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue; const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= w || nz >= h) continue; const ni = nz * w + nx; const k = cost(ni); if (k < 0) continue;
-        if (dx && dz && (cost(cz * w + nx) < 0 || cost(nz * w + cx) < 0)) continue; const g = G2[c] + k * (dx && dz ? 1.414 : 1);
-        if (SA[ni] !== st || g < G2[ni]) { SA[ni] = st; G2[ni] = g; FR[ni] = c; H.push(g + hfn(ni), ni); } }
+      const c = H.pop(); if (c === gi) { best = gi; break; } const cx = c % w, cz = (c / w) | 0; const hc = hfn(cx, cz); if (hc < bestH) { bestH = hc; best = c; } const gc = G2[c];
+      for (let dz = -1; dz <= 1; dz++) { const nz = cz + dz; if (nz < 0 || nz >= h) continue; for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue; const nx = cx + dx; if (nx < 0 || nx >= w) continue; const k = cost(nx, nz); if (k < 0) continue;
+        if (dx && dz && (cost(nx, cz) < 0 || cost(cx, nz) < 0)) continue; const ni = nz * w + nx; const g = gc + k * (dx && dz ? 1.414 : 1);
+        if (SA[ni] !== st || g < G2[ni]) { SA[ni] = st; G2[ni] = g; FR[ni] = c; H.push(g + hfn(nx, nz), ni); } } }
     }
     const out = []; let c = best; let guard = 0; while (c >= 0 && guard++ < 100000) { out.push(c); if (c === si) break; c = FR[c]; } return out.reverse();
   },
   coarsePath(a, b) {
     const cn = this.cn, C = this.CC, half = World.half; const ci = (x, z) => clamp(Math.floor((z + half) / C), 0, cn - 1) * cn + clamp(Math.floor((x + half) / C), 0, cn - 1);
-    const path = this.astar(cn, cn, ci(a.x, a.z), ci(b.x, b.z), (i) => this.coarse[i], (i) => [i % cn, Math.floor(i / cn)], 6000);
+    // squads share goals, so coarse routes are cached per (start cell, goal cell) for a few seconds
+    const si = ci(a.x, a.z), gi = ci(b.x, b.z); const key = si * 100000 + gi; this.cCache ||= new Map(); if (G.time - (this.cCacheT || 0) > 6) { this.cCache.clear(); this.cCacheT = G.time; }
+    let path = this.cCache.get(key); if (!path) { const CO = this.coarse; path = this.astar(cn, cn, si, gi, (x, z) => CO[z * cn + x], 5000); this.cCache.set(key, path); }
     return path.map((i) => V3((i % cn + 0.5) * C - half, 0, (Math.floor(i / cn) + 0.5) * C - half));
   },
   // fine path inside a window around a→b (1 m cells)
@@ -3641,10 +3644,10 @@ const Nav = {
     const n = this.fn, half = World.half; const W = 140; const cx = Math.floor((a.x + b.x) / 2 + half), cz = Math.floor((a.z + b.z) / 2 + half); const x0 = clamp(cx - W / 2, 0, n - W), z0 = clamp(cz - W / 2, 0, n - W);
     const ga = this.nearestFree(a.x, a.z, 3) || a, gb = this.nearestFree(b.x, b.z, 8) || b;
     const toL = (x, z) => [clamp(Math.floor(x + half) - x0, 0, W - 1), clamp(Math.floor(z + half) - z0, 0, W - 1)]; const [sa, sb] = toL(ga.x, ga.z), [ea, eb] = toL(gb.x, gb.z);
-    const F = this.F; const path = this.astar(W, W, sb * W + sa, eb * W + ea, (i) => { const v = F[(z0 + Math.floor(i / W)) * n + x0 + (i % W)]; return v === 1 || v === 2 ? -1 : v === 3 ? 4 : 1; }, (i) => [i % W, Math.floor(i / W)], 9000);
+    const F = this.F; const path = this.astar(W, W, sb * W + sa, eb * W + ea, (x, z) => { const v = F[(z0 + z) * n + x0 + x]; return v === 1 || v === 2 ? -1 : v === 3 ? 4 : 1; }, 4500);
     const pts = path.map((i) => V3(x0 + (i % W) - half + 0.5, 0, z0 + Math.floor(i / W) - half + 0.5));
     // string-pull with grid line-of-sight
-    const out = []; let k = 0; if (!pts.length) return [b.clone()]; out.push(pts[0]); while (k < pts.length - 1) { let j = pts.length - 1; while (j > k + 1 && !this.lineFree(pts[k].x, pts[k].z, pts[j].x, pts[j].z)) j--; out.push(pts[j]); k = j; }
+    const out = []; let k = 0; if (!pts.length) return [b.clone()]; out.push(pts[0]); while (k < pts.length - 1) { let j = Math.min(pts.length - 1, k + 40); while (j > k + 1 && !this.lineFree(pts[k].x, pts[k].z, pts[j].x, pts[j].z)) j -= j - k > 8 ? 3 : 1; out.push(pts[j]); k = j; }
     return out;
   },
 };
@@ -3653,7 +3656,7 @@ const Nav = {
 const AI = {
   noises: [], tickers: 0,
   noise(pos, r, src, kind) { if (r < 2) return; this.noises.push({ x: pos.x, y: pos.y, z: pos.z, r, src, kind, t: G.time }); if (this.noises.length > 200) this.noises.splice(0, this.noises.length - 200); },
-  update(dt) { const t = G.time; this.noises = this.noises.filter((n) => t - n.t < 0.6); Nav.budget = 6; },
+  update(dt) { const t = G.time; this.noises = this.noises.filter((n) => t - n.t < 0.6); Nav.budget = 2; },
   clear() { this.noises.length = 0; },
 };
 
