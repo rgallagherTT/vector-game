@@ -1,0 +1,504 @@
+{
+ "id": "skyline",
+ "name": "Skyline",
+ "country": "portaurel",
+ "size": 2000,
+ "seed": 909,
+ "biomes": [
+  "urban",
+  "coastal"
+ ],
+ "mask": {
+  "type": "edge",
+  "dir": "e",
+  "start": 0.85,
+  "blend": 0.05
+ },
+ "baseHeight": 6,
+ "border": 120,
+ "blurb": "Glass towers, rooftop helipads and a neon downtown that never sleeps.",
+ "sea": {
+  "dir": "e",
+  "shore": 0.88,
+  "level": 0,
+  "depth": 14
+ },
+ "sites": [
+  {
+   "id": "city",
+   "name": "Downtown",
+   "kind": "city",
+   "x": -40,
+   "z": 0,
+   "r": 620,
+   "block": 58,
+   "street": 16,
+   "floors": [
+    4,
+    9
+   ],
+   "ground": "asphalt"
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord staging",
+   "kind": "base",
+   "x": -760,
+   "z": 720,
+   "r": 90,
+   "helipad": true,
+   "ground": "asphalt"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 560,
+   "z": -760,
+   "r": 90,
+   "helipad": true,
+   "ground": "asphalt"
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -760,
+     720
+    ],
+    [
+     -400,
+     400
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     400,
+     -400
+    ],
+    [
+     560,
+     -760
+    ]
+   ],
+   "width": 14,
+   "surf": "asphalt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "spire",
+   "type": "radio_tower",
+   "name": "Broadcast spire",
+   "x": 60,
+   "z": -60,
+   "h": 60
+  }
+ ],
+ "bases": [
+  {
+   "x": -760,
+   "z": 720,
+   "yaw": 2.36
+  },
+  {
+   "x": 560,
+   "z": -760,
+   "yaw": -0.6
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -801,
+   "z": 664,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -774,
+   "z": 664,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -746,
+   "z": 664,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -719,
+   "z": 664,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -801,
+   "z": 696,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -774,
+   "z": 696,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_bike",
+   "x": -746,
+   "z": 696,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "interceptor",
+   "x": -719,
+   "z": 696,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "hover_tank",
+   "x": 519,
+   "z": -736,
+   "yaw": -0.6,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 546,
+   "z": -736,
+   "yaw": -0.6,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 574,
+   "z": -736,
+   "yaw": -0.6,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 601,
+   "z": -736,
+   "yaw": -0.6,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 519,
+   "z": -704,
+   "yaw": -0.6,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 546,
+   "z": -704,
+   "yaw": -0.6,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "interceptor",
+   "x": 574,
+   "z": -704,
+   "yaw": -0.6,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "exo_suit",
+   "x": 601,
+   "z": -704,
+   "yaw": -0.6,
+   "team": 1
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Freeway",
+    "objs": [
+     {
+      "name": "Toll plaza",
+      "x": -500,
+      "z": 450
+     },
+     {
+      "name": "Underpass",
+      "x": -400,
+      "z": 300
+     }
+    ]
+   },
+   {
+    "name": "Plaza",
+    "objs": [
+     {
+      "name": "Fountain plaza",
+      "x": -150,
+      "z": 150
+     },
+     {
+      "name": "Metro entrance",
+      "x": -50,
+      "z": 250
+     }
+    ]
+   },
+   {
+    "name": "Tower row",
+    "objs": [
+     {
+      "name": "Tower row",
+      "x": 100,
+      "z": -40
+     },
+     {
+      "name": "Atrium",
+      "x": 200,
+      "z": 60
+     }
+    ],
+    "destroy": "spire"
+   },
+   {
+    "name": "Financial core",
+    "objs": [
+     {
+      "name": "Exchange",
+      "x": 300,
+      "z": -300
+     },
+     {
+      "name": "Bank court",
+      "x": 400,
+      "z": -200
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 560,
+      "z": -760
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Toll plaza",
+   "x": -500,
+   "z": 450
+  },
+  {
+   "id": "B",
+   "name": "Fountain plaza",
+   "x": -150,
+   "z": 150
+  },
+  {
+   "id": "C",
+   "name": "Tower row",
+   "x": 100,
+   "z": -40
+  },
+  {
+   "id": "D",
+   "name": "Exchange",
+   "x": 300,
+   "z": -300
+  },
+  {
+   "id": "E",
+   "name": "Old docks",
+   "x": 560,
+   "z": 300
+  },
+  {
+   "id": "F",
+   "name": "Park",
+   "x": -350,
+   "z": -350
+  }
+ ],
+ "pois": [
+  {
+   "name": "Penthouse",
+   "x": 100,
+   "z": -40,
+   "r": 60,
+   "tier": 5,
+   "key": "key_penthouse",
+   "boss": "warden"
+  },
+  {
+   "name": "Exchange",
+   "x": 300,
+   "z": -300,
+   "r": 70,
+   "tier": 4
+  },
+  {
+   "name": "Fountain plaza",
+   "x": -150,
+   "z": 150,
+   "r": 70,
+   "tier": 2
+  },
+  {
+   "name": "Old docks",
+   "x": 560,
+   "z": 300,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Park",
+   "x": -350,
+   "z": -350,
+   "r": 60,
+   "tier": 1
+  }
+ ],
+ "extracts": [
+  {
+   "name": "Freeway",
+   "x": -860,
+   "z": 200,
+   "kind": "open"
+  },
+  {
+   "name": "Rooftop helipad",
+   "x": 110,
+   "z": -30,
+   "kind": "flare"
+  },
+  {
+   "name": "Metro tunnel",
+   "x": -50,
+   "z": 260,
+   "kind": "key",
+   "key": "key_penthouse"
+  },
+  {
+   "name": "Harbour taxi",
+   "x": 700,
+   "z": 300,
+   "kind": "timed",
+   "opens": 360
+  }
+ ],
+ "areas": [
+  {
+   "id": "plaza",
+   "name": "Fountain plaza",
+   "x": -150,
+   "z": 150,
+   "r": 160,
+   "dom": [
+    [
+     -200,
+     100
+    ],
+    [
+     -150,
+     150
+    ],
+    [
+     -90,
+     210
+    ]
+   ],
+   "spawns": [
+    [
+     -300,
+     40
+    ],
+    [
+     0,
+     260
+    ]
+   ]
+  },
+  {
+   "id": "core",
+   "name": "Financial core",
+   "x": 320,
+   "z": -260,
+   "r": 160,
+   "dom": [
+    [
+     260,
+     -300
+    ],
+    [
+     320,
+     -260
+    ],
+    [
+     380,
+     -210
+    ]
+   ],
+   "spawns": [
+    [
+     200,
+     -380
+    ],
+    [
+     440,
+     -140
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "night",
+   "name": "Night rain",
+   "hour": 22.5,
+   "weather": "neonrain"
+  },
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 12,
+   "weather": "clear"
+  },
+  {
+   "id": "fog",
+   "name": "Fog",
+   "hour": 7,
+   "weather": "fog"
+  },
+  {
+   "id": "smoke",
+   "name": "Burning city",
+   "hour": 17,
+   "weather": "smoke"
+  }
+ ]
+}

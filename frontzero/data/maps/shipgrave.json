@@ -1,0 +1,650 @@
+{
+ "id": "shipgrave",
+ "name": "Shipgrave",
+ "country": "kharavan",
+ "size": 2400,
+ "seed": 202,
+ "biomes": [
+  "coastal",
+  "desert"
+ ],
+ "mask": {
+  "type": "edge",
+  "dir": "n",
+  "start": 0.62,
+  "blend": 0.1
+ },
+ "baseHeight": 6,
+ "blurb": "A coast of beached hulks and a harbour still working for whoever holds it.",
+ "sea": {
+  "dir": "s",
+  "shore": 0.66,
+  "level": 0,
+  "depth": 14
+ },
+ "sites": [
+  {
+   "id": "wrecks1",
+   "name": "Hulk row",
+   "kind": "wreckfield",
+   "x": -500,
+   "z": 340,
+   "r": 150,
+   "count": 7
+  },
+  {
+   "id": "wrecks2",
+   "name": "East wrecks",
+   "kind": "wreckfield",
+   "x": 250,
+   "z": 400,
+   "r": 120,
+   "count": 4
+  },
+  {
+   "id": "saltmarket",
+   "name": "Saltmarket",
+   "kind": "town",
+   "x": -100,
+   "z": 40,
+   "r": 160,
+   "density": 0.65,
+   "style": "adobe",
+   "floors": [
+    1,
+    3
+   ],
+   "ground": "dirt"
+  },
+  {
+   "id": "harbour",
+   "name": "Harbour",
+   "kind": "port",
+   "x": 520,
+   "z": 230,
+   "r": 130,
+   "density": 0.6,
+   "pier": {
+    "a": [
+     520,
+     330
+    ],
+    "b": [
+     520,
+     560
+    ],
+    "width": 14
+   },
+   "ground": "concrete"
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord landing base",
+   "kind": "base",
+   "x": -900,
+   "z": 160,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 300,
+   "z": -850,
+   "r": 110,
+   "helipad": true,
+   "ground": "gravel"
+  },
+  {
+   "id": "ruins",
+   "name": "Old well",
+   "kind": "ruins",
+   "x": -500,
+   "z": -420,
+   "r": 80
+  },
+  {
+   "id": "camp",
+   "name": "Dune camp",
+   "kind": "camp",
+   "x": 700,
+   "z": -300,
+   "r": 60
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -900,
+     160
+    ],
+    [
+     -500,
+     110
+    ],
+    [
+     -100,
+     40
+    ],
+    [
+     250,
+     90
+    ],
+    [
+     520,
+     230
+    ]
+   ],
+   "width": 9,
+   "surf": "asphalt"
+  },
+  {
+   "pts": [
+    [
+     -100,
+     40
+    ],
+    [
+     0,
+     -300
+    ],
+    [
+     300,
+     -820
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     520,
+     230
+    ],
+    [
+     700,
+     -300
+    ],
+    [
+     900,
+     -700
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "lighthouse",
+   "type": "lighthouse",
+   "name": "Lighthouse",
+   "x": 880,
+   "z": 360
+  },
+  {
+   "id": "tanker",
+   "type": "ship",
+   "name": "Stranded tanker",
+   "x": -250,
+   "z": 520,
+   "yaw": 0.4
+  },
+  {
+   "id": "radar",
+   "type": "radar",
+   "name": "Coast radar",
+   "x": 380,
+   "z": -780
+  }
+ ],
+ "bases": [
+  {
+   "x": -900,
+   "z": 160,
+   "yaw": 1.4
+  },
+  {
+   "x": 300,
+   "z": -850,
+   "yaw": -2.6
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -941,
+   "z": 84,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -914,
+   "z": 84,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -886,
+   "z": 84,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -859,
+   "z": 84,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -941,
+   "z": 116,
+   "yaw": 1.4,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -914,
+   "z": 116,
+   "yaw": 1.4,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_bike",
+   "x": -886,
+   "z": 116,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "assault_hovercraft",
+   "x": -900,
+   "z": 520,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "patrol_boat",
+   "x": -780,
+   "z": 560,
+   "yaw": 1.4,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 259,
+   "z": -816,
+   "yaw": -2.6,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 286,
+   "z": -816,
+   "yaw": -2.6,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 314,
+   "z": -816,
+   "yaw": -2.6,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 341,
+   "z": -816,
+   "yaw": -2.6,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 259,
+   "z": -784,
+   "yaw": -2.6,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 286,
+   "z": -784,
+   "yaw": -2.6,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "interceptor",
+   "x": 314,
+   "z": -784,
+   "yaw": -2.6,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 341,
+   "z": -784,
+   "yaw": -2.6,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "speeder_quad",
+   "x": -60,
+   "z": 80,
+   "yaw": 0.6,
+   "team": null
+  },
+  {
+   "type": "patrol_boat",
+   "x": 600,
+   "z": 560,
+   "yaw": 0,
+   "team": null
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "The Graveyard",
+    "objs": [
+     {
+      "name": "Hulk row",
+      "x": -500,
+      "z": 300
+     },
+     {
+      "name": "Beach huts",
+      "x": -350,
+      "z": 200
+     }
+    ]
+   },
+   {
+    "name": "Saltmarket",
+    "objs": [
+     {
+      "name": "Market",
+      "x": -150,
+      "z": 40
+     },
+     {
+      "name": "Customs",
+      "x": 0,
+      "z": 120
+     }
+    ]
+   },
+   {
+    "name": "Harbour",
+    "objs": [
+     {
+      "name": "Cranes",
+      "x": 450,
+      "z": 220
+     },
+     {
+      "name": "Pier head",
+      "x": 520,
+      "z": 360
+     }
+    ]
+   },
+   {
+    "name": "Dunes",
+    "objs": [
+     {
+      "name": "Dune camp",
+      "x": 700,
+      "z": -300
+     },
+     {
+      "name": "Old well",
+      "x": -500,
+      "z": -420
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 300,
+      "z": -840
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Hulk row",
+   "x": -500,
+   "z": 300
+  },
+  {
+   "id": "B",
+   "name": "Saltmarket",
+   "x": -100,
+   "z": 40
+  },
+  {
+   "id": "C",
+   "name": "Lighthouse",
+   "x": 860,
+   "z": 340
+  },
+  {
+   "id": "D",
+   "name": "Harbour",
+   "x": 520,
+   "z": 230
+  },
+  {
+   "id": "E",
+   "name": "Old well",
+   "x": -500,
+   "z": -420
+  },
+  {
+   "id": "F",
+   "name": "Dune camp",
+   "x": 700,
+   "z": -300
+  }
+ ],
+ "pois": [
+  {
+   "name": "Stranded tanker",
+   "x": -250,
+   "z": 520,
+   "r": 50,
+   "tier": 4,
+   "key": "key_bridge"
+  },
+  {
+   "name": "Lighthouse",
+   "x": 880,
+   "z": 360,
+   "r": 30,
+   "tier": 3
+  },
+  {
+   "name": "Harbour warehouses",
+   "x": 520,
+   "z": 230,
+   "r": 80,
+   "tier": 3
+  },
+  {
+   "name": "Saltmarket",
+   "x": -100,
+   "z": 40,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 300,
+   "z": -850,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  },
+  {
+   "name": "Hulk row",
+   "x": -500,
+   "z": 340,
+   "r": 90,
+   "tier": 2
+  },
+  {
+   "name": "Old well",
+   "x": -500,
+   "z": -420,
+   "r": 50,
+   "tier": 1
+  }
+ ],
+ "extracts": [
+  {
+   "name": "West road",
+   "x": -1050,
+   "z": -40,
+   "kind": "open"
+  },
+  {
+   "name": "Lighthouse boat",
+   "x": 930,
+   "z": 430,
+   "kind": "flare"
+  },
+  {
+   "name": "North dunes",
+   "x": 0,
+   "z": -1050,
+   "kind": "timed",
+   "opens": 400
+  },
+  {
+   "name": "Tanker deck",
+   "x": -250,
+   "z": 500,
+   "kind": "key",
+   "key": "key_bridge"
+  },
+  {
+   "name": "Harbour pier",
+   "x": 520,
+   "z": 520,
+   "kind": "guarded"
+  }
+ ],
+ "areas": [
+  {
+   "id": "saltmarket",
+   "name": "Saltmarket",
+   "x": -100,
+   "z": 40,
+   "r": 170,
+   "dom": [
+    [
+     -160,
+     20
+    ],
+    [
+     -80,
+     80
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "spawns": [
+    [
+     -250,
+     -80
+    ],
+    [
+     60,
+     150
+    ]
+   ]
+  },
+  {
+   "id": "harbour",
+   "name": "Harbour",
+   "x": 500,
+   "z": 240,
+   "r": 150,
+   "dom": [
+    [
+     430,
+     190
+    ],
+    [
+     500,
+     250
+    ],
+    [
+     570,
+     300
+    ]
+   ],
+   "spawns": [
+    [
+     380,
+     110
+    ],
+    [
+     620,
+     360
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "dusk",
+   "name": "Sea spray",
+   "hour": 18.4,
+   "weather": "spray"
+  },
+  {
+   "id": "storm",
+   "name": "Storm",
+   "hour": 15,
+   "weather": "storm"
+  },
+  {
+   "id": "night",
+   "name": "Night",
+   "hour": 1,
+   "weather": "clear"
+  }
+ ]
+}

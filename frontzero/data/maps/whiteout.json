@@ -1,0 +1,543 @@
+{
+ "id": "whiteout",
+ "name": "Whiteout",
+ "country": "nordheim",
+ "size": 2400,
+ "seed": 606,
+ "biomes": [
+  "mountain",
+  "arctic"
+ ],
+ "mask": {
+  "type": "noise",
+  "scale": 600,
+  "thresh": 0.25,
+  "blend": 0.2
+ },
+ "baseHeight": 20,
+ "blurb": "A fortress astride the only pass through the mountains. When the blizzard comes, nothing flies.",
+ "sites": [
+  {
+   "id": "fortress",
+   "name": "Pass fortress",
+   "kind": "fortress",
+   "x": 0,
+   "z": -40,
+   "r": 130,
+   "ground": "stone"
+  },
+  {
+   "id": "lowvillage",
+   "name": "Lower Brekke",
+   "kind": "town",
+   "x": 200,
+   "z": 640,
+   "r": 120,
+   "density": 0.6,
+   "style": "village",
+   "floors": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": "northvillage",
+   "name": "Vestfjell",
+   "kind": "town",
+   "x": -150,
+   "z": -640,
+   "r": 110,
+   "density": 0.55,
+   "style": "village",
+   "floors": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord camp",
+   "kind": "base",
+   "x": 0,
+   "z": 1000,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 0,
+   "z": -1000,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "switch",
+   "name": "Switchback post",
+   "kind": "camp",
+   "x": -60,
+   "z": 320,
+   "r": 50
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     0,
+     1000
+    ],
+    [
+     100,
+     700
+    ],
+    [
+     200,
+     640
+    ],
+    [
+     -50,
+     320
+    ],
+    [
+     0,
+     60
+    ]
+   ],
+   "width": 9,
+   "surf": "gravel"
+  },
+  {
+   "pts": [
+    [
+     0,
+     -150
+    ],
+    [
+     80,
+     -400
+    ],
+    [
+     -150,
+     -640
+    ],
+    [
+     0,
+     -1000
+    ]
+   ],
+   "width": 9,
+   "surf": "gravel"
+  }
+ ],
+ "structures": [
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Fortress mast",
+   "x": 60,
+   "z": -60,
+   "h": 46
+  }
+ ],
+ "bases": [
+  {
+   "x": 0,
+   "z": 1000,
+   "yaw": 3.14
+  },
+  {
+   "x": 0,
+   "z": -1000,
+   "yaw": 0
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -41,
+   "z": 944,
+   "yaw": 3.14,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -14,
+   "z": 944,
+   "yaw": 3.14,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": 14,
+   "z": 944,
+   "yaw": 3.14,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 41,
+   "z": 944,
+   "yaw": 3.14,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -41,
+   "z": 976,
+   "yaw": 3.14,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -14,
+   "z": 976,
+   "yaw": 3.14,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "assault_mech",
+   "x": 14,
+   "z": 976,
+   "yaw": 3.14,
+   "team": 0,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "snow_sled",
+   "x": 41,
+   "z": 976,
+   "yaw": 3.14,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": -41,
+   "z": -976,
+   "yaw": 0,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": -14,
+   "z": -976,
+   "yaw": 0,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 14,
+   "z": -976,
+   "yaw": 0,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 41,
+   "z": -976,
+   "yaw": 0,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -41,
+   "z": -944,
+   "yaw": 0,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -14,
+   "z": -944,
+   "yaw": 0,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "snow_sled",
+   "x": 14,
+   "z": -944,
+   "yaw": 0,
+   "team": 1
+  },
+  {
+   "type": "exo_suit",
+   "x": 41,
+   "z": -944,
+   "yaw": 0,
+   "team": 1
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Lower Brekke",
+    "objs": [
+     {
+      "name": "Village square",
+      "x": 200,
+      "z": 640
+     },
+     {
+      "name": "Chapel",
+      "x": 120,
+      "z": 740
+     }
+    ]
+   },
+   {
+    "name": "Switchbacks",
+    "objs": [
+     {
+      "name": "Switchback post",
+      "x": -60,
+      "z": 320
+     },
+     {
+      "name": "Hairpin",
+      "x": 60,
+      "z": 400
+     }
+    ]
+   },
+   {
+    "name": "Fortress",
+    "objs": [
+     {
+      "name": "Gatehouse",
+      "x": 0,
+      "z": 60
+     },
+     {
+      "name": "Keep",
+      "x": 0,
+      "z": -40
+     },
+     {
+      "name": "Wall walk",
+      "x": 70,
+      "z": -60
+     }
+    ]
+   },
+   {
+    "name": "Vestfjell",
+    "objs": [
+     {
+      "name": "Vestfjell",
+      "x": -150,
+      "z": -640
+     },
+     {
+      "name": "Mill",
+      "x": -60,
+      "z": -600
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 0,
+      "z": -1000
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Lower Brekke",
+   "x": 200,
+   "z": 640
+  },
+  {
+   "id": "B",
+   "name": "Switchbacks",
+   "x": -60,
+   "z": 320
+  },
+  {
+   "id": "C",
+   "name": "Gatehouse",
+   "x": 0,
+   "z": 60
+  },
+  {
+   "id": "D",
+   "name": "Keep",
+   "x": 0,
+   "z": -40
+  },
+  {
+   "id": "E",
+   "name": "Vestfjell",
+   "x": -150,
+   "z": -640
+  },
+  {
+   "id": "F",
+   "name": "Ice falls",
+   "x": 400,
+   "z": -200
+  }
+ ],
+ "pois": [
+  {
+   "name": "Fortress keep",
+   "x": 0,
+   "z": -40,
+   "r": 70,
+   "tier": 5,
+   "boss": "warden"
+  },
+  {
+   "name": "Lower Brekke",
+   "x": 200,
+   "z": 640,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Vestfjell",
+   "x": -150,
+   "z": -640,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Switchback post",
+   "x": -60,
+   "z": 320,
+   "r": 40,
+   "tier": 2
+  }
+ ],
+ "extracts": [
+  {
+   "name": "South road",
+   "x": 0,
+   "z": 1080,
+   "kind": "open"
+  },
+  {
+   "name": "Ice falls ledge",
+   "x": 420,
+   "z": -220,
+   "kind": "flare"
+  },
+  {
+   "name": "North pass",
+   "x": 0,
+   "z": -1080,
+   "kind": "guarded"
+  },
+  {
+   "name": "Goat track",
+   "x": -800,
+   "z": 0,
+   "kind": "timed",
+   "opens": 300
+  }
+ ],
+ "areas": [
+  {
+   "id": "fortress",
+   "name": "Pass fortress",
+   "x": 0,
+   "z": -40,
+   "r": 160,
+   "dom": [
+    [
+     -40,
+     40
+    ],
+    [
+     0,
+     -40
+    ],
+    [
+     60,
+     -80
+    ]
+   ],
+   "spawns": [
+    [
+     0,
+     160
+    ],
+    [
+     0,
+     -220
+    ]
+   ]
+  },
+  {
+   "id": "brekke",
+   "name": "Lower Brekke",
+   "x": 200,
+   "z": 640,
+   "r": 140,
+   "dom": [
+    [
+     150,
+     600
+    ],
+    [
+     200,
+     640
+    ],
+    [
+     260,
+     690
+    ]
+   ],
+   "spawns": [
+    [
+     60,
+     560
+    ],
+    [
+     320,
+     760
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "snow",
+   "name": "Snow",
+   "hour": 13,
+   "weather": "snow"
+  },
+  {
+   "id": "blizzard",
+   "name": "Blizzard",
+   "hour": 15,
+   "weather": "blizzard"
+  },
+  {
+   "id": "wind",
+   "name": "High wind",
+   "hour": 9,
+   "weather": "wind"
+  }
+ ]
+}

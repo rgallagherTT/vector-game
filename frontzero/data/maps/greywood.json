@@ -1,0 +1,774 @@
+{
+ "id": "greywood",
+ "name": "Greywood",
+ "country": "valmora",
+ "size": 3000,
+ "seed": 808,
+ "biomes": [
+  "temperate"
+ ],
+ "baseHeight": 20,
+ "blurb": "Beech forest, farms and the Greywood dam holding back a whole valley.",
+ "lakes": [
+  {
+   "x": 0,
+   "z": -950,
+   "r": 280,
+   "depth": 10
+  }
+ ],
+ "rivers": [
+  {
+   "pts": [
+    [
+     0,
+     -660
+    ],
+    [
+     60,
+     -300
+    ],
+    [
+     -40,
+     100
+    ],
+    [
+     80,
+     500
+    ],
+    [
+     0,
+     900
+    ],
+    [
+     60,
+     1450
+    ]
+   ],
+   "width": 22,
+   "depth": 3
+  }
+ ],
+ "sites": [
+  {
+   "id": "village",
+   "name": "Greywood",
+   "kind": "town",
+   "x": -320,
+   "z": -80,
+   "r": 160,
+   "density": 0.75,
+   "style": "village",
+   "floors": [
+    1,
+    3
+   ]
+  },
+  {
+   "id": "farm1",
+   "name": "South farms",
+   "kind": "farm",
+   "x": -600,
+   "z": 620,
+   "r": 110
+  },
+  {
+   "id": "farm2",
+   "name": "Orchard farm",
+   "kind": "farm",
+   "x": 520,
+   "z": 320,
+   "r": 100
+  },
+  {
+   "id": "mill",
+   "name": "Sawmill",
+   "kind": "ruins",
+   "x": 320,
+   "z": -320,
+   "r": 70
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -1100,
+   "z": 1100,
+   "r": 110,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 1100,
+   "z": -1100,
+   "r": 110,
+   "helipad": true
+  },
+  {
+   "id": "lodge",
+   "name": "Hunting lodge",
+   "kind": "camp",
+   "x": -700,
+   "z": -700,
+   "r": 60
+  },
+  {
+   "id": "damworks",
+   "name": "Dam works",
+   "kind": "outpost",
+   "x": 230,
+   "z": -700,
+   "r": 60
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -1100,
+     1100
+    ],
+    [
+     -600,
+     620
+    ],
+    [
+     -320,
+     -80
+    ],
+    [
+     -120,
+     -500
+    ],
+    [
+     -160,
+     -640
+    ]
+   ],
+   "width": 8,
+   "surf": "asphalt"
+  },
+  {
+   "pts": [
+    [
+     160,
+     -640
+    ],
+    [
+     230,
+     -700
+    ],
+    [
+     600,
+     -900
+    ],
+    [
+     1100,
+     -1100
+    ]
+   ],
+   "width": 8,
+   "surf": "asphalt"
+  },
+  {
+   "pts": [
+    [
+     -320,
+     -80
+    ],
+    [
+     -30,
+     100
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     30,
+     100
+    ],
+    [
+     520,
+     320
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "dam",
+   "type": "dam",
+   "name": "Greywood dam",
+   "a": [
+    -170,
+    -650
+   ],
+   "b": [
+    170,
+    -650
+   ],
+   "lake": 0,
+   "flood": {
+    "x": 0,
+    "z": -60,
+    "r": 760,
+    "rel": 9,
+    "rate": 0.5
+   }
+  },
+  {
+   "id": "farmbridge",
+   "type": "bridge",
+   "name": "Farm bridge",
+   "a": [
+    -35,
+    100
+   ],
+   "b": [
+    35,
+    100
+   ],
+   "width": 8
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Hill mast",
+   "x": -700,
+   "z": -300,
+   "h": 44
+  }
+ ],
+ "bases": [
+  {
+   "x": -1100,
+   "z": 1100,
+   "yaw": 2.36
+  },
+  {
+   "x": 1100,
+   "z": -1100,
+   "yaw": -0.79
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -1141,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -1114,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -1086,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -1059,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -1141,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -1114,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -1086,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_hauler",
+   "x": -1059,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "assault_mech",
+   "x": -1141,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "strike_fighter",
+   "x": -1114,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "interceptor",
+   "x": -1086,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": -1059,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "exo_suit",
+   "x": -1141,
+   "z": 1142,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 1059,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 1086,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 1114,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 1141,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 1059,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 1086,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": 1114,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_hauler",
+   "x": 1141,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "assault_mech",
+   "x": 1059,
+   "z": -1010,
+   "yaw": -0.79,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "strike_fighter",
+   "x": 1086,
+   "z": -1010,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "interceptor",
+   "x": 1114,
+   "z": -1010,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 1141,
+   "z": -1010,
+   "yaw": -0.79,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "exo_suit",
+   "x": 1059,
+   "z": -978,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "patrol_boat",
+   "x": 0,
+   "z": -1050,
+   "yaw": 0,
+   "team": null
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "South farms",
+    "objs": [
+     {
+      "name": "Barns",
+      "x": -600,
+      "z": 620
+     },
+     {
+      "name": "Silo",
+      "x": -460,
+      "z": 740
+     }
+    ]
+   },
+   {
+    "name": "Greywood",
+    "objs": [
+     {
+      "name": "Village green",
+      "x": -320,
+      "z": -80
+     },
+     {
+      "name": "Church",
+      "x": -220,
+      "z": 0
+     },
+     {
+      "name": "Inn",
+      "x": -420,
+      "z": -180
+     }
+    ]
+   },
+   {
+    "name": "The Dam",
+    "objs": [
+     {
+      "name": "Dam crest",
+      "x": 0,
+      "z": -650
+     },
+     {
+      "name": "Dam works",
+      "x": 230,
+      "z": -700
+     }
+    ],
+    "destroy": "dam"
+   },
+   {
+    "name": "Reservoir",
+    "objs": [
+     {
+      "name": "Boathouse",
+      "x": 330,
+      "z": -1180
+     },
+     {
+      "name": "Pump house",
+      "x": -330,
+      "z": -760
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 1100,
+      "z": -1100
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "South farms",
+   "x": -600,
+   "z": 620
+  },
+  {
+   "id": "B",
+   "name": "Greywood",
+   "x": -320,
+   "z": -80
+  },
+  {
+   "id": "C",
+   "name": "Farm bridge",
+   "x": 0,
+   "z": 100
+  },
+  {
+   "id": "D",
+   "name": "Orchard",
+   "x": 520,
+   "z": 320
+  },
+  {
+   "id": "E",
+   "name": "Sawmill",
+   "x": 320,
+   "z": -320
+  },
+  {
+   "id": "F",
+   "name": "Dam",
+   "x": 0,
+   "z": -650
+  },
+  {
+   "id": "G",
+   "name": "Lodge",
+   "x": -700,
+   "z": -700
+  }
+ ],
+ "pois": [
+  {
+   "name": "Dam control",
+   "x": 230,
+   "z": -700,
+   "r": 50,
+   "tier": 4,
+   "key": "key_mill"
+  },
+  {
+   "name": "Sawmill",
+   "x": 320,
+   "z": -320,
+   "r": 50,
+   "tier": 3,
+   "key": "key_mill"
+  },
+  {
+   "name": "Greywood",
+   "x": -320,
+   "z": -80,
+   "r": 90,
+   "tier": 2
+  },
+  {
+   "name": "Hunting lodge",
+   "x": -700,
+   "z": -700,
+   "r": 40,
+   "tier": 3
+  },
+  {
+   "name": "Orchard farm",
+   "x": 520,
+   "z": 320,
+   "r": 60,
+   "tier": 1
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 1100,
+   "z": -1100,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "South road",
+   "x": -300,
+   "z": 1350,
+   "kind": "open"
+  },
+  {
+   "name": "Reservoir boat",
+   "x": 0,
+   "z": -1150,
+   "kind": "flare"
+  },
+  {
+   "name": "Mill gate",
+   "x": 320,
+   "z": -300,
+   "kind": "key",
+   "key": "key_mill"
+  },
+  {
+   "name": "East forest",
+   "x": 1350,
+   "z": 300,
+   "kind": "timed",
+   "opens": 420
+  },
+  {
+   "name": "Lodge",
+   "x": -700,
+   "z": -700,
+   "kind": "guarded"
+  }
+ ],
+ "areas": [
+  {
+   "id": "village",
+   "name": "Greywood",
+   "x": -320,
+   "z": -80,
+   "r": 180,
+   "dom": [
+    [
+     -380,
+     -120
+    ],
+    [
+     -320,
+     -80
+    ],
+    [
+     -250,
+     -20
+    ]
+   ],
+   "spawns": [
+    [
+     -480,
+     -200
+    ],
+    [
+     -160,
+     60
+    ]
+   ]
+  },
+  {
+   "id": "dam",
+   "name": "The Dam",
+   "x": 0,
+   "z": -650,
+   "r": 170,
+   "dom": [
+    [
+     -90,
+     -620
+    ],
+    [
+     0,
+     -650
+    ],
+    [
+     90,
+     -620
+    ]
+   ],
+   "spawns": [
+    [
+     -120,
+     -500
+    ],
+    [
+     140,
+     -800
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "rain",
+   "name": "Rain",
+   "hour": 15,
+   "weather": "rain"
+  },
+  {
+   "id": "fog",
+   "name": "Fog",
+   "hour": 7,
+   "weather": "fog"
+  },
+  {
+   "id": "dusk",
+   "name": "Dusk",
+   "hour": 19,
+   "weather": "clear"
+  }
+ ]
+}

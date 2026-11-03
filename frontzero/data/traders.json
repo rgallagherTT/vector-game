@@ -1,0 +1,87 @@
+{
+  "meta": { "note": "Traders sell stock gated by reputation (0-1). buyMul = what the trader pays as a fraction of base price for the types it buys. Market prices drift daily. Base modules cost credits + materials; recipes need a module level and take real minutes (a raid counts as 10 minutes)." },
+  "traders": [
+    {
+      "id": "sable", "name": "Sable", "title": "Quartermaster", "color": "#d8a63a",
+      "desc": "Ex-Accord logistics. Sells rifles, ammunition and attachments out of a shipping container. Pays fair for weapons.",
+      "buys": ["weapon", "ammo", "attachment"], "buyMul": 0.55,
+      "levels": [
+        { "rep": 0, "stock": ["harrow", "wasp", "breacher", "viper", "rook", "c56_fmj", "c68_fmj", "c9_fmj", "g12_buck", "c11_fmj", "reddot", "x2", "suppressor", "vgrip", "extmag"] },
+        { "rep": 0.15, "stock": ["vanta", "hornet", "longreach", "spindle", "anvil", "needle", "c56_ap", "c68_ap", "c9_ap", "c86_fmj", "c11_ap", "c79_fmj", "g12_flech", "c13_fmj", "x4", "holo", "compensator", "laser"] },
+        { "rep": 0.4, "stock": ["corsair", "brigand", "warden", "lynx", "tusk", "whisper", "c86_ap", "g12_slug", "c79_ap", "c56_hp", "c68_hp", "rkt_av", "x8", "thermal", "drum"] },
+        { "rep": 0.7, "stock": ["halberd", "bulwark", "lancer", "arbiter", "nv", "ram", "skyhook", "seeker", "c56_core", "rkt_aa", "rkt_gm", "x12", "rangefinder"] }
+      ]
+    },
+    {
+      "id": "imre", "name": "Doc Imre", "title": "Field medic", "color": "#4fb6ff",
+      "desc": "Runs a clinic in a converted bus. Medical supplies, armour, and no questions about where you got the holes.",
+      "buys": ["med", "gear"], "buyMul": 0.5,
+      "levels": [
+        { "rep": 0, "stock": ["bandage", "medkit", "vest1", "vest2", "helm1", "helm2", "pack1", "rig1", "smoke"] },
+        { "rep": 0.15, "stock": ["stim", "vest3", "helm3", "pack2", "rig2", "flash"] },
+        { "rep": 0.4, "stock": ["surgkit", "focus", "vest4", "helm4", "pack3", "rig3", "frag"] },
+        { "rep": 0.7, "stock": ["vest5", "helm5", "pack4", "vest6", "helm6"] }
+      ]
+    },
+    {
+      "id": "magpie", "name": "Magpie", "title": "Fence", "color": "#c8506a",
+      "desc": "Buys anything shiny. Sells keys, flares and explosives to people with a reputation for paying.",
+      "buys": ["valuable", "material", "key", "throw"], "buyMul": 0.68,
+      "levels": [
+        { "rep": 0, "stock": ["scrap", "chem", "frag", "sensor"] },
+        { "rep": 0.15, "stock": ["flare", "key_mill", "key_bank", "electro", "breach", "emp"] },
+        { "rep": 0.4, "stock": ["key_bridge", "key_shrine", "battery", "sticky", "c4"] },
+        { "rep": 0.7, "stock": ["key_lab", "key_vault", "key_penthouse"] }
+      ]
+    }
+  ],
+  "market": { "buyMul": 1.3, "sellMul": 0.6, "drift": 0.18, "maxRarity": 4 },
+  "insurance": { "rate": 0.12, "returnChance": 0.75, "returnRaids": 2 },
+  "stash": { "w": 10, "rows": [14, 20, 26, 34] },
+  "base": [
+    { "id": "stash", "name": "Stash", "desc": "More shelving. Each level adds rows to your stash.", "levels": [
+      { "credits": 0, "mats": {} },
+      { "credits": 12000, "mats": { "scrap": 6, "cloth": 2 } },
+      { "credits": 36000, "mats": { "scrap": 12, "electro": 3 } },
+      { "credits": 90000, "mats": { "scrap": 20, "battery": 4, "electro": 6 } }
+    ] },
+    { "id": "generator", "name": "Generator", "desc": "Power for the rest of the base. Needed for workbench and intel level 2+.", "levels": [
+      { "credits": 0, "mats": {} },
+      { "credits": 9000, "mats": { "scrap": 8, "chem": 4 } },
+      { "credits": 30000, "mats": { "battery": 3, "electro": 4, "scrap": 10 } }
+    ] },
+    { "id": "medbay", "name": "Med bay", "desc": "Crafts bandages, medkits and stims. Level 2 starts each raid at full health and with one free bandage.", "levels": [
+      { "credits": 0, "mats": {} },
+      { "credits": 8000, "mats": { "cloth": 4, "chem": 3 } },
+      { "credits": 26000, "mats": { "chem": 8, "electro": 2 }, "needs": { "generator": 1 } }
+    ] },
+    { "id": "workbench", "name": "Workbench", "desc": "Crafts ammunition, grenades and attachments; repairs armour cheaper.", "levels": [
+      { "credits": 0, "mats": {} },
+      { "credits": 10000, "mats": { "scrap": 10, "powder": 2 } },
+      { "credits": 32000, "mats": { "electro": 5, "scrap": 14 }, "needs": { "generator": 1 } },
+      { "credits": 80000, "mats": { "battery": 4, "electro": 8 }, "needs": { "generator": 2 } }
+    ] },
+    { "id": "intel", "name": "Intel centre", "desc": "Level 1: a fourth contract slot. Level 2: insurance returns after one raid and market prices improve 5%.", "levels": [
+      { "credits": 0, "mats": {} },
+      { "credits": 15000, "mats": { "electro": 3, "circuit": 1 } },
+      { "credits": 45000, "mats": { "electro": 6, "drive": 1, "battery": 2 }, "needs": { "generator": 2 } }
+    ] }
+  ],
+  "recipes": [
+    { "id": "r_bandage", "module": "medbay", "lvl": 1, "out": { "id": "bandage", "n": 4 }, "in": { "cloth": 1 }, "mins": 2 },
+    { "id": "r_medkit", "module": "medbay", "lvl": 1, "out": { "id": "medkit", "n": 1 }, "in": { "cloth": 1, "chem": 2 }, "mins": 6 },
+    { "id": "r_stim", "module": "medbay", "lvl": 2, "out": { "id": "stim", "n": 2 }, "in": { "chem": 3, "electro": 1 }, "mins": 12 },
+    { "id": "r_surg", "module": "medbay", "lvl": 2, "out": { "id": "surgkit", "n": 1 }, "in": { "chem": 2, "cloth": 3, "electro": 1 }, "mins": 15 },
+    { "id": "r_c56", "module": "workbench", "lvl": 1, "out": { "id": "c56_fmj", "n": 120 }, "in": { "scrap": 1, "powder": 1 }, "mins": 4 },
+    { "id": "r_c68", "module": "workbench", "lvl": 1, "out": { "id": "c68_fmj", "n": 90 }, "in": { "scrap": 1, "powder": 1 }, "mins": 4 },
+    { "id": "r_frag", "module": "workbench", "lvl": 1, "out": { "id": "frag", "n": 2 }, "in": { "scrap": 1, "powder": 2 }, "mins": 5 },
+    { "id": "r_c56ap", "module": "workbench", "lvl": 2, "out": { "id": "c56_ap", "n": 90 }, "in": { "scrap": 2, "powder": 2, "electro": 1 }, "mins": 10 },
+    { "id": "r_c86ap", "module": "workbench", "lvl": 2, "out": { "id": "c86_ap", "n": 40 }, "in": { "scrap": 2, "powder": 3 }, "mins": 12 },
+    { "id": "r_flare", "module": "workbench", "lvl": 2, "out": { "id": "flare", "n": 1 }, "in": { "chem": 2, "powder": 1 }, "mins": 8 },
+    { "id": "r_supp", "module": "workbench", "lvl": 2, "out": { "id": "suppressor", "n": 1 }, "in": { "scrap": 4, "electro": 1 }, "mins": 14 },
+    { "id": "r_thermal", "module": "workbench", "lvl": 3, "out": { "id": "thermal", "n": 1 }, "in": { "electro": 4, "lens": 1, "battery": 2 }, "mins": 30 },
+    { "id": "r_vest4", "module": "workbench", "lvl": 3, "out": { "id": "vest4", "n": 1 }, "in": { "cloth": 6, "scrap": 6 }, "mins": 25 },
+    { "id": "r_nv", "module": "workbench", "lvl": 4, "out": { "id": "nv", "n": 1 }, "in": { "electro": 6, "lens": 2, "battery": 2 }, "mins": 40 },
+    { "id": "r_drive", "module": "intel", "lvl": 1, "out": { "id": "drive", "n": 1 }, "in": { "circuit": 2, "battery": 1 }, "mins": 20 }
+  ]
+}

@@ -1,0 +1,671 @@
+{
+ "id": "rivercut",
+ "name": "Rivercut",
+ "country": "selvara",
+ "size": 2400,
+ "seed": 303,
+ "biomes": [
+  "jungle",
+  "coastal"
+ ],
+ "mask": {
+  "type": "edge",
+  "dir": "s",
+  "start": 0.88,
+  "blend": 0.04
+ },
+ "baseHeight": 12,
+ "blurb": "A jungle river valley: the only road north is the water.",
+ "sea": {
+  "dir": "s",
+  "shore": 0.93,
+  "level": 0,
+  "depth": 10
+ },
+ "rivers": [
+  {
+   "pts": [
+    [
+     -200,
+     -1150
+    ],
+    [
+     -50,
+     -800
+    ],
+    [
+     150,
+     -500
+    ],
+    [
+     50,
+     -200
+    ],
+    [
+     -150,
+     100
+    ],
+    [
+     -50,
+     400
+    ],
+    [
+     150,
+     700
+    ],
+    [
+     100,
+     1000
+    ],
+    [
+     0,
+     1150
+    ]
+   ],
+   "width": 34,
+   "depth": 4
+  }
+ ],
+ "sites": [
+  {
+   "id": "puerto",
+   "name": "Puerto Lume",
+   "kind": "town",
+   "x": 260,
+   "z": 150,
+   "r": 140,
+   "density": 0.6,
+   "style": "stilt",
+   "ground": "mud"
+  },
+  {
+   "id": "camp",
+   "name": "Logging camp",
+   "kind": "camp",
+   "x": -450,
+   "z": -500,
+   "r": 70
+  },
+  {
+   "id": "temple",
+   "name": "Old temple",
+   "kind": "ruins",
+   "x": -500,
+   "z": 300,
+   "r": 90,
+   "density": 0.8
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -800,
+   "z": 800,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 800,
+   "z": -800,
+   "r": 110,
+   "helipad": true
+  },
+  {
+   "id": "ridge",
+   "name": "Ridge outpost",
+   "kind": "outpost",
+   "x": 500,
+   "z": -200,
+   "r": 60
+  },
+  {
+   "id": "port",
+   "name": "River mouth port",
+   "kind": "port",
+   "x": 320,
+   "z": 920,
+   "r": 100,
+   "style": "dock"
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -800,
+     800
+    ],
+    [
+     -500,
+     500
+    ],
+    [
+     -300,
+     200
+    ],
+    [
+     -175,
+     128
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     -85,
+     140
+    ],
+    [
+     260,
+     150
+    ],
+    [
+     500,
+     -200
+    ],
+    [
+     800,
+     -800
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     105,
+     -500
+    ],
+    [
+     -450,
+     -500
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     195,
+     -500
+    ],
+    [
+     500,
+     -200
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "southbridge",
+   "type": "bridge",
+   "name": "South bridge",
+   "a": [
+    -178,
+    128
+   ],
+   "b": [
+    -82,
+    142
+   ],
+   "width": 9
+  },
+  {
+   "id": "northbridge",
+   "type": "bridge",
+   "name": "North bridge",
+   "a": [
+    102,
+    -500
+   ],
+   "b": [
+    198,
+    -500
+   ],
+   "width": 9
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Ridge mast",
+   "x": 540,
+   "z": -230,
+   "h": 40
+  }
+ ],
+ "bases": [
+  {
+   "x": -800,
+   "z": 800,
+   "yaw": 2.3
+  },
+  {
+   "x": 800,
+   "z": -800,
+   "yaw": -0.8
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -841,
+   "z": 744,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -814,
+   "z": 744,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -786,
+   "z": 744,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -759,
+   "z": 744,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -841,
+   "z": 776,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -814,
+   "z": 776,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "patrol_boat",
+   "x": -45,
+   "z": 410,
+   "yaw": 3.1,
+   "team": 0
+  },
+  {
+   "type": "speeder_quad",
+   "x": -760,
+   "z": 720,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 759,
+   "z": -776,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 786,
+   "z": -776,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 814,
+   "z": -776,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 841,
+   "z": -776,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 759,
+   "z": -744,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 786,
+   "z": -744,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "interceptor",
+   "x": 814,
+   "z": -744,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "patrol_boat",
+   "x": -40,
+   "z": -800,
+   "yaw": 0.2,
+   "team": 1
+  },
+  {
+   "type": "assault_hovercraft",
+   "x": 60,
+   "z": 1090,
+   "yaw": 3.1,
+   "team": null
+  }
+ ],
+ "breakthrough": {
+  "attacker": 1,
+  "sectors": [
+   {
+    "name": "Ridge",
+    "objs": [
+     {
+      "name": "Ridge outpost",
+      "x": 500,
+      "z": -200
+     },
+     {
+      "name": "Logging road",
+      "x": 350,
+      "z": -420
+     }
+    ]
+   },
+   {
+    "name": "North bridge",
+    "objs": [
+     {
+      "name": "North bridge",
+      "x": 150,
+      "z": -500
+     },
+     {
+      "name": "Logging camp",
+      "x": -450,
+      "z": -500
+     }
+    ]
+   },
+   {
+    "name": "Puerto Lume",
+    "objs": [
+     {
+      "name": "Jetty",
+      "x": 250,
+      "z": 150
+     },
+     {
+      "name": "Chapel",
+      "x": 180,
+      "z": 60
+     },
+     {
+      "name": "Market",
+      "x": 320,
+      "z": 240
+     }
+    ],
+    "destroy": "southbridge"
+   },
+   {
+    "name": "Old temple",
+    "objs": [
+     {
+      "name": "Temple steps",
+      "x": -500,
+      "z": 300
+     },
+     {
+      "name": "Altar",
+      "x": -360,
+      "z": 420
+     }
+    ]
+   },
+   {
+    "name": "Accord HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": -800,
+      "z": 800
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Ridge",
+   "x": 500,
+   "z": -200
+  },
+  {
+   "id": "B",
+   "name": "North bridge",
+   "x": 150,
+   "z": -500
+  },
+  {
+   "id": "C",
+   "name": "Logging camp",
+   "x": -450,
+   "z": -500
+  },
+  {
+   "id": "D",
+   "name": "Puerto Lume",
+   "x": 260,
+   "z": 150
+  },
+  {
+   "id": "E",
+   "name": "Old temple",
+   "x": -500,
+   "z": 300
+  },
+  {
+   "id": "F",
+   "name": "River port",
+   "x": 320,
+   "z": 920
+  },
+  {
+   "id": "G",
+   "name": "South bridge",
+   "x": -130,
+   "z": 135
+  }
+ ],
+ "pois": [
+  {
+   "name": "Old temple",
+   "x": -500,
+   "z": 300,
+   "r": 70,
+   "tier": 3
+  },
+  {
+   "name": "Puerto Lume",
+   "x": 260,
+   "z": 150,
+   "r": 90,
+   "tier": 2
+  },
+  {
+   "name": "Logging camp",
+   "x": -450,
+   "z": -500,
+   "r": 50,
+   "tier": 2
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 800,
+   "z": -800,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  },
+  {
+   "name": "River port",
+   "x": 320,
+   "z": 920,
+   "r": 70,
+   "tier": 3
+  },
+  {
+   "name": "Ridge outpost",
+   "x": 500,
+   "z": -200,
+   "r": 50,
+   "tier": 2
+  }
+ ],
+ "extracts": [
+  {
+   "name": "River mouth",
+   "x": 100,
+   "z": 1080,
+   "kind": "open"
+  },
+  {
+   "name": "North trail",
+   "x": -600,
+   "z": -1050,
+   "kind": "timed",
+   "opens": 300
+  },
+  {
+   "name": "Temple clearing",
+   "x": -540,
+   "z": 340,
+   "kind": "flare"
+  },
+  {
+   "name": "Ridge",
+   "x": 500,
+   "z": -200,
+   "kind": "guarded"
+  }
+ ],
+ "areas": [
+  {
+   "id": "puerto",
+   "name": "Puerto Lume",
+   "x": 260,
+   "z": 150,
+   "r": 160,
+   "dom": [
+    [
+     190,
+     90
+    ],
+    [
+     260,
+     150
+    ],
+    [
+     330,
+     220
+    ]
+   ],
+   "spawns": [
+    [
+     100,
+     -20
+    ],
+    [
+     420,
+     320
+    ]
+   ]
+  },
+  {
+   "id": "temple",
+   "name": "Old temple",
+   "x": -500,
+   "z": 300,
+   "r": 130,
+   "dom": [
+    [
+     -560,
+     260
+    ],
+    [
+     -500,
+     300
+    ],
+    [
+     -440,
+     340
+    ]
+   ],
+   "spawns": [
+    [
+     -640,
+     200
+    ],
+    [
+     -360,
+     400
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 10,
+   "weather": "clear"
+  },
+  {
+   "id": "monsoon",
+   "name": "Monsoon",
+   "hour": 15,
+   "weather": "monsoon"
+  },
+  {
+   "id": "fog",
+   "name": "Dawn fog",
+   "hour": 6.5,
+   "weather": "fog"
+  },
+  {
+   "id": "night",
+   "name": "Night rain",
+   "hour": 23,
+   "weather": "rain"
+  }
+ ]
+}

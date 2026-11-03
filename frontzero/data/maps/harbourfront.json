@@ -1,0 +1,566 @@
+{
+ "id": "harbourfront",
+ "name": "Harbourfront",
+ "country": "portaurel",
+ "size": 2400,
+ "seed": 1010,
+ "biomes": [
+  "coastal",
+  "urban"
+ ],
+ "mask": {
+  "type": "edge",
+  "dir": "n",
+  "start": 0.6,
+  "blend": 0.06
+ },
+ "baseHeight": 5,
+ "blurb": "The container port that feeds half the ocean trade \u2014 cranes, stacks and a freighter at the berth.",
+ "sea": {
+  "dir": "s",
+  "shore": 0.7,
+  "level": 0,
+  "depth": 16
+ },
+ "sites": [
+  {
+   "id": "port",
+   "name": "Container port",
+   "kind": "port",
+   "x": 0,
+   "z": 300,
+   "r": 320,
+   "density": 0.9,
+   "pier": {
+    "a": [
+     -220,
+     420
+    ],
+    "b": [
+     -220,
+     720
+    ],
+    "width": 16
+   },
+   "ground": "concrete"
+  },
+  {
+   "id": "pier2",
+   "name": "East pier",
+   "kind": "port",
+   "x": 380,
+   "z": 330,
+   "r": 120,
+   "density": 0.4,
+   "pier": {
+    "a": [
+     380,
+     430
+    ],
+    "b": [
+     380,
+     700
+    ],
+    "width": 14
+   },
+   "ground": "concrete"
+  },
+  {
+   "id": "city",
+   "name": "Harbour district",
+   "kind": "city",
+   "x": 0,
+   "z": -420,
+   "r": 300,
+   "block": 50,
+   "street": 14,
+   "floors": [
+    2,
+    6
+   ],
+   "ground": "asphalt"
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -1000,
+   "z": -200,
+   "r": 100,
+   "helipad": true,
+   "ground": "concrete"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 1000,
+   "z": -200,
+   "r": 100,
+   "helipad": true,
+   "ground": "concrete"
+  },
+  {
+   "id": "customs",
+   "name": "Customs house",
+   "kind": "outpost",
+   "x": 520,
+   "z": 0,
+   "r": 70
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -1000,
+     -200
+    ],
+    [
+     -500,
+     100
+    ],
+    [
+     0,
+     200
+    ],
+    [
+     520,
+     0
+    ],
+    [
+     1000,
+     -200
+    ]
+   ],
+   "width": 12,
+   "surf": "asphalt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "freighter",
+   "type": "ship",
+   "name": "Freighter",
+   "x": 80,
+   "z": 620,
+   "yaw": 1.5708
+  },
+  {
+   "id": "lighthouse",
+   "type": "lighthouse",
+   "name": "Breakwater light",
+   "x": -700,
+   "z": 650
+  },
+  {
+   "id": "radar",
+   "type": "radar",
+   "name": "Port radar",
+   "x": 600,
+   "z": 150
+  }
+ ],
+ "bases": [
+  {
+   "x": -1000,
+   "z": -200,
+   "yaw": 1.57
+  },
+  {
+   "x": 1000,
+   "z": -200,
+   "yaw": -1.57
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -1041,
+   "z": -256,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -1014,
+   "z": -256,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -986,
+   "z": -256,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -959,
+   "z": -256,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -1041,
+   "z": -224,
+   "yaw": 1.57,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -1014,
+   "z": -224,
+   "yaw": 1.57,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "assault_hovercraft",
+   "x": -800,
+   "z": 600,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "patrol_boat",
+   "x": -600,
+   "z": 700,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 959,
+   "z": -256,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 986,
+   "z": -256,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 1014,
+   "z": -256,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 1041,
+   "z": -256,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 959,
+   "z": -224,
+   "yaw": -1.57,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 986,
+   "z": -224,
+   "yaw": -1.57,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "interceptor",
+   "x": 1014,
+   "z": -224,
+   "yaw": -1.57,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "patrol_boat",
+   "x": 700,
+   "z": 650,
+   "yaw": -1.57,
+   "team": 1
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "West docks",
+    "objs": [
+     {
+      "name": "Warehouse 9",
+      "x": -600,
+      "z": 300
+     },
+     {
+      "name": "Fuel jetty",
+      "x": -450,
+      "z": 200
+     }
+    ]
+   },
+   {
+    "name": "Container yard",
+    "objs": [
+     {
+      "name": "Stacks",
+      "x": -150,
+      "z": 250
+     },
+     {
+      "name": "Gantry",
+      "x": -50,
+      "z": 350
+     }
+    ]
+   },
+   {
+    "name": "Freighter berth",
+    "objs": [
+     {
+      "name": "Berth",
+      "x": 100,
+      "z": 450
+     },
+     {
+      "name": "Crane cab",
+      "x": 200,
+      "z": 350
+     }
+    ],
+    "destroy": "radar"
+   },
+   {
+    "name": "Customs",
+    "objs": [
+     {
+      "name": "Customs house",
+      "x": 520,
+      "z": 0
+     },
+     {
+      "name": "Gatehouse",
+      "x": 450,
+      "z": -150
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 1000,
+      "z": -200
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Warehouse 9",
+   "x": -600,
+   "z": 300
+  },
+  {
+   "id": "B",
+   "name": "Stacks",
+   "x": -150,
+   "z": 250
+  },
+  {
+   "id": "C",
+   "name": "Berth",
+   "x": 100,
+   "z": 450
+  },
+  {
+   "id": "D",
+   "name": "Customs",
+   "x": 520,
+   "z": 0
+  },
+  {
+   "id": "E",
+   "name": "Harbour district",
+   "x": 0,
+   "z": -420
+  },
+  {
+   "id": "F",
+   "name": "Breakwater",
+   "x": -700,
+   "z": 600
+  }
+ ],
+ "pois": [
+  {
+   "name": "Freighter",
+   "x": 80,
+   "z": 620,
+   "r": 60,
+   "tier": 4,
+   "key": "key_bridge"
+  },
+  {
+   "name": "Container stacks",
+   "x": -150,
+   "z": 250,
+   "r": 100,
+   "tier": 3
+  },
+  {
+   "name": "Customs house",
+   "x": 520,
+   "z": 0,
+   "r": 50,
+   "tier": 3
+  },
+  {
+   "name": "Harbour district",
+   "x": 0,
+   "z": -420,
+   "r": 120,
+   "tier": 2
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 1000,
+   "z": -200,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "North road",
+   "x": 0,
+   "z": -1050,
+   "kind": "open"
+  },
+  {
+   "name": "Breakwater boat",
+   "x": -700,
+   "z": 700,
+   "kind": "flare"
+  },
+  {
+   "name": "Freighter gangway",
+   "x": 80,
+   "z": 560,
+   "kind": "key",
+   "key": "key_bridge"
+  },
+  {
+   "name": "Rail spur",
+   "x": 1050,
+   "z": 400,
+   "kind": "timed",
+   "opens": 420
+  }
+ ],
+ "areas": [
+  {
+   "id": "yard",
+   "name": "Container yard",
+   "x": -100,
+   "z": 280,
+   "r": 170,
+   "dom": [
+    [
+     -170,
+     230
+    ],
+    [
+     -100,
+     290
+    ],
+    [
+     -30,
+     340
+    ]
+   ],
+   "spawns": [
+    [
+     -280,
+     160
+    ],
+    [
+     80,
+     380
+    ]
+   ]
+  },
+  {
+   "id": "district",
+   "name": "Harbour district",
+   "x": 0,
+   "z": -420,
+   "r": 170,
+   "dom": [
+    [
+     -60,
+     -460
+    ],
+    [
+     0,
+     -420
+    ],
+    [
+     60,
+     -380
+    ]
+   ],
+   "spawns": [
+    [
+     -160,
+     -520
+    ],
+    [
+     160,
+     -320
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "storm",
+   "name": "Storm",
+   "hour": 16,
+   "weather": "storm"
+  },
+  {
+   "id": "fog",
+   "name": "Fog",
+   "hour": 6.5,
+   "weather": "fog"
+  },
+  {
+   "id": "night",
+   "name": "Night",
+   "hour": 23,
+   "weather": "clear"
+  }
+ ]
+}

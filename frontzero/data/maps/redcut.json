@@ -1,0 +1,578 @@
+{
+ "id": "redcut",
+ "name": "Redcut",
+ "country": "ashkar",
+ "size": 2400,
+ "seed": 1212,
+ "biomes": [
+  "desert",
+  "mountain"
+ ],
+ "mask": {
+  "type": "noise",
+  "scale": 700,
+  "thresh": 0.35,
+  "blend": 0.15
+ },
+ "baseHeight": 14,
+ "blurb": "Red canyons cut by spring rivers, with a mine and a mesa-top fort above it all.",
+ "rivers": [
+  {
+   "pts": [
+    [
+     -1150,
+     500
+    ],
+    [
+     -600,
+     300
+    ],
+    [
+     -200,
+     200
+    ],
+    [
+     200,
+     100
+    ],
+    [
+     700,
+     -200
+    ],
+    [
+     1150,
+     -400
+    ]
+   ],
+   "width": 20,
+   "depth": 2.5
+  }
+ ],
+ "sites": [
+  {
+   "id": "mine",
+   "name": "Redcut mine",
+   "kind": "outpost",
+   "x": 200,
+   "z": 60,
+   "r": 90,
+   "density": 0.7
+  },
+  {
+   "id": "village",
+   "name": "Canyon village",
+   "kind": "town",
+   "x": -300,
+   "z": -300,
+   "r": 130,
+   "density": 0.65,
+   "style": "adobe",
+   "floors": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": "fort",
+   "name": "Mesa fort",
+   "kind": "fortress",
+   "x": 520,
+   "z": -520,
+   "r": 110,
+   "raise": 26,
+   "edge": 90
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -950,
+   "z": 700,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 950,
+   "z": -700,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "riverbed",
+   "name": "Dry ford",
+   "kind": "camp",
+   "x": -560,
+   "z": 260,
+   "r": 60
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -950,
+     700
+    ],
+    [
+     -560,
+     260
+    ],
+    [
+     -300,
+     -300
+    ],
+    [
+     200,
+     60
+    ],
+    [
+     520,
+     -520
+    ],
+    [
+     950,
+     -700
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "fuel",
+   "type": "fuel_depot",
+   "name": "Mine fuel",
+   "x": 260,
+   "z": 140
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Mesa mast",
+   "x": 560,
+   "z": -470,
+   "h": 38
+  },
+  {
+   "id": "ford",
+   "type": "bridge",
+   "name": "Ford bridge",
+   "a": [
+    -560,
+    225
+   ],
+   "b": [
+    -560,
+    310
+   ],
+   "width": 8
+  }
+ ],
+ "bases": [
+  {
+   "x": -950,
+   "z": 700,
+   "yaw": 2.2
+  },
+  {
+   "x": 950,
+   "z": -700,
+   "yaw": -0.9
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -991,
+   "z": 644,
+   "yaw": 2.2,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -964,
+   "z": 644,
+   "yaw": 2.2,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -936,
+   "z": 644,
+   "yaw": 2.2,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -909,
+   "z": 644,
+   "yaw": 2.2,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -991,
+   "z": 676,
+   "yaw": 2.2,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -964,
+   "z": 676,
+   "yaw": 2.2,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -936,
+   "z": 676,
+   "yaw": 2.2,
+   "team": 0
+  },
+  {
+   "type": "speeder_hauler",
+   "x": -909,
+   "z": 676,
+   "yaw": 2.2,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 909,
+   "z": -676,
+   "yaw": -0.9,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 936,
+   "z": -676,
+   "yaw": -0.9,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 964,
+   "z": -676,
+   "yaw": -0.9,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 991,
+   "z": -676,
+   "yaw": -0.9,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 909,
+   "z": -644,
+   "yaw": -0.9,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 936,
+   "z": -644,
+   "yaw": -0.9,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 964,
+   "z": -644,
+   "yaw": -0.9,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "interceptor",
+   "x": 991,
+   "z": -644,
+   "yaw": -0.9,
+   "team": 1,
+   "air": true
+  }
+ ],
+ "breakthrough": {
+  "attacker": 1,
+  "sectors": [
+   {
+    "name": "Mesa fort",
+    "objs": [
+     {
+      "name": "Fort gate",
+      "x": 520,
+      "z": -520
+     },
+     {
+      "name": "Mesa edge",
+      "x": 420,
+      "z": -600
+     }
+    ]
+   },
+   {
+    "name": "Redcut mine",
+    "objs": [
+     {
+      "name": "Mine head",
+      "x": 200,
+      "z": 60
+     },
+     {
+      "name": "Ore sheds",
+      "x": 300,
+      "z": 160
+     }
+    ],
+    "destroy": "fuel"
+   },
+   {
+    "name": "Canyon village",
+    "objs": [
+     {
+      "name": "Village",
+      "x": -300,
+      "z": -300
+     },
+     {
+      "name": "Cliff houses",
+      "x": -200,
+      "z": -200
+     }
+    ]
+   },
+   {
+    "name": "Dry ford",
+    "objs": [
+     {
+      "name": "Ford",
+      "x": -560,
+      "z": 260
+     },
+     {
+      "name": "Riverbed",
+      "x": -600,
+      "z": 150
+     }
+    ]
+   },
+   {
+    "name": "Accord HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": -950,
+      "z": 700
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Mesa fort",
+   "x": 520,
+   "z": -520
+  },
+  {
+   "id": "B",
+   "name": "Mine",
+   "x": 200,
+   "z": 60
+  },
+  {
+   "id": "C",
+   "name": "Canyon village",
+   "x": -300,
+   "z": -300
+  },
+  {
+   "id": "D",
+   "name": "Dry ford",
+   "x": -560,
+   "z": 260
+  },
+  {
+   "id": "E",
+   "name": "Red gate",
+   "x": 0,
+   "z": -650
+  },
+  {
+   "id": "F",
+   "name": "Sand falls",
+   "x": -100,
+   "z": 500
+  }
+ ],
+ "pois": [
+  {
+   "name": "Mesa fort",
+   "x": 520,
+   "z": -520,
+   "r": 70,
+   "tier": 4
+  },
+  {
+   "name": "Mine office",
+   "x": 200,
+   "z": 60,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Canyon village",
+   "x": -300,
+   "z": -300,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Dry ford",
+   "x": -560,
+   "z": 260,
+   "r": 40,
+   "tier": 1
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 950,
+   "z": -700,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "West canyon",
+   "x": -1050,
+   "z": 0,
+   "kind": "open"
+  },
+  {
+   "name": "Mesa top",
+   "x": 520,
+   "z": -520,
+   "kind": "flare"
+  },
+  {
+   "name": "Mine shaft",
+   "x": 210,
+   "z": 70,
+   "kind": "guarded"
+  },
+  {
+   "name": "South wash",
+   "x": 200,
+   "z": 1050,
+   "kind": "timed",
+   "opens": 360
+  }
+ ],
+ "areas": [
+  {
+   "id": "village",
+   "name": "Canyon village",
+   "x": -300,
+   "z": -300,
+   "r": 160,
+   "dom": [
+    [
+     -360,
+     -340
+    ],
+    [
+     -300,
+     -300
+    ],
+    [
+     -240,
+     -250
+    ]
+   ],
+   "spawns": [
+    [
+     -420,
+     -420
+    ],
+    [
+     -180,
+     -180
+    ]
+   ]
+  },
+  {
+   "id": "mine",
+   "name": "Redcut mine",
+   "x": 200,
+   "z": 60,
+   "r": 150,
+   "dom": [
+    [
+     150,
+     20
+    ],
+    [
+     200,
+     60
+    ],
+    [
+     260,
+     110
+    ]
+   ],
+   "spawns": [
+    [
+     80,
+     -60
+    ],
+    [
+     320,
+     180
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 12,
+   "weather": "clear"
+  },
+  {
+   "id": "haze",
+   "name": "Heat haze",
+   "hour": 15,
+   "weather": "haze"
+  },
+  {
+   "id": "storm",
+   "name": "Sandstorm",
+   "hour": 14,
+   "weather": "sandstorm"
+  },
+  {
+   "id": "dusk",
+   "name": "Dusk",
+   "hour": 18.6,
+   "weather": "clear"
+  }
+ ]
+}

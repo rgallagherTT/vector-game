@@ -1,0 +1,540 @@
+{
+ "id": "highpass",
+ "name": "Highpass",
+ "country": "ashkar",
+ "size": 2400,
+ "seed": 1111,
+ "biomes": [
+  "mountain",
+  "desert"
+ ],
+ "mask": {
+  "type": "edge",
+  "dir": "s",
+  "start": 0.7,
+  "blend": 0.12
+ },
+ "baseHeight": 10,
+ "blurb": "A monastery fortress on the ridge, reached by road or by the cable car from the valley.",
+ "sites": [
+  {
+   "id": "monastery",
+   "name": "Teral monastery",
+   "kind": "monastery",
+   "x": 300,
+   "z": -400,
+   "r": 110,
+   "raise": 55,
+   "edge": 140,
+   "ground": "stone"
+  },
+  {
+   "id": "village",
+   "name": "Upper Teral",
+   "kind": "town",
+   "x": -450,
+   "z": 450,
+   "r": 120,
+   "density": 0.6,
+   "style": "adobe",
+   "floors": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -950,
+   "z": 900,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 900,
+   "z": -900,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "shrine",
+   "name": "Prayer camp",
+   "kind": "camp",
+   "x": 0,
+   "z": 0,
+   "r": 60
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -950,
+     900
+    ],
+    [
+     -450,
+     450
+    ],
+    [
+     -100,
+     300
+    ],
+    [
+     100,
+     0
+    ],
+    [
+     250,
+     -300
+    ]
+   ],
+   "width": 8,
+   "surf": "gravel"
+  },
+  {
+   "pts": [
+    [
+     350,
+     -480
+    ],
+    [
+     900,
+     -900
+    ]
+   ],
+   "width": 8,
+   "surf": "gravel"
+  }
+ ],
+ "structures": [
+  {
+   "type": "cablecar",
+   "name": "Cable car",
+   "a": [
+    -400,
+    380
+   ],
+   "b": [
+    270,
+    -360
+   ],
+   "speed": 8
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Ridge mast",
+   "x": 420,
+   "z": -480,
+   "h": 40
+  }
+ ],
+ "bases": [
+  {
+   "x": -950,
+   "z": 900,
+   "yaw": 2.36
+  },
+  {
+   "x": 900,
+   "z": -900,
+   "yaw": -0.79
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -991,
+   "z": 844,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -964,
+   "z": 844,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -936,
+   "z": 844,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -909,
+   "z": 844,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -991,
+   "z": 876,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -964,
+   "z": 876,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -936,
+   "z": 876,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "interceptor",
+   "x": -909,
+   "z": 876,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "hover_tank",
+   "x": 859,
+   "z": -876,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 886,
+   "z": -876,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 914,
+   "z": -876,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 941,
+   "z": -876,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 859,
+   "z": -844,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 886,
+   "z": -844,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 914,
+   "z": -844,
+   "yaw": -0.79,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "exo_suit",
+   "x": 941,
+   "z": -844,
+   "yaw": -0.79,
+   "team": 1
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Upper Teral",
+    "objs": [
+     {
+      "name": "Village well",
+      "x": -450,
+      "z": 450
+     },
+     {
+      "name": "Tea house",
+      "x": -350,
+      "z": 350
+     }
+    ]
+   },
+   {
+    "name": "Cable station",
+    "objs": [
+     {
+      "name": "Lower station",
+      "x": -400,
+      "z": 380
+     },
+     {
+      "name": "Prayer camp",
+      "x": 0,
+      "z": 0
+     }
+    ]
+   },
+   {
+    "name": "Upper road",
+    "objs": [
+     {
+      "name": "Hairpin",
+      "x": 100,
+      "z": 0
+     },
+     {
+      "name": "Gate tower",
+      "x": 200,
+      "z": -220
+     }
+    ]
+   },
+   {
+    "name": "Monastery",
+    "objs": [
+     {
+      "name": "Courtyard",
+      "x": 300,
+      "z": -400
+     },
+     {
+      "name": "Bell tower",
+      "x": 250,
+      "z": -330
+     },
+     {
+      "name": "Library",
+      "x": 360,
+      "z": -460
+     }
+    ],
+    "destroy": "mast"
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 900,
+      "z": -900
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Upper Teral",
+   "x": -450,
+   "z": 450
+  },
+  {
+   "id": "B",
+   "name": "Lower station",
+   "x": -400,
+   "z": 380
+  },
+  {
+   "id": "C",
+   "name": "Prayer camp",
+   "x": 0,
+   "z": 0
+  },
+  {
+   "id": "D",
+   "name": "Gate tower",
+   "x": 200,
+   "z": -220
+  },
+  {
+   "id": "E",
+   "name": "Monastery",
+   "x": 300,
+   "z": -400
+  },
+  {
+   "id": "F",
+   "name": "Ridge mast",
+   "x": 420,
+   "z": -480
+  }
+ ],
+ "pois": [
+  {
+   "name": "Monastery vault",
+   "x": 300,
+   "z": -400,
+   "r": 60,
+   "tier": 5,
+   "key": "key_vault",
+   "boss": "warden"
+  },
+  {
+   "name": "Upper Teral",
+   "x": -450,
+   "z": 450,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Prayer camp",
+   "x": 0,
+   "z": 0,
+   "r": 40,
+   "tier": 2
+  },
+  {
+   "name": "Cable stations",
+   "x": -400,
+   "z": 380,
+   "r": 40,
+   "tier": 3
+  }
+ ],
+ "extracts": [
+  {
+   "name": "Valley road",
+   "x": -1050,
+   "z": 400,
+   "kind": "open"
+  },
+  {
+   "name": "Monastery roof",
+   "x": 300,
+   "z": -400,
+   "kind": "flare"
+  },
+  {
+   "name": "Vault stair",
+   "x": 320,
+   "z": -420,
+   "kind": "key",
+   "key": "key_vault"
+  },
+  {
+   "name": "Goat pass",
+   "x": 1050,
+   "z": 0,
+   "kind": "timed",
+   "opens": 360
+  }
+ ],
+ "areas": [
+  {
+   "id": "monastery",
+   "name": "Monastery",
+   "x": 300,
+   "z": -400,
+   "r": 150,
+   "dom": [
+    [
+     250,
+     -360
+    ],
+    [
+     300,
+     -400
+    ],
+    [
+     350,
+     -440
+    ]
+   ],
+   "spawns": [
+    [
+     180,
+     -280
+    ],
+    [
+     420,
+     -520
+    ]
+   ]
+  },
+  {
+   "id": "village",
+   "name": "Upper Teral",
+   "x": -450,
+   "z": 450,
+   "r": 140,
+   "dom": [
+    [
+     -500,
+     400
+    ],
+    [
+     -450,
+     450
+    ],
+    [
+     -400,
+     500
+    ]
+   ],
+   "spawns": [
+    [
+     -560,
+     330
+    ],
+    [
+     -340,
+     570
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "cloud",
+   "name": "Low cloud",
+   "hour": 9,
+   "weather": "cloud"
+  },
+  {
+   "id": "snow",
+   "name": "Snow",
+   "hour": 14,
+   "weather": "snow"
+  },
+  {
+   "id": "wind",
+   "name": "High wind",
+   "hour": 16,
+   "weather": "wind"
+  }
+ ]
+}
