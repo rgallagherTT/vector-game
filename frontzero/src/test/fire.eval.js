@@ -1,0 +1,4 @@
+(async () => { const F = window.FZ; const P = F.G.players[0]; const s = P.soldier; const tgt = F.Soldiers.list.find((x) => x.dummy && x.dummy.dist === 25 && x.vest.tier === 4);
+  const e = s.eye(new F.THREE.Vector3()); const c = tgt.center(new F.THREE.Vector3()); P.lookYaw = Math.atan2(c.x - e.x, c.z - e.z); P.lookPitch = Math.atan2(c.y - e.y, Math.hypot(c.x - e.x, c.z - e.z));
+  const hp0 = tgt.hp, ar0 = tgt.vest.dur, mag0 = s.gun.inMag; F.Input.mouse.locked = true; F.Input.mouse.b2 = true; await new Promise((r) => setTimeout(r, 600)); F.Input.mouse.b0 = true; await new Promise((r) => setTimeout(r, 700)); F.Input.mouse.b0 = false; await new Promise((r) => setTimeout(r, 300));
+  return { hp0, hp: tgt.hp, state: tgt.state, ar0, ar: tgt.vest.dur, mag0, mag: s.gun.inMag, ads: s.adsAmt, kills: s.kills, pitch: P.lookPitch, bullets: F.Ballistics.list.length }; })()

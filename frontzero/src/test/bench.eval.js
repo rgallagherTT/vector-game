@@ -1,0 +1,1 @@
+(async () => { const F = window.FZ; for (let i = 0; i < 2400 && !(F.G.bench && F.G.bench.done); i++) await new Promise((r) => setTimeout(r, 1000)); return { res: F.G.bench && F.G.bench.results, err: document.getElementById('err').textContent.slice(0, 300) }; })()

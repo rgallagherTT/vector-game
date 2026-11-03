@@ -1,0 +1,3 @@
+(async () => { const F = window.FZ; const W = (ms) => new Promise((r) => setTimeout(r, ms)); const out = {};
+  for (const n of ['title', 'armoury', 'gunsmith', 'progress', 'settings', 'warfareSetup', 'quickSetup', 'rangeSetup']) { try { F.UI.open(n, n === 'gunsmith' ? { op: 'rivet', slot: 'primary' } : {}); await W(400); out[n] = document.getElementById('ui').innerText.slice(0, 80).replace(/\n/g, ' | '); } catch (e) { out[n] = 'ERR ' + e.message; } }
+  F.UI.open('gunsmith', { op: 'wren', slot: 'primary' }); await W(300); const b = [...document.querySelectorAll('[data-att]')].find((x) => x.dataset.att.startsWith('optic:x4')); out.attBtn = !!b; if (b) { b.click(); await W(300); } out.err = document.getElementById('err').textContent.slice(0, 200); return out; })()

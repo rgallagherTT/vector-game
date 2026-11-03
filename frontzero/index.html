@@ -3575,10 +3575,10 @@ const Interact = {
 // (coarse 16 m grid for the route, 1 m grid A* for the next stretch, door portals carved through walls), cover
 // (points along every solid face), and what they can see (weather, darkness, foliage, smoke, camo, stance, cloak).
 const DIFFICULTY = {
-  recruit: { name: 'Recruit', react: 0.9, aimErr: 3.4, converge: 0.35, burst: [0.2, 0.45], pause: [0.6, 1.2], tactics: 0.2, flank: 0.1, grenade: 0.12, gadget: 0.25, vis: 0.8, hear: 0.7, turn: 3.0, lead: 0.4 },
-  regular: { name: 'Regular', react: 0.6, aimErr: 2.3, converge: 0.5, burst: [0.25, 0.6], pause: [0.45, 0.9], tactics: 0.5, flank: 0.3, grenade: 0.25, gadget: 0.5, vis: 0.95, hear: 0.85, turn: 4.0, lead: 0.7 },
-  hardened: { name: 'Hardened', react: 0.42, aimErr: 1.5, converge: 0.7, burst: [0.3, 0.8], pause: [0.35, 0.7], tactics: 0.75, flank: 0.5, grenade: 0.4, gadget: 0.75, vis: 1.05, hear: 1.0, turn: 5.0, lead: 0.85 },
-  veteran: { name: 'Veteran', react: 0.28, aimErr: 0.95, converge: 1.0, burst: [0.35, 1.0], pause: [0.25, 0.5], tactics: 1.0, flank: 0.7, grenade: 0.55, gadget: 1.0, vis: 1.12, hear: 1.15, turn: 6.0, lead: 1.0 },
+  recruit: { name: 'Recruit', react: 0.9, aimErr: 2.7, converge: 0.35, burst: [0.2, 0.45], pause: [0.6, 1.2], tactics: 0.2, flank: 0.1, grenade: 0.12, gadget: 0.25, vis: 0.8, hear: 0.7, turn: 3.0, lead: 0.4 },
+  regular: { name: 'Regular', react: 0.6, aimErr: 1.75, converge: 0.5, burst: [0.25, 0.6], pause: [0.45, 0.9], tactics: 0.5, flank: 0.3, grenade: 0.25, gadget: 0.5, vis: 0.95, hear: 0.85, turn: 4.0, lead: 0.7 },
+  hardened: { name: 'Hardened', react: 0.42, aimErr: 1.15, converge: 0.7, burst: [0.3, 0.8], pause: [0.35, 0.7], tactics: 0.75, flank: 0.5, grenade: 0.4, gadget: 0.75, vis: 1.05, hear: 1.0, turn: 5.0, lead: 0.85 },
+  veteran: { name: 'Veteran', react: 0.28, aimErr: 0.75, converge: 1.0, burst: [0.35, 1.0], pause: [0.25, 0.5], tactics: 1.0, flank: 0.7, grenade: 0.55, gadget: 1.0, vis: 1.12, hear: 1.15, turn: 6.0, lead: 1.0 },
 };
 // ---- navigation grids --------------------------------------------------------------------------
 const Nav = {
@@ -5638,6 +5638,8 @@ Object.assign(UI, {
     s.querySelectorAll('[data-free]').forEach((d) => d.onclick = () => re({ free: d.dataset.free === '1' }));
     this.wire(s, { back: () => this.open('title'), go: () => { if (!free && !K.primary) return this.toast(warn); G.save.lastOperator = op; Save.save(); Game.start(new Extraction({ map, variant, scav: free })); } });
   },
+  // inventory in a raid (I): your bag beside the ground at your feet, so things can be dropped or picked back up
+  inventory(P) { const s = P.soldier; if (P.idx > 0 || !P.src.kbm) { P.note('Bag: ' + G.mode.raidOf(P).inv.items.map((r) => Items.label(r)).join(', ').slice(0, 120), ''); return; } let c = Loot.list.find((x) => x.ground && x.pos.distanceTo(s.pos) < 3); if (!c) { c = Loot.container(s.pos.clone(), 'jacket', null, { body: s, items: [], name: 'Ground' }); c.ground = true; c.searched = true; } this.lootPanel(P, c); },
   // ---- in-raid loot panel (non-pausing) ------------------------------------------------------------------------
   lootPanel(P, c) {
     const m = G.mode; const R = m.raidOf(P); const s = P.soldier; if (!R) return;
@@ -5654,12 +5656,13 @@ Object.assign(UI, {
     const close = () => { box.remove(); this.screen = null; document.removeEventListener('keydown', kh); if (!NORENDER) Input.lock(); };
     const draw = () => { box.innerHTML = `<h2 style="margin:0 0 6px">${esc(c.name)}</h2><div class="cols"><div style="flex:1"><div class="xlist" style="max-height:44vh">${c.items.length ? c.items.map((r, i) => `<div class="xrow"><span class="nm" style="color:${Items.color(r)}">${esc(Items.label(r))}<div class="dim" style="font-size:11px">${r.cat} · ${Items.size(r).join('×')} · ${Items.weight(r).toFixed(1)} kg</div></span><span class="pr">${fmtMoney(Items.price(r))}</span>${(r.cat === 'weapon' || (r.cat === 'gear' && /vest|helmet/.test(DATA.gear[r.id].kind))) ? `<button class="btn" data-eq="${i}">Equip</button>` : ''}<button class="btn" data-take="${i}">Take</button></div>`).join('') : '<div class="dim">Empty.</div>'}</div></div>
       <div style="flex:0 0 auto"><div class="dim" style="font-size:12px;margin-bottom:4px">Raid bag · ${R.inv.used()}/${R.inv.w * R.inv.h} · ${m.carryWeight(P).toFixed(1)} kg · ${fmtMoney(R.inv.value())}</div>${this.gridHtml(R.inv, 'raid', null)}</div></div>
-      <div class="row" style="margin-top:8px"><button class="btn pri" data-all="1">Take all</button><button class="btn" data-x="1">Close (E / Esc)</button></div>`;
+      <div class="row" style="margin-top:8px"><button class="btn pri" data-all="1">Take all</button><button class="btn" data-x="1">Close (F / I / Esc)</button><span class="dim" style="font-size:11px;margin-left:8px">Click an item in your bag to drop it here.</span></div>`;
       box.querySelectorAll('[data-take]').forEach((b) => b.onclick = () => { take(c.items[+b.dataset.take]); draw(); });
       box.querySelectorAll('[data-eq]').forEach((b) => b.onclick = () => { take(c.items[+b.dataset.eq], true); draw(); });
       box.querySelector('[data-all]').onclick = () => { for (const r of c.items.slice()) if (r.cat !== 'weapon' && r.cat !== 'gear') take(r); for (const r of c.items.slice()) take(r); draw(); };
-      box.querySelector('[data-x]').onclick = close; };
-    const kh = (e) => { if (e.code === 'Escape' || e.code === 'KeyE' || e.code === 'Tab') { e.preventDefault(); close(); } }; document.addEventListener('keydown', kh); draw();
+      box.querySelector('[data-x]').onclick = close;
+      box.querySelectorAll('[data-g="raid"]').forEach((d) => d.onclick = () => { const r = R.inv.items.find((x) => x.uid === d.dataset.uid); if (!r) return; R.inv.remove(r); c.items.push(r); s.recalcWeight(); draw(); }); };
+    const kh = (e) => { if (e.code === 'Escape' || e.code === 'KeyF' || e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); close(); } }; document.addEventListener('keydown', kh); draw();
     const watch = setInterval(() => { if (!box.isConnected) return clearInterval(watch); if (s.state !== 'alive' || s.pos.distanceTo(c.pos) > 4) { clearInterval(watch); close(); } }, 250);
   },
 });
@@ -5822,7 +5825,7 @@ class Player {
     // class tool: breacher / defib on press, torch / scope while held
     if (s.tool) { if (s.tool.id === 'torch' || s.tool.id === 'scope') { const held = a.tool; if (held || s.scoping) Operators.useTool(s, held, dt); if (!held) s.scoping = false; } else if (pr('tool')) Operators.useTool(s); }
     if (pr('ping')) { Pings.fromAim(s); s.lastPingT = G.time; }
-    if (pr('orders')) UI.orders(this); if (pr('commander')) UI.commander(this);
+    if (pr('orders')) UI.orders(this); if (pr('commander')) UI.commander(this); if (pr('inv') && G.mode?.kind === 'extraction' && s.state === 'alive') UI.inventory(this);
     if (pr('nv')) { const opt = s.gun?.stats.vision; this.nvOn = !this.nvOn; this.note(this.nvOn ? (opt === 'thermal' ? 'Thermal optic' : 'Night vision on') : 'Vision normal', '', 0, 1); Audio.play('ui', 0.5); }
     if (pr('map')) this.mapZoom = this.mapZoom === 140 ? 380 : 140;
     if (this.idx === 0) UI.scoreboard(a.score);
