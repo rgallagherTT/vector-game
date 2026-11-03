@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FRONT ZERO</title>
+<style>
+:root{
+  --bg:#0b0f12; --panel:rgba(12,17,21,.92); --panel2:rgba(22,30,36,.95); --line:rgba(170,215,225,.18); --line2:rgba(170,215,225,.38);
+  --txt:#e4edef; --dim:#8a9ea6; --amber:#ffb43c; --amber2:#c98418; --cyan:#45d6e8; --red:#ff4b3a; --green:#6fe08a; --blue:#3fa9ff; --violet:#b48cff;
+  --friend:#4fb6ff; --enemy:#ff4b3a; --squad:#6fe08a; --gold:#ffd25a; --shadow:0 1px 2px rgba(0,0,0,.8);
+  --font:"Bahnschrift","DIN Alternate","Segoe UI","Roboto Condensed","Arial Narrow",Arial,sans-serif; --mono:"Consolas","Menlo","Courier New",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--font);user-select:none;-webkit-user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#hudRoot,#ui,#fade,#scopeRoot{position:fixed;inset:0;pointer-events:none}
+#ui{z-index:20}
+#ui .panel,#ui .menu,#ui button,#ui input,#ui select,#ui textarea,#ui .clickable,#ui .grid,#ui .cell,#ui .item,#ui .scroll{pointer-events:auto}
+#fade{background:#000;opacity:0;transition:opacity .35s;z-index:30}
+.mono{font-family:var(--mono)}
+button{font-family:var(--font)}
+/* ---------------- HUD (one .hud per player viewport) ---------------- */
+.hud{position:absolute;overflow:hidden;text-shadow:var(--shadow);font-size:14px}
+.hud .xh{position:absolute;left:50%;top:50%;width:0;height:0}
+.hud .xh i{position:absolute;background:rgba(240,250,250,.9);box-shadow:0 0 2px #000}
+.hud .xh .dot{width:2px;height:2px;left:-1px;top:-1px}
+.hud .xh .h{width:8px;height:2px;top:-1px}.hud .xh .v{width:2px;height:8px;left:-1px}
+.hud .hit{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
+.hud .hit i{position:absolute;width:10px;height:2px;background:#fff;box-shadow:0 0 3px #000}
+.hud .hit.kill i{background:var(--red)}.hud .hit.armour i{background:var(--cyan)}
+.hud .vitals{position:absolute;left:20px;bottom:18px;width:250px}
+.hud .vitals .row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.hud .vitals .lbl{width:22px;font:700 11px var(--mono);color:var(--dim)}
+.hud .vitals .num{width:34px;text-align:right;font:700 15px var(--mono)}
+.bar{flex:1;height:7px;background:rgba(0,0,0,.5);border:1px solid var(--line2);position:relative}
+.bar>i{position:absolute;left:0;top:0;bottom:0;background:#e9f2f2}
+.bar.hp>i{background:linear-gradient(90deg,#d0e8e8,#ffffff)}.bar.hp.low>i{background:var(--red)}
+.bar.ar>i{background:var(--cyan)}.bar.hm>i{background:#7fb4c4}.bar.st>i{background:var(--amber)}
+.bar.ult>i{background:linear-gradient(90deg,var(--violet),#e0d0ff)}
+.hud .tiers{font:700 11px var(--mono);color:var(--cyan);margin-top:4px}
+.hud .ammo{position:absolute;right:22px;bottom:18px;text-align:right}
+.hud .ammo .mag{font:700 46px/1 var(--mono);letter-spacing:-1px}.hud .ammo .mag.low{color:var(--red)}
+.hud .ammo .res{font:700 18px var(--mono);color:var(--dim);margin-left:6px}
+.hud .ammo .wname{font-size:13px;letter-spacing:.1em;color:var(--dim)}
+.hud .ammo .mode{display:inline-block;border:1px solid var(--line2);padding:0 5px;font:700 11px var(--mono);margin-left:6px;color:var(--amber)}
+.hud .ammo .ammot{font:11px var(--mono);color:var(--cyan)}
+.hud .kit{position:absolute;right:22px;bottom:106px;display:flex;gap:6px}
+.hud .kit .k{width:46px;height:46px;border:1px solid var(--line2);background:rgba(0,0,0,.45);position:relative;font:700 10px var(--mono);text-align:center}
+.hud .kit .k canvas{width:30px;height:30px;margin-top:2px}
+.hud .kit .k .n{position:absolute;right:2px;bottom:1px;font-size:11px}
+.hud .kit .k .key{position:absolute;left:2px;top:1px;color:var(--dim);font-size:9px}
+.hud .kit .k .cd{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6)}
+.hud .kit .k.ult{border-color:var(--violet)}.hud .kit .k.ready{box-shadow:0 0 8px var(--violet) inset}
+.hud .compass{position:absolute;top:10px;left:50%;width:min(560px,64%);height:26px;transform:translateX(-50%);overflow:hidden;background:linear-gradient(90deg,transparent,rgba(0,0,0,.45) 15%,rgba(0,0,0,.45) 85%,transparent);border-bottom:1px solid var(--line)}
+.hud .compass .tick{position:absolute;top:5px;font:700 12px var(--mono);transform:translateX(-50%)}
+.hud .compass .mk{position:absolute;top:0;transform:translateX(-50%);font:700 11px var(--mono)}
+.hud .compass .ctr{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--amber)}
+.hud .bearing{position:absolute;top:38px;left:50%;transform:translateX(-50%);font:700 12px var(--mono);color:var(--amber)}
+.hud .mini{position:absolute;left:18px;top:14px;width:190px;height:190px;border:1px solid var(--line2);background:#000;overflow:hidden}
+.hud .mini canvas{width:100%;height:100%}
+.hud .squad{position:absolute;left:18px;top:214px;font-size:12px;line-height:1.5}
+.hud .squad .m{display:flex;gap:6px;align-items:center}.hud .squad .m b{color:var(--squad)}.hud .squad .m.down b{color:var(--red)}.hud .squad .m.dead{opacity:.4}
+.hud .squad .order{color:var(--amber);font-size:11px;letter-spacing:.08em}
+.hud .obj{position:absolute;top:44px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center}
+.hud .obj .f{width:30px;height:30px;border:2px solid #fff;display:grid;place-items:center;font:700 14px var(--mono);background:rgba(0,0,0,.5);position:relative;overflow:hidden}
+.hud .obj .f.a{border-color:var(--friend);color:var(--friend)}.hud .obj .f.b{border-color:var(--enemy);color:var(--enemy)}.hud .obj .f.n{border-color:#ddd}
+.hud .obj .f .p{position:absolute;left:0;bottom:0;right:0;opacity:.35}
+.hud .obj .f.cur{box-shadow:0 0 0 2px var(--amber)}
+.hud .tickets{position:absolute;top:84px;left:50%;transform:translateX(-50%);display:flex;gap:18px;font:700 16px var(--mono)}
+.hud .tickets .a{color:var(--friend)}.hud .tickets .b{color:var(--enemy)}
+.hud .modeinfo{position:absolute;top:104px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:.14em;color:var(--dim);white-space:nowrap}
+.hud .feed{position:absolute;right:18px;top:14px;text-align:right;font-size:13px;line-height:1.55}
+.hud .feed .e{background:rgba(0,0,0,.45);padding:0 6px;margin-bottom:2px;display:inline-block}
+.hud .feed .e .a{color:var(--friend)}.hud .feed .e .b{color:var(--enemy)}.hud .feed .e .me{color:var(--gold)}.hud .feed .e .w{color:var(--dim);font-size:11px;margin:0 5px}
+.hud .notes{position:absolute;left:50%;top:150px;transform:translateX(-50%);text-align:center;width:80%}
+.hud .note{font:700 18px var(--font);letter-spacing:.12em;color:var(--amber);animation:notein 3.2s forwards;text-transform:uppercase}
+.hud .note.big{font-size:32px;color:#fff}.hud .note.bad{color:var(--red)}.hud .note.good{color:var(--green)}.hud .note.xp{color:var(--gold);font-size:14px}
+@keyframes notein{0%{opacity:0;transform:translateY(-8px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+.hud .prompt{position:absolute;left:50%;top:60%;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:5px 12px;border:1px solid var(--line2);font-size:14px;display:none;white-space:nowrap}
+.hud .prompt .holdbar{height:3px;background:var(--amber);margin-top:4px;width:0}
+kbd,.kbd{display:inline-block;padding:0 5px;border:1px solid var(--txt);border-radius:2px;margin-right:6px;font:700 12px var(--mono)}
+.hud .dmg{position:absolute;inset:0;background:radial-gradient(transparent 55%,rgba(200,30,20,.55));opacity:0}
+.hud .dirs{position:absolute;left:50%;top:50%;width:0;height:0}
+.hud .dirs i{position:absolute;width:44px;height:8px;margin:-4px -22px;background:linear-gradient(90deg,transparent,rgba(255,60,40,.9),transparent);opacity:0}
+.hud .flashfx{position:absolute;inset:0;background:#fff;opacity:0}
+.hud .downed{position:absolute;inset:0;display:none;background:radial-gradient(transparent 30%,rgba(60,0,0,.65));text-align:center}
+.hud .downed .t{position:absolute;top:58%;left:0;right:0;font:700 22px var(--font);letter-spacing:.2em;color:var(--red)}
+.hud .downed .s{position:absolute;top:63%;left:0;right:0;font-size:14px;color:var(--txt)}
+.hud .radio{position:absolute;left:18px;bottom:110px;max-width:380px;display:none;background:rgba(8,12,14,.8);border-left:3px solid var(--amber);padding:6px 10px 6px 60px;min-height:52px;font-size:13px}
+.hud .radio canvas{position:absolute;left:6px;top:6px;width:44px;height:44px;border:1px solid var(--line2)}
+.hud .radio .who{font:700 11px var(--mono);color:var(--amber);letter-spacing:.1em}
+.hud .pings{position:absolute;inset:0}
+.hud .pings .pg{position:absolute;transform:translate(-50%,-100%);font:700 11px var(--mono);text-align:center;white-space:nowrap}
+.hud .pings .pg .d{width:12px;height:12px;margin:0 auto;transform:rotate(45deg);border:2px solid currentColor;background:rgba(0,0,0,.35)}
+.hud .pings .pg.enemy{color:var(--enemy)}.hud .pings .pg.loc{color:var(--amber)}.hud .pings .pg.obj{color:#fff}.hud .pings .pg.mate{color:var(--squad)}.hud .pings .pg.loot{color:var(--gold)}.hud .pings .pg.veh{color:var(--cyan)}.hud .pings .pg.down{color:var(--red)}
+.hud .vehicle{position:absolute;right:22px;bottom:18px;display:none;text-align:right;min-width:230px}
+.hud .vehicle .vn{font:700 13px var(--font);letter-spacing:.12em;color:var(--dim)}
+.hud .vehicle .vhp{font:700 34px var(--mono)}
+.hud .vehicle .parts{font:11px var(--mono);line-height:1.5}.hud .vehicle .parts .bad{color:var(--amber)}.hud .vehicle .parts .dead{color:var(--red)}
+.hud .vehicle .vw{font:700 15px var(--mono);margin-top:6px}.hud .vehicle .seat{font-size:11px;color:var(--cyan)}
+.hud .lock{position:absolute;left:50%;top:50%;width:70px;height:70px;margin:-35px;border:2px solid var(--amber);display:none}
+.hud .lock.on{border-color:var(--red)}
+.hud .warn{position:absolute;left:50%;top:32%;transform:translateX(-50%);font:700 20px var(--font);color:var(--red);letter-spacing:.2em;display:none;animation:blink .5s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.hud .scope{position:absolute;inset:0;display:none;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 33vmin,#000 33.4vmin)}
+.hud .scope .r{position:absolute;left:50%;top:50%;width:0;height:0}
+.hud .scope .r i{position:absolute;background:#000}
+.hud .thermal-tag{position:absolute;right:30%;top:30%;font:700 12px var(--mono);color:#fff;display:none}
+.hud .extract{position:absolute;right:18px;top:220px;width:240px;font-size:12px;line-height:1.5;display:none;background:rgba(0,0,0,.45);padding:6px 8px;border-left:2px solid var(--gold)}
+.hud .extract b{color:var(--gold)}.hud .extract .x{display:flex;justify-content:space-between}.hud .extract .x.closed{opacity:.45}
+.hud .timer{position:absolute;top:10px;right:18px;font:700 18px var(--mono)}
+.hud .objtext{position:absolute;left:18px;top:300px;max-width:300px;font-size:13px;line-height:1.5}
+.hud .objtext .t{font:700 11px var(--mono);color:var(--amber);letter-spacing:.14em}
+.hud .objtext .s.done{color:var(--green);text-decoration:line-through}
+.hud.small{font-size:12px}.hud.small .mini{width:120px;height:120px}.hud.small .ammo .mag{font-size:30px}.hud.small .vitals{width:170px}.hud.small .squad,.hud.small .objtext{display:none}
+.hud .weight{font:11px var(--mono);color:var(--dim);margin-top:2px}.hud .weight.over{color:var(--amber)}
+.hud .spot{position:absolute;width:0;height:0}
+/* ---------------- menus ---------------- */
+.screen{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,9,11,.55),rgba(6,9,11,.92));display:flex;flex-direction:column}
+.screen.clear{background:transparent}
+.topbar{display:flex;align-items:center;gap:22px;padding:14px 26px;border-bottom:1px solid var(--line);background:rgba(8,11,13,.8)}
+.topbar .logo{font:800 26px var(--font);letter-spacing:.32em;color:#fff}
+.topbar .logo b{color:var(--amber)}
+.topbar .tabs{display:flex;gap:4px;flex:1;flex-wrap:wrap}
+.topbar .tab{padding:6px 14px;border:1px solid transparent;color:var(--dim);cursor:pointer;letter-spacing:.14em;font-size:13px;pointer-events:auto;text-transform:uppercase}
+.topbar .tab.on,.topbar .tab:hover{color:#fff;border-color:var(--line2);background:rgba(255,255,255,.04)}
+.topbar .cur{font:700 15px var(--mono);color:var(--gold)}
+.body{flex:1;overflow:auto;padding:22px 26px;pointer-events:auto}
+.title-wrap{position:absolute;left:6vw;top:16vh}
+.title-wrap .big{font:800 74px/1 var(--font);letter-spacing:.24em;color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+.title-wrap .big b{color:var(--amber)}
+.title-wrap .sub{letter-spacing:.5em;color:var(--dim);margin:10px 0 34px 4px;font-size:13px}
+.mbtn{display:block;min-width:300px;text-align:left;margin:6px 0;padding:11px 18px;background:rgba(10,14,17,.75);border:1px solid var(--line);border-left:3px solid var(--amber);color:#fff;font:600 16px var(--font);letter-spacing:.14em;cursor:pointer;text-transform:uppercase;pointer-events:auto}
+.mbtn:hover,.mbtn.sel{background:rgba(255,180,60,.14);border-color:var(--amber)}
+.mbtn small{display:block;font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:none;margin-top:2px;font-weight:400}
+.mbtn:disabled{opacity:.4;cursor:default}
+.btn{padding:7px 14px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:#fff;font:600 13px var(--font);letter-spacing:.1em;cursor:pointer;text-transform:uppercase;pointer-events:auto}
+.btn:hover{border-color:var(--amber);background:rgba(255,180,60,.12)}.btn.pri{background:var(--amber);color:#111;border-color:var(--amber)}.btn.pri:hover{background:#ffc867}
+.btn.sm{padding:3px 8px;font-size:11px}.btn:disabled{opacity:.35;cursor:default}.btn.on{border-color:var(--cyan);color:var(--cyan)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.card{background:var(--panel2);border:1px solid var(--line);padding:12px;cursor:pointer;position:relative;pointer-events:auto}
+.card:hover,.card.sel{border-color:var(--amber)}.card.locked{opacity:.45}
+.card h3{margin:0 0 4px;font-size:16px;letter-spacing:.12em;text-transform:uppercase}.card .s{font-size:12px;color:var(--dim)}
+.card canvas{width:100%;display:block;margin-bottom:8px;background:#000}
+.card .tag{position:absolute;right:8px;top:8px;font:700 10px var(--mono);color:var(--amber);letter-spacing:.1em}
+.cols{display:flex;gap:22px;align-items:flex-start}.cols>*{flex:1;min-width:0}
+.box{background:var(--panel);border:1px solid var(--line);padding:14px;margin-bottom:14px}
+.box h2{margin:0 0 10px;font-size:14px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase}
+.stat{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0}.stat .n{width:110px;color:var(--dim)}.stat .b{flex:1;height:6px;background:rgba(255,255,255,.08);position:relative}
+.stat .b i{position:absolute;left:0;top:0;bottom:0;background:var(--txt)}.stat .b i.up{background:var(--green)}.stat .b i.dn{background:var(--red)}.stat .v{width:56px;text-align:right;font-family:var(--mono)}
+table.t{width:100%;border-collapse:collapse;font-size:13px}table.t td,table.t th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}table.t th{color:var(--dim);font-weight:400;letter-spacing:.1em;font-size:11px}
+table.t tr.me td{color:var(--gold)}table.t tr.a td:first-child{border-left:3px solid var(--friend)}table.t tr.b td:first-child{border-left:3px solid var(--enemy)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{flex:1}
+.pill{display:inline-block;padding:1px 8px;border:1px solid var(--line2);font:11px var(--mono);margin:2px}
+.dim{color:var(--dim)}.gold{color:var(--gold)}.amber{color:var(--amber)}.red{color:var(--red)}.green{color:var(--green)}.cyan{color:var(--cyan)}
+.modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;pointer-events:auto;z-index:5}
+.modal .panel{background:var(--panel2);border:1px solid var(--line2);padding:18px 22px;min-width:340px;max-width:min(860px,92vw);max-height:88vh;overflow:auto}
+.panel h1{margin:0 0 12px;font-size:20px;letter-spacing:.2em;text-transform:uppercase}
+.slotgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.slot{border:1px solid var(--line);padding:8px;background:rgba(0,0,0,.35);cursor:pointer;font-size:12px;min-height:58px;pointer-events:auto}.slot:hover,.slot.sel{border-color:var(--amber)}.slot .k{color:var(--dim);font:10px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.slot .vv{font-weight:700;margin-top:2px}
+/* extraction inventory grid */
+.inv{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.grid{display:grid;background:rgba(0,0,0,.45);border:1px solid var(--line2);position:relative;user-select:none}
+.grid .cell{width:44px;height:44px;border:1px solid rgba(255,255,255,.05)}
+.grid .item{position:absolute;background:rgba(40,52,60,.92);border:1px solid var(--line2);font:10px var(--mono);padding:2px 3px;overflow:hidden;cursor:grab;color:#fff;line-height:1.15}
+.grid .item.r1{border-color:#9aa}.grid .item.r2{border-color:var(--green)}.grid .item.r3{border-color:var(--blue)}.grid .item.r4{border-color:var(--violet)}.grid .item.r5{border-color:var(--gold);background:rgba(70,55,20,.92)}
+.grid .item .q{position:absolute;right:2px;bottom:1px;color:var(--gold)}.grid .item .ins{position:absolute;right:2px;top:1px;color:var(--cyan)}
+.grid .item.drag{opacity:.4}.grid .ghost{position:absolute;border:2px dashed var(--amber);pointer-events:none}.grid .ghost.bad{border-color:var(--red)}
+.ctx{position:fixed;background:var(--panel2);border:1px solid var(--line2);z-index:40;min-width:150px;pointer-events:auto}
+.ctx div{padding:6px 12px;cursor:pointer;font-size:13px}.ctx div:hover{background:rgba(255,180,60,.15)}
+.tip{position:fixed;z-index:41;background:var(--panel2);border:1px solid var(--line2);padding:8px 10px;font-size:12px;max-width:280px;pointer-events:none}
+/* world map */
+.wmap{position:relative;width:100%;aspect-ratio:2/1;background:#0b161c;border:1px solid var(--line2);overflow:hidden}
+.wmap canvas{width:100%;height:100%;display:block}
+.wmap .pin{position:absolute;transform:translate(-50%,-50%);cursor:pointer;pointer-events:auto;text-align:center;font:700 11px var(--mono);white-space:nowrap}
+.wmap .pin .d{width:14px;height:14px;margin:0 auto 2px;border:2px solid var(--amber);transform:rotate(45deg);background:rgba(0,0,0,.6)}
+.wmap .pin.done .d{background:var(--green);border-color:var(--green)}.wmap .pin.lock{opacity:.45}.wmap .pin.sel .d{background:var(--amber)}
+/* deploy map */
+.deploy{position:absolute;inset:0;display:flex;pointer-events:auto;background:rgba(5,8,10,.82)}
+.deploy .mapv{flex:1;position:relative;margin:18px}
+.deploy .mapv canvas{width:100%;height:100%;object-fit:contain}
+.deploy .side{width:340px;padding:18px;background:var(--panel);border-left:1px solid var(--line);overflow:auto}
+.sopt{padding:8px 10px;border:1px solid var(--line);margin:4px 0;cursor:pointer;font-size:13px;display:flex;justify-content:space-between}.sopt:hover,.sopt.sel{border-color:var(--amber);background:rgba(255,180,60,.1)}.sopt.dis{opacity:.35;pointer-events:none}
+.scoreboard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,94%);max-height:80%;overflow:auto;background:var(--panel);border:1px solid var(--line2);padding:14px;display:none;pointer-events:none}
+.scoreboard .cols>div{font-size:12px}
+/* loading / errors / debug */
+#loading{position:fixed;inset:0;background:radial-gradient(circle at 30% 40%,#18232a,#06090b);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 54px var(--font);letter-spacing:.3em;color:#fff}
+#loading b{color:var(--amber)}#loading .bar{width:320px;flex:none;margin-top:18px}#loading .bar i{background:var(--amber)}
+#loadmsg{font:13px var(--mono);margin-top:10px;opacity:.75;letter-spacing:.05em}
+#err{position:fixed;left:0;right:0;bottom:0;background:#600;color:#fff;font:12px monospace;padding:6px;z-index:60;display:none;white-space:pre-wrap;pointer-events:auto}
+#debug{position:fixed;left:8px;top:8px;z-index:45;font:11px/1.35 var(--mono);background:rgba(0,0,0,.7);padding:6px 8px;display:none;white-space:pre;pointer-events:none;max-width:44vw}
+#bench{position:fixed;right:8px;bottom:8px;z-index:45;font:12px var(--mono);background:rgba(0,0,0,.75);padding:6px 8px;display:none;white-space:pre}
+#split{position:fixed;inset:0;pointer-events:none;z-index:4}
+#split .v{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#000}
+#cine{position:fixed;left:0;right:0;bottom:12%;text-align:center;z-index:25;pointer-events:none;opacity:0;transition:opacity .6s}
+#cine .t{font:800 34px var(--font);letter-spacing:.3em}#cine .s{font-size:15px;letter-spacing:.2em;color:var(--amber);margin-top:6px}
+.briefing{font-size:14px;line-height:1.6;max-width:640px}
+.flag{display:inline-block;vertical-align:middle;border:1px solid var(--line2)}
+@media (max-width:760px){.title-wrap .big{font-size:42px}.mbtn{min-width:240px}.hud .mini{width:110px;height:110px}.hud .squad,.hud .objtext{display:none}.deploy .side{width:240px}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hudRoot"></div>
+<div id="split"></div>
+<div id="cine"><div class="t"></div><div class="s"></div></div>
+<div id="ui"></div>
+<div id="fade"></div>
+<div id="debug"></div>
+<div id="bench"></div>
+<div id="loading"><div>FRONT <b>ZERO</b></div><div class="bar"><i id="loadbar" style="width:4%"></i></div><div id="loadmsg">loading…</div></div>
+<div id="err"></div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+/* =====================================================================================
+   FRONT ZERO — near-future tactical first-person shooter (converted from BOUNTY RUN)
+   Content lives in data/*.json (maps, biomes, countries, operators, weapons, items,
+   vehicles, missions, traders, contracts, challenges). Code lives here.
+   -------------------------------------------------------------------------------------
+   MANIFEST (search for the anchor to jump to a system)
+   §CONFIG      engine tunables (movement, ballistics, AI, vehicles, render)
+   §UTIL        math helpers, seeded RNG, simplex noise, canvas helpers
+   §DATA        loads data/*.json
+   §ASSETS      optional design pack (BOUNTY RUN's ../bounty-run/design): bike GLBs → speeder bike, pip.glb → recon drone
+   §AUDIO       synthesised gunfire with biome acoustics + distance, engines, radio, adaptive regional score
+   §INPUT       keyboard + mouse (pointer lock), gamepads, split-screen player 2
+   §WORLD       map runtime: biome generators, heightfield/surface/water/biome grids, sites, rivers, roads, sea
+   §RENDER      renderer, sky + day cycle, post (thermal / night vision / flash / damage), terrain chunks + LOD, water
+   §COL         collision world: oriented boxes, cylinders, ramps; rays with materials; ground / ceiling; capsule moves
+   §BUILD       biome building kits, destructible panels, large structures (tower, bridge, dam, radar, cable car), cover points
+   §FOLIAGE     instanced vegetation with wind + impostors; foliage density (blocks AI sight)
+   §FX          particles, muzzle flashes, tracers, surface impacts, explosions, smoke volumes, debris, cloth
+   §WEAPONS     weapon + attachment stats, ammo types, ballistics (travel, drop, penetration), damage + armour, throwables
+   §VIEWMODEL   first-person arms + weapons built from attachments; keyframe animation tables; third-person guns
+   §SOLDIER     movement (prone, lean, slide, mantle, vault, swim), grapple, rappel, parachute + wingsuit, health, revives
+   §SOLDIERGFX  instanced soldier bodies posed from keyframe tables (one draw per part for all soldiers)
+   §OPERATORS   eight operators: signature gadgets, class tools, ultimates, deployables, drones
+   §AI          navigation (coarse + fine A*), cover, perception, squad tactics, vehicle crews, difficulty
+   §VEHICLES    speeders (ported from SANDLINE), armour, walkers, air, sea, snow, drones; seats, part damage, repair
+   §EVENTS      mission event system (converted escape-trick registry): triggers + actions for campaign and extraction
+   §MODES       GameMode base, team deathmatch, domination, firing range, vehicle training
+   §WARFARE     Breakthrough + Conquest: 32v32, squads, orders, spawning, commander support, destructible objectives
+   §EXTRACTION  raid mode + economy: stash grid, loot, contracts, extraction points, rivals, bosses, market, traders, insurance, base
+   §CAMPAIGN    eight-mission campaign: briefings on the world map, checkpoints, debriefs
+   §HUD         per-player HUD, kill feed, pings, scoreboard
+   §UI          menus: title, armoury (operators, gunsmith, camos), modes, world map, deploy, stash, settings
+   §SAVE        localStorage (try/catch) + export/import + BOUNTY RUN migration; progression + challenges
+   §DEBUG       ?debug=1 overlay
+   §BENCH       ?bench=firefight | warfare
+   §MAIN        boot + game loop
+   ===================================================================================== */
+import * as THREE from 'three';
+
+const GAME_TITLE = "FRONT ZERO";  // placeholder
+
+// §CONFIG ------------------------------------------------------------------------------
+const CONFIG = {
+  seed: 7177,
+  render: { pixelRatioMax: 1.5, shadowSize: 2048, shadowArea: 70, viewFar: 2600, fov: 76, vmFov: 60, fog: 0.0009 },
+  world: { cell: 4, chunk: 128, lod: [{ ring: 1, step: 1 }, { ring: 3, step: 2 }, { ring: 6, step: 4 }, { ring: 12, step: 8 }], streamPerFrame: 3, streamBudgetMs: 3, skirt: 6 },
+  gravity: 9.81,
+  move: {
+    walk: 2.6, run: 4.7, sprint: 6.9, crouch: 2.5, prone: 1.0, swim: 2.3, swimSprint: 3.4, accel: 38, airAccel: 6, friction: 9,
+    jumpVel: 4.7, height: { stand: 1.78, crouch: 1.2, prone: 0.5 }, eye: { stand: 1.62, crouch: 1.08, prone: 0.32 }, radius: 0.32, step: 0.55,
+    stamina: 100, sprintDrain: 9, jumpCost: 12, regen: 17, regenDelay: 0.8, slideSpeed: 8.2, slideTime: 0.85, slideCD: 1.2,
+    mantleMax: 2.35, mantleTime: 0.62, vaultMax: 1.35, vaultTime: 0.5, vaultDepth: 1.3, lean: 0.38, leanAngle: 0.26,
+    fallSafe: 8.5, fallKill: 19, armourMoveTier: 0.025,
+  },
+  grapple: { range: 42, speed: 19, cooldown: 5.5 },
+  rappel: { speed: 5.5, fast: 10 },
+  para: { fall: 5.2, glide: 9.5, autoDeploy: 22, wingFall: 11, wingSpeed: 34, wingMinHeight: 70 },
+  ballistic: { gravity: 9.81, maxLife: 3.2, tracerEvery: 3, penLoss: { wood: 0.35, adobe: 0.65, concrete: 0.8, metal: 0.55, glass: 0.1, foliage: 0.05, tarp: 0.05 } },
+  body: { hp: 100, mult: { head: 2.4, chest: 1.0, stomach: 1.0, arm: 0.65, leg: 0.7 }, bleedOut: 28, reviveTime: 4.2, downedHp: 30, reviveHp: 35 },
+  ai: { near: 90, mid: 320, think: [0.25, 0.6, 1.6], perceive: [0.1, 0.3, 0.9], fov: 2.4, hearGun: 260, hearStep: 22 },
+  vehicle: { gravity: 15.5, hoverRide: 1.0, hoverRange: 2.3, enterDist: 4.5, respawn: 45 },
+  warfare: { players: 32, tickets: 220, conquestTickets: 380, capTime: 18, capRadius: 20, supportPerScore: 0.004 },
+  fx: { maxParticles: 12000, maxAdditive: 5000, maxDecals: 1400 },
+  audio: { master: 0.7, music: 0.28, sfx: 0.85 },
+  day: { lengthSec: 2400 },
+  bench: { duration: 20 },
+};

@@ -1,0 +1,39 @@
+{
+  "meta": { "note": "Contracts are offered by traders. type: kill (enemies, optional map / who: garrison|rival|boss), extract (survive and extract from a map), extractItem (bring item(s) home - they are handed over), visit (reach a named POI and extract), boss (kill that map's boss). Rewards: credits, rep, optional item. minRep gates the offer. Bosses: one per map, guards the highest-tier POI with an escort." },
+  "list": [
+    { "id": "c_first", "trader": "sable", "name": "Proof of life", "desc": "Extract from any raid.", "type": "extract", "count": 1, "reward": { "credits": 3000, "rep": 0.06 }, "minRep": 0 },
+    { "id": "c_garrison", "trader": "sable", "name": "Thin the garrison", "desc": "Eliminate 8 Mandate garrison troops in any raid.", "type": "kill", "who": "garrison", "count": 8, "reward": { "credits": 6000, "rep": 0.06 }, "minRep": 0 },
+    { "id": "c_rivals", "trader": "sable", "name": "Competition", "desc": "Eliminate 4 rival operators.", "type": "kill", "who": "rival", "count": 4, "reward": { "credits": 9000, "rep": 0.08, "item": "x4" }, "minRep": 0.1 },
+    { "id": "c_mast", "trader": "sable", "name": "Line of sight", "desc": "Reach the relay mast in Dustwater and extract.", "type": "visit", "map": "dustwater", "poi": "Relay mast", "reward": { "credits": 5000, "rep": 0.05 }, "minRep": 0 },
+    { "id": "c_drives", "trader": "sable", "name": "Field intelligence", "desc": "Bring home 2 data drives.", "type": "extractItem", "item": "drive", "count": 2, "reward": { "credits": 12000, "rep": 0.1 }, "minRep": 0.15 },
+    { "id": "c_warden_dw", "trader": "sable", "name": "The Sandwarden", "desc": "Kill Commandant Ashkar at the Dustwater FOB.", "type": "boss", "map": "dustwater", "reward": { "credits": 30000, "rep": 0.15, "item": "thermal" }, "minRep": 0.3 },
+    { "id": "c_warden_hp", "trader": "sable", "name": "Abbot of iron", "desc": "Kill the vault warden in the Highpass monastery.", "type": "boss", "map": "highpass", "reward": { "credits": 40000, "rep": 0.15, "item": "lancer" }, "minRep": 0.5 },
+    { "id": "c_meds", "trader": "imre", "name": "Clinic stock", "desc": "Bring home 3 chemicals and 2 ballistic cloth.", "type": "extractItem", "items": { "chem": 3, "cloth": 2 }, "reward": { "credits": 4000, "rep": 0.08, "item": "medkit" }, "minRep": 0 },
+    { "id": "c_samples", "trader": "imre", "name": "Cold storage", "desc": "Recover ice core samples from the Icebreak research labs.", "type": "extractItem", "item": "samples", "count": 1, "map": "icebreak", "reward": { "credits": 16000, "rep": 0.12, "item": "vest4" }, "minRep": 0.1 },
+    { "id": "c_greywood", "trader": "imre", "name": "House call", "desc": "Reach the hunting lodge in Greywood and extract.", "type": "visit", "map": "greywood", "poi": "Hunting lodge", "reward": { "credits": 6000, "rep": 0.06 }, "minRep": 0 },
+    { "id": "c_survive3", "trader": "imre", "name": "Still breathing", "desc": "Extract from 3 raids.", "type": "extract", "count": 3, "reward": { "credits": 10000, "rep": 0.1, "item": "surgkit" }, "minRep": 0.1 },
+    { "id": "c_whiteout", "trader": "imre", "name": "Hold the pass", "desc": "Extract from Whiteout.", "type": "extract", "map": "whiteout", "count": 1, "reward": { "credits": 9000, "rep": 0.08 }, "minRep": 0.2 },
+    { "id": "c_warden_wo", "trader": "imre", "name": "Keeper of the keep", "desc": "Kill Marshal Hallveig in the Whiteout fortress.", "type": "boss", "map": "whiteout", "reward": { "credits": 36000, "rep": 0.15, "item": "vest6" }, "minRep": 0.45 },
+    { "id": "c_gold", "trader": "magpie", "name": "Shiny", "desc": "Bring home a gold bar.", "type": "extractItem", "item": "gold", "count": 1, "reward": { "credits": 6000, "rep": 0.1 }, "minRep": 0 },
+    { "id": "c_ledger", "trader": "magpie", "name": "Cooked books", "desc": "Find the Mandate ledger (Dustwater bank or Skyline exchange) and bring it home.", "type": "extractItem", "item": "ledger", "count": 1, "reward": { "credits": 18000, "rep": 0.12, "item": "key_vault" }, "minRep": 0.1 },
+    { "id": "c_proto", "trader": "magpie", "name": "Smart money", "desc": "Recover the prototype guidance chip (Skyline penthouse or Harbourfront freighter).", "type": "extractItem", "item": "proto", "count": 1, "reward": { "credits": 26000, "rep": 0.14 }, "minRep": 0.25 },
+    { "id": "c_relic", "trader": "magpie", "name": "Temple run", "desc": "Bring home a temple relic.", "type": "extractItem", "item": "relic", "count": 1, "reward": { "credits": 14000, "rep": 0.1 }, "minRep": 0.15 },
+    { "id": "c_skyline", "trader": "magpie", "name": "Rooftop exit", "desc": "Reach the Skyline exchange and extract.", "type": "visit", "map": "skyline", "poi": "Exchange", "reward": { "credits": 8000, "rep": 0.07 }, "minRep": 0 },
+    { "id": "c_warden_sk", "trader": "magpie", "name": "Top floor", "desc": "Kill Director Senn in the Skyline penthouse.", "type": "boss", "map": "skyline", "reward": { "credits": 42000, "rep": 0.18, "item": "quantum" }, "minRep": 0.4 }
+  ],
+  "questItems": { "ledger": ["dustwater", "skyline", "oldquarter"], "proto": ["skyline", "harbourfront", "icebreak"], "samples": ["icebreak"] },
+  "bosses": {
+    "dustwater": { "name": "Commandant Ashkar", "weapon": "bulwark", "escort": 4 },
+    "greywood": { "name": "Colonel Darrow", "weapon": "halberd", "escort": 4 },
+    "harbourfront": { "name": "Harbourmaster Kroll", "weapon": "tusk", "escort": 3 },
+    "highpass": { "name": "The Vault Warden", "weapon": "lancer", "escort": 3 },
+    "icebreak": { "name": "Dr. Vance Ostrow", "weapon": "corsair", "escort": 4 },
+    "oldquarter": { "name": "Prefect Mallin", "weapon": "warden", "escort": 4 },
+    "redcut": { "name": "Foreman Rusk", "weapon": "anvil", "escort": 4 },
+    "rivercut": { "name": "Major Ilse Varga", "weapon": "brigand", "escort": 4 },
+    "shipgrave": { "name": "Captain Orrin Tal", "weapon": "tusk", "escort": 3 },
+    "skyline": { "name": "Director Senn", "weapon": "lynx", "escort": 4 },
+    "templehill": { "name": "Overseer Brann", "weapon": "arbiter", "escort": 3 },
+    "whiteout": { "name": "Marshal Hallveig", "weapon": "halberd", "escort": 5 }
+  }
+}

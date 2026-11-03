@@ -1,0 +1,427 @@
+{
+ "meta": {
+  "note": "Six invented nations and two invented alliances. No real countries, units or leaders. flag = stripes + emblem; pos = world-map coordinates (0..1)."
+ },
+ "worldmap": {
+  "seed": 911,
+  "ocean": "#0d1d26",
+  "land": "#2a3a34"
+ },
+ "alliances": [
+  {
+   "id": "accord",
+   "name": "The Accord",
+   "desc": "A defensive pact of smaller nations defending their homes.",
+   "color": "#3f8fd8",
+   "uniform": "#4a5444",
+   "uniform2": "#3a4034",
+   "emblem": "shield",
+   "members": [
+    "kharavan",
+    "selvara",
+    "nordheim",
+    "valmora",
+    "portaurel",
+    "ashkar"
+   ]
+  },
+  {
+   "id": "mandate",
+   "name": "The Iron Mandate",
+   "desc": "An expansionist bloc run by a corporate-military machine. Its private legions wear grey and red.",
+   "color": "#d8402a",
+   "uniform": "#4a4a4e",
+   "uniform2": "#2e2e32",
+   "emblem": "gear",
+   "members": []
+  }
+ ],
+ "countries": [
+  {
+   "id": "kharavan",
+   "name": "Kharavan",
+   "inspired": "North African and Middle Eastern deserts",
+   "biomes": [
+    "desert",
+    "coastal"
+   ],
+   "maps": [
+    "dustwater",
+    "shipgrave"
+   ],
+   "capital": "Saffar",
+   "pos": [
+    0.47,
+    0.52
+   ],
+   "flag": {
+    "stripes": [
+     "#c8873a",
+     "#f2e2c0",
+     "#2f6a58"
+    ],
+    "emblem": {
+     "shape": "sun",
+     "color": "#7a3a1a"
+    }
+   },
+   "uniform": "#b89a6a",
+   "blurb": "Dune country of caravan towns, salt flats and a coast littered with the hulks of ships that never left.",
+   "names": {
+    "first": [
+     "Rafi",
+     "Sameh",
+     "Idris",
+     "Nadia",
+     "Tarek",
+     "Leila",
+     "Omar",
+     "Yasmin",
+     "Karim",
+     "Dalia",
+     "Faris",
+     "Amira"
+    ],
+    "last": [
+     "Qadar",
+     "Benhali",
+     "Sarrouf",
+     "Hakimi",
+     "Darwan",
+     "Mezri",
+     "Tahar",
+     "Naseeb",
+     "Oudra",
+     "Kassar"
+    ]
+   }
+  },
+  {
+   "id": "selvara",
+   "name": "Selvara",
+   "inspired": "Southeast Asian and Amazonian jungles",
+   "biomes": [
+    "jungle",
+    "coastal"
+   ],
+   "maps": [
+    "rivercut",
+    "templehill"
+   ],
+   "capital": "Puerto Lume",
+   "pos": [
+    0.66,
+    0.68
+   ],
+   "flag": {
+    "stripes": [
+     "#2f7a3a",
+     "#f0d040",
+     "#2f7a3a"
+    ],
+    "emblem": {
+     "shape": "leaf",
+     "color": "#1a3a1a"
+    }
+   },
+   "uniform": "#4a6a3a",
+   "blurb": "River republic under a thousand-metre canopy. Monsoons can turn a valley into a lake in an afternoon.",
+   "names": {
+    "first": [
+     "Tiago",
+     "Maia",
+     "Anan",
+     "Lua",
+     "Bayu",
+     "In\u00e9s",
+     "Kiri",
+     "Rosa",
+     "Daru",
+     "Paulo",
+     "Sari",
+     "Nilo"
+    ],
+    "last": [
+     "Vargo",
+     "Santara",
+     "Lumbe",
+     "Okoa",
+     "Pradit",
+     "Moreau",
+     "Cayo",
+     "Batari",
+     "Ferro",
+     "Itza"
+    ]
+   }
+  },
+  {
+   "id": "nordheim",
+   "name": "Nordheim",
+   "inspired": "Scandinavia and the Arctic",
+   "biomes": [
+    "arctic",
+    "mountain"
+   ],
+   "maps": [
+    "icebreak",
+    "whiteout"
+   ],
+   "capital": "Halvik",
+   "pos": [
+    0.5,
+    0.14
+   ],
+   "flag": {
+    "stripes": [
+     "#2a4a7a",
+     "#f2f4f6",
+     "#2a4a7a"
+    ],
+    "emblem": {
+     "shape": "snow",
+     "color": "#c83a2a"
+    }
+   },
+   "uniform": "#d8dcdc",
+   "blurb": "Fjords, glaciers and research stations at the edge of the polar night. The passes close when the blizzards come.",
+   "names": {
+    "first": [
+     "Aksel",
+     "Liv",
+     "Eirik",
+     "Sigrun",
+     "Tove",
+     "Rune",
+     "Hedda",
+     "Stig",
+     "Ylva",
+     "Brann",
+     "Ingrid",
+     "Olav"
+    ],
+    "last": [
+     "Haldor",
+     "Vesterli",
+     "Brekke",
+     "Isaksen",
+     "Mjelde",
+     "Rostad",
+     "Fjellvang",
+     "Torvik",
+     "Aasen",
+     "Lindholm"
+    ]
+   }
+  },
+  {
+   "id": "valmora",
+   "name": "Valmora",
+   "inspired": "Central and Eastern Europe",
+   "biomes": [
+    "temperate",
+    "urban"
+   ],
+   "maps": [
+    "oldquarter",
+    "greywood"
+   ],
+   "capital": "Kastel",
+   "pos": [
+    0.52,
+    0.3
+   ],
+   "flag": {
+    "stripes": [
+     "#7a2a2a",
+     "#e8e0d0",
+     "#3a5a3a"
+    ],
+    "emblem": {
+     "shape": "tower",
+     "color": "#2a2a2a"
+    }
+   },
+   "uniform": "#5a6a44",
+   "blurb": "Old towns of plaster and tile, beech forests, farmland and the great Greywood dam holding back the valley.",
+   "names": {
+    "first": [
+     "Pavel",
+     "Mira",
+     "Tomas",
+     "Ilona",
+     "Viktor",
+     "Zora",
+     "Anton",
+     "Hana",
+     "Lukas",
+     "Vera",
+     "Matej",
+     "Klara"
+    ],
+    "last": [
+     "Dvorak",
+     "Halas",
+     "Morava",
+     "Kovacic",
+     "Strelko",
+     "Lindov",
+     "Ruzan",
+     "Petrak",
+     "Valich",
+     "Bartos"
+    ]
+   }
+  },
+  {
+   "id": "portaurel",
+   "name": "Port Aurel",
+   "inspired": "A coastal megacity",
+   "biomes": [
+    "urban",
+    "coastal"
+   ],
+   "maps": [
+    "skyline",
+    "harbourfront"
+   ],
+   "capital": "Port Aurel",
+   "pos": [
+    0.3,
+    0.42
+   ],
+   "flag": {
+    "stripes": [
+     "#1a2a4a",
+     "#d8a83a",
+     "#1a2a4a"
+    ],
+    "emblem": {
+     "shape": "wave",
+     "color": "#e8e8e8"
+    }
+   },
+   "uniform": "#5a646e",
+   "blurb": "A city-state of towers and container cranes. Whoever holds its harbour holds half the ocean trade.",
+   "names": {
+    "first": [
+     "Dario",
+     "June",
+     "Marco",
+     "Kai",
+     "Elise",
+     "Theo",
+     "Noor",
+     "Rio",
+     "Sena",
+     "Ari",
+     "Lena",
+     "Quin"
+    ],
+    "last": [
+     "Aurelio",
+     "Castane",
+     "Vey",
+     "Morrow",
+     "Delacroix",
+     "Sato-Reyes",
+     "Okonne",
+     "Brightwater",
+     "Lisle",
+     "Varga"
+    ]
+   }
+  },
+  {
+   "id": "ashkar",
+   "name": "Ashkar Range",
+   "inspired": "Central Asian mountains",
+   "biomes": [
+    "mountain",
+    "desert"
+   ],
+   "maps": [
+    "highpass",
+    "redcut"
+   ],
+   "capital": "Teral",
+   "pos": [
+    0.72,
+    0.36
+   ],
+   "flag": {
+    "stripes": [
+     "#d8a03a",
+     "#5a2a4a",
+     "#d8a03a"
+    ],
+    "emblem": {
+     "shape": "peak",
+     "color": "#f2ece0"
+    }
+   },
+   "uniform": "#8a7a5a",
+   "blurb": "High passes, cable cars to cliff monasteries, and red canyons cut by rivers that run only in spring.",
+   "names": {
+    "first": [
+     "Temir",
+     "Aru",
+     "Bolat",
+     "Saule",
+     "Dilnaz",
+     "Erlan",
+     "Zarina",
+     "Nurlan",
+     "Aigerim",
+     "Kanat",
+     "Madi",
+     "Esen"
+    ],
+    "last": [
+     "Beken",
+     "Saryn",
+     "Toktar",
+     "Altai",
+     "Murat",
+     "Kerey",
+     "Zhanar",
+     "Ospan",
+     "Tulpar",
+     "Ergen"
+    ]
+   }
+  }
+ ],
+ "mandateNames": {
+  "first": [
+   "Crane",
+   "Holt",
+   "Marek",
+   "Voss",
+   "Rook",
+   "Sable",
+   "Kade",
+   "Dray",
+   "Orin",
+   "Hale",
+   "Strand",
+   "Corvin",
+   "Lask",
+   "Brennick"
+  ],
+  "last": [
+   "Kessler",
+   "Varn",
+   "Haldane",
+   "Stroud",
+   "Mercer",
+   "Gaunt",
+   "Thorne",
+   "Vickers",
+   "Ashby",
+   "Lorne",
+   "Graves",
+   "Holloway"
+  ]
+ }
+}

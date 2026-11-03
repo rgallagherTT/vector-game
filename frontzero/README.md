@@ -1,0 +1,49 @@
+# FRONT ZERO
+
+A near-future tactical combined-arms shooter in one HTML file, built from BOUNTY RUN and SANDLINE. Everything here is original: invented nations, factions, operators, weapons and vehicles. Soldiers fall and fade, with no blood, and there are no civilians on the battlefield.
+
+```
+cd frontzero
+npx serve .          # then open the printed URL
+```
+
+The page loads `data/*.json` over HTTP, so opening `index.html` straight from disk will not work. The optional speeder-bike and drone models come from `../bounty-run/design`. Without them the game falls back to procedural models. Serving the repo root (`npx serve .` one level up) and opening `/frontzero/` gives you those models.
+
+## Modes
+
+| Mode | What it is |
+|---|---|
+| **Warfare** | 32 v 32 combined arms on the large maps. **Breakthrough**: attackers push through sectors, defenders spend tickets, and some sectors have destructible objectives (Greywood's dam floods the valley). **Conquest**: hold flags to bleed the enemy's tickets. You can spawn at base, objectives, squadmates, mobile-spawn vehicles and squad beacons. Squad leaders give orders (U) and commanders call artillery, supply drops, UAV sweeps and mech drops (O). |
+| **Extraction** | Pick a map and a kit, drop in, loot, and reach an exit. You lose everything you carried if you die. Rival bot crews loot the same map and every map has a boss. There are five kinds of exit: open, timed, flare (call a pickup), key-locked and guarded. Raids also have random events: supply drops, armoured convoys, storms and bounties. Between raids you get a stash grid, a raid bag sized by your rig and backpack, three traders with reputation, a drifting market, insurance, contracts, base upgrades and crafting. |
+| **Campaign** | The Accord vs the Iron Mandate: eight missions across six nations, with briefings on a world map, checkpoints and debriefs. Play solo with an AI squad (they follow, revive and ride with you) or in split-screen co-op. |
+| **Quick match** | Team deathmatch and domination on each map's close-quarters area. |
+| **Firing range + vehicle training** | Targets at measured ranges, plus ground, walker, air, jet and sea courses. |
+
+## Controls (keyboard + mouse; gamepad and a second keyboard player are supported)
+
+WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1 2 3 weapons · G throw, 5 cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · 4 class tool · T ultimate · H / J heal / stim · \` or MMB ping · L night vision / thermal · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
+
+Vehicles: W/S throttle, A/D steer, mouse aims the turret, Space hops (speeders) or climbs (VTOLs), Ctrl descends, Shift boosts, mouse wheel switches vehicle weapons, X fires countermeasures, number keys change seat, V toggles the camera, and F gets out (from height you get a parachute; in a dropship's passenger seat it rappels).
+
+## Content
+
+- **8 operators**, each with a gadget, a class tool and an ultimate: Kestrel (jetpack), Ironside (deployable shield), Rivet (repair, mines), Bastion (heavy armour), Mercy-6 (revives, healing), Quartermaster (resupply), Wren (grapple, recon drone), Ghost (cloak). Operators level up and unlock gear.
+- **24 weapons**: 4 assault rifles, 2 battle rifles, 3 SMGs, 2 LMGs, 2 DMRs, 3 sniper rifles, 2 shotguns, 3 pistols, 3 launchers. They have 29 attachments (including thermal and night vision), several ammo types per caliber, gunsmith blueprints and camos. Biome camos make you harder for the AI to spot in their biome.
+- **Ballistics**: projectile travel and drop, penetration by material, body-part damage, armour and helmet tiers with durability.
+- **7 biomes** (desert, jungle, arctic, temperate, urban, coastal, mountain). Weather affects visibility, footsteps and handling.
+- **6 countries × 2 maps** (`data/maps/*.json`), each with sectors, points of interest, vehicle pads, exits and time/weather variants. Destruction covers walls up to bridges, towers, the dam and the freighter.
+- **19 vehicles**: the four SANDLINE speeders (bike, quad, buggy, hauler), hover tank, APC, artillery skiff, assault mech, exo-suit, VTOL gunship and dropship, interceptor, strike fighter, patrol boat, assault hovercraft, snow sled and three drones. All have part damage, repair, lock-on and flares, EMP, hijacking, seats and bail-out.
+
+Content lives in `data/` as JSON. Code lives in `index.html`, generated from `src/parts/` by `src/assemble.sh`.
+
+## Debug and benchmarks
+
+- `?debug=1`: overlay with frame and logic timings, draw calls, AI states and position. F2–F10 toggle squad/vehicle/hitbox/loot/spawn/gear/weather/time/kill helpers.
+- `?quick=warfare|conquest|tdm|dom|range|training|extraction|campaign&map=<id>`: skip the menus (`&m=<0-7>` picks a campaign mission).
+- `?bench=firefight`: 12 v 12 on one map per biome. `?bench=warfare`: 32 v 32 with every vehicle on the largest Breakthrough map. Add `&dur=<seconds>`, and `&size=24` for 24 v 24. Each bench logs average, p95 and worst frame time, logic time and draw calls to the console and on screen.
+
+See `BENCH.md` for the numbers measured while building this.
+
+## Saves
+
+The save lives in `localStorage` (with an in-memory fallback), and Settings can export and import it as text. On first run, an existing BOUNTY RUN save can be imported: its credits become starting credits and its paint jobs become vehicle camos.

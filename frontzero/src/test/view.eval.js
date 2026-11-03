@@ -1,0 +1,1 @@
+(async () => { const F = window.FZ; const P = F.G.players[0]; const s = P.soldier; s.invulnT = 1e9; const x = 60, z = 70; s.pos.set(x, F.World.heightAt(x, z) + 25, z); s.vel.set(0, 0, 0); s.moveState = 'para'; P.lookYaw = Math.atan2(-x, -z); P.lookPitch = -0.25; await new Promise((r) => setTimeout(r, 9000)); return { y: s.pos.y }; })()

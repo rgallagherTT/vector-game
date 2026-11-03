@@ -1,0 +1,654 @@
+{
+ "id": "oldquarter",
+ "name": "Old Quarter",
+ "country": "valmora",
+ "size": 2400,
+ "seed": 707,
+ "biomes": [
+  "temperate",
+  "urban"
+ ],
+ "mask": {
+  "type": "radial",
+  "x": 350,
+  "z": 0,
+  "r": 0.2,
+  "blend": 0.08,
+  "inner": true
+ },
+ "baseHeight": 14,
+ "blurb": "A historic river town of plaster, tile and bridges, with a new district of towers across the water.",
+ "rivers": [
+  {
+   "pts": [
+    [
+     -300,
+     -1150
+    ],
+    [
+     -150,
+     -500
+    ],
+    [
+     50,
+     0
+    ],
+    [
+     -50,
+     500
+    ],
+    [
+     100,
+     1150
+    ]
+   ],
+   "width": 28,
+   "depth": 3.5
+  }
+ ],
+ "sites": [
+  {
+   "id": "old",
+   "name": "Old Quarter",
+   "kind": "town",
+   "x": -260,
+   "z": 0,
+   "r": 260,
+   "density": 0.95,
+   "style": "village",
+   "floors": [
+    2,
+    3
+   ],
+   "ground": "stone"
+  },
+  {
+   "id": "new",
+   "name": "New town",
+   "kind": "city",
+   "x": 380,
+   "z": 0,
+   "r": 250,
+   "block": 46,
+   "street": 14,
+   "floors": [
+    2,
+    6
+   ],
+   "neon": false,
+   "ground": "asphalt"
+  },
+  {
+   "id": "railyard",
+   "name": "Rail yard",
+   "kind": "outpost",
+   "x": 720,
+   "z": 80,
+   "r": 80
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -950,
+   "z": 0,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 950,
+   "z": 0,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "farm",
+   "name": "Kovac farm",
+   "kind": "farm",
+   "x": -600,
+   "z": -600,
+   "r": 90
+  },
+  {
+   "id": "farm2",
+   "name": "Mill farm",
+   "kind": "farm",
+   "x": 500,
+   "z": 650,
+   "r": 90
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -950,
+     0
+    ],
+    [
+     -600,
+     0
+    ],
+    [
+     -260,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ],
+   "width": 9,
+   "surf": "asphalt"
+  },
+  {
+   "pts": [
+    [
+     95,
+     0
+    ],
+    [
+     380,
+     0
+    ],
+    [
+     720,
+     80
+    ],
+    [
+     950,
+     0
+    ]
+   ],
+   "width": 9,
+   "surf": "asphalt"
+  },
+  {
+   "pts": [
+    [
+     -600,
+     -600
+    ],
+    [
+     -195,
+     -500
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     -105,
+     -500
+    ],
+    [
+     380,
+     -300
+    ],
+    [
+     380,
+     0
+    ]
+   ],
+   "width": 6,
+   "surf": "asphalt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "oldbridge",
+   "type": "bridge",
+   "name": "Old bridge",
+   "a": [
+    5,
+    0
+   ],
+   "b": [
+    95,
+    0
+   ],
+   "width": 10
+  },
+  {
+   "id": "millbridge",
+   "type": "bridge",
+   "name": "Mill bridge",
+   "a": [
+    -195,
+    -500
+   ],
+   "b": [
+    -105,
+    -500
+   ],
+   "width": 8
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "TV mast",
+   "x": 500,
+   "z": -180,
+   "h": 52
+  }
+ ],
+ "bases": [
+  {
+   "x": -950,
+   "z": 0,
+   "yaw": 1.57
+  },
+  {
+   "x": 950,
+   "z": 0,
+   "yaw": -1.57
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -991,
+   "z": -56,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -964,
+   "z": -56,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -936,
+   "z": -56,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -909,
+   "z": -56,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -991,
+   "z": -24,
+   "yaw": 1.57,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -964,
+   "z": -24,
+   "yaw": 1.57,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -936,
+   "z": -24,
+   "yaw": 1.57,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 909,
+   "z": -56,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 936,
+   "z": -56,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 964,
+   "z": -56,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 991,
+   "z": -56,
+   "yaw": -1.57,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 909,
+   "z": -24,
+   "yaw": -1.57,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 936,
+   "z": -24,
+   "yaw": -1.57,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 964,
+   "z": -24,
+   "yaw": -1.57,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "assault_mech",
+   "x": 991,
+   "z": -24,
+   "yaw": -1.57,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  }
+ ],
+ "breakthrough": {
+  "attacker": 1,
+  "sectors": [
+   {
+    "name": "Rail yard",
+    "objs": [
+     {
+      "name": "Sheds",
+      "x": 720,
+      "z": 80
+     },
+     {
+      "name": "Signal box",
+      "x": 640,
+      "z": -60
+     }
+    ]
+   },
+   {
+    "name": "New town",
+    "objs": [
+     {
+      "name": "Tower plaza",
+      "x": 380,
+      "z": 0
+     },
+     {
+      "name": "Mall",
+      "x": 420,
+      "z": 150
+     },
+     {
+      "name": "Offices",
+      "x": 320,
+      "z": -150
+     }
+    ]
+   },
+   {
+    "name": "The bridges",
+    "objs": [
+     {
+      "name": "Old bridge",
+      "x": 50,
+      "z": 0
+     },
+     {
+      "name": "Mill bridge",
+      "x": -150,
+      "z": -500
+     }
+    ],
+    "destroy": "oldbridge"
+   },
+   {
+    "name": "Old Quarter",
+    "objs": [
+     {
+      "name": "Town hall",
+      "x": -260,
+      "z": 0
+     },
+     {
+      "name": "Cathedral square",
+      "x": -320,
+      "z": 120
+     },
+     {
+      "name": "Guild row",
+      "x": -180,
+      "z": -100
+     }
+    ]
+   },
+   {
+    "name": "Accord HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": -950,
+      "z": 0
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Rail yard",
+   "x": 720,
+   "z": 80
+  },
+  {
+   "id": "B",
+   "name": "Tower plaza",
+   "x": 380,
+   "z": 0
+  },
+  {
+   "id": "C",
+   "name": "Old bridge",
+   "x": 50,
+   "z": 0
+  },
+  {
+   "id": "D",
+   "name": "Town hall",
+   "x": -260,
+   "z": 0
+  },
+  {
+   "id": "E",
+   "name": "Kovac farm",
+   "x": -600,
+   "z": -600
+  },
+  {
+   "id": "F",
+   "name": "Mill farm",
+   "x": 500,
+   "z": 650
+  },
+  {
+   "id": "G",
+   "name": "Mill bridge",
+   "x": -150,
+   "z": -500
+  }
+ ],
+ "pois": [
+  {
+   "name": "Town hall",
+   "x": -260,
+   "z": 0,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Bank tower",
+   "x": 380,
+   "z": 0,
+   "r": 70,
+   "tier": 4
+  },
+  {
+   "name": "Rail yard",
+   "x": 720,
+   "z": 80,
+   "r": 60,
+   "tier": 2
+  },
+  {
+   "name": "Kovac farm",
+   "x": -600,
+   "z": -600,
+   "r": 60,
+   "tier": 1
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 950,
+   "z": 0,
+   "r": 80,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "West road",
+   "x": -1050,
+   "z": 300,
+   "kind": "open"
+  },
+  {
+   "name": "River boat",
+   "x": 100,
+   "z": 1050,
+   "kind": "timed",
+   "opens": 360
+  },
+  {
+   "name": "Tower roof",
+   "x": 380,
+   "z": 20,
+   "kind": "flare"
+  },
+  {
+   "name": "Rail tunnel",
+   "x": 1000,
+   "z": 300,
+   "kind": "guarded"
+  }
+ ],
+ "areas": [
+  {
+   "id": "old",
+   "name": "Old Quarter",
+   "x": -260,
+   "z": 0,
+   "r": 180,
+   "dom": [
+    [
+     -320,
+     -40
+    ],
+    [
+     -260,
+     0
+    ],
+    [
+     -200,
+     50
+    ]
+   ],
+   "spawns": [
+    [
+     -420,
+     -120
+    ],
+    [
+     -100,
+     120
+    ]
+   ]
+  },
+  {
+   "id": "new",
+   "name": "New town",
+   "x": 380,
+   "z": 0,
+   "r": 180,
+   "dom": [
+    [
+     320,
+     -60
+    ],
+    [
+     380,
+     0
+    ],
+    [
+     440,
+     60
+    ]
+   ],
+   "spawns": [
+    [
+     240,
+     -140
+    ],
+    [
+     520,
+     140
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 12,
+   "weather": "clear"
+  },
+  {
+   "id": "rain",
+   "name": "Rain",
+   "hour": 16,
+   "weather": "rain"
+  },
+  {
+   "id": "fog",
+   "name": "Fog",
+   "hour": 7.5,
+   "weather": "fog"
+  },
+  {
+   "id": "night",
+   "name": "Night",
+   "hour": 22.5,
+   "weather": "clear"
+  }
+ ]
+}

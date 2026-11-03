@@ -1,0 +1,584 @@
+{
+ "id": "templehill",
+ "name": "Temple Hill",
+ "country": "selvara",
+ "size": 2400,
+ "seed": 404,
+ "biomes": [
+  "jungle",
+  "mountain"
+ ],
+ "mask": {
+  "type": "radial",
+  "x": 0,
+  "z": 0,
+  "r": 0.25,
+  "blend": 0.1,
+  "inner": true
+ },
+ "baseHeight": 8,
+ "blurb": "Ruins on a jungle peak, ringed by villages and a river that floods in the monsoon.",
+ "rivers": [
+  {
+   "pts": [
+    [
+     -1150,
+     -300
+    ],
+    [
+     -700,
+     -200
+    ],
+    [
+     -300,
+     -450
+    ],
+    [
+     200,
+     -700
+    ],
+    [
+     600,
+     -1150
+    ]
+   ],
+   "width": 24,
+   "depth": 3
+  }
+ ],
+ "sites": [
+  {
+   "id": "temple",
+   "name": "Temple Hill",
+   "kind": "temple",
+   "x": 0,
+   "z": 0,
+   "r": 80,
+   "raise": 42,
+   "edge": 170,
+   "steps": 5,
+   "size": 34,
+   "ground": "stone"
+  },
+  {
+   "id": "ruinsw",
+   "name": "West terraces",
+   "kind": "ruins",
+   "x": -260,
+   "z": 160,
+   "r": 70
+  },
+  {
+   "id": "shrine",
+   "name": "Shrine ruins",
+   "kind": "ruins",
+   "x": 300,
+   "z": 250,
+   "r": 60
+  },
+  {
+   "id": "westvillage",
+   "name": "Kampung Sari",
+   "kind": "town",
+   "x": -560,
+   "z": 500,
+   "r": 120,
+   "density": 0.55,
+   "style": "stilt",
+   "ground": "mud"
+  },
+  {
+   "id": "eastvillage",
+   "name": "Batari",
+   "kind": "town",
+   "x": 580,
+   "z": -480,
+   "r": 120,
+   "density": 0.55,
+   "style": "stilt",
+   "ground": "mud"
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -850,
+   "z": 760,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 850,
+   "z": -760,
+   "r": 100,
+   "helipad": true
+  },
+  {
+   "id": "rivercamp",
+   "name": "River camp",
+   "kind": "camp",
+   "x": -300,
+   "z": -460,
+   "r": 60
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -850,
+     760
+    ],
+    [
+     -560,
+     500
+    ],
+    [
+     -260,
+     160
+    ],
+    [
+     -80,
+     60
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     80,
+     -60
+    ],
+    [
+     300,
+     -250
+    ],
+    [
+     580,
+     -480
+    ],
+    [
+     850,
+     -760
+    ]
+   ],
+   "width": 6,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "mast",
+   "type": "antenna",
+   "x": 30,
+   "z": 30,
+   "h": 22
+  }
+ ],
+ "bases": [
+  {
+   "x": -850,
+   "z": 760,
+   "yaw": 2.3
+  },
+  {
+   "x": 850,
+   "z": -760,
+   "yaw": -0.8
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -891,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -864,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -836,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -809,
+   "z": 704,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -891,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -864,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -836,
+   "z": 736,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 809,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 836,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 864,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 891,
+   "z": -736,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 809,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 836,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "exo_suit",
+   "x": 864,
+   "z": -704,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "patrol_boat",
+   "x": -700,
+   "z": -200,
+   "yaw": 1.6,
+   "team": null
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Kampung Sari",
+    "objs": [
+     {
+      "name": "Longhouse",
+      "x": -560,
+      "z": 480
+     },
+     {
+      "name": "Bridge path",
+      "x": -450,
+      "z": 600
+     }
+    ]
+   },
+   {
+    "name": "Terraces",
+    "objs": [
+     {
+      "name": "West terraces",
+      "x": -260,
+      "z": 160
+     },
+     {
+      "name": "Stair foot",
+      "x": -120,
+      "z": 120
+     }
+    ]
+   },
+   {
+    "name": "Temple Hill",
+    "objs": [
+     {
+      "name": "Temple stairs",
+      "x": 0,
+      "z": 34
+     },
+     {
+      "name": "East terrace",
+      "x": 110,
+      "z": 70
+     }
+    ]
+   },
+   {
+    "name": "Batari",
+    "objs": [
+     {
+      "name": "Batari square",
+      "x": 580,
+      "z": -480
+     },
+     {
+      "name": "River dock",
+      "x": 650,
+      "z": -560
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 850,
+      "z": -760
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Kampung Sari",
+   "x": -560,
+   "z": 500
+  },
+  {
+   "id": "B",
+   "name": "West terraces",
+   "x": -260,
+   "z": 160
+  },
+  {
+   "id": "C",
+   "name": "Temple stairs",
+   "x": 0,
+   "z": 34
+  },
+  {
+   "id": "D",
+   "name": "Shrine",
+   "x": 300,
+   "z": 250
+  },
+  {
+   "id": "E",
+   "name": "Batari",
+   "x": 580,
+   "z": -480
+  },
+  {
+   "id": "F",
+   "name": "River camp",
+   "x": -300,
+   "z": -460
+  }
+ ],
+ "pois": [
+  {
+   "name": "Temple summit",
+   "x": 0,
+   "z": 0,
+   "r": 50,
+   "tier": 5,
+   "boss": "warden",
+   "key": "key_shrine"
+  },
+  {
+   "name": "Shrine ruins",
+   "x": 300,
+   "z": 250,
+   "r": 50,
+   "tier": 3,
+   "key": "key_shrine"
+  },
+  {
+   "name": "West terraces",
+   "x": -260,
+   "z": 160,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Kampung Sari",
+   "x": -560,
+   "z": 500,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Batari",
+   "x": 580,
+   "z": -480,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "River camp",
+   "x": -300,
+   "z": -460,
+   "r": 50,
+   "tier": 2
+  }
+ ],
+ "extracts": [
+  {
+   "name": "River boat",
+   "x": -1050,
+   "z": -260,
+   "kind": "open"
+  },
+  {
+   "name": "North helipad",
+   "x": 0,
+   "z": -1050,
+   "kind": "timed",
+   "opens": 360
+  },
+  {
+   "name": "Summit",
+   "x": 0,
+   "z": 10,
+   "kind": "flare"
+  },
+  {
+   "name": "Shrine passage",
+   "x": 300,
+   "z": 260,
+   "kind": "key",
+   "key": "key_shrine"
+  }
+ ],
+ "areas": [
+  {
+   "id": "summit",
+   "name": "Temple Hill",
+   "x": 0,
+   "z": 20,
+   "r": 150,
+   "dom": [
+    [
+     -60,
+     40
+    ],
+    [
+     0,
+     36
+    ],
+    [
+     60,
+     40
+    ]
+   ],
+   "spawns": [
+    [
+     -130,
+     110
+    ],
+    [
+     130,
+     -110
+    ]
+   ]
+  },
+  {
+   "id": "sari",
+   "name": "Kampung Sari",
+   "x": -560,
+   "z": 500,
+   "r": 140,
+   "dom": [
+    [
+     -620,
+     460
+    ],
+    [
+     -560,
+     500
+    ],
+    [
+     -500,
+     540
+    ]
+   ],
+   "spawns": [
+    [
+     -680,
+     380
+    ],
+    [
+     -440,
+     620
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "monsoon",
+   "name": "Monsoon",
+   "hour": 16,
+   "weather": "monsoon"
+  },
+  {
+   "id": "fog",
+   "name": "Fog",
+   "hour": 7,
+   "weather": "fog"
+  },
+  {
+   "id": "night",
+   "name": "Night",
+   "hour": 0.5,
+   "weather": "clear"
+  }
+ ]
+}
