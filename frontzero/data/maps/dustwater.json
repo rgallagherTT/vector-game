@@ -1,0 +1,54 @@
+{
+  "id": "dustwater", "name": "Dustwater", "country": "kharavan", "size": 2400, "seed": 101, "biomes": ["desert", "coastal"], "mask": { "type": "edge", "dir": "s", "start": 0.93, "blend": 0.05 },
+  "baseHeight": 10, "border": 140, "blurb": "A frontier town of adobe and tin between the dunes and an old caravan road.",
+  "sites": [
+    { "id": "town", "name": "Dustwater", "kind": "town", "x": 0, "z": 0, "r": 200, "density": 0.75, "floors": [1, 3], "ground": "dirt" },
+    { "id": "fob", "name": "Mandate FOB", "kind": "base", "x": 720, "z": -790, "r": 110, "density": 0.6, "helipad": true, "ground": "gravel" },
+    { "id": "accordhq", "name": "Accord HQ", "kind": "base", "x": -800, "z": 820, "r": 110, "density": 0.6, "helipad": true, "ground": "gravel" },
+    { "id": "caravanserai", "name": "Old Caravanserai", "kind": "ruins", "x": -480, "z": -300, "r": 90, "density": 0.7 },
+    { "id": "oasis", "name": "Oasis farm", "kind": "farm", "x": -560, "z": 300, "r": 80, "density": 0.5, "style": "adobe" },
+    { "id": "ridge", "name": "Ridge camp", "kind": "camp", "x": 300, "z": -420, "r": 60, "density": 0.5 }
+  ],
+  "lakes": [{ "x": -680, "z": 250, "r": 55, "depth": 4 }],
+  "roads": [
+    { "pts": [[-800, 760], [-620, 520], [-380, 260], [-150, 80], [0, 0], [180, -160], [420, -420], [700, -720]], "width": 9, "surf": "asphalt" },
+    { "pts": [[-1050, -200], [-700, -260], [-480, -300], [-200, -120], [0, 0]], "width": 7, "surf": "dirt" },
+    { "pts": [[0, 0], [260, 220], [480, 380], [900, 700], [1050, 760]], "width": 7, "surf": "dirt" }
+  ],
+  "structures": [
+    { "id": "fuel", "type": "fuel_depot", "name": "Fuel depot", "x": 470, "z": 330 },
+    { "id": "mast", "type": "radio_tower", "name": "Relay mast", "x": -260, "z": 520, "h": 44 },
+    { "id": "radar", "type": "radar", "name": "FOB radar", "x": 780, "z": -700 }
+  ],
+  "bases": [{ "x": -800, "z": 820, "yaw": 2.4 }, { "x": 720, "z": -790, "yaw": -0.8 }],
+  "pads": [
+    { "type": "hover_tank", "x": -760, "z": 760, "yaw": 2.5, "team": 0 }, { "type": "hover_apc", "x": -830, "z": 740, "yaw": 2.5, "team": 0 }, { "type": "speeder_bike", "x": -720, "z": 860, "yaw": 2.4, "team": 0 }, { "type": "speeder_buggy", "x": -700, "z": 800, "yaw": 2.4, "team": 0 },
+    { "type": "vtol_dropship", "x": -880, "z": 880, "yaw": 2.4, "team": 0, "air": true }, { "type": "vtol_gunship", "x": -900, "z": 800, "yaw": 2.4, "team": 0, "air": true }, { "type": "assault_mech", "x": -860, "z": 700, "yaw": 2.4, "team": 0, "modes": ["warfare"] },
+    { "type": "hover_tank", "x": 680, "z": -730, "yaw": -0.7, "team": 1 }, { "type": "hover_apc", "x": 760, "z": -720, "yaw": -0.7, "team": 1 }, { "type": "speeder_bike", "x": 640, "z": -820, "yaw": -0.8, "team": 1 }, { "type": "speeder_buggy", "x": 650, "z": -760, "yaw": -0.8, "team": 1 },
+    { "type": "vtol_dropship", "x": 800, "z": -860, "yaw": -0.8, "team": 1, "air": true }, { "type": "vtol_gunship", "x": 820, "z": -780, "yaw": -0.8, "team": 1, "air": true }, { "type": "artillery_skiff", "x": 700, "z": -660, "yaw": -0.8, "team": 1, "modes": ["warfare"] },
+    { "type": "speeder_quad", "x": 60, "z": 60, "yaw": 0.7, "team": null }, { "type": "speeder_hauler", "x": -140, "z": 90, "yaw": 1.0, "team": null }, { "type": "speeder_bike", "x": -470, "z": -250, "yaw": 0.2, "team": null }
+  ],
+  "breakthrough": { "attacker": 1, "sectors": [
+    { "name": "The Ridge", "objs": [{ "name": "Ridge camp", "x": 300, "z": -420 }, { "name": "Pump station", "x": 470, "z": -300 }] },
+    { "name": "South Quarter", "objs": [{ "name": "Caravan gate", "x": 120, "z": -130 }, { "name": "Tin row", "x": -120, "z": -70 }] },
+    { "name": "Market", "objs": [{ "name": "Market square", "x": 0, "z": 0 }, { "name": "Bank", "x": 110, "z": 110 }, { "name": "Mosque yard", "x": -110, "z": 120 }] },
+    { "name": "Oasis", "objs": [{ "name": "Oasis farm", "x": -560, "z": 300 }, { "name": "Relay mast", "x": -260, "z": 520 }], "destroy": "mast" },
+    { "name": "Accord HQ", "objs": [{ "name": "Headquarters", "x": -790, "z": 810 }] }
+  ] },
+  "conquest": [
+    { "id": "A", "name": "FOB gate", "x": 560, "z": -620 }, { "id": "B", "name": "Ridge", "x": 300, "z": -420 }, { "id": "C", "name": "Market", "x": 0, "z": 0 }, { "id": "D", "name": "Caravanserai", "x": -480, "z": -300 },
+    { "id": "E", "name": "Oasis", "x": -560, "z": 300 }, { "id": "F", "name": "Relay mast", "x": -260, "z": 520 }, { "id": "G", "name": "Fuel depot", "x": 470, "z": 330 }
+  ],
+  "pois": [
+    { "name": "Dustwater bank", "x": 110, "z": 110, "r": 30, "tier": 4, "key": "key_bank" }, { "name": "Market", "x": 0, "z": 0, "r": 60, "tier": 2 }, { "name": "Fuel depot", "x": 470, "z": 330, "r": 40, "tier": 3 },
+    { "name": "Old Caravanserai", "x": -480, "z": -300, "r": 60, "tier": 2 }, { "name": "Mandate FOB", "x": 720, "z": -790, "r": 90, "tier": 5, "boss": "warden" }, { "name": "Relay mast", "x": -260, "z": 520, "r": 30, "tier": 3 }, { "name": "Oasis farm", "x": -560, "z": 300, "r": 60, "tier": 1 }, { "name": "Ridge camp", "x": 300, "z": -420, "r": 40, "tier": 2 }
+  ],
+  "extracts": [
+    { "name": "North road", "x": -1000, "z": -200, "kind": "open" }, { "name": "Dune pass", "x": 980, "z": 740, "kind": "timed", "opens": 420 }, { "name": "FOB helipad", "x": 760, "z": -840, "kind": "flare" }, { "name": "Bank tunnel", "x": 90, "z": 130, "kind": "key", "key": "key_bank" }, { "name": "Oasis well", "x": -690, "z": 330, "kind": "guarded" }
+  ],
+  "areas": [
+    { "id": "town", "name": "Town centre", "x": 0, "z": 0, "r": 190, "dom": [[-70, 40], [40, -60], [120, 70]], "spawns": [[-170, -150], [170, 150]] },
+    { "id": "caravanserai", "name": "Caravanserai", "x": -480, "z": -300, "r": 130, "dom": [[-540, -330], [-480, -300], [-420, -270]], "spawns": [[-600, -380], [-360, -220]] }
+  ],
+  "variants": [{ "id": "day", "name": "Day", "hour": 11, "weather": "clear" }, { "id": "dusk", "name": "Dusk", "hour": 18.5, "weather": "haze" }, { "id": "storm", "name": "Sandstorm", "hour": 14, "weather": "sandstorm" }, { "id": "night", "name": "Night", "hour": 1, "weather": "clear" }]
+}

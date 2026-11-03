@@ -1,0 +1,19 @@
+{
+  "id": "range", "name": "Proving Grounds", "country": "kharavan", "size": 2400, "seed": 5, "biomes": ["desert"], "baseHeight": 5, "hidden": true,
+  "blurb": "The Accord's firing range and vehicle course outside Saffar.",
+  "sites": [
+    { "id": "range", "name": "Range", "kind": "clear", "x": 0, "z": 330, "r": 800, "shape": "square", "edge": 220, "ground": "gravel", "clear": 1 },
+    { "id": "base", "name": "Range control", "kind": "base", "x": 0, "z": -200, "r": 70, "density": 0.4, "ground": "concrete" }
+  ],
+  "lakes": [{ "x": -760, "z": -560, "r": 190, "depth": 7 }],
+  "range": { "x": 0, "z": -110, "yaw": 0 },
+  "bases": [{ "x": 0, "z": -200, "yaw": 0 }],
+  "courses": {
+    "ground": { "start": [40, -150], "yaw": 0, "tip": "Through the rings in order. Hold Shift to boost, Space to hop.", "rings": [[60, 0], [260, 220], [360, 520], [120, 760], [-200, 620], [-330, 300], [-160, 40]] },
+    "walk": { "start": [40, -150], "yaw": 0, "tip": "Walk the course. Space fires the jump thrusters.", "rings": [[40, -40], [120, 60], [40, 160], [-60, 60]] },
+    "air": { "start": [60, -160], "yaw": 0, "tip": "Climb with Space. Pitch forward with W to fly.", "rings": [[60, 0, 40], [320, 260, 70], [60, 640, 90], [-300, 280, 60], [-60, 0, 40]] },
+    "jet": { "start": [0, -600], "yaw": 0, "tip": "Mouse to pitch and roll, W/S throttle. Don't stall.", "rings": [[0, 500, 200], [700, 300, 240], [500, -700, 220], [-600, -500, 230], [-700, 400, 250]] },
+    "sea": { "start": [-760, -700], "yaw": 0, "tip": "Stay on the water. A/D steer, Shift boost.", "rings": [[-760, -600], [-640, -520], [-680, -420], [-820, -440], [-850, -560]] }
+  },
+  "variants": [{ "id": "day", "name": "Day", "hour": 10, "weather": "clear", "freeze": true }, { "id": "night", "name": "Night", "hour": 0.5, "weather": "clear", "freeze": true }]
+}
