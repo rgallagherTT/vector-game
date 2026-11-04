@@ -23,6 +23,8 @@ The page loads `data/*.json` over HTTP, so opening `index.html` straight from di
 
 WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1 2 3 weapons · G throw, 5 cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · 4 class tool · T ultimate · H / J heal / stim · \` or MMB ping · L night vision / thermal · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
 
+On phones and tablets the game shows touch controls automatically: drag the left side to move (push to the edge to sprint), drag the right side to look, and use the thumb buttons. Add `?touch=1` to force them on or `?touch=0` to hide them.
+
 Vehicles: W/S throttle, A/D steer, mouse aims the turret, Space hops (speeders) or climbs (VTOLs), Ctrl descends, Shift boosts, mouse wheel switches vehicle weapons, X fires countermeasures, number keys change seat, V toggles the camera, and F gets out (from height you get a parachute; in a dropship's passenger seat it rappels).
 
 ## Content
