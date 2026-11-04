@@ -155,7 +155,7 @@ function logicStep(dt) {
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
 function frame() {
   requestAnimationFrame(frame); const now = performance.now(); let dt = Math.min(0.1, (now - lastT) / 1000); lastT = now; G.frame++; frameTimes.push(dt * 1000); if (frameTimes.length > 600) frameTimes.shift(); fpsSm = lerp(fpsSm, 1 / Math.max(dt, 1e-4), 0.05);
-  if (!G.inGame) { if (!NORENDER) renderMenu(dt); return; }
+  Touch.update(); if (!G.inGame) { if (!NORENDER) renderMenu(dt); return; }
   const t0 = performance.now();
   try {
     if (!G.paused) { acc += dt * TURBO; let n = 0; while (acc >= FIXED && n < 4 * TURBO) { logicStep(FIXED); acc -= FIXED; n++; } if (n >= 4 * TURBO) acc = 0; }
@@ -266,7 +266,7 @@ async function boot() {
   try { await Data.load((f) => { n++; bar.style.width = clamp(n / 24, 0.05, 0.9) * 100 + '%'; msg.textContent = 'loading ' + f + '…'; }); }
   catch (e) { msg.textContent = 'Could not load data/*.json — serve this folder over HTTP (npx serve .). ' + e.message; return; }
   msg.textContent = 'loading models…'; await Models.load();
-  buildTextures(); buildMaterials(); Post.init(); Sky.init(); TerrainGfx.init(); WaterGfx.init(); FX.init(); Foliage.init(); SoldierGfx.init(); UI.init(); Input.init();
+  buildTextures(); buildMaterials(); Post.init(); Sky.init(); TerrainGfx.init(); WaterGfx.init(); FX.init(); Foliage.init(); SoldierGfx.init(); UI.init(); Input.init(); Touch.init();
   G.settings = Object.assign({}, G.settings); Save.load(); if (G.save.vehicleCamos.length) for (const c of G.save.vehicleCamos) if (!DATA.camos.find((x) => x.id === c.id)) DATA.camos.push({ id: c.id, name: c.name + ' (BOUNTY RUN)', biome: null, colors: c.colors, vehicle: true });
   Game.applyQuality(); bar.style.width = '100%'; Game.loading(false); if (G.debug) DebugUI.init();
   Input.onKey((code) => { if (code === 'Escape' && UI.screen && UI.screen !== 'mini' && UI.screen !== 'deploy') UI.back(); });

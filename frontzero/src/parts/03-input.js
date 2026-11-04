@@ -29,7 +29,7 @@ const Input = {
     addEventListener('blur', () => { this.keys.clear(); this.mouse.b0 = this.mouse.b2 = false; });
     addEventListener('mousemove', (e) => { if (this.mouse.locked) { this.mouse.dx += e.movementX || 0; this.mouse.dy += e.movementY || 0; } });
     addEventListener('mousedown', (e) => {
-      Audio.init(); if (e.target.id !== 'c' && !e.target.closest?.('#hudRoot')) return;
+      Audio.init(); if (Touch.on) return; if (e.target.id !== 'c' && !e.target.closest?.('#hudRoot')) return;
       if (G.inGame && !this.mouse.locked && !UI.blocking()) { this.lock(); return; }
       if (e.button === 0) this.mouse.b0 = true; if (e.button === 1) { this.mouse.b1 = true; e.preventDefault(); } if (e.button === 2) this.mouse.b2 = true;
     });
@@ -38,7 +38,7 @@ const Input = {
     addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('pointerlockchange', () => { this.mouse.locked = document.pointerLockElement === canvas; if (!this.mouse.locked) { this.mouse.b0 = this.mouse.b2 = false; if (G.inGame && !UI.blocking() && !G.bench && !NORENDER) UI.pause(); } });
   },
-  lock() { try { const p = canvas.requestPointerLock && canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed (iframe, headless) */ } },
+  lock() { if (Touch.on) return; try { const p = canvas.requestPointerLock && canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed (iframe, headless) */ } },
   unlock() { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* ignore */ } },
   onKey(fn) { this.listeners.push(fn); },
   any(codes) { if (!codes) return false; for (const c of codes) if (this.keys.has(c)) return true; return false; },
@@ -53,6 +53,7 @@ const Input = {
       for (const n of ACTION_LIST) if (M[n] && k(n)) a[n] = true;
       a.fire = this.mouse.b0; a.ads = this.mouse.b2; if (this.mouse.b1) a.ping = true;
       a.lookX = this.mouse.dx * sens; a.lookY = -this.mouse.dy * sens * inv; this.mouse.dx = 0; this.mouse.dy = 0; a.wheel = this.mouse.wheel; this.mouse.wheel = 0;
+      if (i === 0 && typeof Touch !== 'undefined') Touch.apply(a);
     }
     if (src.kb2) {
       const M = KEYMAPS.kb2; const k = (n) => this.any(M[n]);

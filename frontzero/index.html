@@ -116,6 +116,106 @@ kbd,.kbd{display:inline-block;padding:0 5px;border:1px solid var(--txt);border-r
 .hud.small{font-size:12px}.hud.small .mini{width:120px;height:120px}.hud.small .ammo .mag{font-size:30px}.hud.small .vitals{width:170px}.hud.small .squad,.hud.small .objtext{display:none}
 .hud .weight{font:11px var(--mono);color:var(--dim);margin-top:2px}.hud .weight.over{color:var(--amber)}
 .hud .spot{position:absolute;width:0;height:0}
+/* ---------------- HUD v2 ---------------- */
+.hud{--hb:rgba(8,12,15,.58);--hl:rgba(200,230,235,.14)}
+.hud .mini{width:168px;height:168px;border:1px solid var(--hl);border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.hud .squad{top:192px;width:168px;line-height:1.25}
+.hud .squad .order{font:700 10px var(--mono);letter-spacing:.16em;color:var(--amber);margin-bottom:4px}
+.hud .squad .m{display:block;background:var(--hb);border-left:2px solid var(--green);padding:3px 6px;margin-bottom:3px;border-radius:0 4px 4px 0}
+.hud .squad .m .nm{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hud .squad .m .nm b{color:var(--gold);margin-right:3px}
+.hud .squad .m .hb{height:3px;background:rgba(255,255,255,.12);margin-top:2px}.hud .squad .m .hb i{display:block;height:100%;background:var(--green)}
+.hud .squad .m.downed{border-left-color:var(--red)}.hud .squad .m.dead{opacity:.45;border-left-color:#666}
+.hud .vitals{left:18px;bottom:16px;width:290px;background:var(--hb);border:1px solid var(--hl);border-radius:10px;padding:9px 12px 10px}
+.hud .vitals .pname{font:700 10px var(--mono);letter-spacing:.18em;color:var(--dim);margin-bottom:4px}
+.hud .vitals .hpw{display:flex;align-items:center;gap:10px}
+.hud .vitals .hpn{font:700 32px/1 var(--mono);min-width:58px}
+.hud .vitals.low .hpn{color:var(--red);animation:hudpulse .8s infinite}
+.hud .vitals .hpseg{flex:1;display:flex;gap:3px}.hud .vitals .hpseg i{flex:1;height:12px;border-radius:2px;background:rgba(255,255,255,.12)}
+.hud .vitals .armr{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;margin-top:7px}
+.hud .vitals .tg{font:700 10px var(--mono);color:var(--dim);letter-spacing:.1em}.hud .vitals .tg b{display:inline-block;min-width:16px;margin-left:4px;padding:0 3px;border-radius:3px;background:var(--cyan);color:#041014;text-align:center}
+.hud .vitals .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}.hud .vitals .bar i{display:block;height:100%;border-radius:3px}
+.hud .vitals .bar.ar i{background:var(--cyan)}.hud .vitals .bar.hm i{background:#9cc6d2}
+.hud .vitals .num{font:700 12px var(--mono);width:auto;min-width:26px;text-align:right}
+.hud .vitals .stline{height:2px;margin-top:8px;background:rgba(255,255,255,.1);transition:opacity .4s}.hud .vitals .stline i{display:block;height:100%;background:var(--amber)}
+.hud .ammo{right:18px;bottom:16px;width:250px;text-align:left;background:var(--hb);border:1px solid var(--hl);border-radius:10px;padding:9px 12px 10px}
+.hud .ammo .wtop{display:flex;justify-content:space-between;align-items:center}
+.hud .ammo .wname{font:700 12px var(--font);letter-spacing:.16em;color:#fff}
+.hud .ammo .mode{font:700 10px var(--mono);border:1px solid var(--line2);border-radius:3px;padding:1px 5px;color:var(--amber);margin:0}
+.hud .ammo .wmid{display:flex;align-items:baseline;gap:8px;margin-top:2px}
+.hud .ammo .mag{font:700 44px/1 var(--mono)}.hud .ammo .mag.low{color:var(--red)}
+.hud .ammo .res{font:700 18px var(--mono);color:var(--dim);margin:0}.hud .ammo .res::before{content:"/ ";opacity:.6}
+.hud .ammo .mbar{height:5px;margin-top:6px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;position:relative}
+.hud .ammo .mbar i{display:block;height:100%;background:repeating-linear-gradient(90deg,#eef6f6 0 4px,transparent 4px 6px)}.hud .ammo .mbar i.low{background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 6px)}
+.hud .ammo .wbot{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.hud .ammo .ammot{font:11px var(--mono);color:var(--cyan)}
+.hud .ammo .wslots i{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;font:700 10px var(--mono);border:1px solid var(--line2);border-radius:3px;margin-left:3px;color:var(--dim);font-style:normal}.hud .ammo .wslots i.on{background:var(--amber);border-color:var(--amber);color:#111}
+.hud .kit{left:50%;right:auto;bottom:16px;transform:translateX(-50%);gap:6px}
+.hud .kit .ab{position:relative;width:58px;height:58px;border-radius:10px;background:conic-gradient(rgba(0,0,0,.55) var(--cd),transparent 0),var(--hb);border:1px solid var(--hl);text-align:center;overflow:hidden}
+.hud .kit .ab .key{position:absolute;left:5px;top:3px;font:700 9px var(--mono);color:var(--dim)}
+.hud .kit .ab .ic{font:700 18px/1 var(--font);margin-top:13px;color:#fff}
+.hud .kit .ab .lb{font:700 8px var(--mono);letter-spacing:.08em;color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden}
+.hud .kit .ab .n{position:absolute;right:5px;top:3px;font:700 11px var(--mono);color:var(--gold)}
+.hud .kit .ab.empty{opacity:.4}.hud .kit .ab.med .ic{color:var(--green)}.hud .kit .ab.gad .ic{color:var(--cyan)}
+.hud .kit .ab.ult{width:70px;border-color:var(--violet)}.hud .kit .ab.ult .ic{font:700 15px var(--mono);margin-top:14px;color:var(--violet)}
+.hud .kit .ab.ult.ready{background:rgba(180,140,255,.3);box-shadow:0 0 14px rgba(180,140,255,.7)}.hud .kit .ab.ult.ready .ic{color:#fff}.hud .kit .ab.ult.active{box-shadow:0 0 18px var(--violet)}
+.hud .compass{height:30px;border-radius:6px;background:linear-gradient(90deg,transparent,rgba(8,12,15,.55) 15%,rgba(8,12,15,.55) 85%,transparent)}
+.hud .tickets{top:76px;display:flex;align-items:center;gap:6px;font:700 15px var(--mono)}
+.hud .tickets .tb{width:120px;height:8px;background:rgba(255,255,255,.12);border-radius:4px;overflow:hidden}.hud .tickets .tb i{display:block;height:100%}
+.hud .tickets .tb.a{transform:scaleX(-1)}.hud .tickets .tb.a i{background:var(--friend)}.hud .tickets .tb.b i{background:var(--enemy)}
+.hud .tickets .n{min-width:40px}.hud .tickets .n.a{color:var(--friend);text-align:right}.hud .tickets .n.b{color:var(--enemy)}
+.hud .modeinfo{top:96px}
+.hud .obj .f{border-radius:6px;background:var(--hb)}
+.hud .feed .e{border-radius:4px;padding:1px 8px}
+.hud .prompt{background:var(--hb);border:1px solid var(--amber);border-radius:22px;padding:7px 16px;font-size:14px}
+.hud .prompt .holdbar{border-radius:2px}
+.hud .vehicle{right:18px;bottom:16px;width:270px;text-align:left;background:var(--hb);border:1px solid var(--hl);border-radius:10px;padding:9px 12px 10px}
+.hud .vehicle .vtop{display:flex;justify-content:space-between;align-items:center}.hud .vehicle .vn{font:700 12px var(--font);letter-spacing:.16em;color:#fff}.hud .vehicle .seat{font:700 10px var(--mono);color:var(--dim)}
+.hud .vehicle .vmid{display:flex;align-items:baseline;gap:6px;margin:2px 0 4px}.hud .vehicle .spd{font:700 40px/1 var(--mono)}.hud .vehicle .u{font:700 11px var(--mono);color:var(--dim)}.hud .vehicle .alt{margin-left:auto;font:700 12px var(--mono);color:var(--cyan)}
+.hud .vehicle .vhpb{position:relative;height:14px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}.hud .vehicle .vhpb i{display:block;height:100%;background:var(--green)}.hud .vehicle .vhpb.low i{background:var(--red)}
+.hud .vehicle .vhpb span{position:absolute;right:6px;top:0;font:700 11px/14px var(--mono)}
+.hud .vehicle .parts{margin-top:5px;display:flex;flex-wrap:wrap;gap:3px}.hud .vehicle .pc{font:700 9px var(--mono);padding:1px 4px;border-radius:3px;background:rgba(111,224,138,.2);color:var(--green)}
+.hud .vehicle .pc.bad{background:rgba(255,180,60,.22);color:var(--amber)}.hud .vehicle .pc.dead{background:rgba(255,75,58,.25);color:var(--red);text-decoration:line-through}
+.hud .vehicle .vw{font:12px var(--mono);margin-top:6px}.hud .vehicle .vx{font:700 10px var(--mono);color:var(--dim);margin-top:4px}
+.hud .vehicle .bb{display:inline-block;width:60px;height:4px;background:rgba(255,255,255,.12);vertical-align:middle}.hud .vehicle .bb i{display:block;height:100%;background:var(--amber)}
+.hud .radio{top:auto;left:18px;bottom:150px;border-radius:8px}
+@keyframes hudpulse{50%{opacity:.45}}
+.hud.small .vitals{width:200px;padding:6px 8px}.hud.small .vitals .hpn{font-size:22px;min-width:40px}.hud.small .ammo{width:180px;padding:6px 8px}.hud.small .ammo .mag{font-size:30px}.hud.small .kit .ab{width:44px;height:44px}.hud.small .kit .ab .lb{display:none}.hud.small .kit .ab .ic{margin-top:10px}.hud.small .mini{width:110px;height:110px}.hud.small .vehicle{width:200px}
+/* touch: keep the thumbs' corners free */
+body.touch .hud .mini{width:104px;height:104px;left:10px;top:8px}
+body.touch .hud .squad,body.touch .hud .objtext{display:none}
+body.touch .hud .vitals{left:50%;bottom:6px;transform:translateX(-125%);width:210px;padding:5px 8px 6px}
+body.touch .hud .vitals .hpn{font-size:20px;min-width:36px}body.touch .hud .vitals .hpseg i{height:8px}body.touch .hud .vitals .pname,body.touch .hud .vitals .weight{display:none}
+body.touch .hud .ammo{left:50%;right:auto;bottom:6px;transform:translateX(-20%);width:180px;padding:5px 8px 6px}
+body.touch .hud .ammo .mag{font-size:26px}body.touch .hud .ammo .wbot{display:none}
+body.touch .hud .vehicle{left:50%;right:auto;bottom:6px;transform:translateX(-50%);width:230px;padding:5px 8px}body.touch .hud .vehicle .spd{font-size:24px}
+body.touch .hud .compass{top:4px;width:34%;left:38%}body.touch .hud .bearing{top:30px;left:38%}body.touch .hud .obj{top:36px;left:38%}body.touch .hud .tickets{top:64px;left:38%}body.touch .hud .modeinfo{left:38%}body.touch .hud .tickets .tb{width:70px}body.touch .hud .modeinfo{top:82px}
+body.touch .hud .feed{top:52px;font-size:10px}body.touch .hud .extract{top:120px;width:190px;font-size:10px}
+body.touch .hud .radio{left:10px;top:118px;bottom:auto;max-width:250px;font-size:11px}
+body.touch .hud .prompt{top:auto;bottom:30%}
+/* ---------------- touch controls ---------------- */
+#touch{position:fixed;inset:0;z-index:15;pointer-events:none;display:none;touch-action:none}
+#touch.show{display:block}
+#touch .tz{position:absolute;pointer-events:auto;touch-action:none}
+#touch .tz.move{left:0;bottom:0;width:42%;height:78%}
+#touch .tz.look{right:0;top:0;width:58%;height:100%}
+#touch .stick{position:absolute;display:none;width:26vmin;height:26vmin;margin:-13vmin 0 0 -13vmin;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:radial-gradient(rgba(255,255,255,.08),rgba(0,0,0,.18));pointer-events:none}
+#touch .stick i{position:absolute;left:50%;top:50%;width:11vmin;height:11vmin;border-radius:50%;background:rgba(255,255,255,.55);transform:translate(-50%,-50%)}
+#touch .stick.sprint{border-color:var(--amber)}#touch .stick.sprint i{background:var(--amber)}
+#touch .tb{position:absolute;width:12vmin;height:12vmin;border-radius:50%;background:rgba(14,20,24,.42);border:2px solid rgba(255,255,255,.32);color:#fff;display:grid;place-items:center;pointer-events:auto;touch-action:none;font:700 2.5vmin var(--font);letter-spacing:.06em;text-shadow:var(--shadow);-webkit-tap-highlight-color:transparent}
+#touch .tb.big{background:rgba(255,75,58,.22);border-color:rgba(255,120,100,.7);font-size:3.4vmin}
+#touch .tb.sm{font-size:2vmin}#touch .tb.top{border-radius:2vmin}
+#touch .tb.on{background:rgba(255,180,60,.35);border-color:var(--amber)}
+#touch .tb.use{background:rgba(255,180,60,.25);border-color:var(--amber);font-size:2.4vmin}
+#touch .tb.ult{border-color:var(--violet)}#touch .tb.ult.ready{background:rgba(180,140,255,.4);box-shadow:0 0 12px var(--violet)}
+#rotate{position:fixed;inset:0;z-index:70;background:#06090b;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;font:700 18px var(--font);letter-spacing:.15em;pointer-events:auto;text-align:center}
+#rotate div{font-size:64px;margin-bottom:12px;color:var(--amber)}
+@media (orientation:portrait){body.touch #rotate{display:flex}}
+body.touch #c{cursor:default}
+body.touch .hud .feed{top:13vmin}body.touch .hud .timer{top:13vmin}
+body.touch .hud .prompt kbd{display:none}
+body.touch .hud .kit{display:none}
+body.touch .screen .body{padding:12px}body.touch .topbar{padding:8px 12px;gap:10px}body.touch .topbar .logo{font-size:18px}
+@media (max-height:520px){.title-wrap{top:4vh;left:4vw}.title-wrap .big{font-size:40px}.title-wrap .sub{margin-bottom:10px}.mbtn{padding:7px 14px;margin:3px 0;font-size:14px}.mbtn small{display:none}.screen{overflow:auto}.cols{flex-wrap:wrap}.cols>*{min-width:260px}}
 /* ---------------- menus ---------------- */
 .screen{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,9,11,.55),rgba(6,9,11,.92));display:flex;flex-direction:column}
 .screen.clear{background:transparent}
@@ -693,7 +793,7 @@ const Input = {
     addEventListener('blur', () => { this.keys.clear(); this.mouse.b0 = this.mouse.b2 = false; });
     addEventListener('mousemove', (e) => { if (this.mouse.locked) { this.mouse.dx += e.movementX || 0; this.mouse.dy += e.movementY || 0; } });
     addEventListener('mousedown', (e) => {
-      Audio.init(); if (e.target.id !== 'c' && !e.target.closest?.('#hudRoot')) return;
+      Audio.init(); if (Touch.on) return; if (e.target.id !== 'c' && !e.target.closest?.('#hudRoot')) return;
       if (G.inGame && !this.mouse.locked && !UI.blocking()) { this.lock(); return; }
       if (e.button === 0) this.mouse.b0 = true; if (e.button === 1) { this.mouse.b1 = true; e.preventDefault(); } if (e.button === 2) this.mouse.b2 = true;
     });
@@ -702,7 +802,7 @@ const Input = {
     addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('pointerlockchange', () => { this.mouse.locked = document.pointerLockElement === canvas; if (!this.mouse.locked) { this.mouse.b0 = this.mouse.b2 = false; if (G.inGame && !UI.blocking() && !G.bench && !NORENDER) UI.pause(); } });
   },
-  lock() { try { const p = canvas.requestPointerLock && canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed (iframe, headless) */ } },
+  lock() { if (Touch.on) return; try { const p = canvas.requestPointerLock && canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed (iframe, headless) */ } },
   unlock() { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* ignore */ } },
   onKey(fn) { this.listeners.push(fn); },
   any(codes) { if (!codes) return false; for (const c of codes) if (this.keys.has(c)) return true; return false; },
@@ -717,6 +817,7 @@ const Input = {
       for (const n of ACTION_LIST) if (M[n] && k(n)) a[n] = true;
       a.fire = this.mouse.b0; a.ads = this.mouse.b2; if (this.mouse.b1) a.ping = true;
       a.lookX = this.mouse.dx * sens; a.lookY = -this.mouse.dy * sens * inv; this.mouse.dx = 0; this.mouse.dy = 0; a.wheel = this.mouse.wheel; this.mouse.wheel = 0;
+      if (i === 0 && typeof Touch !== 'undefined') Touch.apply(a);
     }
     if (src.kb2) {
       const M = KEYMAPS.kb2; const k = (n) => this.any(M[n]);
@@ -750,6 +851,94 @@ const KEYHELP = [
   ['X', 'signature gadget'], ['4', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'night vision / thermal optic'],
   ['U', 'squad orders'], ['O', 'commander support'], ['M / Tab', 'map / scoreboard'], ['I', 'inventory (extraction)'], ['Esc', 'pause'],
 ];
+// §TOUCH -------------------------------------------------------------------------------------------
+// Phone / tablet controls for player 1: a floating move stick on the left (push to the edge = sprint), drag
+// anywhere on the right to look, and thumb buttons. They feed the same action names as the keyboard, so every
+// mode, vehicle and menu works unchanged. On automatically on touch screens; ?touch=1 forces it, ?touch=0 hides it.
+const TOUCH_BTNS = [
+  // id, label, action, style (right/bottom/size in vmin unless noted), kind: hold | tap | toggle
+  ['fire', 'FIRE', 'fire', 'right:5vmin;bottom:17vmin;width:21vmin;height:21vmin', 'hold', 'big'],
+  ['fireL', '●', 'fire', 'left:4vmin;bottom:50vmin;width:12vmin;height:12vmin', 'hold', ''],
+  ['ads', 'AIM', 'ads', 'right:29vmin;bottom:31vmin', 'toggle', ''],
+  ['jump', 'JUMP', 'jump', 'right:29vmin;bottom:5vmin', 'hold', ''],
+  ['crouch', 'DUCK', 'crouch', 'right:44vmin;bottom:5vmin', 'tap', ''],
+  ['reload', 'RLD', 'reload', 'right:44vmin;bottom:20vmin;width:11vmin;height:11vmin', 'tap', ''],
+  ['swap', 'SWAP', 'swap', 'right:7vmin;bottom:41vmin;width:11vmin;height:11vmin', 'tap', ''],
+  ['use', 'USE', 'interact', 'right:44vmin;bottom:36vmin;width:15vmin;height:15vmin;border-radius:3vmin', 'hold', 'use'],
+  ['throw', 'NADE', 'throw', 'right:22vmin;bottom:46vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
+  ['heal', 'HEAL', 'heal', 'right:34vmin;bottom:48vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
+  ['gadget', 'GADGET', 'gadget', 'right:5vmin;bottom:55vmin;width:11vmin;height:11vmin', 'hold', 'sm'],
+  ['tool', 'TOOL', 'tool', 'right:18vmin;bottom:59vmin;width:10vmin;height:10vmin', 'hold', 'sm'],
+  ['ult', 'ULT', 'ult', 'right:30vmin;bottom:61vmin;width:10vmin;height:10vmin', 'tap', 'sm ult'],
+  ['grapple', 'HOOK', 'grapple', 'right:5vmin;bottom:69vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
+  ['pause', '❚❚', 'pause', 'right:2vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['score', '☰', 'score', 'right:13vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'toggle', 'sm top'],
+  ['map', 'MAP', 'map', 'right:24vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['ping', 'PING', 'ping', 'right:35vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['orders', 'SQUAD', 'orders', 'right:46vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['commander', 'CMD', 'commander', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top cmd'],
+  ['inv', 'BAG', 'inv', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top bag'],
+  ['nv', 'NV', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['melee', 'KNIFE', 'melee', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
+  ['seat', 'SEAT', 'seat', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm veh'],
+];
+const Touch = {
+  on: false, root: null, held: new Set(), taps: new Set(), toggles: new Set(), stick: null, look: { x: 0, y: 0 }, mv: { x: 0, z: 0, sprint: false }, els: {}, crouchT: 0,
+  wanted() { const q = QS.get('touch'); if (q === '1') return true; if (q === '0') return false; return (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) && matchMedia('(pointer:coarse)').matches; },
+  init() {
+    if (!this.wanted()) return; this.on = true; document.body.classList.add('touch');
+    const r = this.root = el('div', { id: 'touch' }); document.body.appendChild(r);
+    r.innerHTML = `<div class="tz look"></div><div class="tz move"></div><div class="stick"><i></i></div>` + TOUCH_BTNS.map(([id, label, , st, , cls]) => `<div class="tb ${cls}" data-id="${id}" style="${st}"><span>${label}</span></div>`).join('');
+    const rot = el('div', { id: 'rotate' }); rot.innerHTML = '<div>↻</div>Turn your device sideways'; document.body.appendChild(rot);
+    for (const b of r.querySelectorAll('.tb')) this.els[b.dataset.id] = b;
+    const look = r.querySelector('.tz.look'), move = r.querySelector('.tz.move'); const stickEl = r.querySelector('.stick'); const knob = stickEl.firstChild;
+    const ptr = new Map(); // pointerId → { kind, x, y, ox, oy, id }
+    const sens = () => 0.0047 * (G.settings.touchSens ?? 1);
+    const first = () => { Audio.init(); if (!this.fsTried) { this.fsTried = true; try { const d = document.documentElement; const p = d.requestFullscreen ? d.requestFullscreen({ navigationUI: 'hide' }) : d.webkitRequestFullscreen?.(); if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {}); } catch (e) { /* not allowed */ } } };
+    const down = (e, kind, id) => { e.preventDefault(); e.stopPropagation(); first(); try { e.target.setPointerCapture(e.pointerId); } catch (er) { /* ignore */ } const p = { kind, id, x: e.clientX, y: e.clientY, ox: e.clientX, oy: e.clientY }; ptr.set(e.pointerId, p);
+      if (kind === 'move') { this.stick = p; stickEl.style.display = 'block'; stickEl.style.left = e.clientX + 'px'; stickEl.style.top = e.clientY + 'px'; knob.style.transform = 'translate(-50%,-50%)'; }
+      if (kind === 'btn') { const B = TOUCH_BTNS.find((b) => b[0] === id); const act = this.actFor(id, B[2]); const k = B[4]; this.els[id].classList.add('on');
+        p.act = act; if (id === 'crouch' && act === 'crouch') { this.crouchT = performance.now(); return; } if (k === 'toggle') { if (this.toggles.has(act)) this.toggles.delete(act); else this.toggles.add(act); } else if (k === 'tap' && id !== 'crouch') this.taps.add(act); else this.held.add(act); } };
+    const moveH = (e) => { const p = ptr.get(e.pointerId); if (!p) return; e.preventDefault(); const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (p.kind === 'look' || (p.kind === 'btn' && (p.id === 'fire' || p.id === 'ads' || p.id === 'fireL'))) { this.look.x += dx * sens(); this.look.y += -dy * sens() * (G.settings.invertY ? -1 : 1); }
+      if (p.kind === 'move') { const R = Math.min(innerWidth, innerHeight) * 0.13; let ox = p.x - p.ox, oy = p.y - p.oy; const L = Math.hypot(ox, oy); if (L > R * 1.6) { p.ox += ox * (1 - R * 1.6 / L); p.oy += oy * (1 - R * 1.6 / L); stickEl.style.left = p.ox + 'px'; stickEl.style.top = p.oy + 'px'; ox = p.x - p.ox; oy = p.y - p.oy; }
+        const l2 = Math.min(1, Math.hypot(ox, oy) / R); const a = Math.atan2(oy, ox); this.mv.x = Math.cos(a) * l2; this.mv.z = -Math.sin(a) * l2; this.mv.sprint = Math.hypot(ox, oy) > R * 1.25 && this.mv.z > 0.6; knob.style.transform = `translate(calc(-50% + ${Math.cos(a) * Math.min(Math.hypot(ox, oy), R)}px),calc(-50% + ${Math.sin(a) * Math.min(Math.hypot(ox, oy), R)}px))`; stickEl.classList.toggle('sprint', this.mv.sprint); } };
+    const up = (e) => { const p = ptr.get(e.pointerId); if (!p) return; ptr.delete(e.pointerId);
+      if (p.kind === 'move') { this.stick = null; this.mv.x = this.mv.z = 0; this.mv.sprint = false; stickEl.style.display = 'none'; }
+      if (p.kind === 'btn') { this.els[p.id].classList.remove('on'); if (p.id === 'crouch' && p.act === 'crouch') { this.taps.add(performance.now() - this.crouchT > 450 ? 'prone' : 'crouch'); } this.held.delete(p.act); }
+      if (p.kind === 'look' && Math.hypot(p.x - p.ox, p.y - p.oy) < 8 && G.settings.tapToFire) this.taps.add('fire'); };
+    look.addEventListener('pointerdown', (e) => down(e, 'look')); move.addEventListener('pointerdown', (e) => down(e, 'move'));
+    for (const b of r.querySelectorAll('.tb')) b.addEventListener('pointerdown', (e) => down(e, 'btn', b.dataset.id));
+    addEventListener('pointermove', moveH, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+    // menus on a phone: a tap anywhere also wakes audio + asks for fullscreen
+    document.addEventListener('pointerdown', () => first(), { once: true });
+  },
+  // in a vehicle some buttons change meaning
+  actFor(id, act) { const v = G.players[0]?.soldier?.vehicle; if (!v) return act; if (id === 'jump') return 'up'; if (id === 'crouch') return 'down'; if (id === 'swap') return 'vwpn'; if (id === 'seat') return 'nextSeat'; return act; },
+  // merged into player 1's action state every poll
+  apply(a) {
+    if (!this.on) return; const s = G.players[0]?.soldier; const inVeh = !!s?.vehicle;
+    a.mx += this.mv.x; a.mz += this.mv.z; if (this.mv.sprint) a.sprint = true;
+    a.lookX += this.look.x; a.lookY += this.look.y; this.look.x = this.look.y = 0;
+    for (const n of this.held) a[n] = true; for (const n of this.toggles) a[n] = true;
+    for (const n of this.taps) { if (n === 'vwpn') a.wheel = 1; else if (n === 'nextSeat') { const v = s?.vehicle; if (v) { for (let k = 1; k <= v.def.seats.length; k++) { const j = (s.seat + k) % v.def.seats.length; if (!v.occupants[j]) { a['w' + Math.min(6, j + 1)] = true; break; } } } } else a[n] = true; }
+    this.tapsLast = this.taps; this.taps = new Set();
+    if (inVeh) { if (this.held.has('up')) a.jump = true; if (this.held.has('down')) a.crouchHold = true; }
+    if (this.toggles.has('ads') && (s?.state !== 'alive' || (s.gun && s.action === 'reload'))) { /* keep */ }
+  },
+  // show / hide buttons for the situation (called once a frame)
+  update() {
+    if (!this.on) return; const P = G.players[0]; const s = P?.soldier; const show = G.inGame && !G.paused && !UI.blocking() && s && s.state !== 'dead' && !G.loading;
+    this.root.classList.toggle('show', !!show); if (!show) { if (this.held.size || this.toggles.has('ads')) { this.held.clear(); this.toggles.delete('ads'); for (const b of Object.values(this.els)) b.classList.remove('on'); } return; }
+    const v = s.vehicle; const m = G.mode; const vis = (id, on) => { const e = this.els[id]; if (e) e.style.display = on ? '' : 'none'; };
+    const it = P.interactTarget; vis('use', !!it || !!v); if (this.els.use) this.els.use.firstChild.textContent = v ? 'EXIT' : (it ? (it.label.split(' ')[0] || 'USE').toUpperCase().slice(0, 8) : 'USE');
+    vis('seat', !!v && v.def.seats.length > 1); vis('melee', !v); vis('grapple', !v && (s.op?.id === 'wren' || !!s.grappleCharges)); vis('tool', !v && !!s.tool); vis('gadget', !!s.gadget || (v && v.flares > 0)); vis('ult', !v && !!s.op); vis('heal', !v); vis('throw', !v); vis('reload', !v || (s.seat === 0 && v.driverWeapons.length > 0));
+    vis('commander', !!m?.support); vis('inv', m?.kind === 'extraction'); vis('orders', !!s.squad && !v); vis('fireL', !v || s.seat > 0 || v.driverWeapons.length > 0); vis('ads', !v || !!v.def.turret || s.seat > 0);
+    const lbl = (id, t) => { const e = this.els[id]; if (e && e.firstChild.textContent !== t) e.firstChild.textContent = t; };
+    lbl('jump', v ? (v.def.air || v.def.phys === 'heli' ? 'UP' : 'HOP') : 'JUMP'); lbl('crouch', v ? 'DOWN' : s.stance === 'prone' ? 'PRONE' : s.stance === 'crouch' ? 'STAND' : 'DUCK'); lbl('swap', v ? 'WPN' : 'SWAP'); lbl('gadget', v ? 'FLARE' : 'GADGET');
+    this.els.ult?.classList.toggle('ready', s.ult?.charge >= 1); this.els.ads?.classList.toggle('on', this.toggles.has('ads')); this.els.score?.classList.toggle('on', this.toggles.has('score'));
+  },
+};
 
 // §WORLD -----------------------------------------------------------------------------------
 // A map is baked into grids at CONFIG.world.cell spacing: height (H), surface (S), water level (W), biome weight (BW),
@@ -5200,13 +5389,13 @@ class Hud {
       <div class="feed"></div><div class="extract"></div><div class="pings"></div><div class="notes"></div>
       <div class="xh"><i class="dot"></i><i class="h l"></i><i class="h r"></i><i class="v t"></i><i class="v b"></i></div>
       <div class="hit"><i style="transform:rotate(45deg) translate(6px,0)"></i><i style="transform:rotate(135deg) translate(6px,0)"></i><i style="transform:rotate(225deg) translate(6px,0)"></i><i style="transform:rotate(315deg) translate(6px,0)"></i></div>
-      <div class="vitals"><div class="row"><span class="lbl">HP</span><div class="bar hp"><i></i></div><span class="num hpn"></span></div><div class="row"><span class="lbl">AR</span><div class="bar ar"><i></i></div><span class="num arn"></span></div><div class="row"><span class="lbl">HM</span><div class="bar hm"><i></i></div><span class="num hmn"></span></div><div class="row"><span class="lbl">ST</span><div class="bar st"><i></i></div></div><div class="tiers"></div><div class="weight"></div></div>
-      <div class="ammo"><div class="wname"></div><span class="mag"></span><span class="res"></span><div><span class="ammot"></span><span class="mode"></span></div></div>
+      <div class="vitals"><div class="pname"></div><div class="hpw"><span class="hpn"></span><div class="hpseg">${'<i></i>'.repeat(10)}</div></div><div class="armr"><span class="tg">ARM<b class="art"></b></span><div class="bar ar"><i></i></div><span class="num arn"></span><span class="tg">HLM<b class="hmt"></b></span><div class="bar hm"><i></i></div><span class="num hmn"></span></div><div class="stline"><i></i></div><div class="weight"></div></div>
+      <div class="ammo"><div class="wtop"><span class="wname"></span><span class="mode"></span></div><div class="wmid"><span class="mag"></span><span class="res"></span></div><div class="mbar"><i></i></div><div class="wbot"><span class="ammot"></span><span class="wslots"></span></div></div>
       <div class="kit"></div><div class="vehicle"></div><div class="lock"></div><div class="warn"></div><div class="prompt"><span class="pt"></span><div class="holdbar"></div></div>
       <div class="dmg"></div><div class="dirs">${'<i></i>'.repeat(6)}</div><div class="flashfx"></div><div class="radio"><canvas width="44" height="44"></canvas><div class="who"></div><div class="txt"></div></div>
       <div class="scope"><div class="r"></div></div><div class="thermal-tag"></div><div class="downed"><div class="t">DOWNED</div><div class="s"></div></div>`;
     const q = (s) => r.querySelector(s); this.e = { mini: q('.mini canvas'), squad: q('.squad'), objtext: q('.objtext'), compass: q('.compass'), bearing: q('.bearing'), obj: q('.obj'), tickets: q('.tickets'), modeinfo: q('.modeinfo'), timer: q('.timer'), feed: q('.feed'), extract: q('.extract'), pings: q('.pings'), notes: q('.notes'), xh: q('.xh'), hit: q('.hit'),
-      hp: q('.bar.hp>i'), hpBar: q('.bar.hp'), hpn: q('.hpn'), ar: q('.bar.ar>i'), arn: q('.arn'), hm: q('.bar.hm>i'), hmn: q('.hmn'), st: q('.bar.st>i'), tiers: q('.tiers'), weight: q('.weight'), wname: q('.wname'), mag: q('.mag'), res: q('.res'), ammot: q('.ammot'), mode: q('.mode'), kit: q('.kit'), vehicle: q('.vehicle'), lock: q('.lock'), warn: q('.warn'),
+      hpSeg: [...r.querySelectorAll('.hpseg i')], hpn: q('.hpn'), ar: q('.bar.ar>i'), arn: q('.arn'), art: q('.art'), hm: q('.bar.hm>i'), hmn: q('.hmn'), hmt: q('.hmt'), st: q('.stline>i'), pname: q('.pname'), weight: q('.weight'), wname: q('.wname'), mag: q('.mag'), res: q('.res'), ammot: q('.ammot'), mode: q('.mode'), mbar: q('.mbar>i'), wslots: q('.wslots'), kit: q('.kit'), vehicle: q('.vehicle'), lock: q('.lock'), warn: q('.warn'),
       prompt: q('.prompt'), pt: q('.prompt .pt'), holdbar: q('.holdbar'), dmg: q('.dmg'), dirs: [...r.querySelectorAll('.dirs i')], flash: q('.flashfx'), radio: q('.radio'), radioWho: q('.radio .who'), radioTxt: q('.radio .txt'), radioC: q('.radio canvas'), scope: q('.scope'), reticle: q('.scope .r'), ttag: q('.thermal-tag'), downed: q('.downed'), downedS: q('.downed .s'), ammoBox: q('.ammo'), vit: q('.vitals') };
     this.mg = this.e.mini.getContext('2d'); this.hitT = 0; this.dirT = this.e.dirs.map(() => ({ t: 0, a: 0 })); this.dirI = 0; this.radioT = 0; this.compassTicks(); this.feedKey = ''; this.kitKey = ''; this.squadKey = ''; this.pingEls = []; this.lastReticle = '';
   }
@@ -5225,30 +5414,31 @@ class Hud {
     e.xh.style.display = (s.adsAmt > 0.6 && !inVeh && !(g && g.def.class === 'shotgun')) || s.state !== 'alive' || UI.blocking() || P.drone ? 'none' : 'block';
     const xs = e.xh.children; xs[1].style.left = -(gap + 8) + 'px'; xs[2].style.left = gap + 'px'; xs[3].style.top = -(gap + 8) + 'px'; xs[4].style.top = gap + 'px';
     if (this.hitT > 0) { this.hitT -= dt; e.hit.style.opacity = clamp(this.hitT / 0.25, 0, 1); }
-    // vitals
-    const hpf = s.hp / s.maxHp; e.hp.style.width = (hpf * 100) + '%'; e.hpBar.classList.toggle('low', hpf < 0.35); e.hpn.textContent = Math.ceil(s.hp);
-    e.ar.style.width = (s.vest.max ? s.vest.dur / s.vest.max * 100 : 0) + '%'; e.arn.textContent = s.vest.max ? Math.ceil(s.vest.dur) : '—'; e.hm.style.width = (s.helmet.max ? s.helmet.dur / s.helmet.max * 100 : 0) + '%'; e.hmn.textContent = s.helmet.max ? Math.ceil(s.helmet.dur) : '—';
-    e.st.style.width = (s.stamina / CONFIG.move.stamina * 100) + '%'; e.tiers.textContent = 'ARMOUR T' + s.vest.tier + ' · HELMET T' + s.helmet.tier + (s.op ? ' · ' + s.op.name.toUpperCase() : '');
+    // vitals: ten-segment health, armour + helmet with tier, stamina line
+    const hpf = s.hp / s.maxHp; const hk = Math.round(hpf * 100); if (hk !== this.hpK) { this.hpK = hk; e.hpSeg.forEach((x, i) => { const f = clamp(hpf * 10 - i, 0, 1); x.style.background = `linear-gradient(90deg, ${hpf < 0.35 ? 'var(--red)' : '#eef6f6'} ${f * 100}%, rgba(255,255,255,.12) ${f * 100}%)`; }); e.hpn.textContent = Math.ceil(s.hp); e.vit.classList.toggle('low', hpf < 0.35); }
+    e.ar.style.width = (s.vest.max ? s.vest.dur / s.vest.max * 100 : 0) + '%'; e.arn.textContent = s.vest.max ? Math.ceil(s.vest.dur) : '—'; e.art.textContent = s.vest.tier || ''; e.hm.style.width = (s.helmet.max ? s.helmet.dur / s.helmet.max * 100 : 0) + '%'; e.hmn.textContent = s.helmet.max ? Math.ceil(s.helmet.dur) : '—'; e.hmt.textContent = s.helmet.tier || '';
+    e.st.style.width = (s.stamina / CONFIG.move.stamina * 100) + '%'; e.st.parentNode.style.opacity = s.stamina < CONFIG.move.stamina - 0.5 ? 1 : 0.25; const pn = (s.op ? s.op.name.toUpperCase() + ' · ' + (DATA.classes?.[s.op.class]?.name || s.op.class).toUpperCase() : (s.cls || '').toUpperCase()); if (e.pname.textContent !== pn) e.pname.textContent = pn;
     if (mode && mode.kind === 'extraction') { const w = P.carryWeight?.() || 0; e.weight.textContent = 'LOAD ' + w.toFixed(1) + ' kg'; e.weight.classList.toggle('over', w > 30); } else e.weight.textContent = '';
     // ammo + kit
-    e.ammoBox.style.display = inVeh ? 'none' : 'block'; if (g && !inVeh) { e.wname.textContent = g.def.name.toUpperCase(); e.mag.textContent = g.inMag; e.mag.classList.toggle('low', g.inMag <= g.stats.mag * 0.25); e.res.textContent = '/ ' + (s.reserve[g.ammo] || 0); e.mode.textContent = g.mode.toUpperCase(); e.ammot.textContent = (DATA.ammo[g.ammo]?.name || '') + (g.def.launcher === 'aa' ? (g.lockT >= g.def.lockTime ? ' · LOCKED' : g.lockTarget ? ' · LOCKING' : '') : ''); }
+    e.ammoBox.style.display = inVeh || !g ? 'none' : 'block'; if (g && !inVeh) { e.wname.textContent = g.def.name.toUpperCase(); e.mag.textContent = g.inMag; const low = g.inMag <= g.stats.mag * 0.25; e.mag.classList.toggle('low', low); e.res.textContent = s.reserve[g.ammo] || 0; e.mode.textContent = g.mode.toUpperCase(); e.mbar.style.width = (g.inMag / g.stats.mag * 100) + '%'; e.mbar.classList.toggle('low', low); e.mbar.parentNode.style.setProperty('--ticks', Math.min(g.stats.mag, 60)); e.wslots.innerHTML = s.weapons.map((w, i) => w ? `<i class="${i === s.cur ? 'on' : ''}">${i + 1}</i>` : '').join(''); e.ammot.textContent = (DATA.ammo[g.ammo]?.name || '') + (g.def.launcher === 'aa' ? (g.lockT >= g.def.lockTime ? ' · LOCKED' : g.lockTarget ? ' · LOCKING' : '') : ''); }
     const kk = [s.throwSel, s.throwables[s.throwSel], s.gadget?.charges, Math.round((s.gadget?.t || 0) * 2), s.tool?.charges, Math.round(s.ult.charge * 40), s.ult.active > 0, s.meds.bandage, s.meds.medkit, s.meds.stim, inVeh].join();
-    if (kk !== this.kitKey) { this.kitKey = kk; const k = (key, label, n, cd = 0, cls = '') => `<div class="k ${cls}"><span class="key">${key}</span><div style="margin-top:14px">${label}</div><span class="n">${n}</span>${cd ? `<div class="cd" style="height:${cd * 100}%"></div>` : ''}</div>`;
-      let h = ''; if (!inVeh) { h += k('G', (DATA.items[s.throwSel]?.name || '—').split(' ')[0], s.throwables[s.throwSel] || 0); h += k('H', 'MED', (s.meds.bandage || 0) + '/' + (s.meds.medkit || 0)); h += k('J', 'STIM', s.meds.stim || 0);
-        if (s.gadget) h += k('X', s.op.gadget.name.split(' ').slice(-1)[0].toUpperCase().slice(0, 7), s.gadget.charges, s.gadget.charges < s.gadget.max ? 1 - s.gadget.t / s.gadget.cd : 0);
-        if (s.tool) h += k('4', (DATA.tools[s.tool.id]?.name || s.tool.id).split(' ').slice(-1)[0].toUpperCase().slice(0, 7), s.tool.max > 1 || s.tool.id === 'breacher' || s.tool.id === 'defib' ? s.tool.charges : '', s.tool.charges < s.tool.max ? 1 - s.tool.t / s.tool.cd : 0);
-        if (s.op) h += k('T', 'ULT', s.ult.active > 0 ? 'ON' : Math.floor(s.ult.charge * 100) + '%', 1 - s.ult.charge, 'ult' + (s.ult.charge >= 1 ? ' ready' : '')); }
+    if (kk !== this.kitKey) { this.kitKey = kk; const touch = typeof Touch !== 'undefined' && Touch.on;
+      const k = (key, icon, label, n, cd = 0, cls = '') => `<div class="ab ${cls}" style="--cd:${Math.round(cd * 360)}deg"><span class="key">${touch ? '' : key}</span><div class="ic">${icon}</div><div class="lb">${label}</div>${n !== '' ? `<span class="n">${n}</span>` : ''}</div>`;
+      let h = ''; if (!inVeh) { const tn = DATA.items[s.throwSel]?.name || '—'; h += k('G', '✹', tn.split(' ')[0].toUpperCase().slice(0, 7), s.throwables[s.throwSel] || 0, 0, s.throwables[s.throwSel] ? '' : 'empty'); h += k('H', '✚', 'HEAL', (s.meds.bandage || 0) + '·' + (s.meds.medkit || 0), 0, (s.meds.bandage || s.meds.medkit) ? 'med' : 'empty'); h += k('J', '⚡', 'STIM', s.meds.stim || 0, 0, s.meds.stim ? '' : 'empty');
+        if (s.gadget) h += k('X', '◆', s.op.gadget.name.split(' ').slice(-1)[0].toUpperCase().slice(0, 8), s.gadget.charges, s.gadget.charges < s.gadget.max ? 1 - s.gadget.t / s.gadget.cd : 0, s.gadget.charges ? 'gad' : 'gad empty');
+        if (s.tool) h += k('4', '▲', (DATA.tools[s.tool.id]?.name || s.tool.id).split(' ').slice(-1)[0].toUpperCase().slice(0, 8), s.tool.max > 1 || s.tool.id === 'breacher' || s.tool.id === 'defib' ? s.tool.charges : '', s.tool.charges < s.tool.max ? 1 - s.tool.t / s.tool.cd : 0);
+        if (s.op) h += k('T', s.ult.active > 0 ? 'ON' : Math.floor(s.ult.charge * 100) + '%', 'ULTIMATE', '', 1 - s.ult.charge, 'ult' + (s.ult.charge >= 1 ? ' ready' : '') + (s.ult.active > 0 ? ' active' : '')); }
       e.kit.innerHTML = h; }
     // vehicle panel
     if (inVeh) this.vehicle(s.vehicle, s); else { e.vehicle.style.display = 'none'; e.lock.style.display = 'none'; }
     // objectives row + tickets + info
     const fk = info.flags ? info.flags.map((f) => f.id + f.owner + (f.contested ? 'c' : '') + Math.round(f.prog * 10) + f.capTeam + (f.locked ? 'l' : '') + (f.current ? 'x' : '')).join() : '';
     if (fk !== this.flagKey) { this.flagKey = fk; e.obj.innerHTML = info.flags ? info.flags.filter((f) => !f.hidden).map((f) => { const own = f.owner < 0 ? 'n' : f.owner === s.team ? 'a' : 'b'; const cap = f.capTeam === s.team ? 'var(--friend)' : f.capTeam >= 0 ? 'var(--enemy)' : '#ddd'; return `<div class="f ${own}${f.current ? ' cur' : ''}" style="${f.locked ? 'opacity:.35' : ''}"><div class="p" style="height:${f.prog * 100}%;background:${cap}"></div>${f.id}</div>`; }).join('') : ''; }
-    e.tickets.innerHTML = info.tickets ? `<span class="${s.team === 0 ? 'a' : 'b'}">${Math.ceil(info.tickets[s.team])}</span><span class="dim">|</span><span class="${s.team === 0 ? 'b' : 'a'}">${Math.ceil(info.tickets[1 - s.team])}</span>` : ''; e.modeinfo.textContent = info.info || ''; e.timer.textContent = info.timer || '';
+    if (info.tickets) { const me = Math.ceil(info.tickets[s.team]), them = Math.ceil(info.tickets[1 - s.team]); const tk = me + ':' + them; if (tk !== this.tkKey) { this.tkKey = tk; this.tkMax = Math.max(this.tkMax || 1, me, them); const lim = mode.limit && mode.kind !== 'warfare' ? mode.limit : this.tkMax; e.tickets.innerHTML = `<span class="n a">${me}</span><div class="tb a"><i style="width:${clamp(me / lim, 0, 1) * 100}%"></i></div><div class="tb b"><i style="width:${clamp(them / lim, 0, 1) * 100}%"></i></div><span class="n b">${them}</span>`; } } else if (this.tkKey) { this.tkKey = ''; e.tickets.innerHTML = ''; } e.modeinfo.textContent = info.info || ''; e.timer.textContent = info.timer || '';
     e.objtext.innerHTML = info.objectives ? '<div class="t">OBJECTIVES</div>' + info.objectives.map((o) => `<div class="s ${o.done ? 'done' : ''}">• ${esc(o.text)}</div>`).join('') : '';
     if (info.extract) { e.extract.style.display = 'block'; e.extract.innerHTML = '<b>EXTRACTION</b>' + info.extract.map((x) => `<div class="x ${x.open ? '' : 'closed'}"><span>${esc(x.name)}</span><span>${x.label}</span></div>`).join(''); } else e.extract.style.display = 'none';
     // squad
-    const sq = s.squad; const skey = sq ? sq.members.map((m) => m.name + m.state + Math.round(m.hp / 10)).join() + (sq.order?.type || '') : ''; if (skey !== this.squadKey) { this.squadKey = skey; e.squad.innerHTML = sq ? `<div class="order">${esc(sq.name.toUpperCase())} SQUAD${sq.order ? ' · ' + sq.order.type.toUpperCase() : ''}</div>` + sq.members.map((m) => `<div class="m ${m.state}"><b>${m === sq.leader ? '★' : '■'}</b>${esc(m.name)}${m.op ? ' <span class="dim">' + m.op.name + '</span>' : ''}${m.state === 'downed' ? ' <span class="red">DOWN</span>' : ''}</div>`).join('') : ''; }
+    const sq = s.squad; const skey = sq ? sq.members.map((m) => m.name + m.state + Math.round(m.hp / 10)).join() + (sq.order?.type || '') : ''; if (skey !== this.squadKey) { this.squadKey = skey; e.squad.innerHTML = sq ? `<div class="order">${esc(sq.name.toUpperCase())}${sq.order && !sq.order.auto ? ' · ' + sq.order.type.toUpperCase() : ''}</div>` + sq.members.filter((m) => m !== s).map((m) => `<div class="m ${m.state}"><div class="nm"><b>${m === sq.leader ? '★' : ''}</b>${esc(m.name.split(' ').slice(-1)[0])}${m.op ? ' <span class="dim">' + esc(m.op.name) + '</span>' : ''}${m.state === 'downed' ? ' <span class="red">✚ DOWN</span>' : m.state === 'dead' ? ' <span class="dim">KIA</span>' : ''}</div><div class="hb"><i style="width:${m.state === 'alive' ? m.hp / m.maxHp * 100 : 0}%"></i></div></div>`).join('') : ''; }
     // kill feed
     const fl = HUDFeed.list.filter((f) => G.time - f.t < 7).slice(-5); const fkey = fl.map((f) => f.t).join(); if (fkey !== this.feedKey) { this.feedKey = fkey; const side = (x) => !x ? '' : `<span class="${x.me ? 'me' : x.team === s.team ? 'a' : 'b'}">${esc(x.name)}</span>`; e.feed.innerHTML = fl.map((f) => `<div><span class="e">${side(f.k)}<span class="w">[${esc(f.w)}${f.hs ? ' ◎' : ''}]</span>${side(f.v)}</span></div>`).join(''); }
     // damage
@@ -5258,7 +5448,7 @@ class Hud {
     e.downed.style.display = s.state === 'downed' ? 'block' : 'none'; if (s.state === 'downed') e.downedS.textContent = (s.reviveProg > 0 ? 'Being revived… ' : 'Waiting for a teammate · ') + Math.ceil(s.bleedT) + ' s · hold F to give up';
     if (this.radioT > 0) { this.radioT -= dt; if (this.radioT <= 0) e.radio.style.display = 'none'; }
     // prompt
-    const it = P.interactTarget; if (it && s.state === 'alive') { e.prompt.style.display = 'block'; e.pt.innerHTML = `<kbd>${P.padIdx != null ? 'X' : 'F'}</kbd>` + esc(it.label); e.holdbar.style.width = (it.hold ? clamp(P.holdT / it.hold, 0, 1) * 100 : 0) + '%'; } else if (P.warnText) { e.prompt.style.display = 'block'; e.pt.textContent = P.warnText; e.holdbar.style.width = '0'; } else e.prompt.style.display = 'none';
+    const it = P.interactTarget; if (it && s.state === 'alive') { e.prompt.style.display = 'block'; e.pt.innerHTML = (typeof Touch !== 'undefined' && Touch.on && P.idx === 0 ? '' : `<kbd>${P.padIdx != null ? 'X' : 'F'}</kbd>`) + esc(it.label) + (it.hold ? ' <span class="dim">(hold)</span>' : ''); e.holdbar.style.width = (it.hold ? clamp(P.holdT / it.hold, 0, 1) * 100 : 0) + '%'; } else if (P.warnText) { e.prompt.style.display = 'block'; e.pt.textContent = P.warnText; e.holdbar.style.width = '0'; } else e.prompt.style.display = 'none';
     // scope
     e.scope.style.display = scoped ? 'block' : 'none'; if (scoped) { const rt = g.stats.reticle; if (rt !== this.lastReticle) { this.lastReticle = rt; e.reticle.innerHTML = rt === 'mil' ? '<i style="left:-40vmin;top:-1px;width:80vmin;height:2px"></i><i style="top:-40vmin;left:-1px;height:80vmin;width:2px"></i>' + [1, 2, 3, 4].map((k) => `<i style="left:-6px;top:${k * 5}vmin;width:12px;height:2px"></i>`).join('') : '<i style="left:-2px;top:-2px;width:4px;height:4px;background:#e33;border-radius:50%"></i>'; } }
     e.ttag.style.display = P.visMode ? 'block' : 'none'; e.ttag.textContent = P.visMode === VIS.THERMAL ? 'THERMAL' : P.visMode === VIS.NV ? 'NIGHT VISION' : '';
@@ -5266,12 +5456,15 @@ class Hud {
     this.compass(s, P); this.minimap(s, P, info); this.world(s, P, info);
   }
   vehicle(v, s) {
-    const e = this.e; e.vehicle.style.display = 'block'; const seat = v.def.seats[s.seat]; const W = s.seat === 0 ? v.driverWeapons[v.dw] : v.seatWeapons[s.seat];
-    const parts = v.parts.map((p) => `<div class="${p.hp <= 0 ? 'dead' : p.hp < p.max * 0.5 ? 'bad' : ''}">${p.id.toUpperCase()} ${Math.ceil(p.hp / p.max * 100)}%</div>`).join('');
-    e.vehicle.innerHTML = `<div class="vn">${esc(v.def.name.toUpperCase())}</div><div class="vhp">${Math.ceil(v.hp)}</div><div class="parts">${parts}</div>${W ? `<div class="vw">${esc(W.def.name)} · ${W.reload > 0 ? 'RELOADING' : W.mag}${W.def.shells ? ' · ' + (W.def.shells[W.shell] === 'he' ? 'HE' : 'AP') : ''}${W.lockT > 0 ? ' · LOCK ' + Math.min(100, Math.round(W.lockT / (W.def.lockTime || 1) * 100)) + '%' : ''}</div>` : ''}
-      <div class="seat">SEAT ${s.seat + 1}/${v.def.seats.length} · ${seat.role.toUpperCase()}${v.flares ? ' · FLARES ' + v.flares : ''}${v.def.drive?.boost ? ' · BOOST ' + Math.round(v.boost) : ''}${v.alt ? ' · ALT ' + Math.round(v.alt) + ' m' : ''} · ${Math.round(v.speed * 3.6)} km/h</div>`;
+    const e = this.e; e.vehicle.style.display = 'block'; const seat = v.def.seats[s.seat]; const W = s.seat === 0 ? v.driverWeapons[v.dw] : v.seatWeapons[s.seat]; const hpf = v.hp / v.maxHp;
+    const parts = v.parts.map((p) => `<span class="pc ${p.hp <= 0 ? 'dead' : p.hp < p.max * 0.5 ? 'bad' : ''}">${p.id.toUpperCase()}</span>`).join('');
+    e.vehicle.innerHTML = `<div class="vtop"><span class="vn">${esc(v.def.name.toUpperCase())}</span><span class="seat">${esc(seat.role.toUpperCase())} · ${s.seat + 1}/${v.def.seats.length}</span></div>
+      <div class="vmid"><span class="spd">${Math.round(v.speed * 3.6)}</span><span class="u">KM/H</span>${v.alt ? `<span class="alt">ALT ${Math.round(v.alt)} m</span>` : ''}</div>
+      <div class="vhpb ${hpf < 0.3 ? 'low' : ''}"><i style="width:${hpf * 100}%"></i><span>${Math.ceil(v.hp)}</span></div><div class="parts">${parts}</div>
+      ${W ? `<div class="vw"><b>${esc(W.def.name)}</b> <span class="${W.reload > 0 ? 'amber' : ''}">${W.reload > 0 ? 'RELOADING' : W.mag + ' RDS'}</span>${W.def.shells ? ' · ' + (W.def.shells[W.shell] === 'he' ? 'HE' : 'AP') : ''}${W.lockT > 0 ? ' · <span class="red">LOCK ' + Math.min(100, Math.round(W.lockT / (W.def.lockTime || 1) * 100)) + '%</span>' : ''}</div>` : ''}
+      <div class="vx">${v.flares ? 'FLARES ' + v.flares : ''}${v.def.drive?.boost ? (v.flares ? ' · ' : '') + 'BOOST <span class="bb"><i style="width:${v.boost}%"></i></span>' : ''}</div>`;
     e.lock.style.display = W && W.lockTarget ? 'block' : 'none'; e.lock.classList.toggle('on', !!(W && W.lockT >= (W.def.lockTime || 9)));
-    if (v.lockWarn > 0) { e.warn.style.display = 'block'; e.warn.textContent = 'MISSILE LOCK — X FLARES'; if (Math.random() < 0.05) Audio.play('missileWarn', 0.5); }
+    if (v.lockWarn > 0) { e.warn.style.display = 'block'; e.warn.textContent = 'MISSILE LOCK — ' + (typeof Touch !== 'undefined' && Touch.on ? 'TAP FLARE' : 'X FLARES'); if (Math.random() < 0.05) Audio.play('missileWarn', 0.5); }
   }
   compass(s, P) {
     const w = this.e.compass.clientWidth || 400; const yaw = P.camYaw; const brg = ((-yaw * 180 / Math.PI) % 360 + 360 + 180) % 360; // bearing: 0 = north (−z)
@@ -5925,7 +6118,7 @@ function logicStep(dt) {
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
 function frame() {
   requestAnimationFrame(frame); const now = performance.now(); let dt = Math.min(0.1, (now - lastT) / 1000); lastT = now; G.frame++; frameTimes.push(dt * 1000); if (frameTimes.length > 600) frameTimes.shift(); fpsSm = lerp(fpsSm, 1 / Math.max(dt, 1e-4), 0.05);
-  if (!G.inGame) { if (!NORENDER) renderMenu(dt); return; }
+  Touch.update(); if (!G.inGame) { if (!NORENDER) renderMenu(dt); return; }
   const t0 = performance.now();
   try {
     if (!G.paused) { acc += dt * TURBO; let n = 0; while (acc >= FIXED && n < 4 * TURBO) { logicStep(FIXED); acc -= FIXED; n++; } if (n >= 4 * TURBO) acc = 0; }
@@ -6036,7 +6229,7 @@ async function boot() {
   try { await Data.load((f) => { n++; bar.style.width = clamp(n / 24, 0.05, 0.9) * 100 + '%'; msg.textContent = 'loading ' + f + '…'; }); }
   catch (e) { msg.textContent = 'Could not load data/*.json — serve this folder over HTTP (npx serve .). ' + e.message; return; }
   msg.textContent = 'loading models…'; await Models.load();
-  buildTextures(); buildMaterials(); Post.init(); Sky.init(); TerrainGfx.init(); WaterGfx.init(); FX.init(); Foliage.init(); SoldierGfx.init(); UI.init(); Input.init();
+  buildTextures(); buildMaterials(); Post.init(); Sky.init(); TerrainGfx.init(); WaterGfx.init(); FX.init(); Foliage.init(); SoldierGfx.init(); UI.init(); Input.init(); Touch.init();
   G.settings = Object.assign({}, G.settings); Save.load(); if (G.save.vehicleCamos.length) for (const c of G.save.vehicleCamos) if (!DATA.camos.find((x) => x.id === c.id)) DATA.camos.push({ id: c.id, name: c.name + ' (BOUNTY RUN)', biome: null, colors: c.colors, vehicle: true });
   Game.applyQuality(); bar.style.width = '100%'; Game.loading(false); if (G.debug) DebugUI.init();
   Input.onKey((code) => { if (code === 'Escape' && UI.screen && UI.screen !== 'mini' && UI.screen !== 'deploy') UI.back(); });
