@@ -215,6 +215,7 @@ body.touch .hud .prompt{top:auto;bottom:30%}
 .hud .pings .pg.chest{color:#ffd040}.hud .pings .pg.chest .d{border-color:#ffd040;background:rgba(255,208,64,.35)}
 .hud .mret{position:absolute;left:50%;top:50%;width:26vmin;height:26vmin;margin:-13vmin;border-radius:50%;display:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35),inset 0 0 2vmin rgba(0,0,0,.6);border:.4vmin solid #111}
 .hud .mret i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#ff3a28;box-shadow:0 0 6px #ff3a28}
+.hud.small .kit{left:auto;right:10px;bottom:118px;transform:none;gap:4px}.hud.small .kit .ab{width:36px;height:36px;border-radius:7px}.hud.small .kit .ab .key,.hud.small .kit .ab .lb{display:none}.hud.small .kit .ab .ic{font-size:14px;margin-top:9px}.hud.small .kit .ab.ult{width:44px}.hud.small .kit .ab.ult .ic{font-size:11px;margin-top:11px}.hud.small .vitals{width:190px}.hud.small .radio{bottom:118px;max-width:60%}
 /* ---------------- touch controls ---------------- */
 #touch{position:fixed;inset:0;z-index:15;pointer-events:none;display:none;touch-action:none}
 #touch.show{display:block}
@@ -797,7 +798,7 @@ const KEYMAPS = {
     fwd: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'], jump: ['Space'], sprint: ['ShiftLeft'], crouchHold: ['ControlLeft'], crouch: ['KeyC'], prone: ['KeyZ'],
     leanL: ['KeyQ'], leanR: ['KeyE'], interact: ['KeyF'], reload: ['KeyR'], melee: ['KeyV'], mode: ['KeyB'], throw: ['KeyG'], cycleThrow: ['KeyK'], tool: ['KeyN'], gadget: ['KeyX'], ult: ['KeyT'],
     grapple: ['KeyY'], heal: ['KeyH'], stim: ['KeyJ'], ping: ['Backquote'], map: ['KeyM'], score: ['Tab'], inv: ['KeyI'], orders: ['KeyU'], commander: ['KeyO'], nv: ['KeyL'],
-    w1: ['Digit1'], w2: ['Digit2'], w3: ['Digit3'], w4: ['Digit4'], w5: ['Digit5'], w6: ['Digit6'], w7: ['Digit7'], w8: ['Digit8'], w9: ['Digit9'], w10: ['Digit0'], pause: ['Escape', 'KeyP'], down: ['ControlLeft'], up: ['Space'], seat: ['F1'],
+    w1: ['Digit1'], w2: ['Digit2'], w3: ['Digit3'], w4: ['Digit4'], w5: ['Digit5'], w6: ['Digit6'], w7: ['Digit7'], w8: ['Digit8'], w9: ['Digit9'], w10: ['Digit0'], pause: ['Escape'], nvg: ['KeyP'], down: ['ControlLeft'], up: ['Space'], seat: ['F1'],
   },
   kb2: { // second player on the same keyboard (right-hand block) when no pad is plugged in
     fwd: ['ArrowUp'], back: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], lookU: ['Numpad8'], lookD: ['Numpad5'], lookL: ['Numpad4'], lookR: ['Numpad6'],
@@ -806,7 +807,7 @@ const KEYMAPS = {
   },
 };
 const PADB = { jump: 0, crouch: 1, reload: 2, swap: 3, gadget: 4, throw: 5, ads: 6, fire: 7, map: 8, pause: 9, sprint: 10, melee: 11, ping: 12, heal: 13, tool: 14, mode: 15 };
-const ACTION_LIST = ['qscope', 'jump', 'sprint', 'crouch', 'crouchHold', 'prone', 'leanL', 'leanR', 'interact', 'reload', 'melee', 'mode', 'throw', 'cycleThrow', 'tool', 'gadget', 'ult', 'grapple', 'heal', 'stim', 'ping', 'map', 'score', 'inv', 'orders', 'commander', 'nv', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'pause', 'fire', 'ads', 'up', 'down', 'seat', 'swap'];
+const ACTION_LIST = ['nvg', 'qscope', 'jump', 'sprint', 'crouch', 'crouchHold', 'prone', 'leanL', 'leanR', 'interact', 'reload', 'melee', 'mode', 'throw', 'cycleThrow', 'tool', 'gadget', 'ult', 'grapple', 'heal', 'stim', 'ping', 'map', 'score', 'inv', 'orders', 'commander', 'nv', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'pause', 'fire', 'ads', 'up', 'down', 'seat', 'swap'];
 const Input = {
   keys: new Set(), mouse: { dx: 0, dy: 0, b0: false, b1: false, b2: false, wheel: 0, locked: false }, prev: [{}, {}], cur: [{}, {}], listeners: [], padPrev: [],
   init() {
@@ -875,7 +876,7 @@ const KEYHELP = [
   ['W A S D', 'move'], ['Shift', 'sprint (scoped: hold breath)'], ['Space', 'jump / mantle / vault · in the air: wingsuit, then parachute'], ['C / Ctrl', 'crouch (toggle / hold) · sprint + C slides'], ['Z', 'prone'],
   ['Q / E', 'lean'], ['LMB / RMB', 'fire / aim down sights'], ['R', 'reload (hold: check ammo)'], ['B', 'fire mode'], ['V', 'melee'], ['1 – 0 / wheel', 'weapon slots 1-10 (main · pistol · launcher · 7 extra)'],
   ['G / K', 'throw equipment / cycle'], ['Y', 'grappling hook'], ['F', 'interact · hold: revive, loot, repair · enter vehicles · rappel from edges'],
-  ['X', 'signature gadget'], ['N', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'thermal vision on / off'],
+  ['X', 'signature gadget'], ['N', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L / P', 'thermal (TI) / night vision (NV)'],
   ['U', 'squad orders'], ['O', 'commander support'], ['M / Tab', 'map / scoreboard'], ['I', 'inventory (extraction)'], ['Esc', 'pause'],
 ];
 // §TOUCH -------------------------------------------------------------------------------------------
@@ -906,7 +907,8 @@ const TOUCH_BTNS = [
   ['orders', 'SQUAD', 'orders', 'right:46vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
   ['commander', 'CMD', 'commander', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top cmd'],
   ['inv', 'BAG', 'inv', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top bag'],
-  ['nv', 'THERM', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['nv', 'TI', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top ti'],
+  ['nvg', 'NV', 'nvg', 'right:79vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top nvb'],
   ['melee', 'KNIFE', 'melee', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
   ['seat', 'SEAT', 'seat', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm veh'],
 ];
@@ -964,7 +966,7 @@ const Touch = {
     vis('commander', !!m?.support); vis('inv', m?.kind === 'extraction'); vis('orders', !!s.squad && !v); vis('fireL', !v || s.seat > 0 || v.driverWeapons.length > 0); vis('scope', !v); vis('ads', !v || !!v.def.turret || s.seat > 0);
     const lbl = (id, t) => { const e = this.els[id]; if (e && e.firstChild.textContent !== t) e.firstChild.textContent = t; };
     lbl('jump', v ? (v.def.air || v.def.phys === 'heli' ? 'UP' : 'HOP') : 'JUMP'); lbl('crouch', v ? 'DOWN' : s.stance === 'prone' ? 'PRONE' : s.stance === 'crouch' ? 'STAND' : 'DUCK'); lbl('swap', v ? 'WPN' : 'SWAP'); lbl('gadget', v ? 'FLARE' : 'GADGET');
-    this.els.ult?.classList.toggle('ready', s.ult?.charge >= 1); this.els.ads?.classList.toggle('on', this.toggles.has('ads')); this.els.score?.classList.toggle('on', this.toggles.has('score'));
+    this.els.ult?.classList.toggle('ready', s.ult?.charge >= 1); this.els.nv?.classList.toggle('on', P.vision === 'ti'); this.els.nvg?.classList.toggle('on', P.vision === 'nv'); this.els.ads?.classList.toggle('on', this.toggles.has('ads')); this.els.score?.classList.toggle('on', this.toggles.has('score'));
   },
 };
 
@@ -2509,7 +2511,7 @@ function drawEmblem(g, shape, r) {
 
 // Weather state (biome weather → gameplay: vision, sound masking, wind, wet ground, lightning)
 const Weather = { id: 'clear', def: null, windDir: V3(1, 0, 0.3).normalize(), windStr: 3, flash: 0, lightT: 6, vis: 1, mask: 0,
-  set(id) { this.id = id; this.def = (DATA.weatherTypes && DATA.weatherTypes[id]) || { vis: 1, fog: 1, mask: 0, wind: 3, light: 1 }; this.windStr = this.def.wind; this.vis = this.def.vis; this.mask = this.def.mask; const a = rand(0, TAU); this.windDir.set(Math.cos(a), 0, Math.sin(a)); },
+  set(id) { if (Net.host && Net.ready && !Net.applying) Net.broadcast({ t: 'weather', id }); this.id = id; this.def = (DATA.weatherTypes && DATA.weatherTypes[id]) || { vis: 1, fog: 1, mask: 0, wind: 3, light: 1 }; this.windStr = this.def.wind; this.vis = this.def.vis; this.mask = this.def.mask; const a = rand(0, TAU); this.windDir.set(Math.cos(a), 0, Math.sin(a)); },
   update(dt) { this.flash = Math.max(0, this.flash - dt * 2.5); if (this.def && this.def.lightning) { this.lightT -= dt; if (this.lightT <= 0) { this.lightT = rand(5, 16); const p = G.players[0]?.soldier?.pos; if (p) FX.bolt(p.x + rand(-700, 700), p.z + rand(-700, 700)); } }
     const n = Noise.s2(G.time * 0.05, 3.3); this.windStr = this.def ? this.def.wind * (0.75 + 0.35 * n) : 3; },
   // how far a soldier can be seen (m) in this weather at this time, before camo / stance / foliage
@@ -4180,7 +4182,7 @@ const CALLOUTS = {
 };
 const Radio = {
   q: [], last: 0,
-  say(who, text, portrait = null, team = 0) { if (!G.players.length) return; this.q.push({ who, text, portrait, t: 0 }); if (this.q.length > 3) this.q.shift(); },
+  say(who, text, portrait = null, team = 0) { if (!G.players.length) return; if (Net.host && Net.ready && !Net.applying && G.mode && G.mode.t > 2) Net.broadcast({ t: 'radio', who, text, portrait }); this.q.push({ who, text, portrait, t: 0 }); if (this.q.length > 3) this.q.shift(); },
   callout(s, kind) { if (!s || !s.squad || G.time - (s.lastCallout || -99) < 6) return; s.lastCallout = G.time; if (!G.players.some((P) => P.soldier.team === s.team && P.soldier.pos.distanceTo(s.pos) < 120)) return; const L = CALLOUTS[kind]; if (L) this.say(s.name + ' · ' + (s.squad?.name || ''), pick(L), s.op?.id || null); },
   update(dt) { if (!this.q.length) return; const m = this.q[0]; if (m.t === 0) { Audio.play('radio', 0.5); for (const P of G.players) P.hud.radio(m); } m.t += dt; if (m.t > 3.2) this.q.shift(); },
   clear() { this.q.length = 0; },
@@ -4778,10 +4780,10 @@ class Script {
 // supply drop: a crate falls from the sky under a parachute (extraction events, commander support, ultimates)
 const SupplyDrop = {
   list: [],
-  call(p, team, loot = null) { const g = new THREE.Group(); const mb = new MeshBuilder(); mb.box(colMat(0x4a5a3a), 0, 0.5, 0, 1.4, 1.0, 1.0); mb.box(colMat(0xd8c040), 0, 1.01, 0, 1.42, 0.05, 0.3); mb.build(g, { static: false }); const c = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 5, 0, TAU, 0, 1.2), colMat(0xd8d0c0, { side: THREE.DoubleSide })); c.position.y = 5; c.scale.y = 0.5; g.add(c); g.userData.chute = c;
-    g.position.set(p.x, World.heightAt(p.x, p.z) + 140, p.z); WORLD.add(g); const d = { g, p: p.clone(), team, loot, landed: false }; this.list.push(d); FX.smokeVolume(V3(p.x, World.heightAt(p.x, p.z) + 1, p.z), 3, 30); return d; },
+  call(p, team, loot = null, cid = null) { cid ||= 'd' + Math.round(p.x) + '_' + Math.round(p.z); if (Net.host && !Net.applying) Net.broadcast({ t: 'drop', p: [p.x, p.y, p.z], team, loot, cid }); const g = new THREE.Group(); const mb = new MeshBuilder(); mb.box(colMat(0x4a5a3a), 0, 0.5, 0, 1.4, 1.0, 1.0); mb.box(colMat(0xd8c040), 0, 1.01, 0, 1.42, 0.05, 0.3); mb.build(g, { static: false }); const c = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 5, 0, TAU, 0, 1.2), colMat(0xd8d0c0, { side: THREE.DoubleSide })); c.position.y = 5; c.scale.y = 0.5; g.add(c); g.userData.chute = c;
+    g.position.set(p.x, World.heightAt(p.x, p.z) + 140, p.z); WORLD.add(g); const d = { g, p: p.clone(), team, loot, landed: false, cid }; this.list.push(d); FX.smokeVolume(V3(p.x, World.heightAt(p.x, p.z) + 1, p.z), 3, 30); return d; },
   update(dt) { for (const d of this.list) { if (d.landed) continue; const gy = Col.ground(d.g.position.x, d.g.position.z, d.g.position.y, 0.6, 2).y; d.g.position.y -= 7 * dt; d.g.rotation.y += dt * 0.3; if (d.g.position.y <= gy) { d.g.position.y = gy; d.landed = true; d.g.remove(d.g.userData.chute); Audio.at('land', d.g.position, 1); FX.dustBurst(d.g.position, 2, 'concrete'); this.land(d); } } },
-  land(d) { const pos = d.g.position.clone(); if (d.loot && typeof Loot !== 'undefined') Loot.container(pos, d.loot === true ? 'supply' : d.loot, d.g); else Deployables.add('supply', null, pos, 0, { hp: 400, life: 120, uses: 8 }).team = d.team; },
+  land(d) { const pos = d.g.position.clone(); if (d.loot && typeof Loot !== 'undefined') Loot.container(pos, d.loot === true ? 'supply' : d.loot, d.g, { cid: d.cid }); else Deployables.add('supply', null, pos, 0, { hp: 400, life: 120, uses: 8 }).team = d.team; },
   clear() { for (const d of this.list) WORLD.remove(d.g); this.list.length = 0; },
 };
 // §CHESTS ------------------------------------------------------------------------------------------------
@@ -4950,7 +4952,7 @@ class TeamDeathmatch extends GameMode {
   constructor(o) { super(o); this.kind = 'tdm'; this.limit = o.limit || 60; this.time = o.time || 600; this.perTeam = o.perTeam ?? 12; this.botRespawn = 4; }
   name() { return 'Team deathmatch'; }
   setup() {
-    const A = this.area = (World.def.areas || [])[this.o.area || 0] || { x: 0, z: 0, r: 150, spawns: [[-100, -100], [100, 100]] }; this.bounds = A;
+    const A = this.area = (World.def.areas || [])[this.o.area || 0] || { x: 0, z: 0, r: 150, spawns: [[-100, -100], [100, 100]] }; this.bounds = { x: A.x, z: A.z, r: Math.max(A.r, ...A.spawns.map((sp) => Math.hypot(sp[0] - A.x, sp[1] - A.z) + 45)) };
     const sp = (t) => { const s = A.spawns[t]; return V3(s[0], 0, s[1]); };
     G.players.forEach((P, i) => this.playerSoldier(P, this.playerTeam, this.spawnAt({ pos: sp(this.playerTeam), r: 10 }), Math.atan2(A.x - sp(this.playerTeam).x, A.z - sp(this.playerTeam).z)));
     this.addBots(this.playerTeam, Math.max(0, this.perTeam - G.players.length), () => this.spawnAt({ pos: sp(this.playerTeam), r: 18 }));
@@ -4986,7 +4988,7 @@ class Domination extends GameMode {
   constructor(o) { super(o); this.kind = 'dom'; this.limit = o.limit || 250; this.perTeam = o.perTeam ?? 10; this.botRespawn = 5; this.points = []; this.tick = 0; }
   name() { return 'Domination'; }
   setup() {
-    const A = this.area = (World.def.areas || [])[this.o.area || 0]; this.bounds = A; const letters = ['A', 'B', 'C'];
+    const A = this.area = (World.def.areas || [])[this.o.area || 0]; this.bounds = A && { x: A.x, z: A.z, r: Math.max(A.r, ...(A.spawns || []).map((sp) => Math.hypot(sp[0] - A.x, sp[1] - A.z) + 45)) }; const letters = ['A', 'B', 'C'];
     this.points = A.dom.map((d, i) => new CapturePoint({ id: letters[i], name: letters[i], x: d[0], z: d[1], r: 9, time: 9 }));
     const sp = (t) => V3(A.spawns[t][0], 0, A.spawns[t][1]);
     G.players.forEach((P) => this.playerSoldier(P, this.playerTeam, this.spawnAt({ pos: sp(this.playerTeam), r: 10 }), Math.atan2(A.x - sp(this.playerTeam).x, A.z - sp(this.playerTeam).z)));
@@ -5311,7 +5313,7 @@ const LOOT_KINDS = {
 };
 const Loot = {
   list: [], geo: null,
-  clear() { for (const c of this.list) { if (c.mesh) WORLD.remove(c.mesh); if (c.it) Interact.remove(c.it); } this.list.length = 0; },
+  clear() { for (const c of this.list) { if (c.mesh) WORLD.remove(c.mesh); if (c.it) Interact.remove(c.it); } this.list.length = 0; this.n = 0; },
   pool(cat, tier) { const ids = cat === 'weapon' ? Object.keys(DATA.weapons) : cat === 'gear' ? Object.keys(DATA.gear) : cat === 'ammo' ? Object.keys(DATA.ammo) : cat === 'attachment' ? Object.keys(DATA.attachments).filter((k) => !DATA.attachments[k].default) : Object.keys(DATA.items).filter((k) => DATA.items[k].type === cat);
     return ids.map((id) => { const r = Items.make(id); return [id, Items.rarity(r)]; }).filter(([, ra]) => ra <= tier + 1); },
   roll(kind, tier, rng = new RNG(Math.random() * 1e9)) {
@@ -5323,7 +5325,7 @@ const Loot = {
     return out;
   },
   container(pos, kind, group = null, o = {}) {
-    const K = LOOT_KINDS[kind] || LOOT_KINDS.jacket; const c = { pos: pos.clone(), kind, name: o.name || K.name, items: o.items || null, tier: o.tier || 2, key: o.key || null, searched: false, body: o.body || null };
+    const K = LOOT_KINDS[kind] || LOOT_KINDS.jacket; const c = { cid: o.cid || 'c' + (this.n = (this.n || 0) + 1), pos: pos.clone(), kind, name: o.name || K.name, items: o.items || null, tier: o.tier || 2, key: o.key || null, searched: false, body: o.body || null };
     if (!group && !o.body) { this.geo ||= new THREE.BoxGeometry(1, 1, 1); const m = new THREE.Mesh(this.geo, colMat(K.col)); m.scale.set(...K.size); m.position.set(pos.x, pos.y + K.size[1] / 2, pos.z); m.rotation.y = o.yaw ?? rand(0, TAU); m.castShadow = true; WORLD.add(m); c.mesh = m;
       if (kind === 'strong' || kind === 'safe') { const h = new THREE.Mesh(this.geo, colMat(0xd8c040, { metalness: 0.6 })); h.scale.set(0.12, 0.12, 0.05); h.position.set(0, 0.1, 0.52); m.add(h); } }
     c.it = Interact.add({ pos: pos.clone().add(V3(0, o.body ? 0.3 : 0.6, 0)), r: o.body ? 2.2 : 2.4, prio: 1, get label() { return c.key && !c.unlocked ? c.name + ' · locked (' + Items.def(c.key).name + ')' : (c.searched ? 'Loot ' : 'Search ') + c.name; }, get hold() { return c.searched ? 0 : K.hold * (o.body ? 0.8 : 1); }, cond: (s) => s.player && G.mode?.kind === 'extraction', fn: (s) => this.open(c, s) });
@@ -5331,16 +5333,18 @@ const Loot = {
   },
   open(c, s) {
     const m = G.mode; if (c.key && !c.unlocked) { const has = m.raidOf(s.player)?.inv.count(c.key) > 0; if (!has) { s.player.note('Locked — you need the ' + Items.def(c.key).name, 'bad'); Audio.play('empty', 0.6); return; } c.unlocked = true; s.player.note('Unlocked with ' + Items.def(c.key).name, 'good'); }
+    if (Net.on && !c.claimed && !Net.applying) { c.claimed = 'me'; Net.send({ t: 'loot', cid: c.cid }); }
     if (!c.items) c.items = this.roll(c.kind, c.tier); if (!c.searched) { c.searched = true; Challenges.track('loot', s, {}); }
     UI.lootPanel(s.player, c);
   },
   // a dead soldier becomes a lootable body: weapon, armour, some ammo + pocket loot
-  body(v) {
+  claimed(cid) { const c = this.list.find((x) => x.cid === cid); if (c && !c.claimed) { c.claimed = 'other'; c.items = []; c.searched = true; } },
+  body(v, cid) {
     const items = []; const g = v.weapons[0]; if (g) items.push(Items.make(g.id, 1, { att: g.att, ammo: g.ammo })); const g2 = v.weapons[1]; if (g2 && Math.random() < 0.5) items.push(Items.make(g2.id, 1, { att: g2.att }));
     if (v.vest.id && v.vest.dur > 3) items.push(Items.make(v.vest.id, 1, { dur: v.vest.dur })); if (v.helmet.id && v.helmet.dur > 3 && Math.random() < 0.7) items.push(Items.make(v.helmet.id, 1, { dur: v.helmet.dur }));
     if (g) items.push(Items.make(g.ammo, rand(15, 60) | 0)); for (const k in v.meds) if (v.meds[k] > 0 && Math.random() < 0.5) items.push(Items.make(k, 1));
     items.push(...this.roll('jacket', v.boss ? 5 : v.rival ? 3 : 2)); if (v.boss) items.push(...this.roll('strong', 5));
-    return this.container(v.pos.clone(), 'jacket', null, { body: v, items: items.filter(Boolean), name: v.boss ? v.name : v.rival ? 'Rival operator' : 'Mandate soldier' });
+    return this.container(v.pos.clone(), 'jacket', null, { cid: cid || 'b' + (v.nid ?? v.id), body: v, items: items.filter(Boolean), name: v.boss ? v.name : v.rival ? 'Rival operator' : 'Mandate soldier' });
   },
 };
 // ---- raid mode ----------------------------------------------------------------------------------------------
@@ -5368,7 +5372,7 @@ class Extraction extends GameMode {
     return { primary: Items.make(pw, 1, { att: Loadouts.randomAtt(w, rng, 4) }), secondary: Items.make('viper'), vest: Items.make(rng.pick(['vest1', 'vest2']), 1, { dur: 30 }), helmet: rng.chance(0.6) ? Items.make('helm1') : null, rig: Items.make('rig1'), pack: Items.make('pack1'), bagItems: [Items.make(am, 120), Items.make(defaultAmmo(DATA.weapons.viper.caliber), 32), Items.make('bandage', 3), Items.make('frag', 1)] }; }
   kitValue(R) { let v = R.inv.value(); for (const k of ['primary', 'secondary', 'vest', 'helmet', 'rig', 'pack']) if (R.kit[k]) v += Items.price(R.kit[k]); return v; }
   setup() {
-    const D = World.def; const rng = new RNG(strHash(D.id + Date.now())); const H = World.playHalf - 70;
+    const D = World.def; const rng = new RNG(strHash(D.id + (this.o.seed ?? Date.now()))); const H = World.playHalf - 70; Loot.n = 0;
     // players drop in from a random edge
     const edges = [[0, -1], [0, 1], [-1, 0], [1, 0]]; const e = rng.pick(edges); let sp = null; for (let k = 0; k < 40 && !sp; k++) { const t = rng.range(-0.7, 0.7) * H; const x = e[0] ? e[0] * H : t, z = e[1] ? e[1] * H : t; if (World.waterAt(x, z) < World.heightAt(x, z) && (!Nav.F || Nav.free(x, z))) sp = V3(x, 0, z); } sp ||= V3(0, 0, -H);
     this.entry = sp; G.players.forEach((P) => this.playerSoldier(P, 0, this.spawnAt({ pos: sp, r: 6 }), Math.atan2(-sp.x, -sp.z)));
@@ -5395,19 +5399,19 @@ class Extraction extends GameMode {
       this.extracts.push(X); this.markPole(X); }
     // events: one or two of supply drop / convoy / storm / bounty during the raid
     const evs = ['drop', 'convoy', 'storm', 'bounty']; const picks = []; while (picks.length < 2) { const k = rng.pick(evs); if (!picks.includes(k)) picks.push(k); } this.events = picks.map((k, j) => ({ k, at: rng.range(240, 600) + j * rng.range(240, 480), done: false }));
-    this.flareH = Events.on('flare', (d) => this.onFlare(d));
+    this.flareH = Events.on('flare', (d) => { if (this.net === 'client') Net.send({ t: 'flare', p: [d.pos.x, d.pos.y, d.pos.z] }); else this.onFlare(d); });
     Radio.say('Magpie', this.scav ? 'Free kit, free run. Grab what you can and get out.' : 'You are in. ' + this.extracts.length + ' exits on this map — check your map. Thirty minutes until they lock it down.');
   }
   spot(p, rng, f) { for (let k = 0; k < 20; k++) { const a = rng.range(0, TAU), rr = Math.sqrt(rng.next()) * (p.r || 40) * f; const x = p.x + Math.cos(a) * rr, z = p.z + Math.sin(a) * rr; if (!World.inBounds(x, z, -60) || World.waterAt(x, z) > World.heightAt(x, z) - 0.2) continue; if (Nav.F && !Nav.free(x, z)) continue; const y = Col.ground(x, z, World.heightAt(x, z) + 2.2, 0.35, 4).y; return V3(x, y, z); } return null; }
   markPole(X) { const g = new THREE.Group(); const pole = new THREE.Mesh(GEO.cyl6, colMat(0x2a2a2a)); pole.scale.set(0.08, 5, 0.08); pole.position.y = 2.5; g.add(pole); const lamp = new THREE.Mesh(GEO.sphere, colMat(0x40ff60, { emissive: 0x40ff60, emissiveIntensity: 2 })); lamp.scale.setScalar(0.35); lamp.position.y = 5.1; g.add(lamp); g.position.copy(X.pos); WORLD.add(g); X.mesh = g; X.lamp = lamp; }
   dispose() { if (this.flareH) Events.off('flare', this.flareH); for (const X of this.extracts) if (X.mesh) WORLD.remove(X.mesh); }
   // ---- extraction points ----
-  xOpen(X) { switch (X.kind) { case 'open': return true; case 'timed': return this.t >= X.opens; case 'key': return G.players.some((P) => this.raidOf(P)?.inv.count(X.key) > 0); case 'guarded': return !Soldiers.list.some((s) => s.tag === 'xg' + X.i && s.state !== 'dead'); case 'flare': return X.state === 'landed'; } return false; }
+  xOpen(X) { if (this.net === 'client' && X.kind === 'flare') { const h = Net.hud?.extract?.find((e) => e.name === X.name); return !!(h && h.open); } switch (X.kind) { case 'open': return true; case 'timed': return this.t >= X.opens; case 'key': return G.players.some((P) => this.raidOf(P)?.inv.count(X.key) > 0); case 'guarded': return !Soldiers.list.some((s) => s.tag === 'xg' + X.i && s.state !== 'dead'); case 'flare': return X.state === 'landed'; } return false; }
   xLabel(X) { if (this.xOpen(X)) return X.kind === 'flare' ? 'PICKUP ' + Math.ceil(X.pickT) + 's' : 'OPEN'; switch (X.kind) { case 'timed': return 'opens ' + fmtTime(X.opens - this.t); case 'key': return 'needs ' + Items.def(X.key).name; case 'guarded': return 'guarded · ' + Soldiers.list.filter((s) => s.tag === 'xg' + X.i && s.state !== 'dead').length; case 'flare': return X.state === 'inbound' ? 'inbound ' + Math.ceil(X.inT) + 's' : 'throw a flare'; } return ''; }
   onFlare(d) { for (const X of this.extracts) if (X.kind === 'flare' && X.state === 'waiting' && Math.hypot(d.pos.x - X.pos.x, d.pos.z - X.pos.z) < 30) { X.state = 'inbound'; X.inT = 25; for (const P of G.players) P.note('Flare seen — pickup inbound at ' + X.name, 'good'); Radio.say('Pilot', 'Got your flare. Twenty-five seconds, keep the zone clear.'); } }
   updateExtracts(dt) {
     for (const X of this.extracts) {
-      if (X.kind === 'flare') { if (X.state === 'inbound') { X.inT -= dt; if (X.inT <= 0) { X.state = 'landed'; X.pickT = 60; X.ship = Vehicles.spawn('vtol_dropship', V3(X.pos.x, X.pos.y + 14, X.pos.z + 4), 0, 0); if (X.ship) X.ship.life = 70; } } else if (X.state === 'landed') { X.pickT -= dt; if (X.pickT <= 0) { X.state = 'waiting'; if (X.ship && !X.ship.dead) X.ship.remove(); X.ship = null; for (const P of G.players) P.note('Pickup at ' + X.name + ' left without you', 'bad'); } } }
+      if (X.kind === 'flare' && this.net !== 'client') { if (X.state === 'inbound') { X.inT -= dt; if (X.inT <= 0) { X.state = 'landed'; X.pickT = 60; X.ship = Vehicles.spawn('vtol_dropship', V3(X.pos.x, X.pos.y + 14, X.pos.z + 4), 0, 0); if (X.ship) X.ship.life = 70; } } else if (X.state === 'landed') { X.pickT -= dt; if (X.pickT <= 0) { X.state = 'waiting'; if (X.ship && !X.ship.dead) X.ship.remove(); X.ship = null; for (const P of G.players) P.note('Pickup at ' + X.name + ' left without you', 'bad'); } } }
       const open = this.xOpen(X); if (X.lamp) X.lamp.material = colMat(open ? 0x40ff60 : 0xff4030, { emissive: open ? 0x40ff60 : 0xff4030, emissiveIntensity: 2 });
       const alive = G.players.filter((P) => P.soldier.state === 'alive'); if (!open || !alive.length) { X.standT = 0; continue; }
       const inside = alive.every((P) => Math.hypot(P.soldier.pos.x - X.pos.x, P.soldier.pos.z - X.pos.z) < X.r && !P.soldier.vehicle); if (inside) { X.standT += dt; for (const P of alive) P.warn('EXTRACTING ' + Math.ceil(8 - X.standT)); if (X.standT >= 8) { this.finish('extracted', X); return; } } else X.standT = 0;
@@ -5420,7 +5424,7 @@ class Extraction extends GameMode {
     this.visitT -= dt; if (this.visitT <= 0) { this.visitT = 1; for (const p of World.def.pois || []) for (const P of G.players) if (P.soldier.state === 'alive' && Math.hypot(P.soldier.pos.x - p.x, P.soldier.pos.z - p.z) < p.r) { if (!this.visited.has(p.name)) { this.visited.add(p.name); for (const a of Econ.S.contracts.active) { const c = Econ.cdef(a.id); if (c?.type === 'visit' && c.map === World.def.id && c.poi === p.name && !a.prog) { a.prog = 1; P.note('Contract: ' + c.poi + ' reached — now extract', 'good'); } } } }
       for (const P of G.players) { const R = this.raidOf(P); if (R) { P.soldier.carryWeight = R.inv.weight(); P.soldier.recalcWeight(); } } }
     if (this.bounty && this.bounty.s.state === 'dead') { const by = this.bounty.s.lastHitBy; if (by?.player) { G.save.credits += 5000; by.player.note('Bounty collected +' + fmtMoney(5000), 'big'); } this.bounty = null; }
-    if (this.t > this.timeLimit) this.finish('mia');
+    if (this.t > this.timeLimit) { if (Net.host && !this.xendSent) { this.xendSent = true; Net.broadcast({ t: 'xend' }); } this.finish('mia'); }
     else if (this.t > this.timeLimit - 120 && !this.warned) { this.warned = true; for (const P of G.players) P.note('Two minutes until the zone locks down — get to an exit', 'bad'); }
   }
   fireEvent(k) {
@@ -5438,11 +5442,16 @@ class Extraction extends GameMode {
   }
   vehicleGoal(v, s) { const o = s.brain?.goal?.pos; return o || null; }
   onKill(v, k, info) {
-    if (v.player) return; Loot.body(v); if (!k || !k.player) return; const who = v.tag === 'boss' ? 'boss' : v.team >= 2 ? 'rival' : 'garrison'; this.kills[who]++; if (who === 'boss') { k.player.note(v.name + ' eliminated', 'big', 500); Radio.say('Magpie', 'That was ' + v.name + '. Do not leave without whatever they were carrying.'); }
+    if (v.player) return; Loot.body(v); if (!k || !k.player) return; this.creditKill(v, k);
+  }
+  // kill credit for contracts / boss / stats (also called when a co-op kill comes back from the host)
+  creditKill(v, k) { const who = v.tag === 'boss' ? 'boss' : v.team >= 2 ? 'rival' : 'garrison'; this.kills[who]++; if (who === 'boss') { k.player.note(v.name + ' eliminated', 'big', 500); Radio.say('Magpie', 'That was ' + v.name + '. Do not leave without whatever they were carrying.'); }
     for (const a of Econ.S.contracts.active) { const c = Econ.cdef(a.id); if (!c) continue; if (c.map && c.map !== World.def.id) continue; if ((c.type === 'kill' && (!c.who || c.who === who || (c.who === 'garrison' && who !== 'rival'))) || (c.type === 'boss' && who === 'boss')) { a.prog++; if (a.prog === (c.count || 1)) k.player.note('Contract objective done: ' + c.name + ' — extract to claim', 'good'); } }
   }
   playerDied(P) { if (G.players.every((q) => q.soldier.state === 'dead' || q === P)) setTimeout(() => this.finish('kia'), 1800); else P.note('You are down for good this raid — your partner can still extract', 'bad'); }
-  allowDowned(s) { return G.players.length > 1 && !!s.player; }
+  allowDowned(s) { return (G.players.length > 1 || Net.on) && !!s.player; }
+  // co-op guests: their own raid (exits, visits, load, timer) runs here; the world runs on the host
+  netTick(dt) { if (this.localOut || this.over) return; this.updateExtracts(dt); this.visitT -= dt; if (this.visitT <= 0) { this.visitT = 1; for (const p of World.def.pois || []) for (const P of G.players) if (P.soldier.state === 'alive' && Math.hypot(P.soldier.pos.x - p.x, P.soldier.pos.z - p.z) < p.r && !this.visited.has(p.name)) { this.visited.add(p.name); for (const a of Econ.S.contracts.active) { const c = Econ.cdef(a.id); if (c?.type === 'visit' && c.map === World.def.id && c.poi === p.name && !a.prog) { a.prog = 1; P.note('Contract: ' + c.poi + ' reached — now extract', 'good'); } } } for (const P of G.players) { const R = this.raidOf(P); if (R) { P.soldier.carryWeight = R.inv.weight(); P.soldier.recalcWeight(); } } } if (this.t > this.timeLimit) this.finish('mia'); }
   carryWeight(P) { const R = this.raidOf(P); return (R ? R.inv.weight() : 0) + (P.soldier?.weight || 0); }
   hud(P) {
     const left = this.timeLimit - this.t; const markers = []; for (const X of this.extracts) if (this.xOpen(X) || X.kind === 'flare' || X.kind === 'timed') markers.push({ pos: X.pos, short: 'EXIT', label: X.name });
@@ -5452,7 +5461,7 @@ class Extraction extends GameMode {
   }
   // ---- raid end: move everything home (or lose it) ----
   finish(outcome, X = null) {
-    if (this.over) return; this.outcome = outcome; const S = Econ.S; const lines = this.lines; const lostIns = []; let carried = 0;
+    if (this.over || this.localOut) return; this.outcome = outcome; const S = Econ.S; const lines = this.lines; const lostIns = []; let carried = 0;
     for (const P of G.players) { const R = this.raidOf(P); if (!R) continue; const s = P.soldier; const ok = outcome === 'extracted' && s.state === 'alive';
       // rebuild the kit from what the soldier is holding now
       const cur = { primary: s.weapons[0] ? Items.make(s.weapons[0].id, 1, { att: s.weapons[0].att, ammo: s.weapons[0].ammo }) : null, secondary: s.weapons[1] ? Items.make(s.weapons[1].id, 1, { att: s.weapons[1].att }) : null, vest: s.vest.id && s.vest.dur > 0 ? Items.make(s.vest.id, 1, { dur: s.vest.dur }) : null, helmet: s.helmet.id && s.helmet.dur > 0 ? Items.make(s.helmet.id, 1, { dur: s.helmet.dur }) : null, rig: R.kit.rig, pack: R.kit.pack };
@@ -5470,7 +5479,12 @@ class Extraction extends GameMode {
       else lines.push((P.idx ? 'Player 2' : 'You') + ': free kit lost — nothing of yours was at risk');
     }
     lines.push(...Econ.afterRaid(lostIns)); S.lastRaid = { map: World.def.id, outcome, value: carried, kills: this.kills, at: Date.now() }; if (outcome === 'extracted') G.save.stats.extracts++; G.save.stats.raids++; Econ.save();
-    this.end(outcome === 'extracted' ? 0 : 1, outcome === 'extracted' ? 'EXTRACTED' : outcome === 'mia' ? 'MISSING IN ACTION' : 'KILLED IN ACTION');
+    const text = outcome === 'extracted' ? 'EXTRACTED' : outcome === 'mia' ? 'MISSING IN ACTION' : 'KILLED IN ACTION';
+    if (Net.on) { // co-op: we leave the raid; it carries on for everyone else
+      this.localOut = true; this.result = { winner: outcome === 'extracted' ? 0 : 1, text, t: this.t }; Net.send({ t: 'xdone', name: Net.name, outcome });
+      for (const P of G.players) { const s = P.soldier; if (s.vehicle) s.vehicle.exit(s, true); if (outcome === 'extracted') { s.state = 'dead'; s.hp = 0; s.pos.y = -500; P.vm.visible = false; } P.note(text, outcome === 'extracted' ? 'big' : 'bad'); }
+      setTimeout(() => UI.results(this), 2200); return; }
+    this.end(outcome === 'extracted' ? 0 : 1, text);
   }
   rewards() { const out = []; for (const P of G.players) { const s = P.soldier; const xp = Math.round(s.kills * 100 + this.kills.boss * 600 + (this.outcome === 'extracted' ? 500 : 100) + this.visited.size * 40); out.push({ P, xp, credits: 0 }); } return out; }
   resultsExtra() { return `<div class="box"><h2>Raid report</h2>${this.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<p class="dim">Kills: ${this.kills.garrison} garrison · ${this.kills.rival} rival · ${this.kills.boss} boss · visited ${this.visited.size} locations · ${fmtTime(this.t)}</p></div>`; }
@@ -5954,7 +5968,7 @@ Object.assign(UI, {
       Econ.setStash(st); Econ.setBag(bag); Econ.save(); go(found.uid); });
     const slotFor = (r) => r.cat === 'weapon' ? (DATA.weapons[r.id].class === 'pistol' ? 'secondary' : 'primary') : DATA.gear[r.id].kind === 'vest' ? 'vest' : DATA.gear[r.id].kind;
     this.wire(s, {
-      back: () => this.open('title'), repack: () => { const lost = st.repack(); if (lost.length) { st.items.push(...lost); return this.toast('Could not repack'); } Econ.setStash(st); Econ.save(); go(sel); },
+      back: () => (this.opts?.after ? this.back() : this.open('title')), repack: () => { const lost = st.repack(); if (lost.length) { st.items.push(...lost); return this.toast('Could not repack'); } Econ.setStash(st); Econ.save(); go(sel); },
       equip: () => { const k = slotFor(found); const old = K[k]; st.remove(found); K[k] = found; if (old) if (!st.add(old)) { st.items.push(found); K[k] = old; st.remove(found); return this.toast('No room for the old item'); }
         if (k === 'rig' || k === 'pack') { const nb = Econ.bag(); const over = nb.repack(); for (const r of over) if (!st.add(r)) this.toast('Lost ' + Items.name(r)); Econ.setBag(nb); } Econ.setStash(st); Econ.save(); go(found.uid); },
       unequip: () => { const k = where.slice(5); if (!st.add(found)) return this.toast('Stash is full'); K[k] = null; if (k === 'rig' || k === 'pack') { const nb = Econ.bag(); for (const r of nb.repack()) if (!st.add(r)) this.toast('Lost ' + Items.name(r)); Econ.setBag(nb); } Econ.setStash(st); Econ.save(); go(found.uid); },
@@ -5982,7 +5996,7 @@ Object.assign(UI, {
     s.querySelectorAll('[data-buy]').forEach((b) => b.onclick = () => { const e = Econ.buy(b.dataset.buy, +b.dataset.p, +b.dataset.n); if (e) return this.toast(e); S.rep[t.id] = Math.min(1, rep + 0.002); Audio.play('cash', 0.6); this.open('traders', { t: t.id }); });
     s.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = st.items.find((x) => x.uid === b.dataset.sell); if (!r) return; G.save.credits += Econ.traderSell(t, r); st.remove(r); Econ.setStash(st); S.rep[t.id] = Math.min(1, rep + Math.min(0.02, Items.price(r) / 400000)); Econ.save(); Audio.play('cash', 0.6); this.open('traders', { t: t.id }); });
     s.querySelectorAll('[data-fix]').forEach((b) => b.onclick = () => { const r = K[b.dataset.fix]; const c = repairCost(r); if (G.save.credits < c) return this.toast('Not enough credits'); G.save.credits -= c; r.dur = DATA.gear[r.id].dur * 0.95 + r.dur * 0.05; Econ.save(); this.open('traders', { t: t.id }); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- market ----------------------------------------------------------------------------------------------
   s_market(o = {}) {
@@ -5994,7 +6008,7 @@ Object.assign(UI, {
     s.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => this.open('market', { cat: b.dataset.cat }));
     s.querySelectorAll('[data-buy]').forEach((b) => b.onclick = () => { const e = Econ.buy(b.dataset.buy, +b.dataset.p, +b.dataset.n); if (e) return this.toast(e); Audio.play('cash', 0.6); this.open('market', { cat }); });
     s.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = st.items.find((x) => x.uid === b.dataset.sell); if (!r) return; G.save.credits += Econ.marketSell(r); st.remove(r); Econ.setStash(st); Econ.save(); Audio.play('cash', 0.6); this.open('market', { cat }); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- contracts -------------------------------------------------------------------------------------------
   s_contracts() {
@@ -6004,7 +6018,7 @@ Object.assign(UI, {
       <div class="box"><h2>Offers</h2><div class="xlist">${Econ.offers().map((c) => `<div class="xrow"><span class="nm"><b style="color:${tr(c.trader).color}">${esc(c.name)}</b> <span class="dim">· ${esc(tr(c.trader).name)}${c.map ? ' · ' + esc(DATA.maps[c.map].name) : ''}</span><div class="dim" style="font-size:12px">${esc(c.desc)}</div></span><span class="pr" style="font-size:11px">${rw(c)}</span><button class="btn" data-acc="${c.id}">Accept</button></div>`).join('') || '<div class="dim">Raise your reputation for more work.</div>'}</div></div></div></div>`);
     s.querySelectorAll('[data-acc]').forEach((b) => b.onclick = () => { const e = Econ.accept(b.dataset.acc); if (e) this.toast(e); this.open('contracts'); });
     s.querySelectorAll('[data-drop]').forEach((b) => b.onclick = () => { Econ.drop(b.dataset.drop); this.open('contracts'); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- base: upgrades + crafting -----------------------------------------------------------------------------
   s_base() {
@@ -6015,7 +6029,7 @@ Object.assign(UI, {
         <div class="xlist" style="margin-top:8px">${DATA.traders.recipes.map((R) => { const e = Econ.canCraft(R); return `<div class="xrow ${Econ.lvl(R.module) < R.lvl ? 'lock' : ''}"><span class="nm"><b>${esc(Items.def(R.out.id).name)} ×${R.out.n}</b> <span class="dim">· ${R.module} L${R.lvl} · ${R.mins} min</span><div class="dim" style="font-size:12px">${Object.entries(R.in).map(([k, n]) => n + '× ' + Items.def(k).name + ' (' + st.count(k) + ')').join(' · ')}</div></span><button class="btn ${e ? 'dis' : ''}" data-cr="${R.id}" title="${esc(e || '')}">Craft</button></div>`; }).join('')}</div></div></div></div>`);
     s.querySelectorAll('[data-up]').forEach((b) => b.onclick = () => { const e = Econ.upgrade(b.dataset.up); if (e) return this.toast(e); Audio.play('level', 0.6); this.open('base'); });
     s.querySelectorAll('[data-cr]').forEach((b) => b.onclick = () => { const e = Econ.craft(DATA.traders.recipes.find((x) => x.id === b.dataset.cr)); if (e) return this.toast(e); this.open('base'); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- deploy ----------------------------------------------------------------------------------------------
   s_raid(o = {}) {
@@ -6035,7 +6049,7 @@ Object.assign(UI, {
     s.querySelectorAll('[data-var]').forEach((d) => d.onclick = () => re({ variant: d.dataset.var }));
     s.querySelectorAll('[data-op]').forEach((d) => d.onclick = () => re({ op: d.dataset.op }));
     s.querySelectorAll('[data-free]').forEach((d) => d.onclick = () => re({ free: d.dataset.free === '1' }));
-    this.wire(s, { back: () => this.open('title'), go: () => { if (!free && !K.primary) return this.toast(warn); G.save.lastOperator = op; Save.save(); Game.start(new Extraction({ map, variant, scav: free })); } });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')), go: () => { if (!free && !K.primary) return this.toast(warn); G.save.lastOperator = op; Save.save(); Game.start(new Extraction({ map, variant, scav: free })); } });
   },
   // inventory in a raid (I): your bag beside the ground at your feet, so things can be dropped or picked back up
   inventory(P) { const s = P.soldier; if (P.idx > 0 || !P.src.kbm) { P.note('Bag: ' + G.mode.raidOf(P).inv.items.map((r) => Items.label(r)).join(', ').slice(0, 120), ''); return; } let c = Loot.list.find((x) => x.ground && x.pos.distanceTo(s.pos) < 3); if (!c) { c = Loot.container(s.pos.clone(), 'jacket', null, { body: s, items: [], name: 'Ground' }); c.ground = true; c.searched = true; } this.lootPanel(P, c); },
@@ -6315,13 +6329,13 @@ const Net = {
       if (d.t === 'hello') { if (this.players.length >= NET_MAX) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); return; } if (this.inMatch) { conn.send({ t: 'busy' }); setTimeout(() => conn.close(), 300); return; }
         this.conns.set(from, conn); this.players.push({ id: from, name: String(d.name || 'Operator').slice(0, 14), op: DATA.operators[d.op] ? d.op : 'kestrel', w: Array.isArray(d.w) ? d.w.map((x) => DATA.weapons[x] ? x : null) : [] }); Audio.play('ping'); this.pushLobby(); return; }
       if (d.t === 'leftMatch') { this.removePuppet(from); this.broadcast({ t: 'left', id: from }, from); return; }
-      if (['st', 'ping', 'boom', 'chestOpen'].includes(d.t)) { d.id = from; this.broadcast(d, from); }
+      if (['st', 'ping', 'boom', 'chestOpen', 'loot', 'xdone'].includes(d.t)) { d.id = from; this.broadcast(d, from); }
     }
     if (d.t === 'lobby') { this.players = d.players; this.lobby = d.lobby; if (!this.isHost) this.status = d.playing ? 'a match is running — you will join the next one' : `in the lobby · ${d.players.length}/${NET_MAX} players`; this.refresh(); return; }
     if (d.t === 'full') { this.status = 'that room is full (4 players)'; this.leave(); this.refresh(); return; }
     if (d.t === 'busy') { this.status = 'a match is running in that room — try again when it ends'; this.leave(); this.refresh(); return; }
     if (d.t === 'start') { this.begin(d.spec, d.seats); return; }
-    if (d.t === 'back') { if (this.inMatch) { this.inMatch = false; G.online = false; this.clearMatch(); if (G.inGame) Game.quit('onlineLobby'); } return; }
+    if (d.t === 'back') { if (this.inMatch && G.mode?.kind === 'extraction' && !G.mode.localOut) { try { G.mode.finish('extracted'); } catch (e) { console.error(e); } } if (this.inMatch) { this.inMatch = false; G.online = false; this.clearMatch(); if (G.inGame) Game.quit('onlineLobby'); } return; }
     if (d.t === 'left') { this.removePuppet(d.id); return; }
     if (!this.inMatch) return;
     if (!this.ready) { this.pending.push([from, d]); return; }
@@ -6348,12 +6362,19 @@ const Net = {
       case 'chest': if (!this.isHost) { this.applying = true; try { const c = Chests.spawn(V3(...d.p)); c.cid = d.cid; } finally { this.applying = false; } } break;
       case 'chestOpen': { const c = Chests.list.find((x) => x.cid === d.cid); if (c && !c.open) { this.applying = true; try { Chests.open(c, null); } finally { this.applying = false; } } break; }
       case 'ping': { this.applying = true; try { Pings.add(0, V3(...d.p), d.kind || 'loc', null); } finally { this.applying = false; } break; }
+      case 'loot': Loot.claimed(d.cid); break;
+      case 'xdone': for (const P of G.players) P.note((d.name || 'A teammate') + (d.outcome === 'extracted' ? ' extracted' : d.outcome === 'mia' ? ' is missing in action' : ' was killed — raid over for them'), d.outcome === 'extracted' ? 'good' : 'bad'); break;
+      case 'xend': if (G.mode?.kind === 'extraction' && !G.mode.localOut) G.mode.finish('mia'); break;
+      case 'flare': if (this.isHost) Events.emit('flare', { pos: V3(...d.p) }); break;
+      case 'radio': this.applying = true; try { Radio.say(d.who, d.text, d.portrait); } finally { this.applying = false; } break;
+      case 'weather': this.applying = true; try { Weather.set(d.id); } finally { this.applying = false; } break;
+      case 'drop': if (!this.isHost) { this.applying = true; try { SupplyDrop.call(V3(...d.p), d.team, d.loot, d.cid); } finally { this.applying = false; } } break;
       case 'ready': if (this.isHost) { for (const c of Chests.list) if (!c.open) this.sendTo(from, { t: 'chest', cid: c.cid, p: [c.pos.x, c.pos.y, c.pos.z] }); this.snapN = 0; } break;
     }
   },
   // ---- lobby → match --------------------------------------------------------------------------------------
   hostStart() {
-    if (!this.isHost) return; const L = this.lobby; const spec = { mode: L.mode, warfare: L.warfare, map: L.mode === 'campaign' ? DATA.missions[L.mission].map : L.map, variant: L.variant, mission: L.mission, n: L.n };
+    if (!this.isHost) return; const L = this.lobby; const spec = { seed: Date.now() % 1e9, mode: L.mode, warfare: L.warfare, map: L.mode === 'campaign' ? DATA.missions[L.mission].map : L.map, variant: L.variant, mission: L.mission, n: L.n };
     const seats = this.players.map((p) => ({ id: p.id, name: p.name, op: p.op, w: p.w })); this.broadcast({ t: 'start', spec, seats }); this.begin(spec, seats);
   },
   modeFor(spec, net) {
@@ -6361,6 +6382,7 @@ const Net = {
     if (spec.mode === 'warfare') return new Warfare(Object.assign(o, { warfare: spec.warfare, perTeam: spec.n }));
     if (spec.mode === 'tdm') return new TeamDeathmatch(Object.assign(o, { perTeam: Math.min(spec.n, 12) }));
     if (spec.mode === 'dom') return new Domination(o);
+    if (spec.mode === 'extraction') { Econ.S; return new Extraction({ map: spec.map, variant: spec.variant || undefined, net, seed: spec.seed, scav: this.freeKit ?? !Econ.S.kit.primary }); }
     if (spec.mode === 'campaign') { const D = DATA.missions[spec.mission] || DATA.missions[0]; return new CampaignMode({ def: D, idx: DATA.missions.indexOf(D), map: D.map, variant: D.variant, net }); }
     return new TeamDeathmatch(o);
   },
@@ -6370,7 +6392,7 @@ const Net = {
     const me = G.players[0]?.soldier; if (me) me.nid = this.myId;
     // the other humans, as puppets next to us
     for (const st of seats) { if (st.id === this.myId) continue; if (!this.isHost && st.id === 'host') continue; const p = me ? me.pos.clone().add(V3(rand(-3, 3), 0.2, rand(-3, 3))) : V3(); this.makeSoldier({ nid: st.id, team: 0, name: st.name, op: st.op, w: st.w, owner: st.id, human: true, p: [p.x, p.y, p.z] }); }
-    if (!this.isHost) { const m = G.mode; m.hud = (P) => this.hudFor(P); if (m.kind !== 'warfare') m.playerDied = (P) => setTimeout(() => this.respawnNearMate(P), 6000); }
+    if (!this.isHost && G.mode.kind !== 'extraction') { const m = G.mode; m.hud = (P) => this.hudFor(P); if (m.kind !== 'warfare') m.playerDied = (P) => setTimeout(() => this.respawnNearMate(P), 6000); }
     this.ready = true; for (const [f, d] of this.pending.splice(0)) this.matchMsg(f, d); if (!this.isHost) this.send({ t: 'ready' });
     for (const P of G.players) P.note('Online co-op · room ' + this.room + ' · ' + seats.length + ' player' + (seats.length > 1 ? 's' : ''), 'good', 0, 4);
   },
@@ -6406,7 +6428,7 @@ const Net = {
     if (!s.vehicle) { const tx = n.p[0] + n.v[0] * age, ty = n.p[1] + n.v[1] * age, tz = n.p[2] + n.v[2] * age; const far = Math.hypot(tx - s.pos.x, tz - s.pos.z) > 8; const k = far ? 1 : 1 - Math.exp(-14 * dt); s.pos.x += (tx - s.pos.x) * k; s.pos.y += (ty - s.pos.y) * k; s.pos.z += (tz - s.pos.z) * k; s.vel.set(n.v[0], n.v[1], n.v[2]); }
     s.yaw = dampAngle(s.yaw, n.yaw, 18, dt); s.bodyYaw = s.yaw; s.ctl.yaw = s.yaw; s.ctl.pitch = n.pitch; s.pitch = n.pitch; s.stance = n.stance; s.stanceH = CONFIG.move.height[n.stance] || 1.78; s.adsAmt = n.ads; s.grounded = n.ms !== 'air'; s.moveState = n.ms || 'ground'; s.animT += dt; s.sprinting = Math.hypot(n.v[0], n.v[2]) > 5.5;
     if (n.w && DATA.weapons[n.w] && (!s.gun || s.gun.id !== n.w)) { let i = s.weapons.findIndex((g) => g && g.id === n.w); if (i < 0) { i = 0; s.weapons[0] = new Gun(n.w, defaultAttach(DATA.weapons[n.w])); } s.cur = i; }
-    if (n.state !== s.state && !(this.isHost && s.human && n.state === 'alive' && s.state === 'dead')) { if (n.state === 'dead') { s.state = 'dead'; s.deadT = 0; s.hp = 0; if (s.vehicle) { this.applying = true; try { s.vehicle.exit(s, true); } finally { this.applying = false; } } } else if (n.state === 'downed') { s.state = 'downed'; s.bleedT = s.bleedT || 25; } else { s.state = 'alive'; s.deadT = 0; s.dummy = false; } }
+    if (n.state !== s.state && !(this.isHost && s.human && n.state === 'alive' && s.state === 'dead')) { if (n.state === 'dead') { s.state = 'dead'; s.deadT = 0; s.hp = 0; if (G.mode?.kind === 'extraction' && s.pos.y > -100) Loot.body(s, 'b' + s.nid); if (s.vehicle) { this.applying = true; try { s.vehicle.exit(s, true); } finally { this.applying = false; } } } else if (n.state === 'downed') { s.state = 'downed'; s.bleedT = s.bleedT || 25; } else { s.state = 'alive'; s.deadT = 0; s.dummy = false; } }
     s.hp = n.state === 'dead' ? 0 : n.hp;
     if (n.shots > s.netShots) { const k = Math.min(3, n.shots - s.netShots); s.netShots = n.shots; if (s.state === 'alive' && s.gun && !s.vehicle) for (let i = 0; i < k; i++) this.drawShot(s); } else if (n.shots < s.netShots) s.netShots = n.shots;
   },
@@ -6420,7 +6442,7 @@ const Net = {
       const t = this.stateOf(s); S.push([nid, t.p[0], t.p[1], t.p[2], t.yaw, t.pitch, t.st, t.sn, t.hp, t.v[0], t.v[1], t.v[2], t.w, t.sh, t.ads, t.veh, t.seat, t.ms === 'air' ? 1 : 0]); }
     for (const v of Vehicles.list) { if (v.removed) continue; v.nid = v.id; if (full || !v.netSent) { v.netSent = true; vdefs.push({ nid: v.id, type: v.def.id, team: v.team }); } const p = v.pos, q = v.q;
       V.push([v.id, r(p.x), r(p.y), r(p.z), r(q.x), r(q.y), r(q.z), r(q.w), Math.round(v.hp), v.dead ? 1 : 0, r(v.turretYaw || 0), v.occupants.map((o) => o ? this.nidOf(o) : null), r(v.alt || 0), r(v.speed || 0)]); }
-    const m = { t: 'snap', s: S, v: V }; if (defs.length) m.defs = defs; if (vdefs.length) m.vdefs = vdefs; if (this.snapN % 3 === 0 && G.mode && G.players[0]) m.hud = this.packHud(G.mode.hud(G.players[0]) || {});
+    const m = { t: 'snap', s: S, v: V, full }; if (defs.length) m.defs = defs; if (vdefs.length) m.vdefs = vdefs; if (this.snapN % 3 === 0 && G.mode && G.players[0]) m.hud = this.packHud(G.mode.hud(G.players[0]) || {});
     this.broadcast(m);
   },
   packHud(h) { const pv = (v) => v ? [Math.round(v.x), Math.round(v.y), Math.round(v.z)] : null; return { tickets: h.tickets || null, info: h.info || '', timer: h.timer || '', sector: G.mode.sector, flags: h.flags ? h.flags.map((f) => ({ id: f.id, p: pv(f.pos), owner: f.owner, prog: f.prog, capTeam: f.capTeam, locked: f.locked, current: f.current, contested: f.contested, hidden: f.hidden, name: f.name })) : null, objectives: h.objectives || null, markers: h.markers ? h.markers.map((k) => ({ p: pv(k.pos), short: k.short, label: k.label, kind: k.kind })) : null, extract: h.extract || null }; },
@@ -6430,6 +6452,7 @@ const Net = {
     for (const def of d.vdefs || []) if (!this.vpups.has(def.nid)) { this.applying = true; try { const v = Vehicles.spawn(def.type, V3(0, -400, 0), 0, def.team); if (v) { v.netPuppet = true; v.nid = def.nid; this.vpups.set(def.nid, v); } } finally { this.applying = false; } }
     const now = performance.now(); const seen = new Set();
     for (const e of d.s || []) { const s = this.puppets.get(e[0]); if (!s) continue; seen.add(s); s.net = { p: [e[1], e[2], e[3]], yaw: e[4], pitch: e[5], state: NST[e[6]] || 'alive', stance: NSTN[e[7]] || 'stand', hp: e[8], v: [e[9], e[10], e[11]], w: e[12], shots: e[13], ads: e[14], veh: e[15], seat: e[16], ms: e[17] ? 'air' : 'ground', at: now }; }
+    if (d.full) for (const [nid, s] of this.puppets) if (!s.human && !seen.has(s)) this.removePuppet(nid);
     for (const e of d.v || []) { const v = this.vpups.get(e[0]); if (!v) continue; v.net = { p: [e[1], e[2], e[3]], q: [e[4], e[5], e[6], e[7]], hp: e[8], dead: !!e[9], ty: e[10], occ: e[11], alt: e[12], sp: e[13], at: now }; }
     if (d.hud) { this.hud = d.hud; const m = G.mode; if (m && m.points && d.hud.flags) for (const f of d.hud.flags) { const pt = m.points.find((x) => x.id === f.id); if (pt) { pt.owner = f.owner; pt.prog = f.prog; pt.capTeam = f.capTeam; pt.locked = f.locked; pt.contested = f.contested; } } if (m && d.hud.sector != null) m.sector = d.hud.sector; }
   },
@@ -6445,7 +6468,8 @@ const Net = {
   },
   applyFeed(d) {
     const k = d.k != null ? { name: d.kn, team: d.kt, me: d.k === this.myId } : null; HUDFeed.list.push({ k, v: { name: d.vn, team: d.vt, me: d.v === this.myId }, w: d.w, hs: d.hs, t: G.time }); if (HUDFeed.list.length > 30) HUDFeed.list.shift();
-    const me = G.players[0]?.soldier; if (me && d.k === this.myId && d.v !== this.myId) { me.kills++; me.score += 100 + (d.hs ? 25 : 0); Operators.charge(me, 0.1, 'kill'); me.player?.onKill({ name: d.vn }, { headshot: d.hs }); }
+    const me = G.players[0]?.soldier; if (me && d.k === this.myId && d.v !== this.myId && G.mode?.kind === 'extraction') { const vp = this.puppets.get(d.v); if (vp) G.mode.creditKill(vp, me); }
+    if (me && d.k === this.myId && d.v !== this.myId) { me.kills++; me.score += 100 + (d.hs ? 25 : 0); Operators.charge(me, 0.1, 'kill'); me.player?.onKill({ name: d.vn }, { headshot: d.hs }); }
   },
 };
 // ---- lobby screens ----------------------------------------------------------------------------------------
@@ -6462,12 +6486,13 @@ Object.assign(UI, {
   },
   s_onlineLobby() {
     const L = Net.lobby; const host = Net.isHost; const link = Net.room && Net.peer ? Net.link() : ''; const ps = Net.players;
-    const modes = [['warfare:breakthrough', 'Warfare · Breakthrough'], ['warfare:conquest', 'Warfare · Conquest'], ['tdm:', 'Team deathmatch'], ['dom:', 'Domination'], ['campaign:', 'Campaign mission']]; const curMode = L.mode + ':' + (L.mode === 'warfare' ? L.warfare : '');
-    const maps = DATA.mapOrder.filter((id) => id !== 'range' && (L.mode !== 'warfare' || (L.warfare === 'conquest' ? DATA.maps[id].conquest : DATA.maps[id].breakthrough)) && (L.mode === 'warfare' || (DATA.maps[id].areas || []).length));
+    const modes = [['warfare:breakthrough', 'Warfare · Breakthrough'], ['warfare:conquest', 'Warfare · Conquest'], ['tdm:', 'Team deathmatch'], ['dom:', 'Domination'], ['extraction:', 'Extraction raid'], ['campaign:', 'Campaign mission']]; const curMode = L.mode + ':' + (L.mode === 'warfare' ? L.warfare : '');
+    const maps = DATA.mapOrder.filter((id) => id !== 'range' && (L.mode !== 'warfare' || (L.warfare === 'conquest' ? DATA.maps[id].conquest : DATA.maps[id].breakthrough)) && (L.mode === 'warfare' || (L.mode === 'extraction' ? (DATA.maps[id].extracts || []).length : (DATA.maps[id].areas || []).length)));
     const M = DATA.maps[L.mode === 'campaign' ? DATA.missions[L.mission].map : L.map] || DATA.maps.dustwater;
     const s = this.panel(this.topbar('play', this.MAIN_TABS) + `<div class="body"><div class="cols"><div class="box"><h2>Room ${esc(Net.room || '…')}</h2><p><b>${esc(Net.status)}</b></p>
       ${link ? `<p>Share this link:</p><div class="row"><input id="olink" readonly value="${esc(link)}" style="flex:1;background:#0b1013;border:1px solid var(--line2);color:#fff;padding:6px;font-family:var(--mono);font-size:12px"><button class="btn" data-act="copy">Copy</button></div>` : ''}
       <h2 style="margin-top:14px">Players ${ps.length}/${NET_MAX}</h2>${ps.map((p) => `<div class="sopt"><span>${p.host ? '★ ' : ''}${esc(p.name)}${p.id === Net.myId ? ' (you)' : ''}</span><span class="dim">${esc(DATA.operators[p.op]?.name || '')}</span></div>`).join('') || '<div class="dim">…</div>'}
+      ${L.mode === 'extraction' ? `<h2 style="margin-top:12px">Your raid kit</h2><div class="row"><button class="btn ${!(Net.freeKit ?? !Econ.S.kit.primary) ? 'on' : ''}" data-kit="0">My kit (risk it)</button><button class="btn ${(Net.freeKit ?? !Econ.S.kit.primary) ? 'on' : ''}" data-kit="1">Free kit</button><button class="btn" data-act="stash">Stash</button></div><p class="dim" style="font-size:12px">Everyone raids with their own kit and keeps their own loot. Whoever opens a crate or body first gets it. Each of you extracts on your own; the raid goes on until the last one is out.</p>` : ''}
       <div class="row" style="margin-top:12px"><button class="btn" data-act="loadout">My loadout</button><button class="btn" data-act="leave">Leave room</button></div></div>
       <div class="box"><h2>Match</h2>${host ? `<div class="row" style="flex-wrap:wrap">${modes.map(([k, n]) => `<button class="btn ${k === curMode ? 'on' : ''}" data-mode="${k}">${n}</button>`).join(' ')}</div>
         ${L.mode === 'campaign' ? `<h2 style="margin-top:10px">Mission</h2><div class="row" style="flex-wrap:wrap">${DATA.missions.map((m, i) => `<button class="btn sm ${i === L.mission ? 'on' : ''}" data-mis="${i}">${i + 1}. ${esc(m.name)}</button>`).join(' ')}</div>` : `<h2 style="margin-top:10px">Map</h2><div class="row" style="flex-wrap:wrap">${maps.map((id) => `<button class="btn sm ${id === L.map ? 'on' : ''}" data-map="${id}">${esc(DATA.maps[id].name)}</button>`).join(' ')}</div>
@@ -6478,8 +6503,9 @@ Object.assign(UI, {
     s.querySelectorAll('[data-map]').forEach((b) => b.onclick = () => Net.setLobby({ map: b.dataset.map, variant: null }));
     s.querySelectorAll('[data-mis]').forEach((b) => b.onclick = () => Net.setLobby({ mission: +b.dataset.mis }));
     s.querySelectorAll('[data-n]').forEach((b) => b.onclick = () => Net.setLobby({ n: +b.dataset.n }));
+    s.querySelectorAll('[data-kit]').forEach((b) => b.onclick = () => { Net.freeKit = b.dataset.kit === '1'; this.open('onlineLobby'); });
     this.wire(s, { back: () => { Net.leave(); this.open('title'); }, leave: () => { Net.leave(); this.open('online'); }, copy: () => { const i = s.querySelector('#olink'); i.select(); try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand('copy'); } this.toast('Link copied'); },
-      loadout: () => this.open('armoury', { after: () => this.open('onlineLobby') }), start: () => Net.hostStart() });
+      loadout: () => this.open('armoury', { after: () => this.open('onlineLobby') }), stash: () => this.open('hub', { after: () => this.open('onlineLobby') }), start: () => Net.hostStart() });
   },
 });
 
@@ -6514,6 +6540,7 @@ class Player {
   onExitVehicle(v) { this.vm.visible = true; this.lookYaw = this.soldier.yaw; this.vm.setGun(this.soldier.gun); }
   onRespawn() { this.vm.visible = true; this.vm.setGun(this.soldier.gun); this.lookYaw = this.soldier.yaw; this.lookPitch = 0; this.deadT = 0; this.flash = 0; this.drone = null; }
   order(type) { const s = this.soldier; if (!s.squad) return; const sq = s.squad; sq.leader = s; if (type === 'auto') { sq.order = null; this.note('Squad: following objectives'); return; } let p = s.pos.clone(); if (type === 'attack') { const pg = Pings.list.filter((x) => x.by === s).pop(); p = pg ? pg.pos.clone() : s.aimPoint(V3()); } sq.setOrder({ type, pos: p, r: 14, byPlayer: true }); this.note('Squad order: ' + type.toUpperCase(), 'good'); Audio.play('radio', 0.5); Radio.say(sq.members.find((m) => m !== s)?.name || 'Squad', type === 'regroup' ? 'Moving to you.' : type === 'defend' ? 'Holding here.' : 'On it — moving.'); }
+  setVision(v) { this.vision = v; this.nvOn = !!v; this.note(v === 'ti' ? 'Thermal vision (TI) on' : v === 'nv' ? 'Night vision (NV) on' : 'Vision normal', '', 0, 1); Audio.play('ui', 0.5); }
   carryWeight() { return G.mode?.carryWeight?.(this) || 0; }
   // ---- input → controller -----------------------------------------------------------------------------
   input(dt) {
@@ -6545,7 +6572,7 @@ class Player {
     if (s.tool) { if (s.tool.id === 'torch' || s.tool.id === 'scope') { const held = a.tool; if (held || s.scoping) Operators.useTool(s, held, dt); if (!held) s.scoping = false; } else if (pr('tool')) Operators.useTool(s); }
     if (pr('ping')) { Pings.fromAim(s); s.lastPingT = G.time; }
     if (pr('orders')) UI.orders(this); if (pr('commander')) UI.commander(this); if (pr('inv') && G.mode?.kind === 'extraction' && s.state === 'alive') UI.inventory(this);
-    if (pr('nv')) { this.nvOn = !this.nvOn; this.note(this.nvOn ? 'Thermal vision on' : 'Thermal vision off', '', 0, 1); Audio.play('ui', 0.5); }
+    if (pr('nv')) this.setVision(this.vision === 'ti' ? null : 'ti'); if (pr('nvg')) this.setVision(this.vision === 'nv' ? null : 'nv');
     if (pr('map')) this.mapZoom = this.mapZoom === 140 ? 380 : 140;
     if (this.idx === 0) UI.scoreboard(a.score);
     if (pr('inv') && G.mode?.openInventory) G.mode.openInventory(this);
@@ -6556,7 +6583,7 @@ class Player {
     const s = this.soldier, v = s.vehicle, C = s.ctl; const pr = (n) => Input.pressed(this.idx, n); this.interactTarget = { label: v.def.rappel && s.seat > 0 && !v.def.seats[s.seat].turret && v.alt < 45 && v.alt > 4 ? 'Rappel down (hold)' : v.def.air && v.alt > 6 ? 'Bail out' : 'Exit ' + v.def.name, hold: 0 };
     if (pr('interact')) { if (v.def.rappel && s.seat > 0 && !v.def.seats[s.seat].turret && v.alt < 45 && v.alt > 4) v.rappelOut(s); else v.exit(s); return; }
     for (let k = 1; k <= 6; k++) if (Input.pressed(this.idx, 'w' + k) || (k === 6 && pr('w6'))) v.swapSeat(s, k - 1);
-    if (a.wheel) C.swapW = true; if (pr('gadget')) C.gadget = true; if (pr('ping')) Pings.fromAim(s); if (pr('nv')) this.nvOn = !this.nvOn; if (pr('melee')) this.vehView = (this.vehView + 1) % 2;
+    if (a.wheel) C.swapW = true; if (pr('gadget')) C.gadget = true; if (pr('ping')) Pings.fromAim(s); if (pr('nv')) this.setVision(this.vision === 'ti' ? null : 'ti'); if (pr('nvg')) this.setVision(this.vision === 'nv' ? null : 'nv'); if (pr('melee')) this.vehView = (this.vehView + 1) % 2;
     if (this.idx === 0) UI.scoreboard(a.score);
   }
   droneInput(a, dt) { const C = this.droneCtl; C.yaw = (C.yaw ?? this.lookYaw) - a.lookX; C.pitch = clamp((C.pitch ?? 0) + a.lookY, -1.3, 1); C.mx = a.mx; C.mz = a.mz; C.up = a.jump || a.up; C.down = a.crouchHold || a.down; C.fire = Input.pressed(this.idx, 'fire'); if (Input.pressed(this.idx, 'interact') || Input.pressed(this.idx, 'gadget')) { if (this.drone.remote) this.drone.destroy?.({}); this.drone = null; } const s = this.soldier; s.ctl.mx = 0; s.ctl.mz = 0; s.ctl.fire = false; }
@@ -6574,7 +6601,7 @@ class Player {
       else { const dist = v.radius * 2.4 + 3 + (v.def.air ? 6 : 0); const pivot = _v2.copy(v.pos).add(_v3.set(0, v.def.phys === 'walker' ? (v.def.height || 3) * 0.9 : v.half.y + 1.6, 0)); cam.position.copy(pivot).addScaledVector(look, -dist); const gy = World.heightAt(cam.position.x, cam.position.z) + 0.6; if (cam.position.y < gy) cam.position.y = gy;
         const hit = Col.ray(pivot.x, pivot.y, pivot.z, -look.x, -look.y, -look.z, dist, { terrain: true }); if (hit && hit.t < dist) cam.position.copy(pivot).addScaledVector(look, -(hit.t - 0.4)); cam.lookAt(_v4.copy(pivot).addScaledVector(look, 30)); fov = s.ctl.ads ? fovBase / 2 : fovBase + clamp(v.speed / 60, 0, 1) * 10; }
       shake(); this.eyePos.copy(cam.position); this.camYaw = this.lookYaw; cam.fov = fov; cam.updateProjectionMatrix(); this.pxPerDeg = this.rect.h / fov;
-      this.visMode = this.nvOn ? (Sky.night > 0.3 ? VIS.NV : VIS.THERMAL) : VIS.NORMAL; return; }
+      this.visMode = this.vision === 'ti' ? VIS.THERMAL : this.vision === 'nv' ? VIS.NV : VIS.NORMAL; return; }
     // first person
     const e = s.eye(this.eyePos); const kick = this.landKick * 0.12; cam.position.set(e.x, e.y - kick, e.z);
     const roll = -s.leanAmt * CONFIG.move.leanAngle + (s.moveState === 'rappel' ? 0 : 0); cam.rotation.set(this.lookPitch, this.lookYaw + Math.PI, roll * (s.stance === 'prone' ? 0.3 : 1), 'YXZ'); shake();
@@ -6582,7 +6609,7 @@ class Player {
     const g = s.gun; if (g) { const z = g.stats.zoom * (s.scoping ? 1 : 1); fov = lerp(fovBase, fovBase / Math.max(1, z), s.adsAmt); } if (s.scoping) fov = fovBase / 5; if (s.sprinting) fov += 4;
     cam.fov = damp(cam.fov, fov, 18, dt); cam.updateProjectionMatrix(); this.camYaw = this.lookYaw; this.pxPerDeg = this.rect.h / cam.fov;
     // vision: optic (thermal / night vision when aiming), helmet NVG toggle, Ghost's Phantom
-    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision && this.nvOn !== false) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.nvOn) this.visMode = VIS.THERMAL;
+    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.vision === 'ti') this.visMode = VIS.THERMAL; else if (this.vision === 'nv') this.visMode = VIS.NV;
     this.vm.cam.fov = CONFIG.render.vmFov * (fov / fovBase) ** 0.3; this.vm.cam.aspect = cam.aspect; this.vm.cam.updateProjectionMatrix();
   }
 }
@@ -6636,7 +6663,7 @@ function logicStep(dt) {
   for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') { try { s.brain.update(dt); } catch (e) { if (!G.brainErr) { G.brainErr = 1; console.error('bot brain', e); } s.ctl.mz = s.ctl.mx = 0; s.ctl.fire = false; } }
   Soldiers.rebuild(); for (const s of Soldiers.list) s.step(dt);
   Vehicles.update(dt); Chests.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
-  if (G.mode) { if (G.mode.net === 'client') G.mode.t += dt; else G.mode.update(dt); } Net.tick(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
+  if (G.mode) { if (G.mode.net === 'client') { G.mode.t += dt; G.mode.netTick?.(dt); } else G.mode.update(dt); } Net.tick(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
 }
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
 function frame() {

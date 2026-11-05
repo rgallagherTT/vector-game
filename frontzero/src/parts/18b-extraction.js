@@ -116,7 +116,7 @@ const LOOT_KINDS = {
 };
 const Loot = {
   list: [], geo: null,
-  clear() { for (const c of this.list) { if (c.mesh) WORLD.remove(c.mesh); if (c.it) Interact.remove(c.it); } this.list.length = 0; },
+  clear() { for (const c of this.list) { if (c.mesh) WORLD.remove(c.mesh); if (c.it) Interact.remove(c.it); } this.list.length = 0; this.n = 0; },
   pool(cat, tier) { const ids = cat === 'weapon' ? Object.keys(DATA.weapons) : cat === 'gear' ? Object.keys(DATA.gear) : cat === 'ammo' ? Object.keys(DATA.ammo) : cat === 'attachment' ? Object.keys(DATA.attachments).filter((k) => !DATA.attachments[k].default) : Object.keys(DATA.items).filter((k) => DATA.items[k].type === cat);
     return ids.map((id) => { const r = Items.make(id); return [id, Items.rarity(r)]; }).filter(([, ra]) => ra <= tier + 1); },
   roll(kind, tier, rng = new RNG(Math.random() * 1e9)) {
@@ -128,7 +128,7 @@ const Loot = {
     return out;
   },
   container(pos, kind, group = null, o = {}) {
-    const K = LOOT_KINDS[kind] || LOOT_KINDS.jacket; const c = { pos: pos.clone(), kind, name: o.name || K.name, items: o.items || null, tier: o.tier || 2, key: o.key || null, searched: false, body: o.body || null };
+    const K = LOOT_KINDS[kind] || LOOT_KINDS.jacket; const c = { cid: o.cid || 'c' + (this.n = (this.n || 0) + 1), pos: pos.clone(), kind, name: o.name || K.name, items: o.items || null, tier: o.tier || 2, key: o.key || null, searched: false, body: o.body || null };
     if (!group && !o.body) { this.geo ||= new THREE.BoxGeometry(1, 1, 1); const m = new THREE.Mesh(this.geo, colMat(K.col)); m.scale.set(...K.size); m.position.set(pos.x, pos.y + K.size[1] / 2, pos.z); m.rotation.y = o.yaw ?? rand(0, TAU); m.castShadow = true; WORLD.add(m); c.mesh = m;
       if (kind === 'strong' || kind === 'safe') { const h = new THREE.Mesh(this.geo, colMat(0xd8c040, { metalness: 0.6 })); h.scale.set(0.12, 0.12, 0.05); h.position.set(0, 0.1, 0.52); m.add(h); } }
     c.it = Interact.add({ pos: pos.clone().add(V3(0, o.body ? 0.3 : 0.6, 0)), r: o.body ? 2.2 : 2.4, prio: 1, get label() { return c.key && !c.unlocked ? c.name + ' · locked (' + Items.def(c.key).name + ')' : (c.searched ? 'Loot ' : 'Search ') + c.name; }, get hold() { return c.searched ? 0 : K.hold * (o.body ? 0.8 : 1); }, cond: (s) => s.player && G.mode?.kind === 'extraction', fn: (s) => this.open(c, s) });
@@ -136,16 +136,18 @@ const Loot = {
   },
   open(c, s) {
     const m = G.mode; if (c.key && !c.unlocked) { const has = m.raidOf(s.player)?.inv.count(c.key) > 0; if (!has) { s.player.note('Locked — you need the ' + Items.def(c.key).name, 'bad'); Audio.play('empty', 0.6); return; } c.unlocked = true; s.player.note('Unlocked with ' + Items.def(c.key).name, 'good'); }
+    if (Net.on && !c.claimed && !Net.applying) { c.claimed = 'me'; Net.send({ t: 'loot', cid: c.cid }); }
     if (!c.items) c.items = this.roll(c.kind, c.tier); if (!c.searched) { c.searched = true; Challenges.track('loot', s, {}); }
     UI.lootPanel(s.player, c);
   },
   // a dead soldier becomes a lootable body: weapon, armour, some ammo + pocket loot
-  body(v) {
+  claimed(cid) { const c = this.list.find((x) => x.cid === cid); if (c && !c.claimed) { c.claimed = 'other'; c.items = []; c.searched = true; } },
+  body(v, cid) {
     const items = []; const g = v.weapons[0]; if (g) items.push(Items.make(g.id, 1, { att: g.att, ammo: g.ammo })); const g2 = v.weapons[1]; if (g2 && Math.random() < 0.5) items.push(Items.make(g2.id, 1, { att: g2.att }));
     if (v.vest.id && v.vest.dur > 3) items.push(Items.make(v.vest.id, 1, { dur: v.vest.dur })); if (v.helmet.id && v.helmet.dur > 3 && Math.random() < 0.7) items.push(Items.make(v.helmet.id, 1, { dur: v.helmet.dur }));
     if (g) items.push(Items.make(g.ammo, rand(15, 60) | 0)); for (const k in v.meds) if (v.meds[k] > 0 && Math.random() < 0.5) items.push(Items.make(k, 1));
     items.push(...this.roll('jacket', v.boss ? 5 : v.rival ? 3 : 2)); if (v.boss) items.push(...this.roll('strong', 5));
-    return this.container(v.pos.clone(), 'jacket', null, { body: v, items: items.filter(Boolean), name: v.boss ? v.name : v.rival ? 'Rival operator' : 'Mandate soldier' });
+    return this.container(v.pos.clone(), 'jacket', null, { cid: cid || 'b' + (v.nid ?? v.id), body: v, items: items.filter(Boolean), name: v.boss ? v.name : v.rival ? 'Rival operator' : 'Mandate soldier' });
   },
 };
 // ---- raid mode ----------------------------------------------------------------------------------------------
@@ -173,7 +175,7 @@ class Extraction extends GameMode {
     return { primary: Items.make(pw, 1, { att: Loadouts.randomAtt(w, rng, 4) }), secondary: Items.make('viper'), vest: Items.make(rng.pick(['vest1', 'vest2']), 1, { dur: 30 }), helmet: rng.chance(0.6) ? Items.make('helm1') : null, rig: Items.make('rig1'), pack: Items.make('pack1'), bagItems: [Items.make(am, 120), Items.make(defaultAmmo(DATA.weapons.viper.caliber), 32), Items.make('bandage', 3), Items.make('frag', 1)] }; }
   kitValue(R) { let v = R.inv.value(); for (const k of ['primary', 'secondary', 'vest', 'helmet', 'rig', 'pack']) if (R.kit[k]) v += Items.price(R.kit[k]); return v; }
   setup() {
-    const D = World.def; const rng = new RNG(strHash(D.id + Date.now())); const H = World.playHalf - 70;
+    const D = World.def; const rng = new RNG(strHash(D.id + (this.o.seed ?? Date.now()))); const H = World.playHalf - 70; Loot.n = 0;
     // players drop in from a random edge
     const edges = [[0, -1], [0, 1], [-1, 0], [1, 0]]; const e = rng.pick(edges); let sp = null; for (let k = 0; k < 40 && !sp; k++) { const t = rng.range(-0.7, 0.7) * H; const x = e[0] ? e[0] * H : t, z = e[1] ? e[1] * H : t; if (World.waterAt(x, z) < World.heightAt(x, z) && (!Nav.F || Nav.free(x, z))) sp = V3(x, 0, z); } sp ||= V3(0, 0, -H);
     this.entry = sp; G.players.forEach((P) => this.playerSoldier(P, 0, this.spawnAt({ pos: sp, r: 6 }), Math.atan2(-sp.x, -sp.z)));
@@ -200,19 +202,19 @@ class Extraction extends GameMode {
       this.extracts.push(X); this.markPole(X); }
     // events: one or two of supply drop / convoy / storm / bounty during the raid
     const evs = ['drop', 'convoy', 'storm', 'bounty']; const picks = []; while (picks.length < 2) { const k = rng.pick(evs); if (!picks.includes(k)) picks.push(k); } this.events = picks.map((k, j) => ({ k, at: rng.range(240, 600) + j * rng.range(240, 480), done: false }));
-    this.flareH = Events.on('flare', (d) => this.onFlare(d));
+    this.flareH = Events.on('flare', (d) => { if (this.net === 'client') Net.send({ t: 'flare', p: [d.pos.x, d.pos.y, d.pos.z] }); else this.onFlare(d); });
     Radio.say('Magpie', this.scav ? 'Free kit, free run. Grab what you can and get out.' : 'You are in. ' + this.extracts.length + ' exits on this map — check your map. Thirty minutes until they lock it down.');
   }
   spot(p, rng, f) { for (let k = 0; k < 20; k++) { const a = rng.range(0, TAU), rr = Math.sqrt(rng.next()) * (p.r || 40) * f; const x = p.x + Math.cos(a) * rr, z = p.z + Math.sin(a) * rr; if (!World.inBounds(x, z, -60) || World.waterAt(x, z) > World.heightAt(x, z) - 0.2) continue; if (Nav.F && !Nav.free(x, z)) continue; const y = Col.ground(x, z, World.heightAt(x, z) + 2.2, 0.35, 4).y; return V3(x, y, z); } return null; }
   markPole(X) { const g = new THREE.Group(); const pole = new THREE.Mesh(GEO.cyl6, colMat(0x2a2a2a)); pole.scale.set(0.08, 5, 0.08); pole.position.y = 2.5; g.add(pole); const lamp = new THREE.Mesh(GEO.sphere, colMat(0x40ff60, { emissive: 0x40ff60, emissiveIntensity: 2 })); lamp.scale.setScalar(0.35); lamp.position.y = 5.1; g.add(lamp); g.position.copy(X.pos); WORLD.add(g); X.mesh = g; X.lamp = lamp; }
   dispose() { if (this.flareH) Events.off('flare', this.flareH); for (const X of this.extracts) if (X.mesh) WORLD.remove(X.mesh); }
   // ---- extraction points ----
-  xOpen(X) { switch (X.kind) { case 'open': return true; case 'timed': return this.t >= X.opens; case 'key': return G.players.some((P) => this.raidOf(P)?.inv.count(X.key) > 0); case 'guarded': return !Soldiers.list.some((s) => s.tag === 'xg' + X.i && s.state !== 'dead'); case 'flare': return X.state === 'landed'; } return false; }
+  xOpen(X) { if (this.net === 'client' && X.kind === 'flare') { const h = Net.hud?.extract?.find((e) => e.name === X.name); return !!(h && h.open); } switch (X.kind) { case 'open': return true; case 'timed': return this.t >= X.opens; case 'key': return G.players.some((P) => this.raidOf(P)?.inv.count(X.key) > 0); case 'guarded': return !Soldiers.list.some((s) => s.tag === 'xg' + X.i && s.state !== 'dead'); case 'flare': return X.state === 'landed'; } return false; }
   xLabel(X) { if (this.xOpen(X)) return X.kind === 'flare' ? 'PICKUP ' + Math.ceil(X.pickT) + 's' : 'OPEN'; switch (X.kind) { case 'timed': return 'opens ' + fmtTime(X.opens - this.t); case 'key': return 'needs ' + Items.def(X.key).name; case 'guarded': return 'guarded · ' + Soldiers.list.filter((s) => s.tag === 'xg' + X.i && s.state !== 'dead').length; case 'flare': return X.state === 'inbound' ? 'inbound ' + Math.ceil(X.inT) + 's' : 'throw a flare'; } return ''; }
   onFlare(d) { for (const X of this.extracts) if (X.kind === 'flare' && X.state === 'waiting' && Math.hypot(d.pos.x - X.pos.x, d.pos.z - X.pos.z) < 30) { X.state = 'inbound'; X.inT = 25; for (const P of G.players) P.note('Flare seen — pickup inbound at ' + X.name, 'good'); Radio.say('Pilot', 'Got your flare. Twenty-five seconds, keep the zone clear.'); } }
   updateExtracts(dt) {
     for (const X of this.extracts) {
-      if (X.kind === 'flare') { if (X.state === 'inbound') { X.inT -= dt; if (X.inT <= 0) { X.state = 'landed'; X.pickT = 60; X.ship = Vehicles.spawn('vtol_dropship', V3(X.pos.x, X.pos.y + 14, X.pos.z + 4), 0, 0); if (X.ship) X.ship.life = 70; } } else if (X.state === 'landed') { X.pickT -= dt; if (X.pickT <= 0) { X.state = 'waiting'; if (X.ship && !X.ship.dead) X.ship.remove(); X.ship = null; for (const P of G.players) P.note('Pickup at ' + X.name + ' left without you', 'bad'); } } }
+      if (X.kind === 'flare' && this.net !== 'client') { if (X.state === 'inbound') { X.inT -= dt; if (X.inT <= 0) { X.state = 'landed'; X.pickT = 60; X.ship = Vehicles.spawn('vtol_dropship', V3(X.pos.x, X.pos.y + 14, X.pos.z + 4), 0, 0); if (X.ship) X.ship.life = 70; } } else if (X.state === 'landed') { X.pickT -= dt; if (X.pickT <= 0) { X.state = 'waiting'; if (X.ship && !X.ship.dead) X.ship.remove(); X.ship = null; for (const P of G.players) P.note('Pickup at ' + X.name + ' left without you', 'bad'); } } }
       const open = this.xOpen(X); if (X.lamp) X.lamp.material = colMat(open ? 0x40ff60 : 0xff4030, { emissive: open ? 0x40ff60 : 0xff4030, emissiveIntensity: 2 });
       const alive = G.players.filter((P) => P.soldier.state === 'alive'); if (!open || !alive.length) { X.standT = 0; continue; }
       const inside = alive.every((P) => Math.hypot(P.soldier.pos.x - X.pos.x, P.soldier.pos.z - X.pos.z) < X.r && !P.soldier.vehicle); if (inside) { X.standT += dt; for (const P of alive) P.warn('EXTRACTING ' + Math.ceil(8 - X.standT)); if (X.standT >= 8) { this.finish('extracted', X); return; } } else X.standT = 0;
@@ -225,7 +227,7 @@ class Extraction extends GameMode {
     this.visitT -= dt; if (this.visitT <= 0) { this.visitT = 1; for (const p of World.def.pois || []) for (const P of G.players) if (P.soldier.state === 'alive' && Math.hypot(P.soldier.pos.x - p.x, P.soldier.pos.z - p.z) < p.r) { if (!this.visited.has(p.name)) { this.visited.add(p.name); for (const a of Econ.S.contracts.active) { const c = Econ.cdef(a.id); if (c?.type === 'visit' && c.map === World.def.id && c.poi === p.name && !a.prog) { a.prog = 1; P.note('Contract: ' + c.poi + ' reached — now extract', 'good'); } } } }
       for (const P of G.players) { const R = this.raidOf(P); if (R) { P.soldier.carryWeight = R.inv.weight(); P.soldier.recalcWeight(); } } }
     if (this.bounty && this.bounty.s.state === 'dead') { const by = this.bounty.s.lastHitBy; if (by?.player) { G.save.credits += 5000; by.player.note('Bounty collected +' + fmtMoney(5000), 'big'); } this.bounty = null; }
-    if (this.t > this.timeLimit) this.finish('mia');
+    if (this.t > this.timeLimit) { if (Net.host && !this.xendSent) { this.xendSent = true; Net.broadcast({ t: 'xend' }); } this.finish('mia'); }
     else if (this.t > this.timeLimit - 120 && !this.warned) { this.warned = true; for (const P of G.players) P.note('Two minutes until the zone locks down — get to an exit', 'bad'); }
   }
   fireEvent(k) {
@@ -243,11 +245,16 @@ class Extraction extends GameMode {
   }
   vehicleGoal(v, s) { const o = s.brain?.goal?.pos; return o || null; }
   onKill(v, k, info) {
-    if (v.player) return; Loot.body(v); if (!k || !k.player) return; const who = v.tag === 'boss' ? 'boss' : v.team >= 2 ? 'rival' : 'garrison'; this.kills[who]++; if (who === 'boss') { k.player.note(v.name + ' eliminated', 'big', 500); Radio.say('Magpie', 'That was ' + v.name + '. Do not leave without whatever they were carrying.'); }
+    if (v.player) return; Loot.body(v); if (!k || !k.player) return; this.creditKill(v, k);
+  }
+  // kill credit for contracts / boss / stats (also called when a co-op kill comes back from the host)
+  creditKill(v, k) { const who = v.tag === 'boss' ? 'boss' : v.team >= 2 ? 'rival' : 'garrison'; this.kills[who]++; if (who === 'boss') { k.player.note(v.name + ' eliminated', 'big', 500); Radio.say('Magpie', 'That was ' + v.name + '. Do not leave without whatever they were carrying.'); }
     for (const a of Econ.S.contracts.active) { const c = Econ.cdef(a.id); if (!c) continue; if (c.map && c.map !== World.def.id) continue; if ((c.type === 'kill' && (!c.who || c.who === who || (c.who === 'garrison' && who !== 'rival'))) || (c.type === 'boss' && who === 'boss')) { a.prog++; if (a.prog === (c.count || 1)) k.player.note('Contract objective done: ' + c.name + ' — extract to claim', 'good'); } }
   }
   playerDied(P) { if (G.players.every((q) => q.soldier.state === 'dead' || q === P)) setTimeout(() => this.finish('kia'), 1800); else P.note('You are down for good this raid — your partner can still extract', 'bad'); }
-  allowDowned(s) { return G.players.length > 1 && !!s.player; }
+  allowDowned(s) { return (G.players.length > 1 || Net.on) && !!s.player; }
+  // co-op guests: their own raid (exits, visits, load, timer) runs here; the world runs on the host
+  netTick(dt) { if (this.localOut || this.over) return; this.updateExtracts(dt); this.visitT -= dt; if (this.visitT <= 0) { this.visitT = 1; for (const p of World.def.pois || []) for (const P of G.players) if (P.soldier.state === 'alive' && Math.hypot(P.soldier.pos.x - p.x, P.soldier.pos.z - p.z) < p.r && !this.visited.has(p.name)) { this.visited.add(p.name); for (const a of Econ.S.contracts.active) { const c = Econ.cdef(a.id); if (c?.type === 'visit' && c.map === World.def.id && c.poi === p.name && !a.prog) { a.prog = 1; P.note('Contract: ' + c.poi + ' reached — now extract', 'good'); } } } for (const P of G.players) { const R = this.raidOf(P); if (R) { P.soldier.carryWeight = R.inv.weight(); P.soldier.recalcWeight(); } } } if (this.t > this.timeLimit) this.finish('mia'); }
   carryWeight(P) { const R = this.raidOf(P); return (R ? R.inv.weight() : 0) + (P.soldier?.weight || 0); }
   hud(P) {
     const left = this.timeLimit - this.t; const markers = []; for (const X of this.extracts) if (this.xOpen(X) || X.kind === 'flare' || X.kind === 'timed') markers.push({ pos: X.pos, short: 'EXIT', label: X.name });
@@ -257,7 +264,7 @@ class Extraction extends GameMode {
   }
   // ---- raid end: move everything home (or lose it) ----
   finish(outcome, X = null) {
-    if (this.over) return; this.outcome = outcome; const S = Econ.S; const lines = this.lines; const lostIns = []; let carried = 0;
+    if (this.over || this.localOut) return; this.outcome = outcome; const S = Econ.S; const lines = this.lines; const lostIns = []; let carried = 0;
     for (const P of G.players) { const R = this.raidOf(P); if (!R) continue; const s = P.soldier; const ok = outcome === 'extracted' && s.state === 'alive';
       // rebuild the kit from what the soldier is holding now
       const cur = { primary: s.weapons[0] ? Items.make(s.weapons[0].id, 1, { att: s.weapons[0].att, ammo: s.weapons[0].ammo }) : null, secondary: s.weapons[1] ? Items.make(s.weapons[1].id, 1, { att: s.weapons[1].att }) : null, vest: s.vest.id && s.vest.dur > 0 ? Items.make(s.vest.id, 1, { dur: s.vest.dur }) : null, helmet: s.helmet.id && s.helmet.dur > 0 ? Items.make(s.helmet.id, 1, { dur: s.helmet.dur }) : null, rig: R.kit.rig, pack: R.kit.pack };
@@ -275,7 +282,12 @@ class Extraction extends GameMode {
       else lines.push((P.idx ? 'Player 2' : 'You') + ': free kit lost — nothing of yours was at risk');
     }
     lines.push(...Econ.afterRaid(lostIns)); S.lastRaid = { map: World.def.id, outcome, value: carried, kills: this.kills, at: Date.now() }; if (outcome === 'extracted') G.save.stats.extracts++; G.save.stats.raids++; Econ.save();
-    this.end(outcome === 'extracted' ? 0 : 1, outcome === 'extracted' ? 'EXTRACTED' : outcome === 'mia' ? 'MISSING IN ACTION' : 'KILLED IN ACTION');
+    const text = outcome === 'extracted' ? 'EXTRACTED' : outcome === 'mia' ? 'MISSING IN ACTION' : 'KILLED IN ACTION';
+    if (Net.on) { // co-op: we leave the raid; it carries on for everyone else
+      this.localOut = true; this.result = { winner: outcome === 'extracted' ? 0 : 1, text, t: this.t }; Net.send({ t: 'xdone', name: Net.name, outcome });
+      for (const P of G.players) { const s = P.soldier; if (s.vehicle) s.vehicle.exit(s, true); if (outcome === 'extracted') { s.state = 'dead'; s.hp = 0; s.pos.y = -500; P.vm.visible = false; } P.note(text, outcome === 'extracted' ? 'big' : 'bad'); }
+      setTimeout(() => UI.results(this), 2200); return; }
+    this.end(outcome === 'extracted' ? 0 : 1, text);
   }
   rewards() { const out = []; for (const P of G.players) { const s = P.soldier; const xp = Math.round(s.kills * 100 + this.kills.boss * 600 + (this.outcome === 'extracted' ? 500 : 100) + this.visited.size * 40); out.push({ P, xp, credits: 0 }); } return out; }
   resultsExtra() { return `<div class="box"><h2>Raid report</h2>${this.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<p class="dim">Kills: ${this.kills.garrison} garrison · ${this.kills.rival} rival · ${this.kills.boss} boss · visited ${this.visited.size} locations · ${fmtTime(this.t)}</p></div>`; }

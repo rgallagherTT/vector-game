@@ -37,7 +37,7 @@ Object.assign(UI, {
       Econ.setStash(st); Econ.setBag(bag); Econ.save(); go(found.uid); });
     const slotFor = (r) => r.cat === 'weapon' ? (DATA.weapons[r.id].class === 'pistol' ? 'secondary' : 'primary') : DATA.gear[r.id].kind === 'vest' ? 'vest' : DATA.gear[r.id].kind;
     this.wire(s, {
-      back: () => this.open('title'), repack: () => { const lost = st.repack(); if (lost.length) { st.items.push(...lost); return this.toast('Could not repack'); } Econ.setStash(st); Econ.save(); go(sel); },
+      back: () => (this.opts?.after ? this.back() : this.open('title')), repack: () => { const lost = st.repack(); if (lost.length) { st.items.push(...lost); return this.toast('Could not repack'); } Econ.setStash(st); Econ.save(); go(sel); },
       equip: () => { const k = slotFor(found); const old = K[k]; st.remove(found); K[k] = found; if (old) if (!st.add(old)) { st.items.push(found); K[k] = old; st.remove(found); return this.toast('No room for the old item'); }
         if (k === 'rig' || k === 'pack') { const nb = Econ.bag(); const over = nb.repack(); for (const r of over) if (!st.add(r)) this.toast('Lost ' + Items.name(r)); Econ.setBag(nb); } Econ.setStash(st); Econ.save(); go(found.uid); },
       unequip: () => { const k = where.slice(5); if (!st.add(found)) return this.toast('Stash is full'); K[k] = null; if (k === 'rig' || k === 'pack') { const nb = Econ.bag(); for (const r of nb.repack()) if (!st.add(r)) this.toast('Lost ' + Items.name(r)); Econ.setBag(nb); } Econ.setStash(st); Econ.save(); go(found.uid); },
@@ -65,7 +65,7 @@ Object.assign(UI, {
     s.querySelectorAll('[data-buy]').forEach((b) => b.onclick = () => { const e = Econ.buy(b.dataset.buy, +b.dataset.p, +b.dataset.n); if (e) return this.toast(e); S.rep[t.id] = Math.min(1, rep + 0.002); Audio.play('cash', 0.6); this.open('traders', { t: t.id }); });
     s.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = st.items.find((x) => x.uid === b.dataset.sell); if (!r) return; G.save.credits += Econ.traderSell(t, r); st.remove(r); Econ.setStash(st); S.rep[t.id] = Math.min(1, rep + Math.min(0.02, Items.price(r) / 400000)); Econ.save(); Audio.play('cash', 0.6); this.open('traders', { t: t.id }); });
     s.querySelectorAll('[data-fix]').forEach((b) => b.onclick = () => { const r = K[b.dataset.fix]; const c = repairCost(r); if (G.save.credits < c) return this.toast('Not enough credits'); G.save.credits -= c; r.dur = DATA.gear[r.id].dur * 0.95 + r.dur * 0.05; Econ.save(); this.open('traders', { t: t.id }); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- market ----------------------------------------------------------------------------------------------
   s_market(o = {}) {
@@ -77,7 +77,7 @@ Object.assign(UI, {
     s.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => this.open('market', { cat: b.dataset.cat }));
     s.querySelectorAll('[data-buy]').forEach((b) => b.onclick = () => { const e = Econ.buy(b.dataset.buy, +b.dataset.p, +b.dataset.n); if (e) return this.toast(e); Audio.play('cash', 0.6); this.open('market', { cat }); });
     s.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = st.items.find((x) => x.uid === b.dataset.sell); if (!r) return; G.save.credits += Econ.marketSell(r); st.remove(r); Econ.setStash(st); Econ.save(); Audio.play('cash', 0.6); this.open('market', { cat }); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- contracts -------------------------------------------------------------------------------------------
   s_contracts() {
@@ -87,7 +87,7 @@ Object.assign(UI, {
       <div class="box"><h2>Offers</h2><div class="xlist">${Econ.offers().map((c) => `<div class="xrow"><span class="nm"><b style="color:${tr(c.trader).color}">${esc(c.name)}</b> <span class="dim">· ${esc(tr(c.trader).name)}${c.map ? ' · ' + esc(DATA.maps[c.map].name) : ''}</span><div class="dim" style="font-size:12px">${esc(c.desc)}</div></span><span class="pr" style="font-size:11px">${rw(c)}</span><button class="btn" data-acc="${c.id}">Accept</button></div>`).join('') || '<div class="dim">Raise your reputation for more work.</div>'}</div></div></div></div>`);
     s.querySelectorAll('[data-acc]').forEach((b) => b.onclick = () => { const e = Econ.accept(b.dataset.acc); if (e) this.toast(e); this.open('contracts'); });
     s.querySelectorAll('[data-drop]').forEach((b) => b.onclick = () => { Econ.drop(b.dataset.drop); this.open('contracts'); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- base: upgrades + crafting -----------------------------------------------------------------------------
   s_base() {
@@ -98,7 +98,7 @@ Object.assign(UI, {
         <div class="xlist" style="margin-top:8px">${DATA.traders.recipes.map((R) => { const e = Econ.canCraft(R); return `<div class="xrow ${Econ.lvl(R.module) < R.lvl ? 'lock' : ''}"><span class="nm"><b>${esc(Items.def(R.out.id).name)} ×${R.out.n}</b> <span class="dim">· ${R.module} L${R.lvl} · ${R.mins} min</span><div class="dim" style="font-size:12px">${Object.entries(R.in).map(([k, n]) => n + '× ' + Items.def(k).name + ' (' + st.count(k) + ')').join(' · ')}</div></span><button class="btn ${e ? 'dis' : ''}" data-cr="${R.id}" title="${esc(e || '')}">Craft</button></div>`; }).join('')}</div></div></div></div>`);
     s.querySelectorAll('[data-up]').forEach((b) => b.onclick = () => { const e = Econ.upgrade(b.dataset.up); if (e) return this.toast(e); Audio.play('level', 0.6); this.open('base'); });
     s.querySelectorAll('[data-cr]').forEach((b) => b.onclick = () => { const e = Econ.craft(DATA.traders.recipes.find((x) => x.id === b.dataset.cr)); if (e) return this.toast(e); this.open('base'); });
-    this.wire(s, { back: () => this.open('title') });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')) });
   },
   // ---- deploy ----------------------------------------------------------------------------------------------
   s_raid(o = {}) {
@@ -118,7 +118,7 @@ Object.assign(UI, {
     s.querySelectorAll('[data-var]').forEach((d) => d.onclick = () => re({ variant: d.dataset.var }));
     s.querySelectorAll('[data-op]').forEach((d) => d.onclick = () => re({ op: d.dataset.op }));
     s.querySelectorAll('[data-free]').forEach((d) => d.onclick = () => re({ free: d.dataset.free === '1' }));
-    this.wire(s, { back: () => this.open('title'), go: () => { if (!free && !K.primary) return this.toast(warn); G.save.lastOperator = op; Save.save(); Game.start(new Extraction({ map, variant, scav: free })); } });
+    this.wire(s, { back: () => (this.opts?.after ? this.back() : this.open('title')), go: () => { if (!free && !K.primary) return this.toast(warn); G.save.lastOperator = op; Save.save(); Game.start(new Extraction({ map, variant, scav: free })); } });
   },
   // inventory in a raid (I): your bag beside the ground at your feet, so things can be dropped or picked back up
   inventory(P) { const s = P.soldier; if (P.idx > 0 || !P.src.kbm) { P.note('Bag: ' + G.mode.raidOf(P).inv.items.map((r) => Items.label(r)).join(', ').slice(0, 120), ''); return; } let c = Loot.list.find((x) => x.ground && x.pos.distanceTo(s.pos) < 3); if (!c) { c = Loot.container(s.pos.clone(), 'jacket', null, { body: s, items: [], name: 'Ground' }); c.ground = true; c.searched = true; } this.lootPanel(P, c); },
