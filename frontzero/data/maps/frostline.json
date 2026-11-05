@@ -1,0 +1,547 @@
+{
+ "id": "frostline",
+ "name": "Frostline",
+ "country": "nordheim",
+ "size": 2400,
+ "seed": 1515,
+ "biomes": [
+  "arctic",
+  "mountain"
+ ],
+ "baseHeight": 16,
+ "blurb": "A radar station on the glacier above a frozen lake and the mining town that feeds it.",
+ "lakes": [
+  {
+   "x": 0,
+   "z": 200,
+   "r": 260,
+   "depth": 6
+  }
+ ],
+ "sites": [
+  {
+   "id": "radar",
+   "name": "Glacier station",
+   "kind": "station",
+   "x": 420,
+   "z": -420,
+   "r": 120
+  },
+  {
+   "id": "town",
+   "name": "Kvalsund",
+   "kind": "town",
+   "x": -420,
+   "z": -200,
+   "r": 140,
+   "density": 0.7,
+   "floors": [
+    1,
+    3
+   ],
+   "ground": "snow"
+  },
+  {
+   "id": "mine",
+   "name": "Copper mine",
+   "kind": "outpost",
+   "x": -500,
+   "z": 500,
+   "r": 90,
+   "density": 0.6
+  },
+  {
+   "id": "huts",
+   "name": "Ice-fishing huts",
+   "kind": "camp",
+   "x": 120,
+   "z": 260,
+   "r": 60
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -900,
+   "z": 880,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 900,
+   "z": -880,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -900,
+     880
+    ],
+    [
+     -500,
+     500
+    ],
+    [
+     -420,
+     -200
+    ],
+    [
+     0,
+     -300
+    ],
+    [
+     420,
+     -420
+    ],
+    [
+     900,
+     -880
+    ]
+   ],
+   "width": 8,
+   "surf": "gravel"
+  }
+ ],
+ "structures": [
+  {
+   "id": "dish",
+   "type": "radar",
+   "name": "Glacier dish",
+   "x": 460,
+   "z": -460
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Station mast",
+   "x": 380,
+   "z": -380,
+   "h": 50
+  },
+  {
+   "id": "fuel",
+   "type": "fuel_depot",
+   "name": "Town fuel",
+   "x": -380,
+   "z": -120
+  }
+ ],
+ "bases": [
+  {
+   "x": -900,
+   "z": 880,
+   "yaw": 2.3
+  },
+  {
+   "x": 900,
+   "z": -880,
+   "yaw": -0.8
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -941,
+   "z": 824,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -914,
+   "z": 824,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -886,
+   "z": 824,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -859,
+   "z": 824,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -941,
+   "z": 856,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -914,
+   "z": 856,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "snow_sled",
+   "x": -886,
+   "z": 856,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "snow_sled",
+   "x": -859,
+   "z": 856,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "assault_mech",
+   "x": -941,
+   "z": 890,
+   "yaw": 2.3,
+   "team": 0,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "hover_tank",
+   "x": 859,
+   "z": -856,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 886,
+   "z": -856,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 914,
+   "z": -856,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 941,
+   "z": -856,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 859,
+   "z": -824,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 886,
+   "z": -824,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "snow_sled",
+   "x": 914,
+   "z": -824,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "exo_suit",
+   "x": 941,
+   "z": -824,
+   "yaw": -0.8,
+   "team": 1
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Copper mine",
+    "objs": [
+     {
+      "name": "Mine head",
+      "x": -500,
+      "z": 500
+     },
+     {
+      "name": "Ore hoppers",
+      "x": -430,
+      "z": 430
+     }
+    ]
+   },
+   {
+    "name": "Frozen lake",
+    "objs": [
+     {
+      "name": "Fishing huts",
+      "x": 120,
+      "z": 260
+     },
+     {
+      "name": "Lake shore",
+      "x": -200,
+      "z": 0
+     }
+    ]
+   },
+   {
+    "name": "Kvalsund",
+    "objs": [
+     {
+      "name": "Town square",
+      "x": -420,
+      "z": -200
+     },
+     {
+      "name": "Church",
+      "x": -350,
+      "z": -260
+     }
+    ]
+   },
+   {
+    "name": "Glacier station",
+    "objs": [
+     {
+      "name": "Dish",
+      "x": 460,
+      "z": -460
+     },
+     {
+      "name": "Labs",
+      "x": 400,
+      "z": -380
+     }
+    ],
+    "destroy": "dish"
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 900,
+      "z": -880
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Copper mine",
+   "x": -500,
+   "z": 500
+  },
+  {
+   "id": "B",
+   "name": "Fishing huts",
+   "x": 120,
+   "z": 260
+  },
+  {
+   "id": "C",
+   "name": "Kvalsund",
+   "x": -420,
+   "z": -200
+  },
+  {
+   "id": "D",
+   "name": "Glacier station",
+   "x": 420,
+   "z": -420
+  },
+  {
+   "id": "E",
+   "name": "Ice road",
+   "x": 0,
+   "z": -300
+  },
+  {
+   "id": "F",
+   "name": "North cairn",
+   "x": 600,
+   "z": 300
+  }
+ ],
+ "pois": [
+  {
+   "name": "Glacier station",
+   "x": 420,
+   "z": -420,
+   "r": 80,
+   "tier": 4
+  },
+  {
+   "name": "Kvalsund",
+   "x": -420,
+   "z": -200,
+   "r": 90,
+   "tier": 2
+  },
+  {
+   "name": "Copper mine",
+   "x": -500,
+   "z": 500,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Ice-fishing huts",
+   "x": 120,
+   "z": 260,
+   "r": 50,
+   "tier": 1
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 900,
+   "z": -880,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "South pass",
+   "x": -200,
+   "z": 1050,
+   "kind": "open"
+  },
+  {
+   "name": "Station helipad",
+   "x": 500,
+   "z": -480,
+   "kind": "flare"
+  },
+  {
+   "name": "Mine tunnel",
+   "x": -540,
+   "z": 540,
+   "kind": "guarded"
+  },
+  {
+   "name": "Glacier edge",
+   "x": 1050,
+   "z": 0,
+   "kind": "timed",
+   "opens": 420
+  }
+ ],
+ "areas": [
+  {
+   "id": "town",
+   "name": "Kvalsund",
+   "x": -420,
+   "z": -200,
+   "r": 150,
+   "dom": [
+    [
+     -470,
+     -240
+    ],
+    [
+     -420,
+     -200
+    ],
+    [
+     -370,
+     -160
+    ]
+   ],
+   "spawns": [
+    [
+     -540,
+     -300
+    ],
+    [
+     -300,
+     -100
+    ]
+   ]
+  },
+  {
+   "id": "station",
+   "name": "Glacier station",
+   "x": 420,
+   "z": -420,
+   "r": 140,
+   "dom": [
+    [
+     370,
+     -380
+    ],
+    [
+     420,
+     -420
+    ],
+    [
+     470,
+     -460
+    ]
+   ],
+   "spawns": [
+    [
+     320,
+     -320
+    ],
+    [
+     520,
+     -520
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "snow",
+   "name": "Snowfall",
+   "hour": 13,
+   "weather": "snow"
+  },
+  {
+   "id": "blizzard",
+   "name": "Blizzard",
+   "hour": 15,
+   "weather": "blizzard"
+  },
+  {
+   "id": "night",
+   "name": "Polar night",
+   "hour": 1,
+   "weather": "clear"
+  }
+ ]
+}

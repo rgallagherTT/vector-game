@@ -21,6 +21,7 @@ const LCSS = `.lo{display:grid;grid-template-columns:200px 1fr 360px;gap:16px;he
 .lo .sb{display:grid;grid-template-columns:70px 1fr;gap:3px 8px;align-items:center;margin-top:6px;font-size:11px;color:var(--dim)}
 .lo .sb i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--amber) var(--v),rgba(255,255,255,.1) var(--v))}
 .lo .nades{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.lo .nades button{flex:1;min-width:80px}
+.lo .xg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}.lo .xs{pointer-events:auto;cursor:pointer;min-height:44px;border:1px dashed var(--line2);border-radius:6px;background:rgba(0,0,0,.3);color:var(--dim);font:700 10px var(--font);padding:3px 2px;overflow:hidden}.lo .xs b{display:block;font:700 12px var(--mono);color:var(--amber)}.lo .xs.on{border-style:solid;border-color:var(--cyan);color:#fff;background:rgba(69,214,232,.1)}
 .lo .go{display:flex;gap:8px}.lo .go .btn{flex:1;padding:12px;font-size:15px}
 .pick{position:absolute;inset:0;background:rgba(4,7,9,.9);z-index:6;pointer-events:auto;display:flex;flex-direction:column;padding:16px}
 .pick .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;overflow:auto;padding-bottom:20px}
@@ -47,23 +48,25 @@ Object.assign(UI, {
         <div class="abil"><div><b>${esc(op.gadget.name.toUpperCase())}</b>${esc(op.gadget.desc)}</div><div class="u"><b>${esc(op.ult.name.toUpperCase())} · ULTIMATE</b>${esc(op.ult.desc)}</div></div></div>
       <div class="slots">${card('primary', 'MAIN GUN', P1)}${card('secondary', 'PISTOL', P2)}${P3 ? card('launcher', 'LAUNCHER', P3) : ''}
         <div class="ls" style="cursor:default"><div class="k">GRENADES</div><div class="nades">${['frag', 'smoke', 'flash', 'emp', 'sticky', 'c4'].map((t) => `<button class="btn sm ${t === tSel ? 'on' : ''}" data-thr="${t}">${esc(DATA.items[t].name.replace(' grenade', '').replace(' charge', ''))}</button>`).join('')}</div></div>
+        <div class="ls" style="cursor:default"><div class="k">EXTRA GUNS · SLOTS 4–10 (keys 4 to 0)</div><div class="xg">${[0, 1, 2, 3, 4, 5, 6].map((k) => { const id = (A.extra || [])[k]; const w = id && DATA.weapons[id]; return `<button class="xs ${w ? 'on' : ''}" data-xs="${k}"><b>${(k + 4) % 10}</b>${w ? esc(w.name.split(' ')[0]) : '+'}</button>`; }).join('')}</div></div>
         <div class="go"><button class="btn" data-act="custom">Customize gun</button>${o.inGame || G.inGame ? '<button class="btn pri" data-act="back">Done</button>' : '<button class="btn pri" data-act="play">Play</button>'}</div></div></div></div>`);
     s.querySelectorAll('canvas[data-portrait]').forEach((c) => drawOperatorPortrait(c, DATA.operators[c.dataset.portrait]));
     this.figurePreview(s.querySelector('canvas.figure'), op, P1, Progress.camoFor(sel));
     s.querySelectorAll('[data-op]').forEach((c) => c.onclick = () => { this.armOp = c.dataset.op; this.open('armoury', this.opts); });
     s.querySelectorAll('[data-slot]').forEach((c) => c.onclick = () => this.weaponPicker(sel, c.dataset.slot));
+    s.querySelectorAll('[data-xs]').forEach((c) => c.onclick = () => this.weaponPicker(sel, 'x' + c.dataset.xs));
     s.querySelectorAll('[data-thr]').forEach((c) => c.onclick = () => { A.throwables = { [c.dataset.thr]: c.dataset.thr === 'c4' || c.dataset.thr === 'sticky' ? 1 : 2, smoke: c.dataset.thr === 'smoke' ? 2 : 1 }; if (c.dataset.thr === 'smoke') A.throwables = { smoke: 3 }; Save.save(); this.open('armoury', this.opts); });
     this.wire(s, { custom: () => this.open('gunsmith', Object.assign({}, this.opts, { op: sel, slot: 'primary' })), play: () => this.open('title') });
   },
   // full-screen weapon picker: big cards, plain names, four bars, buy if needed
   weaponPicker(opId, k) {
-    const op = DATA.operators[opId]; const A = Progress.armoury(opId); const cur = this.slotWeapon(opId, k);
-    const pool = Object.values(DATA.weapons).filter((w) => !w.special || Progress.ownsWeapon(w.id)).filter((w) => k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
-    const box = el('div', { class: 'pick' }); box.innerHTML = `<div class="row" style="margin-bottom:12px"><h2 class="amber" style="margin:0;letter-spacing:.2em">CHOOSE ${k === 'secondary' ? 'PISTOL' : k === 'launcher' ? 'LAUNCHER' : 'MAIN GUN'}</h2><span class="sp"></span><span class="gold mono">${fmtMoney(G.save.credits)}</span><button class="btn" data-x="1">Close</button></div>
+    const op = DATA.operators[opId]; const A = Progress.armoury(opId); const xi = k[0] === 'x' ? +k.slice(1) : -1; const cur = xi >= 0 ? { id: (A.extra || [])[xi] || null } : this.slotWeapon(opId, k);
+    const pool = Object.values(DATA.weapons).filter((w) => !w.special || Progress.ownsWeapon(w.id)).filter((w) => xi >= 0 ? true : k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
+    const box = el('div', { class: 'pick' }); box.innerHTML = `<div class="row" style="margin-bottom:12px"><h2 class="amber" style="margin:0;letter-spacing:.2em">CHOOSE ${xi >= 0 ? 'GUN FOR SLOT ' + ((xi + 4) % 10) : k === 'secondary' ? 'PISTOL' : k === 'launcher' ? 'LAUNCHER' : 'MAIN GUN'}</h2><span class="sp"></span>${xi >= 0 && cur.id ? '<button class="btn" data-clr="1">Empty this slot</button>' : ''}<span class="gold mono">${fmtMoney(G.save.credits)}</span><button class="btn" data-x="1">Close</button></div>
       <div class="grid2">${pool.map((w) => { const own = Progress.ownsWeapon(w.id); return `<div class="wc ${w.id === cur.id ? 'sel' : ''} ${own ? '' : 'lock'}" data-w="${w.id}">${own ? '' : `<span class="pr">${fmtMoney(w.price)}</span>`}<div class="nm">${esc(w.name)}</div><div class="ty">${WCLASS_NAME[w.class] || w.class}</div>${this.statBars(w.id, defaultAttach(w))}</div>`; }).join('')}</div>`;
     this.root.querySelector('.screen').appendChild(box);
-    box.querySelector('[data-x]').onclick = () => box.remove();
-    box.querySelectorAll('[data-w]').forEach((c) => c.onclick = () => { const w = DATA.weapons[c.dataset.w]; if (!Progress.ownsWeapon(w.id)) { if (G.save.credits < w.price) { this.toast('Not enough credits — play matches to earn more'); return; } if (!confirm('Buy the ' + w.name + ' for ' + fmtMoney(w.price) + '?')) return; G.save.credits -= w.price; G.save.ownedWeapons.push(w.id); Audio.play('cash'); } A[k] = w.id; Save.save(); this.open('armoury', this.opts); });
+    box.querySelector('[data-x]').onclick = () => box.remove(); box.querySelector('[data-clr]')?.addEventListener('click', () => { A.extra[xi] = null; Save.save(); this.open('armoury', this.opts); });
+    box.querySelectorAll('[data-w]').forEach((c) => c.onclick = () => { const w = DATA.weapons[c.dataset.w]; if (!Progress.ownsWeapon(w.id)) { if (G.save.credits < w.price) { this.toast('Not enough credits — play matches to earn more'); return; } if (!confirm('Buy the ' + w.name + ' for ' + fmtMoney(w.price) + '?')) return; G.save.credits -= w.price; G.save.ownedWeapons.push(w.id); Audio.play('cash'); } if (xi >= 0) { A.extra ||= [null, null, null, null, null, null, null]; A.extra[xi] = w.id; } else A[k] = w.id; Save.save(); this.open('armoury', this.opts); });
   },
   // a soldier in the operator's colours holding the chosen gun, turning slowly on a little stand
   figurePreview(cv, op, w, camo) {
