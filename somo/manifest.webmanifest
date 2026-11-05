@@ -1,0 +1,16 @@
+{
+  "name": "Somo: learn to read and count",
+  "short_name": "Somo",
+  "description": "Reading and numbers with Kidi, for children in East Africa. Works without a signal.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2E1D13",
+  "theme_color": "#C4572F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
