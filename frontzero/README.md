@@ -21,7 +21,7 @@ The page loads `data/*.json` over HTTP, so opening `index.html` straight from di
 
 ## Controls (keyboard + mouse; gamepad and a second keyboard player are supported)
 
-WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1–0 weapon slots (main, pistol, launcher, 7 extra) · G throw, K cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · N class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal vision · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
+WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim (release RMB to fire) · R reload · B fire mode · V melee · 1–0 weapon slots (main, pistol, launcher, 7 extra) · G throw, K cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · N class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal vision · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
 
 On phones and tablets the game shows touch controls automatically: drag the left side to move (push to the edge to sprint), drag the right side to look, and use the thumb buttons. Add `?touch=1` to force them on or `?touch=0` to hide them.
 
@@ -37,6 +37,23 @@ Vehicles: W/S throttle, A/D steer, mouse aims the turret, Space hops (speeders) 
 - **19 vehicles**: the four SANDLINE speeders (bike, quad, buggy, hauler), hover tank, APC, artillery skiff, assault mech, exo-suit, VTOL gunship and dropship, interceptor, strike fighter, patrol boat, assault hovercraft, snow sled and three drones. All have part damage, repair, lock-on and flares, EMP, hijacking, seats and bail-out.
 
 Content lives in `data/` as JSON. Code lives in `index.html`, generated from `src/parts/` by `src/assemble.sh`.
+
+## Futuristic weapons
+
+Twelve futuristic weapons sit alongside the conventional ones (buy them on the loadout screen):
+
+- **Energy weapons:** Pulse AR-9, Arclight Beam LMG, Ion SMG, Tesla Arc Pistol and the Scatter Laser shotgun. They run on rechargeable power cells, so they never need ammo. Their magazines refill when you stop firing.
+- **Gauss and coil rifles:** Helix Coil Rifle, Gravlance DMR and the Wraith Gauss Sniper. Their rounds have no bullet drop and go through cover.
+- **Nova Plasma Caster:** lobs glowing plasma bolts that burst on impact.
+- **Mantis Smart Pistol:** its rounds curve onto the nearest enemy in front of you.
+- **Vector Flechette Rifle:** armour-piercing burst darts.
+- **Striker Swarm Launcher:** three guided micro-missiles that follow your aim.
+
+Each fires coloured beams and has glowing coils and trim.
+
+## Scope and shoot on a laptop
+
+Hold right-click to scope in and let go to fire. This works even on a trackpad that can't hold two buttons at once. If you already fired while scoped (left-click as usual), letting go doesn't fire again. You can turn it off in Settings ("Release right-click to fire"). On touch screens the SCOPE button does the same: hold to aim, release to shoot. The small AIM button still toggles aiming.
 
 ## 10 weapon slots
 

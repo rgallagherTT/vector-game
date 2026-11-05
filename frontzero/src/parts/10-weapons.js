@@ -45,7 +45,7 @@ const Ballistics = {
   // spawn a round. o: { x,y,z, dx,dy,dz (unit), vel, dmg, pen, ammo, owner, team, weapon(def), range0, range1, minMul, tracer, kind }
   fire(o) {
     const p = this.pool.pop() || {}; Object.assign(p, { x: o.x, y: o.y, z: o.z, vx: o.dx * o.vel, vy: o.dy * o.vel, vz: o.dz * o.vel, dist: 0, life: o.life || CONFIG.ballistic.maxLife, owner: o.owner, team: o.team, dmg: o.dmg, pen: o.pen, ammo: o.ammo, weapon: o.weapon,
-      range0: o.range0, range1: o.range1, minMul: o.minMul, kind: o.kind || 'bullet', tr: -1, ignoreVeh: o.ignoreVeh || null, blast: o.blast, target: o.target || null, guided: o.guided, turn: o.turn || 0, smoke: 0, flybyDone: false, armed: 0, flare: false });
+      range0: o.range0, range1: o.range1, minMul: o.minMul, kind: o.kind || 'bullet', tr: -1, ignoreVeh: o.ignoreVeh || null, blast: o.blast, target: o.target || null, guided: o.guided, turn: o.turn || 0, nograv: !!o.nograv, homing: !!o.homing, col: o.col || null, smoke: 0, flybyDone: false, armed: 0, flare: false });
     if (o.tracer) p.tr = FX.tracerStart(...(o.tracerCol || [1, 0.82, 0.45]));
     this.list.push(p); return p;
   },
@@ -53,15 +53,16 @@ const Ballistics = {
     const g = CONFIG.ballistic.gravity;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const p = this.list[i]; p.life -= dt; if (p.life <= 0) { this.kill(i); continue; }
-      if (p.kind === 'rocket' || p.kind === 'missile') { this.steer(p, dt); }
-      const ox = p.x, oy = p.y, oz = p.z; const gy = p.kind === 'missile' ? 0 : p.kind === 'rocket' ? g * 0.25 : g; // bullets + shells drop fully p.vy -= gy * dt;
-      if (p.kind === 'bullet') { const sp = Math.hypot(p.vx, p.vy, p.vz); const k = 1 - 0.00012 * sp * dt; p.vx *= k; p.vy *= k; p.vz *= k; }
+      if (p.kind === 'rocket' || p.kind === 'missile' || p.homing) { this.steer(p, dt); }
+      if (p.kind === 'plasma' && p.col) FX.glow.emit(p.x, p.y, p.z, 0, 0, 0, p.col[0], p.col[1], p.col[2], 1, 0.9, 0.12, 0.5, 0, 0);
+      const ox = p.x, oy = p.y, oz = p.z; const gy = p.nograv || p.kind === 'missile' ? 0 : p.kind === 'plasma' ? g * 0.15 : p.kind === 'rocket' ? g * 0.25 : g; // bullets + shells drop fully p.vy -= gy * dt;
+      if (p.kind === 'bullet' && !p.nograv) { const sp = Math.hypot(p.vx, p.vy, p.vz); const k = 1 - 0.00012 * sp * dt; p.vx *= k; p.vy *= k; p.vz *= k; }
       let sx = p.vx * dt, sy = p.vy * dt, sz = p.vz * dt; const L = Math.hypot(sx, sy, sz); if (L < 1e-6) continue; const dx = sx / L, dy = sy / L, dz = sz / L;
       if (p.kind === 'rocket' || p.kind === 'missile') { p.armed += L; p.smoke += dt; if (p.smoke > 0.02) { p.smoke = 0; FX.smoke(_v1.set(ox, oy, oz), 1, 0.7, 0.6, 0.1, 1.5); FX.glow.emit(ox, oy, oz, 0, 0, 0, 1, 0.6, 0.2, 0.9, 0.5, 0.06, 0.5, 0, 0); } }
       const res = this.trace(p, ox, oy, oz, dx, dy, dz, L);
       if (res === 'dead') { this.kill(i); continue; }
       p.x = ox + sx; p.y = oy + sy; p.z = oz + sz; p.dist += L;
-      if (p.tr >= 0) { const tl = Math.min(p.dist, p.kind === 'bullet' ? 9 : 2); FX.tracerSet(p.tr, p.x - dx * tl, p.y - dy * tl, p.z - dz * tl, p.x, p.y, p.z); }
+      if (p.tr >= 0) { const tl = Math.min(p.dist, p.nograv ? 22 : p.kind === 'bullet' ? 9 : 2); FX.tracerSet(p.tr, p.x - dx * tl, p.y - dy * tl, p.z - dz * tl, p.x, p.y, p.z); }
       // flyby crack near the listeners
       if (!p.flybyDone && p.kind === 'bullet') for (const P of G.players) { if (P.soldier === p.owner) continue; const e = P.eyePos; const q = segDist2(e.x, e.z, ox, oz, p.x, p.z); if (q.d2 < 16 && Math.abs(lerp(oy, p.y, q.t) - e.y) < 3) { p.flybyDone = true; Audio.flyby(e, Math.sqrt(q.d2)); P.suppress(0.25); } }
       if (World.inBounds(p.x, p.z, -400) === false || p.y < -200) this.kill(i);

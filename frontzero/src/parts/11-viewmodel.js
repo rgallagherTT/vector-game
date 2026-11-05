@@ -8,7 +8,7 @@ const vmSun = new THREE.DirectionalLight(0xffffff, 2.2); vmSun.position.set(0.5,
 const vmHemi = new THREE.HemisphereLight(0xcfe0ff, 0x6a5a4a, 1.0); vmScene.add(vmHemi); const vmRim = new THREE.DirectionalLight(0xbfd8ff, 1.4); vmRim.position.set(-0.8, 0.4, -1); vmScene.add(vmRim);
 const gunMats = new Map();
 // gun look: gunmetal texture (noise + scratches), rounded parts, studio reflections in the viewmodel scene
-const GUNLOOK = { env: null, tex: null, rtex: null, rb: new Map() };
+const GUNLOOK = { env: null, tex: null, rtex: null, rb: new Map(), glow: {} };
 function gunEnv() { if (GUNLOOK.env !== null) return; GUNLOOK.env = false; try { const pm = new THREE.PMREMGenerator(renderer); GUNLOOK.env = pm.fromScene(new RoomEnvironment(), 0.04).texture; vmScene.environment = GUNLOOK.env; pm.dispose(); } catch (e) { GUNLOOK.env = false; } }
 function gunTextures() {
   if (GUNLOOK.tex) return; const r = new RNG(7177); const { c, g } = makeCanvas(256, 256); g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, 256, 256);
@@ -41,6 +41,7 @@ function buildGunModel(gun, opts = {}) {
     cyl(bodyMat, 0, 0.06, -L * 0.25, 0.065, L); cyl(dark, 0, 0.06, -L * 0.75 + 0.02, 0.072, 0.05); cyl(dark, 0, 0.06, L * 0.25, 0.08, 0.06); cyl(acc, 0, 0.06, -L * 0.45, 0.068, 0.03); cyl(acc, 0, 0.06, -L * 0.05, 0.068, 0.03);
     rb(rubber, 0, -0.035, 0.0, 0.032, 0.11, 0.05, g, 0.25); rb(rubber, 0, -0.01, -0.25, 0.03, 0.09, 0.045); rb(dark, 0, 0.12, -0.18, 0.03, 0.03, 0.14); if (M.sight !== false) { rb(dark, 0.075, 0.12, -0.2, 0.035, 0.06, 0.12); cyl(VM_GLASS.lens || (VM_GLASS.lens = new THREE.MeshStandardMaterial({ color: 0x113344, roughness: 0.05, metalness: 0.9, envMapIntensity: 1.5 })), 0.075, 0.12, -0.262, 0.016, 0.004); }
     if (special) { cyl(gold, 0, 0.06, -L * 0.6, 0.069, 0.02); cyl(gold, 0, 0.06, L * 0.1, 0.069, 0.02); }
+    if (M.tech) { const gm = GUNLOOK.glow[M.glow] || (GUNLOOK.glow[M.glow] = new THREE.MeshBasicMaterial({ color: parseHex(M.glow) })); for (const z of [-L * 0.7, -L * 0.3, L * 0.15]) { const t = new THREE.Mesh(GEO.torus, gm); t.scale.set(0.07, 0.07, 0.03); t.position.set(0, 0.06, z); g.add(t); } }
     const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.06, -L * 0.75); g.add(muzzle); const mag = new THREE.Group(); g.add(mag); const rk = cyl(gunMat(0x6a6a5a), 0, 0.06, -L * 0.72, 0.045, 0.12, mag);
     return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt: null, sightY: 0.13, sightZ: 0.05, optic: null, opticMeshes: [], rocket: rk };
   }
@@ -90,6 +91,14 @@ function buildGunModel(gun, opts = {}) {
   if (gun.att.grip === 'agrip') rb(rubber, 0, -0.03, front - hand * 0.5, 0.025, 0.04, 0.08, g, 0.6);
   if (gun.att.grip === 'bipod') { box(dark, 0.02, -0.04, front - 0.05, 0.01, 0.07, 0.01); box(dark, -0.02, -0.04, front - 0.05, 0.01, 0.07, 0.01); }
   if (gun.att.laser) { rb(dark, 0.03, 0.02, front - 0.06, 0.02, 0.025, 0.05); const glow = new THREE.Mesh(GEO.sphere, gun.att.laser === 'laser' ? MAT.glowRed : MAT.glowAmber); glow.scale.setScalar(0.006); glow.position.set(0.03, 0.02, front - 0.09); g.add(glow); }
+  // futuristic tech: glowing coils, cells, emitters
+  if (M.tech) { const gc = parseHex(M.glow || '#40e0ff'); const gm = GUNLOOK.glow[gc] || (GUNLOOK.glow[gc] = new THREE.MeshBasicMaterial({ color: gc })); const ring = (z, r, w = 0.25) => { const t = new THREE.Mesh(GEO.torus, gm); t.scale.set(r, r, r * w * 4); t.position.set(0, 0.03, z); g.add(t); return t; };
+    if (M.tech === 'gauss' || M.tech === 'energy') { const n = M.pistol ? 2 : 4; for (let i = 0; i < n; i++) ring(front - bLen * (0.15 + i * 0.7 / n), (M.pistol ? 0.016 : 0.021)); rb(bodyMat, 0, 0.03, front - bLen * 0.45, (M.pistol ? 0.026 : 0.034), (M.pistol ? 0.026 : 0.034), bLen * 0.55, g, 0, 0.45); ring(muzZ + 0.01, M.pistol ? 0.014 : 0.019); }
+    if (M.tech === 'energy' || M.tech === 'gauss') { const cell = new THREE.Group(); cell.position.set(-(W / 2 + 0.012), 0.02, M.pistol ? 0.02 : RC); g.add(cell); cyl(gm, 0, 0, 0, 0.009, M.pistol ? 0.04 : 0.07, cell); cyl(dark, 0, 0, (M.pistol ? 0.022 : 0.037), 0.012, 0.008, cell); cyl(dark, 0, 0, -(M.pistol ? 0.022 : 0.037), 0.012, 0.008, cell); }
+    if (M.tech === 'plasma') { const ch = new THREE.Mesh(GEO.sphere, gm); ch.scale.setScalar(0.028); ch.position.set(0, 0.04, front - 0.03); g.add(ch); rb(dark, 0, 0.04, front - 0.03, 0.07, 0.03, 0.05, g, 0, 0.4); ring(muzZ + 0.01, 0.028, 0.4); ring(muzZ + 0.04, 0.024, 0.4); }
+    if (M.tech === 'smart') { const eye = new THREE.Mesh(GEO.sphere, gm); eye.scale.setScalar(0.006); eye.position.set(W / 2 + 0.004, 0.06, -L * 0.3); g.add(eye); box(gm, 0, 0.074, -L * 0.05, 0.003, 0.002, L * 0.7); }
+    if (M.tech === 'flechette') { box(gm, W * 0.38 + 0.001, -0.06, mx, 0.002, 0.08, 0.02); }
+    if (!M.pistol) for (const sx of [1, -1]) box(gm, sx * (W / 2 + 0.0012), 0.02 + H * 0.05, RC, 0.0012, 0.003, RL * 0.8); }
   // optic
   const optic = []; let sightY = M.pistol ? 0.085 : 0.075, sightZ = 0.05; const op = gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron'); const top = 0.02 + H / 2;
   if (op === 'iron') { box(dark, 0, top + 0.02, front + 0.02, 0.006, 0.03, 0.006); box(dark, 0, top + 0.02, rz1 - 0.04, 0.02, 0.025, 0.006); sightY = top + 0.035; }

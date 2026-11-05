@@ -38,6 +38,10 @@
   "rkt": {
    "name": "Rocket",
    "desc": "Launcher munitions"
+  },
+  "cell": {
+   "name": "Power cell",
+   "desc": "Rechargeable energy cell (infinite)"
   }
  },
  "list": [
@@ -2017,6 +2021,897 @@
    },
    "desc": "Four rockets as fast as you can pull the trigger.",
    "special": true
+  },
+  {
+   "id": "pulse",
+   "name": "Pulse AR-9",
+   "class": "ar",
+   "caliber": "cell",
+   "rpm": 640,
+   "modes": [
+    "auto",
+    "burst"
+   ],
+   "dmg": 28,
+   "range": [
+    35,
+    100
+   ],
+   "minMul": 0.62,
+   "vel": 1400,
+   "mag": 45,
+   "reload": 2.0,
+   "reloadEmpty": 2.5,
+   "ads": 0.22,
+   "move": 0.97,
+   "sprintOut": 0.2,
+   "recoil": {
+    "v": 0.55,
+    "h": 0.42,
+    "first": 1.2,
+    "recover": 10
+   },
+   "spread": {
+    "hip": 2.4,
+    "ads": 0.12,
+    "move": 1.4
+   },
+   "sway": 0.5,
+   "noise": 1.0,
+   "weight": 3.0,
+   "size": [
+    4,
+    2
+   ],
+   "price": 5200,
+   "rarity": 3,
+   "classes": [
+    "assault",
+    "support",
+    "engineer"
+   ],
+   "model": {
+    "len": 0.38,
+    "h": 0.07,
+    "barrel": 0.3,
+    "stock": "folding",
+    "mag": "straight",
+    "hand": 0.28,
+    "color": "#d8dee4",
+    "accent": "#2a3038",
+    "tech": "energy",
+    "glow": "#40e0ff"
+   },
+   "sound": {
+    "pitch": 1.08,
+    "body": 0.9,
+    "mech": true
+   },
+   "tech": "energy",
+   "glow": "#40e0ff",
+   "energy": {
+    "regen": 10,
+    "delay": 0.5
+   },
+   "desc": "Pulse rifle. Never needs ammo; cells recharge when you ease off.",
+   "noDrop": true
+  },
+  {
+   "id": "helix",
+   "name": "Helix Coil Rifle",
+   "class": "br",
+   "caliber": "cell",
+   "rpm": 220,
+   "modes": [
+    "semi"
+   ],
+   "dmg": 62,
+   "range": [
+    60,
+    180
+   ],
+   "minMul": 0.72,
+   "vel": 2200,
+   "mag": 14,
+   "reload": 2.4,
+   "reloadEmpty": 3.0,
+   "ads": 0.32,
+   "move": 0.92,
+   "sprintOut": 0.27,
+   "recoil": {
+    "v": 1.25,
+    "h": 0.4,
+    "first": 1.1,
+    "recover": 7
+   },
+   "spread": {
+    "hip": 3.0,
+    "ads": 0.06,
+    "move": 1.8
+   },
+   "sway": 0.7,
+   "noise": 1.25,
+   "weight": 4.3,
+   "size": [
+    5,
+    2
+   ],
+   "price": 6800,
+   "rarity": 4,
+   "classes": [
+    "assault",
+    "recon",
+    "support"
+   ],
+   "model": {
+    "len": 0.5,
+    "h": 0.08,
+    "barrel": 0.42,
+    "stock": "full",
+    "mag": "straight",
+    "hand": 0.36,
+    "color": "#30343a",
+    "accent": "#c89a30",
+    "tech": "gauss",
+    "glow": "#ffd040"
+   },
+   "sound": {
+    "pitch": 0.85,
+    "body": 1.3,
+    "thump": 1.2,
+    "mech": true
+   },
+   "tech": "gauss",
+   "glow": "#ffd040",
+   "pen": 4,
+   "energy": {
+    "regen": 4,
+    "delay": 0.8
+   },
+   "desc": "Magnetic coil rifle: flat trajectory, punches through cover.",
+   "noDrop": true
+  },
+  {
+   "id": "arclight",
+   "name": "Arclight Beam LMG",
+   "class": "lmg",
+   "caliber": "cell",
+   "rpm": 1000,
+   "modes": [
+    "auto"
+   ],
+   "dmg": 17,
+   "range": [
+    45,
+    120
+   ],
+   "minMul": 0.64,
+   "vel": 2500,
+   "mag": 150,
+   "reload": 4.4,
+   "reloadEmpty": 5.0,
+   "ads": 0.36,
+   "move": 0.89,
+   "sprintOut": 0.3,
+   "recoil": {
+    "v": 0.55,
+    "h": 0.42,
+    "first": 1.3,
+    "recover": 8
+   },
+   "spread": {
+    "hip": 3.0,
+    "ads": 0.12,
+    "move": 2.0
+   },
+   "sway": 0.7,
+   "noise": 1.1,
+   "weight": 6.4,
+   "size": [
+    5,
+    2
+   ],
+   "price": 7400,
+   "rarity": 4,
+   "classes": [
+    "support"
+   ],
+   "bipod": true,
+   "model": {
+    "len": 0.5,
+    "h": 0.09,
+    "barrel": 0.42,
+    "stock": "full",
+    "mag": "box",
+    "hand": 0.3,
+    "color": "#2a2638",
+    "accent": "#5a4a80",
+    "tech": "energy",
+    "glow": "#c070ff"
+   },
+   "sound": {
+    "pitch": 0.96,
+    "body": 1.1,
+    "mech": true
+   },
+   "tech": "energy",
+   "glow": "#c070ff",
+   "energy": {
+    "regen": 25,
+    "delay": 0.6
+   },
+   "desc": "Continuous pulse stream. Hose them down, let it cool.",
+   "noDrop": true
+  },
+  {
+   "id": "ion",
+   "name": "Ion SMG",
+   "class": "smg",
+   "caliber": "cell",
+   "rpm": 900,
+   "modes": [
+    "auto",
+    "burst"
+   ],
+   "dmg": 21,
+   "range": [
+    15,
+    45
+   ],
+   "minMul": 0.55,
+   "vel": 1200,
+   "mag": 50,
+   "reload": 1.8,
+   "reloadEmpty": 2.2,
+   "ads": 0.15,
+   "move": 1.03,
+   "sprintOut": 0.13,
+   "recoil": {
+    "v": 0.3,
+    "h": 0.25,
+    "first": 1.0,
+    "recover": 12
+   },
+   "spread": {
+    "hip": 1.6,
+    "ads": 0.3,
+    "move": 0.9
+   },
+   "sway": 0.38,
+   "noise": 0.8,
+   "weight": 2.3,
+   "size": [
+    3,
+    2
+   ],
+   "price": 4800,
+   "rarity": 3,
+   "classes": [
+    "assault",
+    "engineer",
+    "support",
+    "recon"
+   ],
+   "model": {
+    "len": 0.3,
+    "h": 0.09,
+    "barrel": 0.1,
+    "stock": "bullpup",
+    "mag": "straight",
+    "hand": 0.12,
+    "color": "#e8ece8",
+    "accent": "#2a3a30",
+    "bullpup": true,
+    "tech": "energy",
+    "glow": "#60ff90"
+   },
+   "sound": {
+    "pitch": 1.3,
+    "body": 0.65,
+    "mech": true
+   },
+   "tech": "energy",
+   "glow": "#60ff90",
+   "energy": {
+    "regen": 14,
+    "delay": 0.4
+   },
+   "desc": "Compact ion burster with no recoil climb to speak of.",
+   "noDrop": true
+  },
+  {
+   "id": "nova",
+   "name": "Nova Plasma Caster",
+   "class": "shotgun",
+   "caliber": "cell",
+   "rpm": 110,
+   "modes": [
+    "semi"
+   ],
+   "dmg": 40,
+   "pellets": 1,
+   "range": [
+    9,
+    26
+   ],
+   "minMul": 0.35,
+   "vel": 110,
+   "mag": 8,
+   "reload": 2.4,
+   "reloadEmpty": 2.4,
+   "ads": 0.26,
+   "move": 0.95,
+   "sprintOut": 0.22,
+   "recoil": {
+    "v": 2.2,
+    "h": 0.9,
+    "first": 1.0,
+    "recover": 7
+   },
+   "spread": {
+    "hip": 1.6,
+    "ads": 0.3,
+    "move": 1.0
+   },
+   "sway": 0.55,
+   "noise": 1.4,
+   "weight": 4.4,
+   "size": [
+    4,
+    2
+   ],
+   "price": 7800,
+   "rarity": 4,
+   "classes": [
+    "assault",
+    "engineer",
+    "support"
+   ],
+   "model": {
+    "len": 0.4,
+    "h": 0.09,
+    "barrel": 0.3,
+    "stock": "full",
+    "mag": "drum",
+    "hand": 0.24,
+    "color": "#2a2030",
+    "accent": "#803060",
+    "tech": "plasma",
+    "glow": "#ff60e0"
+   },
+   "sound": {
+    "pitch": 0.75,
+    "body": 1.4,
+    "thump": 1.4
+   },
+   "tech": "plasma",
+   "glow": "#ff60e0",
+   "perShell": false,
+   "blast": {
+    "r": 2.6,
+    "dmg": 60,
+    "vehicle": 140
+   },
+   "energy": {
+    "regen": 2,
+    "delay": 1.0
+   },
+   "desc": "Lobs bolts of plasma that burst on impact."
+  },
+  {
+   "id": "wraith",
+   "name": "Wraith Gauss Sniper",
+   "class": "sniper",
+   "caliber": "cell",
+   "rpm": 45,
+   "modes": [
+    "semi"
+   ],
+   "dmg": 175,
+   "range": [
+    200,
+    700
+   ],
+   "minMul": 0.85,
+   "vel": 3200,
+   "mag": 5,
+   "reload": 3.6,
+   "reloadEmpty": 4.2,
+   "ads": 0.5,
+   "move": 0.84,
+   "sprintOut": 0.4,
+   "recoil": {
+    "v": 4.5,
+    "h": 0.6,
+    "first": 1.0,
+    "recover": 4
+   },
+   "spread": {
+    "hip": 6,
+    "ads": 0.0,
+    "move": 3.0
+   },
+   "sway": 1.2,
+   "noise": 1.8,
+   "weight": 12.0,
+   "size": [
+    6,
+    2
+   ],
+   "price": 11000,
+   "rarity": 5,
+   "classes": [
+    "recon"
+   ],
+   "pen": 5,
+   "antiMateriel": true,
+   "bipod": true,
+   "model": {
+    "len": 0.62,
+    "h": 0.1,
+    "barrel": 0.7,
+    "stock": "full",
+    "mag": "box",
+    "hand": 0.38,
+    "color": "#dfe6ec",
+    "accent": "#1a2028",
+    "brake": true,
+    "tech": "gauss",
+    "glow": "#80c0ff"
+   },
+   "sound": {
+    "pitch": 0.6,
+    "body": 1.7,
+    "thump": 1.8,
+    "tail": 1.6
+   },
+   "tech": "gauss",
+   "glow": "#80c0ff",
+   "energy": {
+    "regen": 0.6,
+    "delay": 1.5
+   },
+   "desc": "Gauss rifle: no drop, no wind, almost no warning.",
+   "noDrop": true
+  },
+  {
+   "id": "mantis",
+   "name": "Mantis Smart Pistol",
+   "class": "pistol",
+   "caliber": "c9",
+   "rpm": 600,
+   "modes": [
+    "auto"
+   ],
+   "dmg": 20,
+   "range": [
+    10,
+    30
+   ],
+   "minMul": 0.5,
+   "vel": 360,
+   "mag": 20,
+   "reload": 1.6,
+   "reloadEmpty": 1.9,
+   "ads": 0.13,
+   "move": 1.03,
+   "sprintOut": 0.11,
+   "recoil": {
+    "v": 0.6,
+    "h": 0.6,
+    "first": 1.0,
+    "recover": 12
+   },
+   "spread": {
+    "hip": 2.0,
+    "ads": 0.6,
+    "move": 1.0
+   },
+   "sway": 0.4,
+   "noise": 0.85,
+   "weight": 1.3,
+   "size": [
+    2,
+    1
+   ],
+   "price": 3200,
+   "rarity": 3,
+   "classes": [
+    "assault",
+    "engineer",
+    "support",
+    "recon"
+   ],
+   "sidearm": true,
+   "model": {
+    "len": 0.2,
+    "h": 0.07,
+    "barrel": 0.03,
+    "stock": "none",
+    "mag": "pistol",
+    "hand": 0,
+    "color": "#2e2a26",
+    "accent": "#d87030",
+    "pistol": true,
+    "tech": "smart",
+    "glow": "#ff9040"
+   },
+   "sound": {
+    "pitch": 1.25,
+    "body": 0.6
+   },
+   "tech": "smart",
+   "glow": "#ff9040",
+   "desc": "Micro-guided rounds that curve onto the nearest target in front of you."
+  },
+  {
+   "id": "tesla",
+   "name": "Tesla Arc Pistol",
+   "class": "pistol",
+   "caliber": "cell",
+   "rpm": 260,
+   "modes": [
+    "semi"
+   ],
+   "dmg": 36,
+   "range": [
+    15,
+    45
+   ],
+   "minMul": 0.55,
+   "vel": 900,
+   "mag": 12,
+   "reload": 1.6,
+   "reloadEmpty": 1.9,
+   "ads": 0.14,
+   "move": 1.03,
+   "sprintOut": 0.11,
+   "recoil": {
+    "v": 1.8,
+    "h": 0.5,
+    "first": 1.0,
+    "recover": 10
+   },
+   "spread": {
+    "hip": 1.6,
+    "ads": 0.25,
+    "move": 0.9
+   },
+   "sway": 0.4,
+   "noise": 0.95,
+   "weight": 1.2,
+   "size": [
+    2,
+    1
+   ],
+   "price": 2800,
+   "rarity": 2,
+   "classes": [
+    "assault",
+    "engineer",
+    "support",
+    "recon"
+   ],
+   "sidearm": true,
+   "model": {
+    "len": 0.2,
+    "h": 0.065,
+    "barrel": 0.04,
+    "stock": "none",
+    "mag": "pistol",
+    "hand": 0,
+    "color": "#d8dde2",
+    "accent": "#2a3440",
+    "pistol": true,
+    "tech": "energy",
+    "glow": "#60d0ff"
+   },
+   "sound": {
+    "pitch": 0.95,
+    "body": 1.0
+   },
+   "tech": "energy",
+   "glow": "#60d0ff",
+   "energy": {
+    "regen": 4,
+    "delay": 0.5
+   },
+   "desc": "Arc-charge sidearm that never runs dry.",
+   "noDrop": true
+  },
+  {
+   "id": "scatter",
+   "name": "Scatter Laser",
+   "class": "shotgun",
+   "caliber": "cell",
+   "rpm": 200,
+   "modes": [
+    "semi"
+   ],
+   "dmg": 11,
+   "pellets": 10,
+   "range": [
+    10,
+    30
+   ],
+   "minMul": 0.35,
+   "vel": 1500,
+   "mag": 10,
+   "reload": 1.6,
+   "reloadEmpty": 1.6,
+   "perShell": false,
+   "ads": 0.22,
+   "move": 0.97,
+   "sprintOut": 0.2,
+   "recoil": {
+    "v": 3.2,
+    "h": 0.8,
+    "first": 1.0,
+    "recover": 6
+   },
+   "spread": {
+    "hip": 4.5,
+    "ads": 3.4,
+    "move": 1.0,
+    "pellet": 3.4
+   },
+   "sway": 0.5,
+   "noise": 1.4,
+   "weight": 3.6,
+   "size": [
+    5,
+    2
+   ],
+   "price": 6200,
+   "rarity": 4,
+   "classes": [
+    "assault",
+    "engineer",
+    "support"
+   ],
+   "model": {
+    "len": 0.42,
+    "h": 0.07,
+    "barrel": 0.42,
+    "stock": "full",
+    "mag": "tube",
+    "hand": 0.24,
+    "color": "#2a2222",
+    "accent": "#7a2020",
+    "pump": true,
+    "tech": "energy",
+    "glow": "#ff4040"
+   },
+   "sound": {
+    "pitch": 0.72,
+    "body": 1.5,
+    "thump": 1.6
+   },
+   "tech": "energy",
+   "glow": "#ff4040",
+   "energy": {
+    "regen": 3,
+    "delay": 0.8
+   },
+   "desc": "Ten laser pellets per pull. Devastating up close.",
+   "noDrop": true
+  },
+  {
+   "id": "vectorfl",
+   "name": "Vector Flechette Rifle",
+   "class": "ar",
+   "caliber": "c56",
+   "rpm": 900,
+   "modes": [
+    "burst",
+    "semi"
+   ],
+   "dmg": 24,
+   "range": [
+    45,
+    120
+   ],
+   "minMul": 0.66,
+   "vel": 1100,
+   "mag": 36,
+   "reload": 2.1,
+   "reloadEmpty": 2.7,
+   "ads": 0.25,
+   "move": 0.95,
+   "sprintOut": 0.22,
+   "recoil": {
+    "v": 0.62,
+    "h": 0.32,
+    "first": 1.3,
+    "recover": 9
+   },
+   "spread": {
+    "hip": 2.6,
+    "ads": 0.1,
+    "move": 1.5
+   },
+   "sway": 0.55,
+   "noise": 1.0,
+   "weight": 3.3,
+   "size": [
+    4,
+    2
+   ],
+   "price": 4600,
+   "rarity": 3,
+   "classes": [
+    "assault",
+    "support",
+    "engineer"
+   ],
+   "model": {
+    "len": 0.42,
+    "h": 0.07,
+    "barrel": 0.34,
+    "stock": "full",
+    "mag": "curved",
+    "hand": 0.3,
+    "color": "#3a4030",
+    "accent": "#a0b040",
+    "tech": "flechette",
+    "glow": "#d0ff40"
+   },
+   "sound": {
+    "pitch": 1.0,
+    "body": 1.0,
+    "tail": 1.0,
+    "mech": true
+   },
+   "tech": "flechette",
+   "glow": "#d0ff40",
+   "pen": 5,
+   "desc": "Burst-fire darts that slip through armour plates."
+  },
+  {
+   "id": "striker",
+   "name": "Striker Swarm Launcher",
+   "class": "launcher",
+   "caliber": "rkt",
+   "rpm": 180,
+   "modes": [
+    "single"
+   ],
+   "dmg": 120,
+   "range": [
+    0,
+    400
+   ],
+   "minMul": 1,
+   "vel": 130,
+   "mag": 3,
+   "reload": 3.2,
+   "reloadEmpty": 3.2,
+   "ads": 0.5,
+   "move": 0.88,
+   "sprintOut": 0.45,
+   "recoil": {
+    "v": 3,
+    "h": 0.6,
+    "first": 1,
+    "recover": 4
+   },
+   "spread": {
+    "hip": 3,
+    "ads": 0.2,
+    "move": 2
+   },
+   "sway": 0.9,
+   "noise": 1.6,
+   "weight": 7.0,
+   "size": [
+    5,
+    2
+   ],
+   "price": 7000,
+   "rarity": 4,
+   "classes": [
+    "engineer"
+   ],
+   "launcher": "guided",
+   "blast": {
+    "r": 3.5,
+    "dmg": 90,
+    "vehicle": 380
+   },
+   "ammoItem": "rkt_av",
+   "model": {
+    "len": 0.9,
+    "h": 0.13,
+    "barrel": 0,
+    "stock": "none",
+    "mag": "none",
+    "hand": 0,
+    "color": "#30343a",
+    "accent": "#d0a040",
+    "tube": true,
+    "tech": "swarm",
+    "glow": "#ffb040"
+   },
+   "sound": {
+    "pitch": 0.5,
+    "body": 1.6
+   },
+   "tech": "swarm",
+   "glow": "#ffb040",
+   "desc": "Three guided micro-missiles that follow your aim."
+  },
+  {
+   "id": "gravlance",
+   "name": "Gravlance DMR",
+   "class": "dmr",
+   "caliber": "cell",
+   "rpm": 300,
+   "modes": [
+    "semi"
+   ],
+   "dmg": 58,
+   "range": [
+    70,
+    220
+   ],
+   "minMul": 0.75,
+   "vel": 1800,
+   "mag": 16,
+   "reload": 2.2,
+   "reloadEmpty": 2.7,
+   "ads": 0.28,
+   "move": 0.95,
+   "sprintOut": 0.24,
+   "recoil": {
+    "v": 1.0,
+    "h": 0.25,
+    "first": 1.0,
+    "recover": 8
+   },
+   "spread": {
+    "hip": 3.0,
+    "ads": 0.04,
+    "move": 1.6
+   },
+   "sway": 0.6,
+   "noise": 1.1,
+   "weight": 3.8,
+   "size": [
+    5,
+    2
+   ],
+   "price": 6400,
+   "rarity": 4,
+   "classes": [
+    "recon",
+    "engineer"
+   ],
+   "model": {
+    "len": 0.46,
+    "h": 0.075,
+    "barrel": 0.46,
+    "stock": "full",
+    "mag": "curved",
+    "hand": 0.38,
+    "color": "#262c2c",
+    "accent": "#40a090",
+    "tech": "gauss",
+    "glow": "#40ffd0"
+   },
+   "sound": {
+    "pitch": 0.96,
+    "body": 1.1,
+    "mech": true
+   },
+   "tech": "gauss",
+   "glow": "#40ffd0",
+   "pen": 3,
+   "energy": {
+    "regen": 5,
+    "delay": 0.7
+   },
+   "desc": "Grav-accelerated marksman rifle with a dead-flat trajectory.",
+   "noDrop": true
   }
  ]
 }
