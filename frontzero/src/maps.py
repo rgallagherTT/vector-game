@@ -207,6 +207,6 @@ maps["redcut"] = {"id": "redcut", "name": "Redcut", "country": "ashkar", "size":
   "variants": VAR(["day", "Day", 12, "clear"], ["haze", "Heat haze", 15, "haze"], ["storm", "Sandstorm", 14, "sandstorm"], ["dusk", "Dusk", 18.6, "clear"])}
 for k, v in maps.items():
     json.dump(v, open(os.path.join(OUT, k + ".json"), "w"), indent=1)
-order = ["dustwater", "shipgrave", "rivercut", "templehill", "icebreak", "whiteout", "oldquarter", "greywood", "skyline", "harbourfront", "highpass", "redcut", "range"]
+order = ["dustwater", "shipgrave", "sunspire", "rivercut", "templehill", "mangrove", "icebreak", "whiteout", "frostline", "oldquarter", "greywood", "vinehollow", "skyline", "harbourfront", "neondocks", "highpass", "redcut", "saltpan", "range"]
 json.dump({"maps": order}, open(os.path.join(OUT, "index.json"), "w"))
 print("wrote", len(maps), "maps")

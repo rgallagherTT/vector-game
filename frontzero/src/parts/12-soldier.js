@@ -29,7 +29,7 @@ class Soldier {
   // loadout: { primary:{id,att,ammo,camo}, secondary, launcher, vest, helmet, throwables:{frag:2}, meds:{...}, ammo:{ammoId:n} }
   equip(L) {
     const mk = (w) => { if (!w) return null; const g = new Gun(w.id, Object.assign({}, w.att || defaultAttach(DATA.weapons[w.id])), w.ammo || null); g.camo = w.camo || null; if (w.inMag != null) g.inMag = Math.min(w.inMag, g.stats.mag); return g; };
-    this.weapons = [mk(L.primary), mk(L.secondary), mk(L.launcher)]; this.cur = this.weapons[0] ? 0 : 1;
+    this.weapons = [mk(L.primary), mk(L.secondary), mk(L.launcher)]; for (let k = 0; k < 7; k++) this.weapons.push(mk((L.extra || [])[k] || null)); this.cur = this.weapons[0] ? 0 : 1;
     const gear = (id) => { const g = DATA.gear[id]; return g ? { tier: g.tier, dur: g.dur, max: g.dur, id } : { tier: 0, dur: 0, max: 0, id: null }; };
     this.vest = gear(L.vest); this.helmet = gear(L.helmet); if (L.vestDur != null) this.vest.dur = L.vestDur; if (L.helmetDur != null) this.helmet.dur = L.helmetDur;
     this.throwables = Object.assign({}, L.throwables || { frag: 2, smoke: 1 }); this.throwSel = Object.keys(this.throwables)[0] || 'frag';
@@ -38,7 +38,7 @@ class Soldier {
     if (L.ammo) for (const k in L.ammo) this.reserve[k] = L.ammo[k];
     this.recalcWeight(); if (this.player) this.player.vm.setGun(this.gun);
   }
-  recalcWeight() { let w = 0; for (const g of this.weapons) if (g) w += g.def.weight || 3; for (const s of [this.vest, this.helmet]) if (s.id) w += DATA.gear[s.id].weight || 0; w += (this.carryWeight || 0); this.weight = w; }
+  recalcWeight() { let w = 0; this.weapons.forEach((g, i) => { if (g) w += (g.def.weight || 3) * (i < 3 || i === this.cur ? 1 : 0.2); }); for (const s of [this.vest, this.helmet]) if (s.id) w += DATA.gear[s.id].weight || 0; w += (this.carryWeight || 0); this.weight = w; }
   get gun() { return this.weapons[this.cur]; }
   get alive_() { return this.state === 'alive'; }
   // ---- geometry helpers -----------------------------------------------------------------------

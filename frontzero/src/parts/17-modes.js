@@ -27,6 +27,7 @@ const Loadouts = {
     const op = DATA.operators[opId]; const A = Progress.armoury(opId); const bp = (slot) => { const b = A[slot]; if (!b) return null; const bpd = G.save.blueprints.find((x) => x.id === b) || null; return bpd ? { id: bpd.weapon, att: Object.assign({}, bpd.att), camo: bpd.camo, ammo: bpd.ammo || null } : (DATA.weapons[b] ? { id: b, att: defaultAttach(DATA.weapons[b]) } : null); };
     const L = { primary: bp('primary') || { id: op.loadout.primary, att: defaultAttach(DATA.weapons[op.loadout.primary]) }, secondary: bp('secondary') || { id: op.loadout.secondary }, vest: 'vest3', helmet: 'helm3', throwables: Object.assign({}, A.throwables || op.loadout.throwables), meds: Object.assign({ bandage: 3, medkit: 1, stim: 1 }, op.loadout.meds || {}) };
     if (op.class === 'engineer') L.launcher = bp('launcher') || { id: op.loadout.launcher || 'ram' };
+    L.extra = []; for (let k = 0; k < 7; k++) { const id = (A.extra || [])[k]; L.extra.push(id ? (bp('x' + k) || (DATA.weapons[id] ? { id, att: defaultAttach(DATA.weapons[id]) } : null)) : null); }
     return L;
   },
 };

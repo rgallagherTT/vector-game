@@ -1,0 +1,593 @@
+{
+ "id": "vinehollow",
+ "name": "Vinehollow",
+ "country": "valmora",
+ "size": 2400,
+ "seed": 1616,
+ "biomes": [
+  "temperate"
+ ],
+ "baseHeight": 18,
+ "blurb": "Rolling vineyards around a hilltop ch\u00e2teau, a rail town and a stone bridge over the Vire.",
+ "rivers": [
+  {
+   "pts": [
+    [
+     -1150,
+     200
+    ],
+    [
+     -600,
+     120
+    ],
+    [
+     -100,
+     260
+    ],
+    [
+     400,
+     120
+    ],
+    [
+     1150,
+     300
+    ]
+   ],
+   "width": 24,
+   "depth": 3
+  }
+ ],
+ "sites": [
+  {
+   "id": "chateau",
+   "name": "Ch\u00e2teau Morel",
+   "kind": "fortress",
+   "x": 380,
+   "z": -380,
+   "r": 100,
+   "raise": 14,
+   "edge": 70
+  },
+  {
+   "id": "town",
+   "name": "Vire-sur-Colline",
+   "kind": "town",
+   "x": -300,
+   "z": -150,
+   "r": 150,
+   "density": 0.7,
+   "floors": [
+    1,
+    3
+   ],
+   "ground": "dirt"
+  },
+  {
+   "id": "farm1",
+   "name": "Vineyard farm",
+   "kind": "farm",
+   "x": -500,
+   "z": 550,
+   "r": 110
+  },
+  {
+   "id": "farm2",
+   "name": "Press house",
+   "kind": "farm",
+   "x": 450,
+   "z": 520,
+   "r": 100
+  },
+  {
+   "id": "station",
+   "name": "Rail depot",
+   "kind": "outpost",
+   "x": 0,
+   "z": -600,
+   "r": 80
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -920,
+   "z": 860,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 920,
+   "z": -860,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -920,
+     860
+    ],
+    [
+     -500,
+     550
+    ],
+    [
+     -300,
+     -150
+    ],
+    [
+     -120,
+     210
+    ],
+    [
+     120,
+     230
+    ],
+    [
+     450,
+     520
+    ]
+   ],
+   "width": 7,
+   "surf": "asphalt"
+  },
+  {
+   "pts": [
+    [
+     -300,
+     -150
+    ],
+    [
+     0,
+     -600
+    ],
+    [
+     380,
+     -380
+    ],
+    [
+     920,
+     -860
+    ]
+   ],
+   "width": 7,
+   "surf": "asphalt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "bridge",
+   "type": "bridge",
+   "name": "Vire bridge",
+   "a": [
+    -160,
+    220
+   ],
+   "b": [
+    -80,
+    240
+   ],
+   "width": 9
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Ch\u00e2teau mast",
+   "x": 420,
+   "z": -340,
+   "h": 40
+  }
+ ],
+ "bases": [
+  {
+   "x": -920,
+   "z": 860,
+   "yaw": 2.3
+  },
+  {
+   "x": 920,
+   "z": -860,
+   "yaw": -0.8
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -961,
+   "z": 804,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -934,
+   "z": 804,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -906,
+   "z": 804,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -879,
+   "z": 804,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -961,
+   "z": 836,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -934,
+   "z": 836,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -906,
+   "z": 836,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_hauler",
+   "x": -879,
+   "z": 836,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 879,
+   "z": -836,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 906,
+   "z": -836,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 934,
+   "z": -836,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 961,
+   "z": -836,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 879,
+   "z": -804,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 906,
+   "z": -804,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 934,
+   "z": -804,
+   "yaw": -0.8,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "assault_mech",
+   "x": 961,
+   "z": -804,
+   "yaw": -0.8,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  }
+ ],
+ "breakthrough": {
+  "attacker": 1,
+  "sectors": [
+   {
+    "name": "Rail depot",
+    "objs": [
+     {
+      "name": "Platform",
+      "x": 0,
+      "z": -600
+     },
+     {
+      "name": "Signal box",
+      "x": 80,
+      "z": -560
+     }
+    ]
+   },
+   {
+    "name": "Ch\u00e2teau",
+    "objs": [
+     {
+      "name": "Courtyard",
+      "x": 380,
+      "z": -380
+     },
+     {
+      "name": "Wine cellar",
+      "x": 330,
+      "z": -330
+     }
+    ]
+   },
+   {
+    "name": "Vire",
+    "objs": [
+     {
+      "name": "Town hall",
+      "x": -300,
+      "z": -150
+     },
+     {
+      "name": "Bridge",
+      "x": -120,
+      "z": 230
+     }
+    ],
+    "destroy": "bridge"
+   },
+   {
+    "name": "Vineyards",
+    "objs": [
+     {
+      "name": "Vineyard farm",
+      "x": -500,
+      "z": 550
+     },
+     {
+      "name": "Press house",
+      "x": 450,
+      "z": 520
+     }
+    ]
+   },
+   {
+    "name": "Accord HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": -920,
+      "z": 860
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Rail depot",
+   "x": 0,
+   "z": -600
+  },
+  {
+   "id": "B",
+   "name": "Ch\u00e2teau",
+   "x": 380,
+   "z": -380
+  },
+  {
+   "id": "C",
+   "name": "Vire",
+   "x": -300,
+   "z": -150
+  },
+  {
+   "id": "D",
+   "name": "Bridge",
+   "x": -120,
+   "z": 230
+  },
+  {
+   "id": "E",
+   "name": "Vineyard farm",
+   "x": -500,
+   "z": 550
+  },
+  {
+   "id": "F",
+   "name": "Press house",
+   "x": 450,
+   "z": 520
+  }
+ ],
+ "pois": [
+  {
+   "name": "Ch\u00e2teau Morel",
+   "x": 380,
+   "z": -380,
+   "r": 70,
+   "tier": 4
+  },
+  {
+   "name": "Vire-sur-Colline",
+   "x": -300,
+   "z": -150,
+   "r": 90,
+   "tier": 2
+  },
+  {
+   "name": "Rail depot",
+   "x": 0,
+   "z": -600,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Vineyard farm",
+   "x": -500,
+   "z": 550,
+   "r": 70,
+   "tier": 1
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 920,
+   "z": -860,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "West lane",
+   "x": -1050,
+   "z": -100,
+   "kind": "open"
+  },
+  {
+   "name": "Ch\u00e2teau tower",
+   "x": 380,
+   "z": -380,
+   "kind": "flare"
+  },
+  {
+   "name": "Rail tunnel",
+   "x": 60,
+   "z": -760,
+   "kind": "guarded"
+  },
+  {
+   "name": "River ford",
+   "x": 900,
+   "z": 300,
+   "kind": "timed",
+   "opens": 380
+  }
+ ],
+ "areas": [
+  {
+   "id": "town",
+   "name": "Vire",
+   "x": -300,
+   "z": -150,
+   "r": 150,
+   "dom": [
+    [
+     -350,
+     -190
+    ],
+    [
+     -300,
+     -150
+    ],
+    [
+     -250,
+     -110
+    ]
+   ],
+   "spawns": [
+    [
+     -420,
+     -260
+    ],
+    [
+     -180,
+     -40
+    ]
+   ]
+  },
+  {
+   "id": "chateau",
+   "name": "Ch\u00e2teau",
+   "x": 380,
+   "z": -380,
+   "r": 130,
+   "dom": [
+    [
+     340,
+     -340
+    ],
+    [
+     380,
+     -380
+    ],
+    [
+     420,
+     -420
+    ]
+   ],
+   "spawns": [
+    [
+     290,
+     -290
+    ],
+    [
+     470,
+     -470
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 11,
+   "weather": "clear"
+  },
+  {
+   "id": "rain",
+   "name": "Rain",
+   "hour": 15,
+   "weather": "rain"
+  },
+  {
+   "id": "fog",
+   "name": "Fog",
+   "hour": 7,
+   "weather": "fog"
+  },
+  {
+   "id": "dusk",
+   "name": "Harvest dusk",
+   "hour": 19,
+   "weather": "clear"
+  }
+ ]
+}

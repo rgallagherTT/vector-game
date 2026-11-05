@@ -49,8 +49,8 @@ class Player {
     if (s.vehicle) { this.vehicleInput(a, dt); return; }
     if (a.reload) { this.reloadHeld = (this.reloadHeld || 0) + dt; if (this.reloadHeld > 0.45 && !s.action && s.gun) { s.startAction('check', 1.6, () => { if (this.idx >= 0) this.note(s.gun.inMag + ' rounds · ' + (s.reserve[s.gun.ammo] || 0) + ' spare', '', 0, 1.4); }); this.reloadHeld = -9; } } else this.reloadHeld = 0;
     if (pr('melee')) s.melee(); if (pr('throw')) s.throwItem(); if (pr('cycleThrow')) { s.cycleThrow(); this.note(DATA.items[s.throwSel]?.name || '', '', 0, 1); }
-    if (pr('w1') && s.weapons[0]) s.swapTo(0); if (pr('w2') && s.weapons[1]) s.swapTo(1); if (pr('w3') && s.weapons[2]) s.swapTo(2);
-    if (a.wheel || pr('swap')) { const dir = a.wheel >= 0 ? 1 : -1; for (let k = 1; k <= 3; k++) { const j = (s.cur + dir * k + 3) % 3; if (s.weapons[j]) { s.swapTo(j); break; } } }
+    for (let k = 1; k <= 10; k++) if (pr('w' + k) && s.weapons[k - 1]) { s.swapTo(k - 1); s.recalcWeight(); }
+    if (a.wheel || pr('swap')) { const dir = a.wheel >= 0 ? 1 : -1; const NW = s.weapons.length; for (let k = 1; k <= NW; k++) { const j = (s.cur + dir * k + NW * 2) % NW; if (s.weapons[j]) { s.swapTo(j); break; } } }
     if (pr('grapple')) s.fireGrapple(); if (pr('heal')) s.useMed(s.hp < 60 && s.meds.medkit > 0 ? 'medkit' : 'bandage') || s.useMed('medkit'); if (pr('stim')) s.useMed('stim');
     if (pr('ult')) Operators.useUlt(s);
     // signature gadget: tap / hold (Bastion: hold = sentry turret)

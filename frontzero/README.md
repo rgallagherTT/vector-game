@@ -21,7 +21,7 @@ The page loads `data/*.json` over HTTP, so opening `index.html` straight from di
 
 ## Controls (keyboard + mouse; gamepad and a second keyboard player are supported)
 
-WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1 2 3 weapons · G throw, 5 cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · 4 class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal vision · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
+WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1–0 weapon slots (main, pistol, launcher, 7 extra) · G throw, K cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · N class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal vision · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
 
 On phones and tablets the game shows touch controls automatically: drag the left side to move (push to the edge to sprint), drag the right side to look, and use the thumb buttons. Add `?touch=1` to force them on or `?touch=0` to hide them.
 
@@ -33,10 +33,18 @@ Vehicles: W/S throttle, A/D steer, mouse aims the turret, Space hops (speeders) 
 - **24 weapons**: 4 assault rifles, 2 battle rifles, 3 SMGs, 2 LMGs, 2 DMRs, 3 sniper rifles, 2 shotguns, 3 pistols, 3 launchers. They have 29 attachments (including thermal and night vision), several ammo types per caliber, gunsmith blueprints and camos. Biome camos make you harder for the AI to spot in their biome.
 - **Ballistics**: projectile travel and drop, penetration by material, body-part damage, armour and helmet tiers with durability.
 - **7 biomes** (desert, jungle, arctic, temperate, urban, coastal, mountain). Weather affects visibility, footsteps and handling.
-- **6 countries × 2 maps** (`data/maps/*.json`), each with sectors, points of interest, vehicle pads, exits and time/weather variants. Destruction covers walls up to bridges, towers, the dam and the freighter.
+- **6 countries × 3 maps** (18 battlefields) (`data/maps/*.json`), each with sectors, points of interest, vehicle pads, exits and time/weather variants. Destruction covers walls up to bridges, towers, the dam and the freighter.
 - **19 vehicles**: the four SANDLINE speeders (bike, quad, buggy, hauler), hover tank, APC, artillery skiff, assault mech, exo-suit, VTOL gunship and dropship, interceptor, strike fighter, patrol boat, assault hovercraft, snow sled and three drones. All have part damage, repair, lock-on and flares, EMP, hijacking, seats and bail-out.
 
 Content lives in `data/` as JSON. Code lives in `index.html`, generated from `src/parts/` by `src/assemble.sh`.
+
+## 10 weapon slots
+
+You carry up to ten guns: main gun, pistol, launcher and seven extra slots. Fill the extra slots on the loadout screen with any gun you own. Keys 1 to 0 pick a slot, the mouse wheel or SWAP button cycles through them, and special weapons from chests drop into the first free slot. Guns in your extra slots only add a fifth of their weight while holstered.
+
+## New maps
+
+Sunspire (desert tower city), Mangrove (jungle river delta with stilt villages), Frostline (glacier radar station above a frozen lake), Vinehollow (vineyards and a hilltop château), Neon Docks (night-time port city) and Saltpan (open salt flats for vehicle battles).
 
 ## Supply chests, thermal scan, team colours
 
