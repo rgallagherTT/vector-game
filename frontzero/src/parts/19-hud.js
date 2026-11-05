@@ -28,10 +28,10 @@ class Hud {
       <div class="ammo"><div class="wtop"><span class="wname"></span><span class="mode"></span></div><div class="wmid"><span class="mag"></span><span class="res"></span></div><div class="mbar"><i></i></div><div class="wbot"><span class="ammot"></span><span class="wslots"></span></div></div>
       <div class="kit"></div><div class="vehicle"></div><div class="lock"></div><div class="warn"></div><div class="prompt"><span class="pt"></span><div class="holdbar"></div></div>
       <div class="dmg"></div><div class="dirs">${'<i></i>'.repeat(6)}</div><div class="flashfx"></div><div class="radio"><canvas width="44" height="44"></canvas><div class="who"></div><div class="txt"></div></div>
-      <div class="scope"><div class="r"></div></div><div class="thermal-tag"></div><div class="downed"><div class="t">DOWNED</div><div class="s"></div></div>`;
+      <div class="scan"></div><div class="mret"><i></i></div><div class="scope"><div class="lens"><div class="r"></div><div class="glare"></div></div><div class="ring"></div><div class="sread t"></div><div class="sread l"></div><div class="sread rr"></div><div class="sread b"><div class="bt"></div><div class="bb"><i></i></div></div></div><div class="thermal-tag"></div><div class="downed"><div class="t">DOWNED</div><div class="s"></div></div>`;
     const q = (s) => r.querySelector(s); this.e = { mini: q('.mini canvas'), squad: q('.squad'), objtext: q('.objtext'), compass: q('.compass'), bearing: q('.bearing'), obj: q('.obj'), tickets: q('.tickets'), modeinfo: q('.modeinfo'), timer: q('.timer'), feed: q('.feed'), extract: q('.extract'), pings: q('.pings'), notes: q('.notes'), xh: q('.xh'), hit: q('.hit'),
       hpSeg: [...r.querySelectorAll('.hpseg i')], hpn: q('.hpn'), ar: q('.bar.ar>i'), arn: q('.arn'), art: q('.art'), hm: q('.bar.hm>i'), hmn: q('.hmn'), hmt: q('.hmt'), st: q('.stline>i'), pname: q('.pname'), weight: q('.weight'), wname: q('.wname'), mag: q('.mag'), res: q('.res'), ammot: q('.ammot'), mode: q('.mode'), mbar: q('.mbar>i'), wslots: q('.wslots'), kit: q('.kit'), vehicle: q('.vehicle'), lock: q('.lock'), warn: q('.warn'),
-      prompt: q('.prompt'), pt: q('.prompt .pt'), holdbar: q('.holdbar'), dmg: q('.dmg'), dirs: [...r.querySelectorAll('.dirs i')], flash: q('.flashfx'), radio: q('.radio'), radioWho: q('.radio .who'), radioTxt: q('.radio .txt'), radioC: q('.radio canvas'), scope: q('.scope'), reticle: q('.scope .r'), ttag: q('.thermal-tag'), downed: q('.downed'), downedS: q('.downed .s'), ammoBox: q('.ammo'), vit: q('.vitals') };
+      prompt: q('.prompt'), pt: q('.prompt .pt'), holdbar: q('.holdbar'), dmg: q('.dmg'), dirs: [...r.querySelectorAll('.dirs i')], flash: q('.flashfx'), radio: q('.radio'), radioWho: q('.radio .who'), radioTxt: q('.radio .txt'), radioC: q('.radio canvas'), scope: q('.scope'), reticle: q('.scope .r'), sTop: q('.sread.t'), sLeft: q('.sread.l'), sRight: q('.sread.rr'), sBreath: q('.sread.b .bt'), sBreathBar: q('.sread.b .bb i'), scan: q('.scan'), lens: q('.scope .lens'), mret: q('.mret'), ttag: q('.thermal-tag'), downed: q('.downed'), downedS: q('.downed .s'), ammoBox: q('.ammo'), vit: q('.vitals') };
     this.mg = this.e.mini.getContext('2d'); this.hitT = 0; this.dirT = this.e.dirs.map(() => ({ t: 0, a: 0 })); this.dirI = 0; this.radioT = 0; this.compassTicks(); this.feedKey = ''; this.kitKey = ''; this.squadKey = ''; this.pingEls = []; this.lastReticle = '';
   }
   setRect(x, y, w, h, small) { const s = this.root.style; s.left = x + 'px'; s.top = y + 'px'; s.width = w + 'px'; s.height = h + 'px'; this.root.classList.toggle('small', !!small); this.w = w; this.h = h; }
@@ -85,10 +85,42 @@ class Hud {
     // prompt
     const it = P.interactTarget; if (it && s.state === 'alive') { e.prompt.style.display = 'block'; e.pt.innerHTML = (typeof Touch !== 'undefined' && Touch.on && P.idx === 0 ? '' : `<kbd>${P.padIdx != null ? 'X' : 'F'}</kbd>`) + esc(it.label) + (it.hold ? ' <span class="dim">(hold)</span>' : ''); e.holdbar.style.width = (it.hold ? clamp(P.holdT / it.hold, 0, 1) * 100 : 0) + '%'; } else if (P.warnText) { e.prompt.style.display = 'block'; e.pt.textContent = P.warnText; e.holdbar.style.width = '0'; } else e.prompt.style.display = 'none';
     // scope
-    e.scope.style.display = scoped ? 'block' : 'none'; if (scoped) { const rt = g.stats.reticle; if (rt !== this.lastReticle) { this.lastReticle = rt; e.reticle.innerHTML = rt === 'mil' ? '<i style="left:-40vmin;top:-1px;width:80vmin;height:2px"></i><i style="top:-40vmin;left:-1px;height:80vmin;width:2px"></i>' + [1, 2, 3, 4].map((k) => `<i style="left:-6px;top:${k * 5}vmin;width:12px;height:2px"></i>`).join('') : '<i style="left:-2px;top:-2px;width:4px;height:4px;background:#e33;border-radius:50%"></i>'; } }
+    e.scope.style.display = scoped ? 'block' : 'none'; if (scoped) this.scopeHud(s, P, g, dt); else this.scopeIn = 0;
+    e.mret.style.display = !scoped && !inVeh && g && s.adsAmt > 0.7 && g.stats.zoom > 1.35 && g.stats.zoom < 3.5 ? 'block' : 'none';
+    this.scan(s, P, g, dt, scoped, inVeh);
+    // crosshair colour: red over an enemy, blue over a friend
+    if ((G.frame + P.idx) % 2 === 0) { const tg = this.aimedAt(s, P); const cls = !tg ? '' : tg.team === s.team ? 'friend' : 'enemy'; if (cls !== this.xhCls) { this.xhCls = cls; e.xh.className = 'xh ' + cls; } }
     e.ttag.style.display = P.visMode ? 'block' : 'none'; e.ttag.textContent = P.visMode === VIS.THERMAL ? 'THERMAL' : P.visMode === VIS.NV ? 'NIGHT VISION' : '';
     if (P.sixth) e.warn.style.display = 'block', e.warn.textContent = 'SIXTH SENSE — YOU ARE BEING WATCHED'; else if (!(inVeh && s.vehicle.lockWarn > 0)) e.warn.style.display = 'none';
     this.compass(s, P); this.minimap(s, P, info); this.world(s, P, info);
+  }
+  // which soldier the crosshair is over (cheap cone test + line of sight)
+  aimedAt(s, P) { const d = P.camera.getWorldDirection(_v2); const o = P.eyePos; let best = null, bd = 320; for (const x of Soldiers.list) { if (x === s || x.state === 'dead' || x.dummy) continue; const c = x.center(_v3); const tx = c.x - o.x, ty = c.y - o.y, tz = c.z - o.z; const along = tx * d.x + ty * d.y + tz * d.z; if (along < 1 || along > bd) continue; const px = tx - d.x * along, py = ty - d.y * along, pz = tz - d.z * along; if (px * px + py * py + pz * pz > 0.55 * 0.55 + along * along * 0.00012) continue; if (!Col.los(o.x, o.y, o.z, c.x, c.y, c.z)) continue; bd = along; best = x; } return best; }
+  // thermal scan: whenever you aim down sights, every soldier in view (through smoke and foliage, not walls) is bracketed red / blue
+  scan(s, P, g, dt, scoped, inVeh) {
+    const on = !inVeh && g && s.adsAmt > 0.8 && s.state === 'alive'; const out = []; const R = scoped ? 900 : 260; const cam = P.camera; const lensR = Math.min(this.w, this.h) * 0.34;
+    if (on) for (const x of Soldiers.list) { if (x === s || x.state === 'dead' || x.dummy) continue; const c = x.center(_v3); const d = P.eyePos.distanceTo(c); if (d > R) continue; const v = _v1.copy(c).project(cam); if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue; const sx = (v.x + 1) / 2 * this.w, sy = (1 - v.y) / 2 * this.h;
+      if (scoped && Math.hypot(sx - this.w / 2, sy - this.h / 2) > lensR) continue; x._scanT = (x._scanT || 0) - dt; if (x._scanT <= 0) { x._scanT = 0.2 + Math.random() * 0.1; x._scanVis = Col.los(P.eyePos.x, P.eyePos.y, P.eyePos.z, c.x, c.y, c.z); } if (!x._scanVis) continue;
+      const hpx = clamp(1.9 / Math.max(1, d) * (this.h / 2) / Math.tan(cam.fov * Math.PI / 360) * 0.5, 10, 160); out.push({ x: sx, y: sy, h: hpx, f: x.team === s.team, d }); if (out.length >= 18) break; }
+    while ((this.scanEls ||= []).length < out.length) { const d2 = el('div', { class: 'sc' }, '<span></span>'); this.e.scan.appendChild(d2); this.scanEls.push(d2); }
+    this.scanEls.forEach((d2, i) => { const m = out[i]; if (!m) { d2.style.display = 'none'; return; } d2.style.display = 'block'; d2.className = 'sc ' + (m.f ? 'f' : 'e'); d2.style.left = m.x + 'px'; d2.style.top = m.y + 'px'; d2.style.width = m.h * 0.7 + 'px'; d2.style.height = m.h * 1.1 + 'px'; d2.firstChild.textContent = (m.f ? 'FRIEND ' : 'HOSTILE ') + Math.round(m.d) + 'm'; });
+  }
+  // the scope: lens + reticle + rangefinder, zoom, heading, holdover and breath
+  scopeHud(s, P, g, dt) {
+    const e = this.e; this.scopeIn = Math.min(1, (this.scopeIn || 0) + dt * 6); e.lens.style.transform = `translate(-50%,-50%) scale(${0.92 + this.scopeIn * 0.08})`; e.scope.style.opacity = 0.4 + this.scopeIn * 0.6;
+    const rt = g.stats.reticle; if (rt !== this.lastReticle) { this.lastReticle = rt; e.reticle.innerHTML = this.reticleSvg(rt); }
+    if ((this.rngT = (this.rngT || 0) - dt) <= 0) { this.rngT = 0.1; const d = P.camera.getWorldDirection(_v2); const H = Col.ray(P.eyePos.x, P.eyePos.y, P.eyePos.z, d.x, d.y, d.z, 1500); this.rng = H.t < 1499 ? H.t : 0; }
+    const r = this.rng; const vel = g.stats.vel || 800; const tof = r / vel; const drop = 0.5 * 9.81 * tof * tof; const mil = r ? drop / r * 1000 : 0; const brg = String(Math.round(((-P.camYaw * 180 / Math.PI) % 360 + 540) % 360)).padStart(3, '0');
+    e.sTop.innerHTML = `<b>${(g.stats.zoom).toFixed(1)}×</b> · ${esc(g.def.name.toUpperCase())} · <span class="th">THERMAL SCAN</span>`; e.sRight.innerHTML = `RNG<b>${r ? Math.round(r) : '---'}</b>m<br>HOLD<b>${mil.toFixed(1)}</b>mil<br>TOF<b>${tof.toFixed(2)}</b>s`; e.sLeft.innerHTML = `HDG<b>${brg}</b><br>MAG<b>${g.inMag}</b><br>${esc(DATA.ammo[g.ammo]?.name || '')}`;
+    e.sBreath.textContent = s.holdBreath ? 'HOLDING BREATH' : (typeof Touch !== 'undefined' && Touch.on ? 'STEADY' : 'SHIFT · HOLD BREATH'); e.sBreathBar.style.width = (s.breath * 100) + '%'; e.sBreathBar.classList.toggle('low', s.breath < 0.3);
+  }
+  reticleSvg(rt) {
+    const line = (x1, y1, x2, y2, w = 0.5) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${w}"/>`; let g = '';
+    if (rt === 'mil') { g += line(-100, 0, -6, 0, 0.45) + line(6, 0, 100, 0, 0.45) + line(0, -100, 0, -6, 0.45) + line(0, 6, 0, 100, 0.45) + line(-100, 0, -60, 0, 2) + line(60, 0, 100, 0, 2) + line(0, 60, 0, 100, 2) + line(0, -100, 0, -60, 2);
+      for (let k = 1; k <= 5; k++) { g += line(-k * 10, -1.6, -k * 10, 1.6, 0.4) + line(k * 10, -1.6, k * 10, 1.6, 0.4) + line(-1.6, -k * 10, 1.6, -k * 10, 0.4) + line(-(5 - k * 0.6), k * 10, 5 - k * 0.6, k * 10, 0.45) + `<text x="${7 - k * 0.6}" y="${k * 10 + 1.2}">${k}</text>`; }
+      g += '<circle cx="0" cy="0" r="0.9" class="dot"/>'; }
+    else g += line(-100, 0, -14, 0, 0.6) + line(14, 0, 100, 0, 0.6) + line(0, 14, 0, 100, 0.6) + '<path d="M -5 6 L 0 0 L 5 6" class="chev"/>' + '<circle cx="0" cy="0" r="22" class="ring"/>';
+    return `<svg viewBox="-100 -100 200 200">${g}</svg>`;
   }
   vehicle(v, s) {
     const e = this.e; e.vehicle.style.display = 'block'; const seat = v.def.seats[s.seat]; const W = s.seat === 0 ? v.driverWeapons[v.dw] : v.seatWeapons[s.seat]; const hpf = v.hp / v.maxHp;
@@ -129,7 +161,8 @@ class Hud {
     for (const pg of Pings.list) if (pg.team === s.team) add(pg.pos, pg.kind === 'danger' ? 'enemy' : pg.kind, pg.kind === 'enemy' ? 'ENEMY' : pg.kind === 'danger' ? 'DANGER' : pg.kind === 'loot' ? 'LOOT' : pg.kind === 'veh' ? 'VEHICLE' : pg.kind === 'down' ? 'DOWN' : '');
     if (info.flags) for (const f of info.flags) if (!f.hidden && !f.locked) add(f.pos.clone().add(V3(0, 10, 0)), 'obj', f.id);
     if (info.markers) for (const m of info.markers) add(m.pos.clone().add(V3(0, 2, 0)), m.kind || 'loot', m.label || '', m.maxD || 3000);
-    for (const o of Soldiers.list) { if (o === s || o.team !== s.team || o.state === 'dead') continue; if (o.state === 'downed') add(o.pos.clone().add(V3(0, 1.2, 0)), 'down', '✚ ' + o.name, 120); else if (o.squad === s.squad || o.player) add(o.pos.clone().add(V3(0, 2.3, 0)), 'mate', o.name, 250); }
+    for (const o of Soldiers.list) { if (o === s || o.team !== s.team || o.state === 'dead' || o.dummy) continue; if (o.state === 'downed') add(o.pos.clone().add(V3(0, 1.2, 0)), 'down', '✚ ' + o.name, 120); else if (o.squad === s.squad || o.player) add(o.pos.clone().add(V3(0, 2.3, 0)), 'mate', o.name, 250); else { const dd = P.eyePos.distanceTo(o.pos); if (dd < 160) list.push({ p: o.pos.clone().add(V3(0, 2.2, 0)), cls: 'ally', txt: dd < 40 ? o.name.split(' ').slice(-1)[0] : '' }); } }
+    for (const c of Chests.list) if (!c.open) add(c.pos.clone().add(V3(0, 1.4, 0)), 'chest', '★ CHEST', 140);
     for (const o of Soldiers.list) if (o.team !== s.team && o.state === 'alive' && Spotting.isSpotted(o, s.team)) add(o.center(V3()).add(V3(0, 1.2, 0)), 'enemy', '', 500);
     while (this.pingEls.length < list.length) { const d2 = el('div', { class: 'pg' }, '<div class="d"></div><span></span>'); this.e.pings.appendChild(d2); this.pingEls.push(d2); }
     this.pingEls.forEach((d2, i) => { const m = list[i]; if (!m) { d2.style.display = 'none'; return; } const v = _v1.copy(m.p).project(cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) { d2.style.display = 'none'; return; } d2.style.display = 'block'; d2.className = 'pg ' + m.cls; d2.style.left = ((v.x + 1) / 2 * this.w) + 'px'; d2.style.top = ((1 - v.y) / 2 * this.h) + 'px'; d2.lastChild.textContent = m.txt; });

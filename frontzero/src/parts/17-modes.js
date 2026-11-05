@@ -8,7 +8,7 @@ const Names = {
 };
 const Loadouts = {
   camoFor(biome) { return biome?.camo || 'factory'; },
-  weaponsFor(cls, slot = 'primary') { const C = DATA.classes[cls]; return Object.values(DATA.weapons).filter((w) => !w.sidearm && w.class !== 'launcher' && (!C || C.weapons.includes(w.class))); },
+  weaponsFor(cls, slot = 'primary') { const C = DATA.classes[cls]; return Object.values(DATA.weapons).filter((w) => !w.special && !w.sidearm && w.class !== 'launcher' && (!C || C.weapons.includes(w.class))); },
   randomAtt(def, rng, lvl) { const out = {}; for (const slot of DATA.slots) { const opts = Object.values(DATA.attachments).filter((a) => a.slot === slot && a.fits.includes(def.class) && !a.default && (a.lvl ?? 0) <= lvl); if (opts.length && rng.chance(0.55)) out[slot] = rng.pick(opts).id; } if (def.class === 'sniper' && !out.optic) out.optic = 'x8'; return out; },
   tierFor(diff) { return { recruit: 2, regular: 3, hardened: 4, veteran: 5 }[diff] || 3; },
   // bot loadout from the operator's kit (if any) or the class weapon pool, scaled by difficulty
@@ -49,7 +49,10 @@ class GameMode {
   name() { return 'Mode'; }
   async load() { await Game.loadMap(this.mapId, this.variant); }
   setup() {}
-  start() { this.setup(); }
+  start() { this.setup(); this.placeChests(); }
+  // supply chests with special weapons: a few in close-quarters areas, more across big maps
+  placeChests() { const k = this.kind; if (k === 'range' || k === 'training' || k === 'extraction' || this.o.bench) return; const A = this.bounds || this.area || (k === 'dom' ? (World.def.areas || [])[0] : null);
+    const area = A ? { x: A.x, z: A.z, r: A.r } : k === 'campaign' && this.def ? { x: this.def.start[0], z: this.def.start[1], r: 1100 } : null; Chests.populate(this, A ? 4 : k === 'campaign' ? 7 : 14, area); }
   allowDowned(s) { if (!s.squad && !s.player) return false; const mates = Soldiers.near(s.pos.x, s.pos.z, 80).some((m) => m !== s && m.team === s.team && m.state === 'alive' && (m.squad === s.squad || m.player || s.player)); return mates || (G.players.length > 1 && s.player); }
   // ---- teams of bots in squads ---------------------------------------------------------------------
   addBots(team, n, at, o = {}) {

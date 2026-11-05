@@ -192,6 +192,29 @@ body.touch .hud .compass{top:4px;width:34%;left:38%}body.touch .hud .bearing{top
 body.touch .hud .feed{top:52px;font-size:10px}body.touch .hud .extract{top:120px;width:190px;font-size:10px}
 body.touch .hud .radio{left:10px;top:118px;bottom:auto;max-width:250px;font-size:11px}
 body.touch .hud .prompt{top:auto;bottom:30%}
+/* ---------------- scope, thermal scan, team colours ---------------- */
+.hud .scope{background:radial-gradient(circle at 50% 50%,transparent 0,transparent 33.6vmin,rgba(0,0,0,.92) 34.2vmin,#020405 40vmin);transition:opacity .1s}
+.hud .scope .lens{position:absolute;left:50%;top:50%;width:68vmin;height:68vmin;border-radius:50%;transform:translate(-50%,-50%);overflow:hidden;box-shadow:inset 0 0 6vmin 1.5vmin rgba(0,0,0,.85),inset 0 0 0 .4vmin rgba(0,0,0,.9);background:radial-gradient(circle at 50% 50%,transparent 60%,rgba(20,40,50,.18) 100%)}
+.hud .scope .lens .r{position:absolute;inset:0;left:0;top:0;width:100%;height:100%}
+.hud .scope .lens .r svg{width:100%;height:100%;display:block}
+.hud .scope .lens .r line{stroke:#050505}.hud .scope .lens .r text{font:3px var(--mono);fill:#111}.hud .scope .lens .r .dot{fill:#ff3a28}.hud .scope .lens .r .chev{fill:none;stroke:#ff3a28;stroke-width:1.2}.hud .scope .lens .r .ring{fill:none;stroke:rgba(0,0,0,.5);stroke-width:.4}
+.hud .scope .glare{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 30% 25%,rgba(180,230,255,.10),transparent 30%),radial-gradient(circle at 70% 80%,rgba(255,200,120,.05),transparent 25%)}
+.hud .scope .ring{position:absolute;left:50%;top:50%;width:70vmin;height:70vmin;margin:-35vmin 0 0 -35vmin;border-radius:50%;border:.5vmin solid #151a1d;box-shadow:0 0 0 .25vmin rgba(69,214,232,.35),0 0 3vmin rgba(69,214,232,.15)}
+.hud .scope .sread{position:absolute;font:700 1.7vmin/1.5 var(--mono);color:rgba(220,240,245,.85);letter-spacing:.08em;text-shadow:0 0 6px rgba(0,0,0,.9)}
+.hud .scope .sread b{color:#fff;font-size:2.3vmin;margin:0 .4vmin}.hud .scope .sread .th{color:#ff7a3a}
+.hud .scope .sread.t{left:50%;top:calc(50% - 38.5vmin);transform:translateX(-50%);white-space:nowrap}
+.hud .scope .sread.rr{left:calc(50% + 37vmin);top:50%;transform:translateY(-50%)}.hud .scope .sread.l{right:calc(50% + 37vmin);top:50%;transform:translateY(-50%);text-align:right}
+.hud .scope .sread.b{left:50%;top:calc(50% + 36vmin);transform:translateX(-50%);text-align:center;width:30vmin}
+.hud .scope .sread .bb{height:.6vmin;background:rgba(255,255,255,.15);margin-top:.4vmin;border-radius:.3vmin;overflow:hidden}.hud .scope .sread .bb i{display:block;height:100%;background:var(--cyan)}.hud .scope .sread .bb i.low{background:var(--red)}
+.hud .scan{position:absolute;inset:0;pointer-events:none;z-index:3}
+.hud .scan .sc{position:absolute;transform:translate(-50%,-50%);border:2px solid;border-radius:3px;box-shadow:0 0 8px currentColor,inset 0 0 10px currentColor}
+.hud .scan .sc span{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font:700 10px var(--mono);white-space:nowrap;text-shadow:0 0 4px #000}
+.hud .scan .sc.e{color:#ff3a28;background:rgba(255,58,40,.10)}.hud .scan .sc.f{color:#3aa8ff;background:rgba(58,168,255,.06);border-style:dashed}
+.hud .xh.enemy i{background:#ff3a28;box-shadow:0 0 4px #ff3a28}.hud .xh.friend i{background:#3aa8ff}
+.hud .pings .pg.ally{color:#3aa8ff}.hud .pings .pg.ally .d{width:9px;height:9px;border-width:2px}
+.hud .pings .pg.chest{color:#ffd040}.hud .pings .pg.chest .d{border-color:#ffd040;background:rgba(255,208,64,.35)}
+.hud .mret{position:absolute;left:50%;top:50%;width:26vmin;height:26vmin;margin:-13vmin;border-radius:50%;display:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35),inset 0 0 2vmin rgba(0,0,0,.6);border:.4vmin solid #111}
+.hud .mret i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#ff3a28;box-shadow:0 0 6px #ff3a28}
 /* ---------------- touch controls ---------------- */
 #touch{position:fixed;inset:0;z-index:15;pointer-events:none;display:none;touch-action:none}
 #touch.show{display:block}
@@ -379,6 +402,7 @@ const CONFIG = {
   rappel: { speed: 5.5, fast: 10 },
   para: { fall: 5.2, glide: 9.5, autoDeploy: 22, wingFall: 11, wingSpeed: 34, wingMinHeight: 70 },
   ballistic: { gravity: 9.81, maxLife: 3.2, tracerEvery: 3, penLoss: { wood: 0.35, adobe: 0.65, concrete: 0.8, metal: 0.55, glass: 0.1, foliage: 0.05, tarp: 0.05 } },
+  gunDmgMul: 1.55,
   body: { hp: 100, mult: { head: 2.4, chest: 1.0, stomach: 1.0, arm: 0.65, leg: 0.7 }, bleedOut: 28, reviveTime: 4.2, downedHp: 30, reviveHp: 35 },
   ai: { near: 90, mid: 320, think: [0.25, 0.6, 1.6], perceive: [0.1, 0.3, 0.9], fov: 2.4, hearGun: 260, hearStep: 22 },
   vehicle: { gravity: 15.5, hoverRide: 1.0, hoverRange: 2.3, enterDist: 4.5, respawn: 45 },

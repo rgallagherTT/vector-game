@@ -58,7 +58,7 @@ Object.assign(UI, {
   // full-screen weapon picker: big cards, plain names, four bars, buy if needed
   weaponPicker(opId, k) {
     const op = DATA.operators[opId]; const A = Progress.armoury(opId); const cur = this.slotWeapon(opId, k);
-    const pool = Object.values(DATA.weapons).filter((w) => k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
+    const pool = Object.values(DATA.weapons).filter((w) => !w.special || Progress.ownsWeapon(w.id)).filter((w) => k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
     const box = el('div', { class: 'pick' }); box.innerHTML = `<div class="row" style="margin-bottom:12px"><h2 class="amber" style="margin:0;letter-spacing:.2em">CHOOSE ${k === 'secondary' ? 'PISTOL' : k === 'launcher' ? 'LAUNCHER' : 'MAIN GUN'}</h2><span class="sp"></span><span class="gold mono">${fmtMoney(G.save.credits)}</span><button class="btn" data-x="1">Close</button></div>
       <div class="grid2">${pool.map((w) => { const own = Progress.ownsWeapon(w.id); return `<div class="wc ${w.id === cur.id ? 'sel' : ''} ${own ? '' : 'lock'}" data-w="${w.id}">${own ? '' : `<span class="pr">${fmtMoney(w.price)}</span>`}<div class="nm">${esc(w.name)}</div><div class="ty">${WCLASS_NAME[w.class] || w.class}</div>${this.statBars(w.id, defaultAttach(w))}</div>`; }).join('')}</div>`;
     this.root.querySelector('.screen').appendChild(box);
