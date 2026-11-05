@@ -45,18 +45,19 @@ class GameMode {
   constructor(o = {}) {
     this.o = o; this.kind = 'base'; this.mapId = o.map; this.variant = o.variant || null; this.difficulty = o.difficulty || G.settings.difficulty || 'regular'; this.t = 0; this.over = false; this.result = null;
     this.teams = [{ id: 0, name: 'The Accord', faction: 'accord', score: 0, tickets: 0 }, { id: 1, name: 'The Iron Mandate', faction: 'mandate', score: 0, tickets: 0 }];
-    this.squads = []; this.bots = []; this.pads = []; this.respawnQ = []; this.friendlyFire = false; this.vehiclesForBots = false; this.playerTeam = o.side ?? 0; this.botRespawn = 10; this.feedNames = true;
+    this.net = o.net || null; this.squads = []; this.bots = []; this.pads = []; this.respawnQ = []; this.friendlyFire = false; this.vehiclesForBots = false; this.playerTeam = o.side ?? 0; this.botRespawn = 10; this.feedNames = true;
   }
   name() { return 'Mode'; }
   async load() { await Game.loadMap(this.mapId, this.variant); }
   setup() {}
   start() { this.setup(); this.placeChests(); }
   // supply chests with special weapons: a few in close-quarters areas, more across big maps
-  placeChests() { const k = this.kind; if (k === 'range' || k === 'training' || k === 'extraction' || this.o.bench) return; const A = this.bounds || this.area || (k === 'dom' ? (World.def.areas || [])[0] : null);
+  placeChests() { if (this.net === 'client') return; const k = this.kind; if (k === 'range' || k === 'training' || k === 'extraction' || this.o.bench) return; const A = this.bounds || this.area || (k === 'dom' ? (World.def.areas || [])[0] : null);
     const area = A ? { x: A.x, z: A.z, r: A.r } : k === 'campaign' && this.def ? { x: this.def.start[0], z: this.def.start[1], r: 1100 } : null; Chests.populate(this, A ? 4 : k === 'campaign' ? 7 : 14, area); }
   allowDowned(s) { if (!s.squad && !s.player) return false; const mates = Soldiers.near(s.pos.x, s.pos.z, 80).some((m) => m !== s && m.team === s.team && m.state === 'alive' && (m.squad === s.squad || m.player || s.player)); return mates || (G.players.length > 1 && s.player); }
   // ---- teams of bots in squads ---------------------------------------------------------------------
   addBots(team, n, at, o = {}) {
+    if (this.net === 'client') return [];
     const byCls = OPS_BY_CLASS(); const classes = ['assault', 'engineer', 'support', 'recon']; const fac = DATA.factions[this.teams[team].faction]; const rng = new RNG(strHash('bots' + team + this.mapId) + this.t);
     let sq = null; const made = [];
     for (let i = 0; i < n; i++) {
@@ -73,6 +74,7 @@ class GameMode {
   }
   // ---- vehicle pads ----------------------------------------------------------------------------------
   setupPads(filter = () => true) {
+    if (this.net === 'client') return;
     const counts = new Map();
     for (const pd of World.def.pads || []) { if (pd.modes && !pd.modes.includes(this.kind)) continue; if (!filter(pd)) continue; const pad = Object.assign({ v: null, t: 0 }, pd);
       // pads inside a walled base move out past the wall, spread along an arc facing the map centre
@@ -99,7 +101,7 @@ class GameMode {
   objectiveFor(sq) { return null; }
   vehicleGoal(v, s) { const o = s.squad && this.objectiveFor(s.squad); return o ? o.pos : null; }
   hud(P) { return {}; }
-  end(winner, text) { if (this.over) return; this.over = true; this.result = { winner, text, t: this.t }; Audio.play(winner === this.playerTeam ? 'level' : 'lost', 1); setTimeout(() => UI.results(this), 2600); for (const P of G.players) P.note(text, winner === this.playerTeam ? 'big' : 'bad'); }
+  end(winner, text) { if (this.over) return; if (this.net === 'host') Net.broadcast({ t: 'end', winner, text }); this.over = true; this.result = { winner, text, t: this.t }; Audio.play(winner === this.playerTeam ? 'level' : 'lost', 1); setTimeout(() => UI.results(this), 2600); for (const P of G.players) P.note(text, winner === this.playerTeam ? 'big' : 'bad'); }
   dispose() {}
   // generic per-mode rewards → progression
   rewards() { const out = []; for (const P of G.players) { const s = P.soldier; const xp = Math.round(s.score + (this.result?.winner === s.team ? 400 : 120)); out.push({ P, xp, credits: Math.round(xp * 0.6) }); } return out; }

@@ -15,7 +15,7 @@ class CampaignMode extends GameMode {
     const n = Math.max(0, (D.squad ?? 3) - (G.players.length - 1)); const ops = Object.keys(DATA.operators).filter((id) => id !== (G.players[0].operator || G.save.lastOperator));
     const mates = n ? spawnGroup({ n, pos: D.start, r: 5, team: 0, faction: 'accord', difficulty: 'hardened', tier: 4, tag: 'squad', ops, yaw: D.yaw || 0 }, this) : [];
     for (const s of mates) { s.squad?.remove(s); sq.add(s); s.ally = true; if (s.brain) s.brain.goal = null; } sq.leader = G.players[0].soldier;
-    this.script = new Script({ steps: D.steps, events: D.events || [] }, this); this.cp = { step: 0, pos: st.clone() }; this.script.start(0);
+    this.script = new Script({ steps: D.steps, events: D.events || [] }, this); this.cp = { step: 0, pos: st.clone() }; if (this.net !== 'client') this.script.start(0);
     const c = DATA.countries[World.def.country]; for (const P of G.players) P.note('Objective: ' + (D.steps[0]?.text || ''), 'big', 0, 4); void c;
   }
   playerLoadout(P, opId) {

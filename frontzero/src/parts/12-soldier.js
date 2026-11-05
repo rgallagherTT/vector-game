@@ -82,6 +82,7 @@ class Soldier {
   }
   // ---- per tick --------------------------------------------------------------------------------
   step(dt) {
+    if (this.netPuppet) { Net.follow(this, dt); if (this.state === 'dead') this.deadT += dt; return; }
     if (this.state === 'dead') { this.deadT += dt; return; }
     const C = this.ctl; this.animT += dt; this.spawnProtect = Math.max(0, this.spawnProtect - dt); this.invulnT = Math.max(0, this.invulnT - dt);
     for (const k of ['blindT', 'empT', 'stunT', 'focusT', 'nitro', 'grappleCD', 'slideCD', 'flinch', 'hitFlash']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
@@ -282,6 +283,8 @@ class Soldier {
   takeDamage(dmg, info = {}) {
     if (this.state === 'dead' || dmg <= 0 || this.invulnT > 0) return; if (this.spawnProtect > 0 && info.kind !== 'fall') return;
     if (info.from && info.from !== this && info.from.team === this.team && !G.mode?.friendlyFire) return;
+    // online: damage to someone else's soldier goes to their device (bots belong to the host)
+    if (this.netPuppet && !Net.applying) { if (Net.mine(info.from)) { const m = { nid: this.nid, amt: Math.round(dmg * 10) / 10, part: info.part, kind: info.kind, hs: info.headshot ? 1 : 0, w: info.weapon?.name || '', by: Net.nidOf(info.from), dir: info.dir ? [info.dir.x, info.dir.y, info.dir.z] : null }; if (Net.isHost) Net.sendTo(this.nid, Object.assign({ t: 'dmg' }, m)); else Net.send(Object.assign({ t: 'hit' }, m)); if (info.from?.player && info.kind === 'bullet') info.from.player.hitMarker?.(info.headshot ? 'head' : 'body'); } return; }
     dmg *= Operators.damageMul(this, info); if (this.boss) dmg *= 0.7;
     if (info.from && info.from !== this) { this.lastHitBy = info.from; this.lastHitT = G.time; info.from.damageDealt += dmg; Operators.charge(info.from, dmg * 0.02, 'damage'); }
     this.hitFlash = 0.15; this.flinch = Math.min(1, this.flinch + dmg / 40); this.suppression = Math.min(1, this.suppression + 0.3);
@@ -308,6 +311,7 @@ class Soldier {
     if (this.bleedT <= 0 || (this.player && C.giveUp)) this.die({ kind: 'bleed', from: this.downedBy });
   }
   revive(by, hp = CONFIG.body.reviveHp) {
+    if (this.netPuppet && !Net.applying) { if (this.state === 'downed') { const m = { t: 'revive', nid: this.nid, by: Net.nidOf(by), hp }; if (Net.isHost) Net.sendTo(this.nid, m); else Net.send(m); if (by && by.player) by.player.note('Reviving ' + this.name, 'good'); } return; }
     if (this.state !== 'downed') return; this.state = 'alive'; this.hp = hp; this.stance = 'crouch'; this.invulnT = 1.2; this.reviveProg = 0; if (this.player) { this.player.vm.visible = true; Audio.play('revive', 0.8); }
     if (by && by !== this) { by.revives++; by.score += 50; Operators.charge(by, 0.12, 'revive'); if (by.player) by.player.note('Revived ' + this.name, 'good', 50); Challenges.track('revive', by); }
     G.mode?.onRevived?.(this, by); Events.emit('revived', { s: this, by });
@@ -321,6 +325,7 @@ class Soldier {
     if (this.player) { this.player.vm.visible = false; Audio.play('death', 0.7); }
     if (killer && killer !== this && killer.team !== this.team) { killer.kills++; killer.score += 100 + (info.headshot ? 25 : 0); Operators.charge(killer, 0.1, 'kill'); if (killer.player) { killer.player.onKill(this, info); } Challenges.track('kill', killer, { victim: this, info }); }
     if (killer && this.lastHitBy && this.lastHitBy !== killer && this.lastHitBy.team !== this.team) { this.lastHitBy.assists++; this.lastHitBy.score += 40; }
+    if (this.player && Net.client) Net.send({ t: 'died', by: Net.nidOf(killer), kind: info.kind });
     G.mode?.onKill?.(this, killer, info); Events.emit('kill', { victim: this, killer, info }); HUDFeed.kill(killer, this, info); if (this.player) G.mode?.playerDied?.(this.player);
     Deployables.ownerDied(this);
   }
@@ -392,7 +397,7 @@ class Soldier {
     else { g.lockTarget = best; g.lockT = 0; }
   }
   fire(g) {
-    const st = g.stats; const def = g.def; g.inMag--; g.cool = st.interval; this.lastShotT = G.time; this.sprintOutT = 0;
+    const st = g.stats; const def = g.def; g.inMag--; g.cool = st.interval; this.lastShotT = G.time; this.sprintOutT = 0; this.shots = (this.shots || 0) + 1;
     const e = this.eye(_v1); const dir = this.aimDir(_v2);
     // spread: ads vs hip, movement, stance, bloom, suppression, blindness
     const moving = clamp(this.speedXZ / 4.5, 0, 1.5); const stanceMul = this.stance === 'prone' ? 0.55 : this.stance === 'crouch' ? 0.8 : 1;

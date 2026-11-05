@@ -46,7 +46,8 @@ const Ballistics = {
   fire(o) {
     const p = this.pool.pop() || {}; Object.assign(p, { x: o.x, y: o.y, z: o.z, vx: o.dx * o.vel, vy: o.dy * o.vel, vz: o.dz * o.vel, dist: 0, life: o.life || CONFIG.ballistic.maxLife, owner: o.owner, team: o.team, dmg: o.dmg, pen: o.pen, ammo: o.ammo, weapon: o.weapon,
       range0: o.range0, range1: o.range1, minMul: o.minMul, kind: o.kind || 'bullet', tr: -1, ignoreVeh: o.ignoreVeh || null, blast: o.blast, target: o.target || null, guided: o.guided, turn: o.turn || 0, nograv: !!o.nograv, homing: !!o.homing, col: o.col || null, smoke: 0, flybyDone: false, armed: 0, flare: false });
-    if (o.tracer) p.tr = FX.tracerStart(...(o.tracerCol || [1, 0.82, 0.45]));
+    p.visual = !!this.visual; if (o.tracer) p.tr = FX.tracerStart(...(o.tracerCol || [1, 0.82, 0.45]));
+    if (Net.host && !this.visual && o.owner && o.owner.vehicle) Net.broadcast({ t: 'vf', p: [o.x, o.y, o.z], d: [o.dx, o.dy, o.dz], vel: o.vel, k: p.kind, tr: o.tracer || p.kind !== 'bullet' ? 1 : 0 });
     this.list.push(p); return p;
   },
   update(dt) {
@@ -91,7 +92,7 @@ const Ballistics = {
       if (H && H.t <= best) { // static first
         const hx = H.x, hy = H.y, hz = H.z;
         if (p.kind !== 'bullet') { this.explode(p, hx - dx * 0.3, hy - dy * 0.3, hz - dz * 0.3, H); return 'dead'; }
-        FX.impact(H, dx, dy, dz, p.weapon && p.weapon.antiMateriel);
+        FX.impact(H, dx, dy, dz, p.weapon && p.weapon.antiMateriel); if (p.visual) return 'dead';
         if (H.water) { if (p.dist + H.t > 0) return 'dead'; }
         // destructibles take a little from rounds (glass shatters, wood splinters, heavy rounds chew through)
         if (H.obj && H.obj.group) Blocks.damageGroup(H.obj.group, p.dmg * (H.obj.mat === 'glass' ? 10 : H.obj.mat === 'wood' || H.obj.mat === 'tarp' ? 0.6 : 0.08) * (p.weapon?.antiMateriel ? 6 : 1), { owner: p.owner });
@@ -106,6 +107,7 @@ const Ballistics = {
         }
         return 'dead';
       }
+      if ((hitVeh || hitSol) && p.visual && p.kind === 'bullet') { FX.sparks(_v1.set(x + dx * best, y + dy * best, z + dz * best), 3, 4); return 'dead'; }
       if (hitVeh) { if (p.kind !== 'bullet') { this.explode(p, x + dx * best, y + dy * best, z + dz * best, null, hitVeh, vPart); return 'dead'; }
         hitVeh.damage(p.dmg * this.falloff(p) * (p.weapon?.antiMateriel ? 2.2 : 1), { kind: 'bullet', pen: p.pen, owner: p.owner, part: vPart, p: V3(x + dx * best, y + dy * best, z + dz * best) });
         const hp = _v1.set(x + dx * best, y + dy * best, z + dz * best); FX.sparks(hp, 4, 6); Audio.impact('metal', hp); if (p.owner && p.owner.player) p.owner.player.hitMarker('vehicle'); return 'dead'; }
@@ -123,6 +125,7 @@ const Ballistics = {
   },
   explode(p, x, y, z, H, veh = null, part = null) {
     const b = p.blast || { r: 4, dmg: 100, vehicle: 400 }; const pt = V3(x, y, z);
+    if (p.visual || !Net.mine(p.owner)) { Net.applying = true; try { Explosion.at(pt, { r: b.r, dmg: 0, vehicle: 0, structure: 0, owner: null }); } finally { Net.applying = false; } return; }
     if (veh) veh.damage(b.vehicle, { kind: 'explosive', owner: p.owner, part, p: pt, direct: true });
     Explosion.at(pt, { r: b.r, dmg: b.dmg, owner: p.owner, vehicle: veh ? 0 : b.vehicle * 0.6, structure: b.structure || 600, kind: p.weapon ? p.weapon.id : 'rocket', ignoreVeh: veh });
   },
@@ -155,6 +158,7 @@ const Damage = {
 const Explosion = {
   // o: { r, dmg, owner, vehicle (dmg to vehicles), structure, kind, emp, ignoreVeh, flash, noFx }
   at(p, o) {
+    if (Net.on && !Net.applying) { if (!Net.mine(o.owner)) o = Object.assign({}, o, { dmg: 0, vehicle: 0, structure: 0, emp: false }); else if (o.dmg > 0 || o.vehicle > 0) Net.send({ t: 'boom', p: [p.x, p.y, p.z], r: o.r || 6 }); }
     const r = o.r || 6; const scale = clamp(r / 6, 0.4, 2.4);
     if (!o.noFx) { FX.explosion(p, scale, { air: p.y - World.heightAt(p.x, p.z) > 4 }); Audio.explosion(p, scale); for (const P of G.players) P.shake(clamp(1 - G.dist(P.eyePos, p) / (r * 8), 0, 1) * 0.8); }
     if (o.dmg > 0) for (const s of Soldiers.near(p.x, p.z, r)) {

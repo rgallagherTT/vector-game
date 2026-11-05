@@ -121,11 +121,13 @@ class Vehicle {
   canHijack(s) { const d = this.driver(); return !!(this.def.hijack && this.stunT > 0 && d && d.team !== s.team); }
   hijack(s) { const d = this.driver(); if (d) { this.exit(d, true); d.stunT = 2; d.takeDamage(25, { kind: 'melee', part: 'chest', from: s, weapon: { name: 'Hijack' } }); } this.enter(s, 0); Challenges.track('hijack', s); if (s.player) s.player.note('Hijacked!', 'good'); }
   enter(s, seat) {
+    if (this.netPuppet && !Net.applying) { if (s.player && !s.vehicle && !this.occupants[seat]) Net.send({ t: 'enter', nid: this.nid, seat }); return false; }
     if (seat < 0 || !this.def.seats || !this.def.seats[seat] || this.occupants[seat] || s.vehicle) return false; this.occupants[seat] = s; s.vehicle = this; s.seat = seat; const S = this.def.seats[seat];
     s.seatExposed = !!S.exposed && !S.turret; s.seatVisible = !!S.visible; s.stance = 'stand'; s.moveState = 'vehicle'; s.grapple = null; s.rappel = null; s.mantle = null; s.adsAmt = 0; s.vel.set(0, 0, 0); Grapples.remove(s); Chutes.remove(s);
     if (seat === 0 || this.team == null || !this.occupied()) this.team = s.team; this.engineOn = true; if (s.player) { s.player.onEnterVehicle(this); Audio.play('swap', 0.6); } Challenges.track('vehicle', s, { id: this.def.id }); return true;
   }
   exit(s, forced = false) {
+    if (this.netPuppet && !Net.applying && s.player) Net.send({ t: 'exit' });
     const i = this.occupants.indexOf(s); if (i < 0) return; this.occupants[i] = null; s.vehicle = null; s.seat = -1; s.seatExposed = false; s.seatVisible = false; s.moveState = 'air';
     const S = this.def.seats[i]; const side = (S.pos[0] >= 0 ? 1 : -1); const local = V3(side * (this.half.x + 1.0), 0, S.pos[2]).applyQuaternion(this.q); const p = this.pos.clone().add(local);
     const gy = Col.ground(p.x, p.z, this.pos.y + 3, 0.3, 4).y; const alt = this.pos.y - gy;
@@ -135,7 +137,7 @@ class Vehicle {
     s.pos.copy(p); s.yaw = s.ctl.yaw = this.yawOf() + (side > 0 ? Math.PI / 2 : -Math.PI / 2) * 0; if (s.player) s.player.onExitVehicle(this);
     if (!this.occupied()) { this.engineOn = this.def.phys === 'jet'; this.throttle = 0; }
   }
-  swapSeat(s, j) { if (j < 0 || j >= this.occupants.length || this.occupants[j]) return; const i = this.occupants.indexOf(s); this.occupants[i] = null; this.occupants[j] = s; s.seat = j; const S = this.def.seats[j]; s.seatExposed = !!S.exposed && !S.turret; s.seatVisible = !!S.visible; if (s.player) s.player.onEnterVehicle(this); }
+  swapSeat(s, j) { if (this.netPuppet && !Net.applying) { if (s.player) Net.send({ t: 'seat', seat: j }); return; } if (j < 0 || j >= this.occupants.length || this.occupants[j]) return; const i = this.occupants.indexOf(s); this.occupants[i] = null; this.occupants[j] = s; s.seat = j; const S = this.def.seats[j]; s.seatExposed = !!S.exposed && !S.turret; s.seatVisible = !!S.visible; if (s.player) s.player.onEnterVehicle(this); }
   // rappel out of a hovering dropship
   rappelOut(s) { if (!this.def.rappel) return false; const gy = this.groundY(this.pos.x, this.pos.z); if (this.pos.y - gy > 45) return false; const i = this.occupants.indexOf(s); const side = i % 2 ? 1 : -1; this.exit(s, true); const n = V3(side, 0, 0).applyQuaternion(this.q).setY(0).normalize(); const a = this.pos.clone().add(V3(side * (this.half.x + 0.6), -0.5, -1 + (i % 3)).applyQuaternion(this.q)); s.fromAircraft = false; s.startRappel(a.add(n.clone().multiplyScalar(-0.7)), n); return true; }
   yawOf() { const f = _v1.set(0, 0, 1).applyQuaternion(this.q); return Math.atan2(f.x, f.z); }
@@ -155,6 +157,7 @@ class Vehicle {
     _hitTmp.t = t0; _hitTmp.part = part; return _hitTmp;
   }
   damage(amt, info = {}) {
+    if (this.netPuppet && !Net.applying) { if (!this.dead && Net.mine(info.owner)) Net.send({ t: 'vdmg', nid: this.nid, amt: Math.round(amt), kind: info.kind, pen: info.pen, part: info.part }); return; }
     if (this.dead) return; let a = amt; if (info.kind === 'bullet') a *= ARMOUR_MUL[this.def.armour] * (info.pen >= 6 ? 3 : 1); if (info.kind === 'explosive' && this.def.armour === 'heavy' && !info.direct) a *= 0.6;
     if (info.owner && info.owner.team === this.team && this.occupied()) return; this.hp -= a; this.lastHitBy = info.owner || this.lastHitBy;
     let part = info.part ? this.parts.find((p) => p.id === info.part) : null; if (!part && info.p && this.parts.length) { let bd = 1e9; for (const p of this.parts) { const wp = _v4.copy(p.pos).applyQuaternion(this.q).add(this.pos); const d = wp.distanceTo(info.p); if (d < bd) { bd = d; part = p; } } }
@@ -178,6 +181,7 @@ class Vehicle {
   }
   // ---- per tick -----------------------------------------------------------------------------------
   update(dt) {
+    if (this.netPuppet && !this.dead) { Net.followVehicle(this, dt); return; }
     if (this.dead) { this.wreckT += dt; this.wreckStep(dt); if (Math.random() < dt * 8 && this.wreckT < 20) FX.smoke(this.pos.clone().add(V3(0, 1.5, 0)), 1, 0.12, 2.5, 1.5, 5); if (this.wreckT < 6 && Math.random() < dt * 10) FX.glow.emit(this.pos.x + rand(-1, 1), this.pos.y + 1.5, this.pos.z + rand(-1, 1), 0, 2, 0, 1, 0.45, 0.1, 0.9, 1.0, 0.5, 1.5, 0.5, -1); return; }
     this.prevPos.copy(this.pos); if (this.stunT > 0) this.stunT -= dt; if (this.hopCD > 0) this.hopCD -= dt; if (this.flareT > 0) this.flareT -= dt; this.lockWarn = Math.max(0, this.lockWarn - dt);
     if (this.life > 0) { this.life -= dt; if (this.life <= 0) { this.destroy({}); return; } }

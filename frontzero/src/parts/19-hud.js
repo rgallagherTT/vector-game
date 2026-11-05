@@ -2,8 +2,8 @@
 // §HUD -------------------------------------------------------------------------------------------------
 const HUDFeed = {
   list: [],
-  kill(k, v, info) { this.list.push({ k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.name, team: v.team, me: !!v.player }, w: info.weapon?.name || (info.kind === 'fall' ? 'Fall' : info.kind === 'explosion' ? 'Explosion' : info.kind === 'bleed' ? 'Bled out' : info.kind || ''), hs: !!info.headshot, t: G.time }); if (this.list.length > 30) this.list.shift(); },
-  vehicle(k, v) { this.list.push({ k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.def.name, team: v.team, me: false }, w: 'destroyed', hs: false, t: G.time }); },
+  kill(k, v, info) { if (Net.client && !Net.applying) return; if (Net.host) Net.broadcast({ t: 'feed', k: Net.nidOf(k), kn: k?.name, kt: k?.team, v: Net.nidOf(v), vn: v.name, vt: v.team, w: info.weapon?.name || (info.kind === 'explosion' ? 'Explosion' : info.kind || ''), hs: !!info.headshot }); this.list.push({ k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.name, team: v.team, me: !!v.player }, w: info.weapon?.name || (info.kind === 'fall' ? 'Fall' : info.kind === 'explosion' ? 'Explosion' : info.kind === 'bleed' ? 'Bled out' : info.kind || ''), hs: !!info.headshot, t: G.time }); if (this.list.length > 30) this.list.shift(); },
+  vehicle(k, v) { if (Net.client && !Net.applying) return; if (Net.host) Net.broadcast({ t: 'feed', k: Net.nidOf(k), kn: k?.name, kt: k?.team, v: null, vn: v.def.name, vt: v.team, w: 'destroyed', hs: false }); this.list.push({ k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.def.name, team: v.team, me: false }, w: 'destroyed', hs: false, t: G.time }); },
   clear() { this.list.length = 0; },
 };
 let MINIMAP_IMG = null;
