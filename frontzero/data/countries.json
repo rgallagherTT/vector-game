@@ -47,7 +47,8 @@
    ],
    "maps": [
     "dustwater",
-    "shipgrave"
+    "shipgrave",
+    "sunspire"
    ],
    "capital": "Saffar",
    "pos": [
@@ -106,7 +107,8 @@
    ],
    "maps": [
     "rivercut",
-    "templehill"
+    "templehill",
+    "mangrove"
    ],
    "capital": "Puerto Lume",
    "pos": [
@@ -165,7 +167,8 @@
    ],
    "maps": [
     "icebreak",
-    "whiteout"
+    "whiteout",
+    "frostline"
    ],
    "capital": "Halvik",
    "pos": [
@@ -224,7 +227,8 @@
    ],
    "maps": [
     "oldquarter",
-    "greywood"
+    "greywood",
+    "vinehollow"
    ],
    "capital": "Kastel",
    "pos": [
@@ -283,7 +287,8 @@
    ],
    "maps": [
     "skyline",
-    "harbourfront"
+    "harbourfront",
+    "neondocks"
    ],
    "capital": "Port Aurel",
    "pos": [
@@ -342,7 +347,8 @@
    ],
    "maps": [
     "highpass",
-    "redcut"
+    "redcut",
+    "saltpan"
    ],
    "capital": "Teral",
    "pos": [

@@ -1,0 +1,614 @@
+{
+ "id": "mangrove",
+ "name": "Mangrove",
+ "country": "selvara",
+ "size": 2400,
+ "seed": 1414,
+ "biomes": [
+  "jungle",
+  "coastal"
+ ],
+ "mask": {
+  "type": "edge",
+  "dir": "n",
+  "start": 0.82,
+  "blend": 0.06
+ },
+ "baseHeight": 4,
+ "blurb": "A river delta of mangrove channels and stilt villages. Bring a boat.",
+ "sea": {
+  "dir": "n",
+  "shore": 0.84,
+  "level": 0,
+  "depth": 10
+ },
+ "rivers": [
+  {
+   "pts": [
+    [
+     -1150,
+     -600
+    ],
+    [
+     -700,
+     -300
+    ],
+    [
+     -300,
+     -350
+    ],
+    [
+     0,
+     -100
+    ],
+    [
+     300,
+     200
+    ],
+    [
+     700,
+     400
+    ],
+    [
+     1150,
+     700
+    ]
+   ],
+   "width": 40,
+   "depth": 3
+  },
+  {
+   "pts": [
+    [
+     0,
+     -1150
+    ],
+    [
+     -80,
+     -600
+    ],
+    [
+     0,
+     -100
+    ]
+   ],
+   "width": 26,
+   "depth": 3
+  }
+ ],
+ "sites": [
+  {
+   "id": "stilts",
+   "name": "Kaya stilt village",
+   "kind": "town",
+   "x": -380,
+   "z": -150,
+   "r": 130,
+   "density": 0.7,
+   "floors": [
+    1,
+    2
+   ],
+   "ground": "dirt"
+  },
+  {
+   "id": "cannery",
+   "name": "Cannery",
+   "kind": "port",
+   "x": 380,
+   "z": 320,
+   "r": 120,
+   "density": 0.6,
+   "ground": "concrete"
+  },
+  {
+   "id": "mission",
+   "name": "Old mission",
+   "kind": "ruins",
+   "x": 200,
+   "z": -480,
+   "r": 80
+  },
+  {
+   "id": "logging",
+   "name": "Logging camp",
+   "kind": "camp",
+   "x": -600,
+   "z": 450,
+   "r": 70
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -900,
+   "z": 850,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 900,
+   "z": -850,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -900,
+     850
+    ],
+    [
+     -600,
+     450
+    ],
+    [
+     -380,
+     -150
+    ],
+    [
+     0,
+     -100
+    ],
+    [
+     380,
+     320
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  },
+  {
+   "pts": [
+    [
+     200,
+     -480
+    ],
+    [
+     900,
+     -850
+    ]
+   ],
+   "width": 7,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "bridge1",
+   "type": "bridge",
+   "name": "Delta bridge",
+   "a": [
+    -40,
+    -150
+   ],
+   "b": [
+    40,
+    -50
+   ],
+   "width": 9
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Mission mast",
+   "x": 230,
+   "z": -440,
+   "h": 40
+  }
+ ],
+ "bases": [
+  {
+   "x": -900,
+   "z": 850,
+   "yaw": 2.3
+  },
+  {
+   "x": 900,
+   "z": -850,
+   "yaw": -0.8
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -941,
+   "z": 794,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -914,
+   "z": 794,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -886,
+   "z": 794,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -859,
+   "z": 794,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -941,
+   "z": 826,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -914,
+   "z": 826,
+   "yaw": 2.3,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_quad",
+   "x": -886,
+   "z": 826,
+   "yaw": 2.3,
+   "team": 0
+  },
+  {
+   "type": "hover_tank",
+   "x": 859,
+   "z": -826,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 886,
+   "z": -826,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 914,
+   "z": -826,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 941,
+   "z": -826,
+   "yaw": -0.8,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 859,
+   "z": -794,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 886,
+   "z": -794,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "interceptor",
+   "x": 914,
+   "z": -794,
+   "yaw": -0.8,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "patrol_boat",
+   "x": -300,
+   "z": -340,
+   "yaw": 1.2,
+   "team": null
+  },
+  {
+   "type": "assault_hovercraft",
+   "x": 200,
+   "z": 120,
+   "yaw": 0.6,
+   "team": null
+  },
+  {
+   "type": "patrol_boat",
+   "x": 552,
+   "z": 322,
+   "yaw": 0.4,
+   "team": null
+  }
+ ],
+ "breakthrough": {
+  "attacker": 1,
+  "sectors": [
+   {
+    "name": "Old mission",
+    "objs": [
+     {
+      "name": "Chapel",
+      "x": 200,
+      "z": -480
+     },
+     {
+      "name": "Bell tower",
+      "x": 260,
+      "z": -420
+     }
+    ]
+   },
+   {
+    "name": "Delta",
+    "objs": [
+     {
+      "name": "Bridge",
+      "x": -60,
+      "z": -210
+     },
+     {
+      "name": "Boathouse",
+      "x": 110,
+      "z": -30
+     }
+    ],
+    "destroy": "bridge1"
+   },
+   {
+    "name": "Stilt village",
+    "objs": [
+     {
+      "name": "Longhouse",
+      "x": -380,
+      "z": -150
+     },
+     {
+      "name": "Fish market",
+      "x": -300,
+      "z": -60
+     }
+    ]
+   },
+   {
+    "name": "Logging camp",
+    "objs": [
+     {
+      "name": "Saw shed",
+      "x": -600,
+      "z": 450
+     },
+     {
+      "name": "Timber yard",
+      "x": -520,
+      "z": 380
+     }
+    ]
+   },
+   {
+    "name": "Accord HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": -900,
+      "z": 850
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Old mission",
+   "x": 200,
+   "z": -480
+  },
+  {
+   "id": "B",
+   "name": "Delta bridge",
+   "x": -60,
+   "z": -210
+  },
+  {
+   "id": "C",
+   "name": "Stilt village",
+   "x": -380,
+   "z": -150
+  },
+  {
+   "id": "D",
+   "name": "Cannery",
+   "x": 380,
+   "z": 320
+  },
+  {
+   "id": "E",
+   "name": "Logging camp",
+   "x": -600,
+   "z": 450
+  },
+  {
+   "id": "F",
+   "name": "Mud flats",
+   "x": 600,
+   "z": -200
+  }
+ ],
+ "pois": [
+  {
+   "name": "Cannery",
+   "x": 380,
+   "z": 320,
+   "r": 80,
+   "tier": 3
+  },
+  {
+   "name": "Old mission",
+   "x": 200,
+   "z": -480,
+   "r": 60,
+   "tier": 3
+  },
+  {
+   "name": "Kaya stilt village",
+   "x": -380,
+   "z": -150,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Logging camp",
+   "x": -600,
+   "z": 450,
+   "r": 60,
+   "tier": 1
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 900,
+   "z": -850,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "River mouth boat",
+   "x": 300,
+   "z": 1000,
+   "kind": "flare"
+  },
+  {
+   "name": "West trail",
+   "x": -1050,
+   "z": 0,
+   "kind": "open"
+  },
+  {
+   "name": "Mission gate",
+   "x": 200,
+   "z": -560,
+   "kind": "guarded"
+  },
+  {
+   "name": "East channel",
+   "x": 1050,
+   "z": 500,
+   "kind": "timed",
+   "opens": 360
+  }
+ ],
+ "areas": [
+  {
+   "id": "village",
+   "name": "Stilt village",
+   "x": -380,
+   "z": -150,
+   "r": 150,
+   "dom": [
+    [
+     -430,
+     -190
+    ],
+    [
+     -380,
+     -150
+    ],
+    [
+     -330,
+     -110
+    ]
+   ],
+   "spawns": [
+    [
+     -500,
+     -260
+    ],
+    [
+     -260,
+     -40
+    ]
+   ]
+  },
+  {
+   "id": "cannery",
+   "name": "Cannery",
+   "x": 380,
+   "z": 320,
+   "r": 140,
+   "dom": [
+    [
+     330,
+     280
+    ],
+    [
+     380,
+     320
+    ],
+    [
+     430,
+     360
+    ]
+   ],
+   "spawns": [
+    [
+     280,
+     220
+    ],
+    [
+     480,
+     420
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 10,
+   "weather": "clear"
+  },
+  {
+   "id": "monsoon",
+   "name": "Monsoon",
+   "hour": 15,
+   "weather": "monsoon"
+  },
+  {
+   "id": "fog",
+   "name": "Morning fog",
+   "hour": 6.5,
+   "weather": "fog"
+  },
+  {
+   "id": "dusk",
+   "name": "Dusk",
+   "hour": 18.5,
+   "weather": "rain"
+  }
+ ]
+}

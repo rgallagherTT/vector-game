@@ -1,0 +1,623 @@
+{
+ "id": "saltpan",
+ "name": "Saltpan",
+ "country": "ashkar",
+ "size": 3000,
+ "seed": 1818,
+ "biomes": [
+  "desert",
+  "mountain"
+ ],
+ "mask": {
+  "type": "noise",
+  "scale": 900,
+  "thresh": 0.45,
+  "blend": 0.2
+ },
+ "baseHeight": 8,
+ "blurb": "A blinding salt flat between red ranges: long sightlines, fast vehicles, nowhere to hide.",
+ "sites": [
+  {
+   "id": "works",
+   "name": "Salt works",
+   "kind": "outpost",
+   "x": 0,
+   "z": 0,
+   "r": 110,
+   "density": 0.7
+  },
+  {
+   "id": "camp",
+   "name": "Nomad camp",
+   "kind": "camp",
+   "x": -600,
+   "z": -500,
+   "r": 80
+  },
+  {
+   "id": "fort",
+   "name": "Canyon fort",
+   "kind": "fortress",
+   "x": 650,
+   "z": 520,
+   "r": 110,
+   "raise": 20,
+   "edge": 80
+  },
+  {
+   "id": "village",
+   "name": "Qarra",
+   "kind": "town",
+   "x": -500,
+   "z": 500,
+   "r": 130,
+   "density": 0.6,
+   "style": "adobe",
+   "floors": [
+    1,
+    2
+   ],
+   "ground": "dirt"
+  },
+  {
+   "id": "ruins",
+   "name": "Caravan ruins",
+   "kind": "ruins",
+   "x": 500,
+   "z": -600,
+   "r": 90
+  },
+  {
+   "id": "accordhq",
+   "name": "Accord HQ",
+   "kind": "base",
+   "x": -1150,
+   "z": 1100,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  },
+  {
+   "id": "mandatehq",
+   "name": "Mandate HQ",
+   "kind": "base",
+   "x": 1150,
+   "z": -1100,
+   "r": 100,
+   "helipad": true,
+   "ground": "gravel"
+  }
+ ],
+ "roads": [
+  {
+   "pts": [
+    [
+     -1150,
+     1100
+    ],
+    [
+     -500,
+     500
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     500,
+     -600
+    ],
+    [
+     1150,
+     -1100
+    ]
+   ],
+   "width": 10,
+   "surf": "gravel"
+  },
+  {
+   "pts": [
+    [
+     -600,
+     -500
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     650,
+     520
+    ]
+   ],
+   "width": 8,
+   "surf": "dirt"
+  }
+ ],
+ "structures": [
+  {
+   "id": "fuel",
+   "type": "fuel_depot",
+   "name": "Works fuel",
+   "x": 60,
+   "z": 60
+  },
+  {
+   "id": "mast",
+   "type": "radio_tower",
+   "name": "Fort mast",
+   "x": 700,
+   "z": 560,
+   "h": 44
+  },
+  {
+   "id": "radar",
+   "type": "radar",
+   "name": "Ruins radar",
+   "x": 560,
+   "z": -640
+  }
+ ],
+ "bases": [
+  {
+   "x": -1150,
+   "z": 1100,
+   "yaw": 2.36
+  },
+  {
+   "x": 1150,
+   "z": -1100,
+   "yaw": -0.79
+  }
+ ],
+ "pads": [
+  {
+   "type": "hover_tank",
+   "x": -1191,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "hover_apc",
+   "x": -1164,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_bike",
+   "x": -1136,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_buggy",
+   "x": -1109,
+   "z": 1044,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "vtol_dropship",
+   "x": -1191,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": -1164,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true
+  },
+  {
+   "type": "speeder_bike",
+   "x": -1136,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_quad",
+   "x": -1109,
+   "z": 1076,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "speeder_hauler",
+   "x": -1191,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0
+  },
+  {
+   "type": "strike_fighter",
+   "x": -1164,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0,
+   "air": true,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "assault_mech",
+   "x": -1136,
+   "z": 1110,
+   "yaw": 2.36,
+   "team": 0,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "hover_tank",
+   "x": 1109,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "hover_apc",
+   "x": 1136,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_bike",
+   "x": 1164,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "speeder_buggy",
+   "x": 1191,
+   "z": -1076,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "vtol_dropship",
+   "x": 1109,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "vtol_gunship",
+   "x": 1136,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "speeder_bike",
+   "x": 1164,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1
+  },
+  {
+   "type": "interceptor",
+   "x": 1191,
+   "z": -1044,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true
+  },
+  {
+   "type": "strike_fighter",
+   "x": 1109,
+   "z": -1010,
+   "yaw": -0.79,
+   "team": 1,
+   "air": true,
+   "modes": [
+    "warfare"
+   ]
+  },
+  {
+   "type": "artillery_skiff",
+   "x": 1136,
+   "z": -1010,
+   "yaw": -0.79,
+   "team": 1,
+   "modes": [
+    "warfare"
+   ]
+  }
+ ],
+ "breakthrough": {
+  "attacker": 0,
+  "sectors": [
+   {
+    "name": "Qarra",
+    "objs": [
+     {
+      "name": "Village well",
+      "x": -500,
+      "z": 500
+     },
+     {
+      "name": "Caravanserai",
+      "x": -420,
+      "z": 420
+     }
+    ]
+   },
+   {
+    "name": "Salt works",
+    "objs": [
+     {
+      "name": "Evaporators",
+      "x": 0,
+      "z": 0
+     },
+     {
+      "name": "Loading sheds",
+      "x": 80,
+      "z": 60
+     }
+    ],
+    "destroy": "fuel"
+   },
+   {
+    "name": "Canyon fort",
+    "objs": [
+     {
+      "name": "Fort gate",
+      "x": 650,
+      "z": 520
+     },
+     {
+      "name": "Canyon mouth",
+      "x": 560,
+      "z": 440
+     }
+    ]
+   },
+   {
+    "name": "Caravan ruins",
+    "objs": [
+     {
+      "name": "Ruined arch",
+      "x": 500,
+      "z": -600
+     },
+     {
+      "name": "Old radar",
+      "x": 560,
+      "z": -640
+     }
+    ]
+   },
+   {
+    "name": "Mandate HQ",
+    "objs": [
+     {
+      "name": "Headquarters",
+      "x": 1150,
+      "z": -1100
+     }
+    ]
+   }
+  ]
+ },
+ "conquest": [
+  {
+   "id": "A",
+   "name": "Qarra",
+   "x": -500,
+   "z": 500
+  },
+  {
+   "id": "B",
+   "name": "Nomad camp",
+   "x": -600,
+   "z": -500
+  },
+  {
+   "id": "C",
+   "name": "Salt works",
+   "x": 0,
+   "z": 0
+  },
+  {
+   "id": "D",
+   "name": "Canyon fort",
+   "x": 650,
+   "z": 520
+  },
+  {
+   "id": "E",
+   "name": "Caravan ruins",
+   "x": 500,
+   "z": -600
+  },
+  {
+   "id": "F",
+   "name": "Pan centre",
+   "x": 0,
+   "z": -500
+  },
+  {
+   "id": "G",
+   "name": "Mirage flats",
+   "x": 0,
+   "z": 600
+  }
+ ],
+ "pois": [
+  {
+   "name": "Canyon fort",
+   "x": 650,
+   "z": 520,
+   "r": 70,
+   "tier": 4
+  },
+  {
+   "name": "Salt works",
+   "x": 0,
+   "z": 0,
+   "r": 80,
+   "tier": 3
+  },
+  {
+   "name": "Qarra",
+   "x": -500,
+   "z": 500,
+   "r": 80,
+   "tier": 2
+  },
+  {
+   "name": "Nomad camp",
+   "x": -600,
+   "z": -500,
+   "r": 50,
+   "tier": 1
+  },
+  {
+   "name": "Caravan ruins",
+   "x": 500,
+   "z": -600,
+   "r": 60,
+   "tier": 2
+  },
+  {
+   "name": "Mandate HQ",
+   "x": 1150,
+   "z": -1100,
+   "r": 90,
+   "tier": 5,
+   "boss": "warden"
+  }
+ ],
+ "extracts": [
+  {
+   "name": "West range",
+   "x": -1300,
+   "z": 0,
+   "kind": "open"
+  },
+  {
+   "name": "Fort roof",
+   "x": 650,
+   "z": 520,
+   "kind": "flare"
+  },
+  {
+   "name": "Ruins cellar",
+   "x": 520,
+   "z": -620,
+   "kind": "guarded"
+  },
+  {
+   "name": "North track",
+   "x": 0,
+   "z": -1300,
+   "kind": "timed",
+   "opens": 420
+  }
+ ],
+ "areas": [
+  {
+   "id": "works",
+   "name": "Salt works",
+   "x": 0,
+   "z": 0,
+   "r": 160,
+   "dom": [
+    [
+     -50,
+     -40
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     50,
+     40
+    ]
+   ],
+   "spawns": [
+    [
+     -130,
+     -100
+    ],
+    [
+     130,
+     100
+    ]
+   ]
+  },
+  {
+   "id": "village",
+   "name": "Qarra",
+   "x": -500,
+   "z": 500,
+   "r": 150,
+   "dom": [
+    [
+     -550,
+     460
+    ],
+    [
+     -500,
+     500
+    ],
+    [
+     -450,
+     540
+    ]
+   ],
+   "spawns": [
+    [
+     -600,
+     400
+    ],
+    [
+     -400,
+     600
+    ]
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "id": "day",
+   "name": "Day",
+   "hour": 12,
+   "weather": "clear"
+  },
+  {
+   "id": "haze",
+   "name": "Mirage",
+   "hour": 14,
+   "weather": "haze"
+  },
+  {
+   "id": "storm",
+   "name": "Sandstorm",
+   "hour": 15,
+   "weather": "sandstorm"
+  },
+  {
+   "id": "dusk",
+   "name": "Dusk",
+   "hour": 18.5,
+   "weather": "clear"
+  }
+ ]
+}
