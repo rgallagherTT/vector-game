@@ -38,6 +38,17 @@ Vehicles: W/S throttle, A/D steer, mouse aims the turret, Space hops (speeders) 
 
 Content lives in `data/` as JSON. Code lives in `index.html`, generated from `src/parts/` by `src/assemble.sh`.
 
+## Online co-op (up to 4 devices)
+
+Online co-op works the same way as Brawler and SANDLINE. Pick **Online co-op** on the title screen and share the room link. Whoever opens the link first hosts, and everyone else joins the lobby. Phones, tablets and laptops can mix.
+
+- **The host** chooses the match: Warfare Breakthrough or Conquest, team deathmatch, domination or a campaign mission, plus the map and the number of bots. Everyone fights on the Accord side against the host's bots.
+- **Your device** runs your own soldier: movement, aim and shots. Your hits on bots go to the host. Hits on you, reviving each other, vehicles, chests and pings all sync between devices.
+- **Vehicles:** get in any vehicle and you drive or gun it. The host's device simulates it from your controls.
+- **Leaving:** if the host quits, everyone goes back to the lobby.
+
+Devices connect directly (WebRTC). The free PeerJS broker only introduces them. Some strict networks (school or corporate) block WebRTC, and a phone hotspot usually gets around that. `?broker=host:port` points at a self-hosted PeerJS server instead. Extraction raids stay single-device, since each stash belongs to one device.
+
 ## Futuristic weapons
 
 Twelve futuristic weapons sit alongside the conventional ones (buy them on the loadout screen):
