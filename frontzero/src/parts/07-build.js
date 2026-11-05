@@ -119,8 +119,8 @@ const Cover = {
 // ---- building kits ------------------------------------------------------------------------
 const FH = 3.2; // storey height
 const Build = {
-  rng: null, sites: [], structures: [], cablecars: [], pads: [], flags: [], lights: [], neon: [],
-  reset() { this.sites.length = 0; this.structures.length = 0; this.cablecars.length = 0; this.pads.length = 0; this.flags.length = 0; this.lights.length = 0; this.neon.length = 0; if (this.decor) { WORLD.remove(this.decor); } this.decor = new THREE.Group(); WORLD.add(this.decor); this.mb = new MeshBuilder(); },
+  rng: null, houses: [], sites: [], structures: [], cablecars: [], pads: [], flags: [], lights: [], neon: [],
+  reset() { this.houses.length = 0; this.sites.length = 0; this.structures.length = 0; this.cablecars.length = 0; this.pads.length = 0; this.flags.length = 0; this.lights.length = 0; this.neon.length = 0; if (this.decor) { WORLD.remove(this.decor); } this.decor = new THREE.Group(); WORLD.add(this.decor); this.mb = new MeshBuilder(); },
   // world point from building-local (lx, lz) at yaw around (cx, cz)
   w(cx, cz, c, s, lx, lz) { return [cx + lx * c + lz * s, cz - lx * s + lz * c]; },
   box(cx, cz, c, s, yaw, lx, y, lz, hx, hy, hz, o) { const [x, z] = this.w(cx, cz, c, s, lx, lz); return Blocks.add(Object.assign({ x, y, z, hx, hy, hz, yaw }, o)); },
@@ -129,14 +129,14 @@ const Build = {
     const c = Math.cos(yaw), s = Math.sin(yaw); const t = kit.mat === 'wood' ? 0.12 : kit.mat === 'metal' ? 0.1 : 0.22;
     let gy = -1e9; for (const [lx, lz] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, 0]]) { const [x, z] = this.w(cx, cz, c, s, lx, lz); gy = Math.max(gy, World.heightAt(x, z)); }
     const base = gy + (kit.stilts ? 2.2 : 0.12); const col = kit.color; const B = (lx, y, lz, hx, hy, hz, o = {}) => this.box(cx, cz, c, s, yaw, lx, y, lz, hx, hy, hz, Object.assign({ mat: kit.mat, render: kit.render || kit.mat, color: col }, o));
-    const bld = { cx, cz, yaw, w, d, floors, base, top: base + floors * FH, kit, groups: [] };
+    const bld = { cx, cz, yaw, w, d, floors, base, top: base + floors * FH, kit, groups: [], doors: [] }; this.houses.push(bld);
     // foundation / stilts
     if (kit.stilts) { for (const [lx, lz] of [[-w / 2 + 0.3, -d / 2 + 0.3], [w / 2 - 0.3, -d / 2 + 0.3], [-w / 2 + 0.3, d / 2 - 0.3], [w / 2 - 0.3, d / 2 - 0.3]]) { const [x, z] = this.w(cx, cz, c, s, lx, lz); const h0 = World.heightAt(x, z); const hh = (base - h0) / 2 + 0.3; Blocks.add({ x, y: h0 + hh - 0.3, z, hx: 0.15, hy: hh, hz: 0.15, mat: 'wood', render: 'wood', color: 0x6a4e34, noCover: true }); }
       B(0, base - 0.08, 0, w / 2, 0.08, d / 2, { render: 'wood' });
       const [lx, lz] = [0, d / 2 + 1.6]; B(lx, base - 1.1, lz, 0.6, 0.05, 1.6, { ramp: 2.2, cy: base - 2.2 - 0.05 + 0.0, rx: Math.atan2(2.2, 3.2), yaw: yaw + Math.PI, noCover: true });
     } else B(0, base - 0.6, 0, w / 2 + 0.05, 0.6, d / 2 + 0.05, { noCover: true });
-    const stairs = !kit.noStairs && floors >= 1 && w >= 6 && d >= 7 && (floors > 1 || kit.roof === 'flat');
-    const run = 5.0, sw = 1.25, sx = -w / 2 + t + sw / 2 + 0.05, sz0 = -d / 2 + t + 0.4;
+    const run = d >= 8.5 ? 5.0 : 4.2; const stairs = !kit.noStairs && floors >= 1 && w >= 4.2 && d >= run + 1.9 && (floors > 1 || kit.roof === 'flat'); bld.stairs = stairs;
+    const sw = 1.25, sx = -w / 2 + t + sw / 2 + 0.05, sz0 = -d / 2 + t + 0.4;
     for (let f = 0; f < floors; f++) {
       const y0 = base + f * FH;
       // floor slab (upper floors), with a stair hole
@@ -164,7 +164,11 @@ const Build = {
           };
           const u0 = u - segL / 2;
           if (type === 'solid') P(u0, 0, segL, FH);
-          else if (type === 'door') { const dw = Math.min(1.3, segL - 0.3); const side = (segL - dw) / 2; P(u0, 0, side, FH); P(u0 + side + dw, 0, side, FH); P(u0 + side, 2.25, dw, FH - 2.25); }
+          else if (type === 'door') { const dw = Math.min(1.5, segL - 0.3); const side = (segL - dw) / 2; P(u0, 0, side, FH); P(u0 + side + dw, 0, side, FH); P(u0 + side, 2.3, dw, FH - 2.3);
+            // a doorstep: steps from the ground up to the floor so you can just walk in
+            const out = (k) => sd.ax ? [sd.ax * (sd.off + k), u] : [u, sd.az * (sd.off + k)]; const [ox, oz] = this.w(cx, cz, c, s, ...out(1.4)); const [ix, iz] = this.w(cx, cz, c, s, ...out(-1.4)); bld.doors.push({ x: ox, z: oz, ix, iz });
+            if (!kit.stilts) { const h0 = World.heightAt(ox, oz); const dh = base - h0; if (dh > 0.18) { const n = Math.min(8, Math.ceil(dh / 0.26)); for (let k = 0; k < n; k++) { const topY = base - k * dh / n; const bot = Math.min(h0, World.heightAt(...this.w(cx, cz, c, s, ...out(0.2 + k * 0.38)))) - 0.3; const [lx, lz] = out(0.2 + k * 0.38 + 0.19); const hw = dw / 2 + 0.25;
+              B(lx, (topY + bot) / 2, lz, sd.ax ? 0.19 : hw, (topY - bot) / 2, sd.ax ? hw : 0.19, { render: kit.slab || 'concrete', mat: 'concrete', noCover: true }); } } } }
           else { const ww = segL * 0.56; const side = (segL - ww) / 2; const sill = kit.sill ?? 1.0, lin = 2.15; P(u0, 0, side, FH); P(u0 + side + ww, 0, side, FH); P(u0 + side, 0, ww, sill); P(u0 + side, lin, ww, FH - lin);
             if (kit.glass !== false && rng.chance(kit.glass ?? 0.55)) { const gg = Blocks.newGroup({ hp: 10, mat: 'glass', kind: 'glass' }); P(u0 + side, sill, ww, lin - sill, { group: gg, mat: 'glass', render: 'glass', color: 0xffffff, opaque: false, walk: false, noCover: true }); } }
         }

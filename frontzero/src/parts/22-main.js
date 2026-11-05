@@ -59,7 +59,7 @@ class Player {
     if (s.tool) { if (s.tool.id === 'torch' || s.tool.id === 'scope') { const held = a.tool; if (held || s.scoping) Operators.useTool(s, held, dt); if (!held) s.scoping = false; } else if (pr('tool')) Operators.useTool(s); }
     if (pr('ping')) { Pings.fromAim(s); s.lastPingT = G.time; }
     if (pr('orders')) UI.orders(this); if (pr('commander')) UI.commander(this); if (pr('inv') && G.mode?.kind === 'extraction' && s.state === 'alive') UI.inventory(this);
-    if (pr('nv')) { const opt = s.gun?.stats.vision; this.nvOn = !this.nvOn; this.note(this.nvOn ? (opt === 'thermal' ? 'Thermal optic' : 'Night vision on') : 'Vision normal', '', 0, 1); Audio.play('ui', 0.5); }
+    if (pr('nv')) { this.nvOn = !this.nvOn; this.note(this.nvOn ? 'Thermal vision on' : 'Thermal vision off', '', 0, 1); Audio.play('ui', 0.5); }
     if (pr('map')) this.mapZoom = this.mapZoom === 140 ? 380 : 140;
     if (this.idx === 0) UI.scoreboard(a.score);
     if (pr('inv') && G.mode?.openInventory) G.mode.openInventory(this);
@@ -96,7 +96,7 @@ class Player {
     const g = s.gun; if (g) { const z = g.stats.zoom * (s.scoping ? 1 : 1); fov = lerp(fovBase, fovBase / Math.max(1, z), s.adsAmt); } if (s.scoping) fov = fovBase / 5; if (s.sprinting) fov += 4;
     cam.fov = damp(cam.fov, fov, 18, dt); cam.updateProjectionMatrix(); this.camYaw = this.lookYaw; this.pxPerDeg = this.rect.h / cam.fov;
     // vision: optic (thermal / night vision when aiming), helmet NVG toggle, Ghost's Phantom
-    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision && this.nvOn !== false) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.nvOn) this.visMode = VIS.NV;
+    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision && this.nvOn !== false) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.nvOn) this.visMode = VIS.THERMAL;
     this.vm.cam.fov = CONFIG.render.vmFov * (fov / fovBase) ** 0.3; this.vm.cam.aspect = cam.aspect; this.vm.cam.updateProjectionMatrix();
   }
 }
@@ -130,7 +130,7 @@ const Game = {
   },
   clearWorld() {
     Soldiers.clear(); Vehicles.clear(); Ballistics.clear(); Throwables.clear(); Deployables.clear(); Drones.clear(); Grapples.clear(); Chutes.clear(); Interact.clear(); Pings.clear(); HUDFeed.clear(); Radio.clear(); AI.clear(); SupplyDrop.clear();
-    FX.clear(); Foliage.reset(); Blocks.reset(); Col.clear(); Nav.reset(); Cover.reset(); SoldierGfx.clear(); Events.clearAll(); if (typeof Loot !== 'undefined') Loot.clear(); Audio.forceIntensity = null;
+    FX.clear(); Foliage.reset(); Blocks.reset(); Col.clear(); Nav.reset(); Cover.reset(); SoldierGfx.clear(); Events.clearAll(); Chests.clear(); if (typeof Loot !== 'undefined') Loot.clear(); Audio.forceIntensity = null;
   },
   teardown() { if (G.mode) { try { G.mode.dispose(); } catch (e) { console.error(e); } } G.mode = null; G.inGame = false; this.clearWorld(); },
   quit(to = 'title') { this.teardown(); for (const P of G.players) P.dispose(); G.players = []; Precip.clear(); document.getElementById('hudRoot').innerHTML = ''; document.getElementById('split').innerHTML = ''; UI.scoreboard(false); Input.unlock(); Save.save(); UI.open(to); },
@@ -149,7 +149,7 @@ function logicStep(dt) {
   // one misbehaving bot must never freeze the world: isolate each brain, report the first failure
   for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') { try { s.brain.update(dt); } catch (e) { if (!G.brainErr) { G.brainErr = 1; console.error('bot brain', e); } s.ctl.mz = s.ctl.mx = 0; s.ctl.fire = false; } }
   Soldiers.rebuild(); for (const s of Soldiers.list) s.step(dt);
-  Vehicles.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
+  Vehicles.update(dt); Chests.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
   if (G.mode) G.mode.update(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
 }
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
@@ -278,5 +278,5 @@ async function boot() {
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();

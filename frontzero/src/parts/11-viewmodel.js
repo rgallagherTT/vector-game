@@ -15,6 +15,7 @@ function camoTexture(camoId) {
   const t = canvasTex(c, 1); gunMats.set(key, t); return t;
 }
 // returns { group, muzzle, mag, magHome, bolt, sightY, sightZ, optic }
+const VM_GLASS = { m: null };
 function buildGunModel(gun, opts = {}) {
   const def = gun.def, M = def.model || {}; const g = new THREE.Group(); const body = gunMat(parseHex(M.color || '#2a2a2a')), acc = gunMat(parseHex(M.accent || '#444'), 0.7, 0.3), dark = gunMat(0x151515, 0.5, 0.6);
   let bodyMat = body; if (gun.camo && gun.camo !== 'factory') { const t = camoTexture(gun.camo); if (t) { bodyMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, metalness: 0.3 }); } }
@@ -53,16 +54,19 @@ function buildGunModel(gun, opts = {}) {
   if (gun.att.grip === 'bipod') { box(dark, 0.02, -0.04, front - 0.05, 0.01, 0.07, 0.01); box(dark, -0.02, -0.04, front - 0.05, 0.01, 0.07, 0.01); }
   if (gun.att.laser) { box(dark, 0.03, 0.02, front - 0.06, 0.02, 0.025, 0.05); const glow = new THREE.Mesh(GEO.sphere, gun.att.laser === 'laser' ? MAT.glowRed : MAT.glowAmber); glow.scale.setScalar(0.006); glow.position.set(0.03, 0.02, front - 0.09); g.add(glow); }
   // optic
-  let sightY = M.pistol ? 0.085 : 0.075, sightZ = 0.05; const op = gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron'); const top = 0.02 + H / 2;
+  const optic = []; let sightY = M.pistol ? 0.085 : 0.075, sightZ = 0.05; const op = gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron'); const top = 0.02 + H / 2;
   if (op === 'iron') { box(dark, 0, top + 0.02, front + 0.02, 0.006, 0.03, 0.006); box(dark, 0, top + 0.02, rz1 - 0.04, 0.02, 0.025, 0.006); sightY = top + 0.035; }
   else { const A = DATA.attachments[op] || {}; const zoom = A.zoom || 1; if (!M.pistol) box(dark, 0, top + 0.006, 0, 0.03, 0.012, 0.14);
-    if (zoom <= 1.35) { box(dark, 0, top + 0.035, 0, 0.034, 0.045, 0.05); const gl = new THREE.Mesh(GEO.box, MAT.glass); gl.scale.set(0.028, 0.035, 0.002); gl.position.set(0, top + 0.04, -0.026); g.add(gl); sightY = top + 0.04; }
-    else if (A.vision) { box(dark, 0, top + 0.045, 0.0, 0.05, 0.06, 0.16); sightY = top + 0.045; }
-    else { const sl = 0.12 + Math.min(zoom, 12) * 0.018; cyl(dark, 0, top + 0.045, 0, 0.022, sl, g, GEO.cyl16); cyl(dark, 0, top + 0.045, -sl / 2, 0.03, 0.04, g, GEO.cyl16); cyl(dark, 0, top + 0.045, sl / 2, 0.026, 0.03, g, GEO.cyl16); sightY = top + 0.045; } }
+    if (zoom <= 1.35) { // open frame: you look through it, a red dot floats in the window
+      const cy = top + 0.04; box(dark, 0, top + 0.012, 0, 0.036, 0.008, 0.05); box(dark, 0, cy + 0.024, -0.02, 0.036, 0.004, 0.012); box(dark, -0.0175, cy, -0.02, 0.002, 0.05, 0.012); box(dark, 0.0175, cy, -0.02, 0.002, 0.05, 0.012);
+      if (!VM_GLASS.m) VM_GLASS.m = new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.08, depthWrite: false }); const gl = new THREE.Mesh(GEO.box, VM_GLASS.m); gl.scale.set(0.032, 0.044, 0.001); gl.position.set(0, cy, -0.026); g.add(gl);
+      const dot = new THREE.Mesh(GEO.sphere, MAT.glowRed || new THREE.MeshBasicMaterial({ color: 0xff2a1a })); dot.scale.setScalar(op === "holo" ? 0.0022 : 0.0016); dot.position.set(0, cy, -0.027); g.add(dot); sightY = cy; }
+    else if (A.vision) { optic.push(box(dark, 0, top + 0.045, 0.0, 0.05, 0.06, 0.16)); sightY = top + 0.045; }
+    else { const sl = 0.12 + Math.min(zoom, 12) * 0.018; optic.push(cyl(dark, 0, top + 0.045, 0, 0.022, sl, g, GEO.cyl16), cyl(dark, 0, top + 0.045, -sl / 2, 0.03, 0.04, g, GEO.cyl16), cyl(dark, 0, top + 0.045, sl / 2, 0.026, 0.03, g, GEO.cyl16)); sightY = top + 0.045; } }
   if (M.pump) box(acc, 0, -0.01, front - hand * 0.4, W * 1.25, H * 0.7, 0.12);
   const bolt = box(dark, W / 2 + 0.004, 0.03, rz1 - 0.08, 0.01, 0.012, 0.03);
   g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
-  return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt, boltHome: bolt.position.clone(), sightY, sightZ, optic: op, front, rz1 };
+  return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt, boltHome: bolt.position.clone(), sightY, sightZ, optic: op, opticMeshes: optic, front, rz1 };
 }
 
 // keyframes: t in [0,1] of the animation; g = gun offset [x,y,z,rx,ry,rz], lh = left-hand target (gun space), mag = mag offset [x,y,z,visible]
@@ -133,6 +137,7 @@ class ViewModel {
       if (A) { px += A.g[0]; py += A.g[1]; pz += A.g[2]; rx += A.g[3]; ry += A.g[4]; rz += A.g[5]; lhKey = A.lh || 'hand'; rhKey = A.rh; magOff = A.mag; if (A.snd && !this.sndDone.has(A.snd)) { this.sndDone.add(A.snd); Audio.play(A.snd, 0.7); } }
       if (this.animT >= 1) { const cb = this.animCb; this.anim = null; this.animCb = null; if (cb) cb(); }
     }
+    if (M.opticMeshes && M.opticMeshes.length) { const hide = adsT > 0.7; for (const m of M.opticMeshes) m.visible = !hide; }
     this.holder.position.set(px + this.kick.x, py + this.kick.y, pz + this.kick.z); this.holder.rotation.set(rx + this.kickR.x, ry + this.kickR.y, rz + this.kickR.z, 'YXZ');
     if (M.mag) { if (magOff) { M.mag.position.set(M.magHome.x + magOff[0], M.magHome.y + magOff[1], M.magHome.z + magOff[2]); M.mag.visible = magOff[3] > 0.5; } else { M.mag.position.copy(M.magHome); M.mag.visible = true; } }
     if (M.bolt) M.bolt.position.z = M.boltHome.z + (rhKey === 'boltback' ? 0.06 : 0);

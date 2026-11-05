@@ -96,7 +96,7 @@ const UI = {
   // gunsmith: pick a weapon for the slot, then attachments / ammo / camo with live stat bars and a 3D preview
   s_gunsmith(o) {
     const opId = o.op || G.save.lastOperator; const op = DATA.operators[opId]; const slotK = o.slot || 'primary'; const A = Progress.armoury(opId);
-    const pool = Object.values(DATA.weapons).filter((w) => slotK === 'secondary' ? w.sidearm : slotK === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && (o.free || DATA.classes[op.class].weapons.includes(w.class))));
+    const pool = Object.values(DATA.weapons).filter((w) => (!w.special || Progress.ownsWeapon(w.id))) .filter((w) => slotK === 'secondary' ? w.sidearm : slotK === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && (o.free || DATA.classes[op.class].weapons.includes(w.class))));
     let cur = this.gsWork; if (!cur || cur.slot !== slotK || cur.op !== opId) { const bp = G.save.blueprints.find((x) => x.id === A[slotK]); const wid = bp ? bp.weapon : (pool.find((w) => w.id === (slotK === 'primary' ? op.loadout.primary : slotK === 'secondary' ? op.loadout.secondary : op.loadout.launcher)) || pool[0]).id;
       cur = this.gsWork = { op: opId, slot: slotK, weapon: wid, att: bp ? Object.assign({}, bp.att) : defaultAttach(DATA.weapons[wid]), ammo: bp?.ammo || defaultAmmo(DATA.weapons[wid].caliber), camo: bp?.camo || 'factory', name: bp?.name || DATA.weapons[wid].name }; }
     const def = DATA.weapons[cur.weapon]; const wl = Progress.weaponLevel(cur.weapon); const base = weaponStats(def, {}, cur.ammo), st = weaponStats(def, cur.att, cur.ammo);

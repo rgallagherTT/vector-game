@@ -14,13 +14,13 @@ const SoldierGfx = {
   meshes: {}, free: [], mats: [], hidden: null,
   init() {
     for (const [id] of SG_PARTS) {
-      const geo = id === 'head' ? new THREE.BoxGeometry(1, 1, 1, 1, 1, 1) : GEO.box; const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: id === 'visor' ? 0.2 : 0.85, metalness: id === 'gun' || id === 'visor' ? 0.5 : 0.05, emissive: 0xffffff, emissiveIntensity: 0 });
+      const geo = id === 'head' ? new THREE.BoxGeometry(1, 1, 1, 1, 1, 1) : GEO.box; const mat = id === 'band' || id === 'visor' ? new THREE.MeshBasicMaterial({ color: 0xffffff }) : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: id === 'gun' || id === 'visor' ? 0.5 : 0.05, emissive: 0xffffff, emissiveIntensity: 0 });
       this.mats.push(mat); const m = new THREE.InstancedMesh(geo, mat, SG_CAP); m.count = SG_CAP; m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
       for (let i = 0; i < SG_CAP; i++) { m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.setColorAt(i, _c1.setHex(0x888888)); } WORLD.add(m); this.meshes[id] = m;
     }
     for (let i = SG_CAP - 1; i >= 0; i--) this.free.push(i);
   },
-  thermal(on) { for (const m of this.mats) { m.emissive.setRGB(1, 0.95, 0.85); m.emissiveIntensity = on ? 1.6 : 0; } },
+  thermal(on) { for (const m of this.mats) { if (!m.emissive) continue; m.emissive.setRGB(1, 0.95, 0.85); m.emissiveIntensity = on ? 1.6 : 0; } },
   acquire(s) {
     if (s.gfx >= 0) return s.gfx; const i = this.free.pop(); if (i === undefined) return -1; s.gfx = i;
     const look = s.look || Looks.forSoldier(s); s.look = look; const set = (id, hex) => this.meshes[id].setColorAt(i, _c1.setHex(hex));
@@ -97,7 +97,7 @@ const SoldierGfx = {
     // arms
     for (const side of [-1, 1]) { const a = side < 0 ? armL : armR; const sd = side < 0 ? armSideL : armSideR;
       M[6].copy(M[4]).multiply(_m1.makeTranslation(side * 0.28, 0.48, 0)).multiply(_m2.makeRotationFromEuler(_e1.set(a, 0, side * sd * 0.6, 'XYZ'))); this.put(side < 0 ? 'uarmL' : 'uarmR', i, M[6], 0, -0.15, 0, 0.12, 0.3, 0.12);
-      if (side < 0) this.put('band', i, M[6], 0, -0.08, 0, 0.13, 0.07, 0.13);
+      if (side < 0) this.put('band', i, M[6], 0, -0.06, 0, 0.15, 0.13, 0.15);
       M[7].copy(M[6]).multiply(_m1.makeTranslation(0, -0.3, 0)).multiply(_m2.makeRotationX(side < 0 ? -elb - 0.3 : -elb)); this.put(side < 0 ? 'farmL' : 'farmR', i, M[7], 0, -0.14, 0, 0.1, 0.28, 0.1); }
     // weapon: held in front of the chest, pitched with the aim
     if (gunShow && s.gun && state !== 'dead') { const L = s.gun.def.model.tube ? 1.0 : s.gun.def.model.pistol ? 0.25 : clamp((s.gun.def.model.len || 0.4) + (s.gun.def.model.barrel || 0.3) + 0.25, 0.5, 1.4);
@@ -109,10 +109,10 @@ const SoldierGfx = {
 const Looks = {
   forSoldier(s) {
     const op = s.op; const camo = (DATA.camos || []).find((c) => c.id === s.camo) || null; const fac = DATA.factions[s.faction] || null;
-    const band = s.team === 0 ? 0x3f8fd8 : 0xd8402a; const skins = [0xc08a62, 0x8a5a3a, 0xe0b090, 0x6a4430, 0xd8a078];
-    if (op && op.look && !s.isBot) return { top: parseHex(op.look.top), pants: parseHex(op.look.pants), helmet: parseHex(op.look.helmet), visor: parseHex(op.look.visor || '#1a2a3a'), skin: parseHex(op.look.skin || '#c08a62'), gear: parseHex(op.look.gear || '#3a3a30'), band, vest: parseHex(op.look.vest || op.look.top) };
+    const band = s.team === 0 ? 0x3aa8ff : s.team === 1 ? 0xff3a28 : 0xff9a20; const packT = _c2.setHex(band).multiplyScalar(0.55).getHex(); const skins = [0xc08a62, 0x8a5a3a, 0xe0b090, 0x6a4430, 0xd8a078];
+    if (op && op.look && !s.isBot) return { top: parseHex(op.look.top), pants: parseHex(op.look.pants), helmet: parseHex(op.look.helmet), visor: band, skin: parseHex(op.look.skin || '#c08a62'), gear: packT, band, vest: parseHex(op.look.vest || op.look.top) };
     const c = camo ? camo.colors.map(parseHex) : fac ? [parseHex(fac.uniform), parseHex(fac.uniform2 || fac.uniform)] : [0x4a5040, 0x3a3e34]; const r = new RNG(s.id * 77);
     const dark = (h, k) => _c2.setHex(h).multiplyScalar(k).getHex();
-    return { top: c[0], pants: c[1] ?? dark(c[0], 0.8), helmet: dark(c[0], s.boss ? 0.5 : 0.85), visor: s.boss ? 0xd8402a : 0x1a2028, skin: skins[r.int(0, skins.length - 1)], gear: dark(c[1] ?? c[0], 0.7), band: s.boss ? 0xffd040 : band, vest: dark(c[0], 0.75) };
+    return { top: c[0], pants: c[1] ?? dark(c[0], 0.8), helmet: dark(c[0], s.boss ? 0.5 : 0.85), visor: s.boss ? 0xffd040 : band, skin: skins[r.int(0, skins.length - 1)], gear: packT, band: s.boss ? 0xffd040 : band, vest: dark(c[0], 0.75) };
   },
 };

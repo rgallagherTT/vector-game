@@ -34,7 +34,7 @@ class Soldier {
     this.vest = gear(L.vest); this.helmet = gear(L.helmet); if (L.vestDur != null) this.vest.dur = L.vestDur; if (L.helmetDur != null) this.helmet.dur = L.helmetDur;
     this.throwables = Object.assign({}, L.throwables || { frag: 2, smoke: 1 }); this.throwSel = Object.keys(this.throwables)[0] || 'frag';
     this.meds = Object.assign({ bandage: 3, medkit: 1, stim: 1 }, L.meds || {}); this.reserve = {};
-    for (const g of this.weapons) if (g && !L.ammo) { const per = g.isLauncher ? 3 : g.def.class === 'sniper' ? g.stats.mag * 5 : g.def.class === 'lmg' ? g.stats.mag * 2 : g.stats.mag * 4; this.reserve[g.ammo] = (this.reserve[g.ammo] || 0) + per; }
+    for (const g of this.weapons) if (g && !L.ammo) { const per = g.isLauncher ? 8 : g.def.sidearm ? Math.max(120, g.stats.mag * 8) : Math.max(240, g.stats.mag * 8); this.reserve[g.ammo] = (this.reserve[g.ammo] || 0) + per; }
     if (L.ammo) for (const k in L.ammo) this.reserve[k] = L.ammo[k];
     this.recalcWeight(); if (this.player) this.player.vm.setGun(this.gun);
   }
@@ -444,7 +444,7 @@ class Soldier {
     if (!(this.throwables[t] > 0)) this.cycleThrow(); return true;
   }
   cycleThrow() { const ks = Object.keys(this.throwables).filter((k) => this.throwables[k] > 0); if (!ks.length) return; const i = ks.indexOf(this.throwSel); this.throwSel = ks[(i + 1) % ks.length]; }
-  addAmmo(frac = 1) { for (const g of this.weapons) if (g) { const per = g.isLauncher ? 2 : g.stats.mag * 3; this.reserve[g.ammo] = Math.min((this.reserve[g.ammo] || 0) + Math.ceil(per * frac), per * 2 + g.stats.mag); } }
+  addAmmo(frac = 1) { for (const g of this.weapons) if (g) { const per = g.isLauncher ? 3 : g.def.sidearm ? Math.max(60, g.stats.mag * 4) : Math.max(120, g.stats.mag * 4); this.reserve[g.ammo] = Math.min((this.reserve[g.ammo] || 0) + Math.ceil(per * frac), g.isLauncher ? 10 : per * 3); } }
   noise(r, kind) { AI.noise(this.pos, r, this, kind); }
   remove() { Soldiers.remove(this); Grapples.remove(this); Chutes.remove(this); if (this.vehicle) this.vehicle.exit(this, true); }
 }

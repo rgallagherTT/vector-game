@@ -18,6 +18,7 @@ function weaponStats(def, att = {}, ammoId = null) {
   if (def.class === 'sniper' && !att.optic) { s.zoom = 8; s.scope = true; s.reticle = 'mil'; }
   if (s.suppressed) s.flash = 0.25;
   const am = DATA.ammo[ammoId]; if (am) { s.vel *= am.vel || 1; if (am.pellets) s.pellets = am.pellets; if (am.spread != null) s.pellet = am.spread; }
+  if (def.class !== 'launcher') s.dmg *= CONFIG.gunDmgMul || 1;
   s.interval = 60 / s.rpm; return s;
 }
 // deterministic recoil pattern per weapon: learnable, slightly different for each gun
@@ -132,7 +133,7 @@ const Damage = {
   // (blunt trauma ~22%). Plates lose durability either way, faster to rounds they stop.
   armour(slot, dmg, pen, armourMul) {
     if (!slot || slot.tier <= 0 || slot.dur <= 0) return { dmg, blocked: false, broke: false };
-    const T = slot.tier; let mul, wear; if (pen >= T) { mul = 1; wear = 0.35; } else if (pen === T - 1) { mul = 0.55; wear = 0.7; } else { mul = 0.22; wear = 1.0; }
+    const T = slot.tier; let mul, wear; if (pen >= T) { mul = 1; wear = 0.35; } else if (pen === T - 1) { mul = 0.82; wear = 0.7; } else { mul = 0.62; wear = 1.0; }
     slot.dur = Math.max(0, slot.dur - dmg * wear * (armourMul || 1) * 0.45); const broke = slot.dur <= 0; return { dmg: dmg * mul, blocked: mul < 1, broke };
   },
   bullet(s, part, p, hp, dir) {

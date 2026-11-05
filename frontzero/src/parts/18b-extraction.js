@@ -184,6 +184,7 @@ class Extraction extends GameMode {
       for (let i = 0; i < n; i++) { const pt = this.spot(p, rng, 0.9); if (pt) Loot.container(pt, rng.pick(kinds), null, { tier: p.tier }); }
       if (p.key) { const pt = this.spot(p, rng, 0.35); if (pt) { const items = Loot.roll('strong', p.tier, rng); if (quest.length && rng.chance(0.7)) items.push(Items.make(quest.shift())); Loot.container(pt, 'strong', null, { tier: p.tier, key: p.key, items, name: p.name + ' strongroom' }); } } }
     for (const id of quest) { const p = pois.slice().sort((a, b) => b.tier - a.tier)[0]; const pt = p && this.spot(p, rng, 0.5); if (pt) Loot.container(pt, 'safe', null, { tier: p.tier, items: [Items.make(id), ...Loot.roll('safe', p.tier, rng)] }); }
+    for (let i = 0; i < 3; i++) { const p = rng.pick(pois); const pt = p && this.spot(p, rng, 0.6); if (pt) { const sp = SPECIALS(); Loot.container(pt, 'strong', null, { tier: 5, name: 'Supply chest', items: [Items.make(rng.pick(sp).id), ...Loot.roll('supply', 4, rng)] }); } }
     for (let i = 0; i < 26; i++) { const st = rng.pick(World.sites.length ? World.sites : [{ x: 0, z: 0, r: 200 }]); const pt = this.spot({ x: st.x, z: st.z, r: st.r || 80 }, rng, 1); if (pt) Loot.container(pt, 'jacket', null, { tier: 1 }); }
     // garrison at each POI, boss + escort at the boss POI
     const tierDiff = ['recruit', 'recruit', 'recruit', 'regular', 'hardened', 'veteran'];

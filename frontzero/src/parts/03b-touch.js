@@ -25,7 +25,7 @@ const TOUCH_BTNS = [
   ['orders', 'SQUAD', 'orders', 'right:46vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
   ['commander', 'CMD', 'commander', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top cmd'],
   ['inv', 'BAG', 'inv', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top bag'],
-  ['nv', 'NV', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['nv', 'THERM', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
   ['melee', 'KNIFE', 'melee', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
   ['seat', 'SEAT', 'seat', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm veh'],
 ];

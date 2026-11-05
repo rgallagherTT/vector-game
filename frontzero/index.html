@@ -192,6 +192,29 @@ body.touch .hud .compass{top:4px;width:34%;left:38%}body.touch .hud .bearing{top
 body.touch .hud .feed{top:52px;font-size:10px}body.touch .hud .extract{top:120px;width:190px;font-size:10px}
 body.touch .hud .radio{left:10px;top:118px;bottom:auto;max-width:250px;font-size:11px}
 body.touch .hud .prompt{top:auto;bottom:30%}
+/* ---------------- scope, thermal scan, team colours ---------------- */
+.hud .scope{background:radial-gradient(circle at 50% 50%,transparent 0,transparent 33.6vmin,rgba(0,0,0,.92) 34.2vmin,#020405 40vmin);transition:opacity .1s}
+.hud .scope .lens{position:absolute;left:50%;top:50%;width:68vmin;height:68vmin;border-radius:50%;transform:translate(-50%,-50%);overflow:hidden;box-shadow:inset 0 0 6vmin 1.5vmin rgba(0,0,0,.85),inset 0 0 0 .4vmin rgba(0,0,0,.9);background:radial-gradient(circle at 50% 50%,transparent 60%,rgba(20,40,50,.18) 100%)}
+.hud .scope .lens .r{position:absolute;inset:0;left:0;top:0;width:100%;height:100%}
+.hud .scope .lens .r svg{width:100%;height:100%;display:block}
+.hud .scope .lens .r line{stroke:#050505}.hud .scope .lens .r text{font:3px var(--mono);fill:#111}.hud .scope .lens .r .dot{fill:#ff3a28}.hud .scope .lens .r .chev{fill:none;stroke:#ff3a28;stroke-width:1.2}.hud .scope .lens .r .ring{fill:none;stroke:rgba(0,0,0,.5);stroke-width:.4}
+.hud .scope .glare{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 30% 25%,rgba(180,230,255,.10),transparent 30%),radial-gradient(circle at 70% 80%,rgba(255,200,120,.05),transparent 25%)}
+.hud .scope .ring{position:absolute;left:50%;top:50%;width:70vmin;height:70vmin;margin:-35vmin 0 0 -35vmin;border-radius:50%;border:.5vmin solid #151a1d;box-shadow:0 0 0 .25vmin rgba(69,214,232,.35),0 0 3vmin rgba(69,214,232,.15)}
+.hud .scope .sread{position:absolute;font:700 1.7vmin/1.5 var(--mono);color:rgba(220,240,245,.85);letter-spacing:.08em;text-shadow:0 0 6px rgba(0,0,0,.9)}
+.hud .scope .sread b{color:#fff;font-size:2.3vmin;margin:0 .4vmin}.hud .scope .sread .th{color:#ff7a3a}
+.hud .scope .sread.t{left:50%;top:calc(50% - 38.5vmin);transform:translateX(-50%);white-space:nowrap}
+.hud .scope .sread.rr{left:calc(50% + 37vmin);top:50%;transform:translateY(-50%)}.hud .scope .sread.l{right:calc(50% + 37vmin);top:50%;transform:translateY(-50%);text-align:right}
+.hud .scope .sread.b{left:50%;top:calc(50% + 36vmin);transform:translateX(-50%);text-align:center;width:30vmin}
+.hud .scope .sread .bb{height:.6vmin;background:rgba(255,255,255,.15);margin-top:.4vmin;border-radius:.3vmin;overflow:hidden}.hud .scope .sread .bb i{display:block;height:100%;background:var(--cyan)}.hud .scope .sread .bb i.low{background:var(--red)}
+.hud .scan{position:absolute;inset:0;pointer-events:none;z-index:3}
+.hud .scan .sc{position:absolute;transform:translate(-50%,-50%);border:2px solid;border-radius:3px;box-shadow:0 0 8px currentColor,inset 0 0 10px currentColor}
+.hud .scan .sc span{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font:700 10px var(--mono);white-space:nowrap;text-shadow:0 0 4px #000}
+.hud .scan .sc.e{color:#ff3a28;background:rgba(255,58,40,.10)}.hud .scan .sc.f{color:#3aa8ff;background:rgba(58,168,255,.06);border-style:dashed}
+.hud .xh.enemy i{background:#ff3a28;box-shadow:0 0 4px #ff3a28}.hud .xh.friend i{background:#3aa8ff}
+.hud .pings .pg.ally{color:#3aa8ff}.hud .pings .pg.ally .d{width:9px;height:9px;border-width:2px}
+.hud .pings .pg.chest{color:#ffd040}.hud .pings .pg.chest .d{border-color:#ffd040;background:rgba(255,208,64,.35)}
+.hud .mret{position:absolute;left:50%;top:50%;width:26vmin;height:26vmin;margin:-13vmin;border-radius:50%;display:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35),inset 0 0 2vmin rgba(0,0,0,.6);border:.4vmin solid #111}
+.hud .mret i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#ff3a28;box-shadow:0 0 6px #ff3a28}
 /* ---------------- touch controls ---------------- */
 #touch{position:fixed;inset:0;z-index:15;pointer-events:none;display:none;touch-action:none}
 #touch.show{display:block}
@@ -379,6 +402,7 @@ const CONFIG = {
   rappel: { speed: 5.5, fast: 10 },
   para: { fall: 5.2, glide: 9.5, autoDeploy: 22, wingFall: 11, wingSpeed: 34, wingMinHeight: 70 },
   ballistic: { gravity: 9.81, maxLife: 3.2, tracerEvery: 3, penLoss: { wood: 0.35, adobe: 0.65, concrete: 0.8, metal: 0.55, glass: 0.1, foliage: 0.05, tarp: 0.05 } },
+  gunDmgMul: 1.55,
   body: { hp: 100, mult: { head: 2.4, chest: 1.0, stomach: 1.0, arm: 0.65, leg: 0.7 }, bleedOut: 28, reviveTime: 4.2, downedHp: 30, reviveHp: 35 },
   ai: { near: 90, mid: 320, think: [0.25, 0.6, 1.6], perceive: [0.1, 0.3, 0.9], fov: 2.4, hearGun: 260, hearStep: 22 },
   vehicle: { gravity: 15.5, hoverRide: 1.0, hoverRange: 2.3, enterDist: 4.5, respawn: 45 },
@@ -848,7 +872,7 @@ const KEYHELP = [
   ['W A S D', 'move'], ['Shift', 'sprint (scoped: hold breath)'], ['Space', 'jump / mantle / vault · in the air: wingsuit, then parachute'], ['C / Ctrl', 'crouch (toggle / hold) · sprint + C slides'], ['Z', 'prone'],
   ['Q / E', 'lean'], ['LMB / RMB', 'fire / aim down sights'], ['R', 'reload (hold: check ammo)'], ['B', 'fire mode'], ['V', 'melee'], ['1 2 3 / wheel', 'primary · sidearm · launcher'],
   ['G / 5', 'throw equipment / cycle'], ['Y', 'grappling hook'], ['F', 'interact · hold: revive, loot, repair · enter vehicles · rappel from edges'],
-  ['X', 'signature gadget'], ['4', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'night vision / thermal optic'],
+  ['X', 'signature gadget'], ['4', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'thermal vision on / off'],
   ['U', 'squad orders'], ['O', 'commander support'], ['M / Tab', 'map / scoreboard'], ['I', 'inventory (extraction)'], ['Esc', 'pause'],
 ];
 // §TOUCH -------------------------------------------------------------------------------------------
@@ -878,7 +902,7 @@ const TOUCH_BTNS = [
   ['orders', 'SQUAD', 'orders', 'right:46vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
   ['commander', 'CMD', 'commander', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top cmd'],
   ['inv', 'BAG', 'inv', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top bag'],
-  ['nv', 'NV', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['nv', 'THERM', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
   ['melee', 'KNIFE', 'melee', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
   ['seat', 'SEAT', 'seat', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm veh'],
 ];
@@ -1812,8 +1836,8 @@ const Cover = {
 // ---- building kits ------------------------------------------------------------------------
 const FH = 3.2; // storey height
 const Build = {
-  rng: null, sites: [], structures: [], cablecars: [], pads: [], flags: [], lights: [], neon: [],
-  reset() { this.sites.length = 0; this.structures.length = 0; this.cablecars.length = 0; this.pads.length = 0; this.flags.length = 0; this.lights.length = 0; this.neon.length = 0; if (this.decor) { WORLD.remove(this.decor); } this.decor = new THREE.Group(); WORLD.add(this.decor); this.mb = new MeshBuilder(); },
+  rng: null, houses: [], sites: [], structures: [], cablecars: [], pads: [], flags: [], lights: [], neon: [],
+  reset() { this.houses.length = 0; this.sites.length = 0; this.structures.length = 0; this.cablecars.length = 0; this.pads.length = 0; this.flags.length = 0; this.lights.length = 0; this.neon.length = 0; if (this.decor) { WORLD.remove(this.decor); } this.decor = new THREE.Group(); WORLD.add(this.decor); this.mb = new MeshBuilder(); },
   // world point from building-local (lx, lz) at yaw around (cx, cz)
   w(cx, cz, c, s, lx, lz) { return [cx + lx * c + lz * s, cz - lx * s + lz * c]; },
   box(cx, cz, c, s, yaw, lx, y, lz, hx, hy, hz, o) { const [x, z] = this.w(cx, cz, c, s, lx, lz); return Blocks.add(Object.assign({ x, y, z, hx, hy, hz, yaw }, o)); },
@@ -1822,14 +1846,14 @@ const Build = {
     const c = Math.cos(yaw), s = Math.sin(yaw); const t = kit.mat === 'wood' ? 0.12 : kit.mat === 'metal' ? 0.1 : 0.22;
     let gy = -1e9; for (const [lx, lz] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, 0]]) { const [x, z] = this.w(cx, cz, c, s, lx, lz); gy = Math.max(gy, World.heightAt(x, z)); }
     const base = gy + (kit.stilts ? 2.2 : 0.12); const col = kit.color; const B = (lx, y, lz, hx, hy, hz, o = {}) => this.box(cx, cz, c, s, yaw, lx, y, lz, hx, hy, hz, Object.assign({ mat: kit.mat, render: kit.render || kit.mat, color: col }, o));
-    const bld = { cx, cz, yaw, w, d, floors, base, top: base + floors * FH, kit, groups: [] };
+    const bld = { cx, cz, yaw, w, d, floors, base, top: base + floors * FH, kit, groups: [], doors: [] }; this.houses.push(bld);
     // foundation / stilts
     if (kit.stilts) { for (const [lx, lz] of [[-w / 2 + 0.3, -d / 2 + 0.3], [w / 2 - 0.3, -d / 2 + 0.3], [-w / 2 + 0.3, d / 2 - 0.3], [w / 2 - 0.3, d / 2 - 0.3]]) { const [x, z] = this.w(cx, cz, c, s, lx, lz); const h0 = World.heightAt(x, z); const hh = (base - h0) / 2 + 0.3; Blocks.add({ x, y: h0 + hh - 0.3, z, hx: 0.15, hy: hh, hz: 0.15, mat: 'wood', render: 'wood', color: 0x6a4e34, noCover: true }); }
       B(0, base - 0.08, 0, w / 2, 0.08, d / 2, { render: 'wood' });
       const [lx, lz] = [0, d / 2 + 1.6]; B(lx, base - 1.1, lz, 0.6, 0.05, 1.6, { ramp: 2.2, cy: base - 2.2 - 0.05 + 0.0, rx: Math.atan2(2.2, 3.2), yaw: yaw + Math.PI, noCover: true });
     } else B(0, base - 0.6, 0, w / 2 + 0.05, 0.6, d / 2 + 0.05, { noCover: true });
-    const stairs = !kit.noStairs && floors >= 1 && w >= 6 && d >= 7 && (floors > 1 || kit.roof === 'flat');
-    const run = 5.0, sw = 1.25, sx = -w / 2 + t + sw / 2 + 0.05, sz0 = -d / 2 + t + 0.4;
+    const run = d >= 8.5 ? 5.0 : 4.2; const stairs = !kit.noStairs && floors >= 1 && w >= 4.2 && d >= run + 1.9 && (floors > 1 || kit.roof === 'flat'); bld.stairs = stairs;
+    const sw = 1.25, sx = -w / 2 + t + sw / 2 + 0.05, sz0 = -d / 2 + t + 0.4;
     for (let f = 0; f < floors; f++) {
       const y0 = base + f * FH;
       // floor slab (upper floors), with a stair hole
@@ -1857,7 +1881,11 @@ const Build = {
           };
           const u0 = u - segL / 2;
           if (type === 'solid') P(u0, 0, segL, FH);
-          else if (type === 'door') { const dw = Math.min(1.3, segL - 0.3); const side = (segL - dw) / 2; P(u0, 0, side, FH); P(u0 + side + dw, 0, side, FH); P(u0 + side, 2.25, dw, FH - 2.25); }
+          else if (type === 'door') { const dw = Math.min(1.5, segL - 0.3); const side = (segL - dw) / 2; P(u0, 0, side, FH); P(u0 + side + dw, 0, side, FH); P(u0 + side, 2.3, dw, FH - 2.3);
+            // a doorstep: steps from the ground up to the floor so you can just walk in
+            const out = (k) => sd.ax ? [sd.ax * (sd.off + k), u] : [u, sd.az * (sd.off + k)]; const [ox, oz] = this.w(cx, cz, c, s, ...out(1.4)); const [ix, iz] = this.w(cx, cz, c, s, ...out(-1.4)); bld.doors.push({ x: ox, z: oz, ix, iz });
+            if (!kit.stilts) { const h0 = World.heightAt(ox, oz); const dh = base - h0; if (dh > 0.18) { const n = Math.min(8, Math.ceil(dh / 0.26)); for (let k = 0; k < n; k++) { const topY = base - k * dh / n; const bot = Math.min(h0, World.heightAt(...this.w(cx, cz, c, s, ...out(0.2 + k * 0.38)))) - 0.3; const [lx, lz] = out(0.2 + k * 0.38 + 0.19); const hw = dw / 2 + 0.25;
+              B(lx, (topY + bot) / 2, lz, sd.ax ? 0.19 : hw, (topY - bot) / 2, sd.ax ? hw : 0.19, { render: kit.slab || 'concrete', mat: 'concrete', noCover: true }); } } } }
           else { const ww = segL * 0.56; const side = (segL - ww) / 2; const sill = kit.sill ?? 1.0, lin = 2.15; P(u0, 0, side, FH); P(u0 + side + ww, 0, side, FH); P(u0 + side, 0, ww, sill); P(u0 + side, lin, ww, FH - lin);
             if (kit.glass !== false && rng.chance(kit.glass ?? 0.55)) { const gg = Blocks.newGroup({ hp: 10, mat: 'glass', kind: 'glass' }); P(u0 + side, sill, ww, lin - sill, { group: gg, mat: 'glass', render: 'glass', color: 0xffffff, opaque: false, walk: false, noCover: true }); } }
         }
@@ -2503,6 +2531,7 @@ function weaponStats(def, att = {}, ammoId = null) {
   if (def.class === 'sniper' && !att.optic) { s.zoom = 8; s.scope = true; s.reticle = 'mil'; }
   if (s.suppressed) s.flash = 0.25;
   const am = DATA.ammo[ammoId]; if (am) { s.vel *= am.vel || 1; if (am.pellets) s.pellets = am.pellets; if (am.spread != null) s.pellet = am.spread; }
+  if (def.class !== 'launcher') s.dmg *= CONFIG.gunDmgMul || 1;
   s.interval = 60 / s.rpm; return s;
 }
 // deterministic recoil pattern per weapon: learnable, slightly different for each gun
@@ -2617,7 +2646,7 @@ const Damage = {
   // (blunt trauma ~22%). Plates lose durability either way, faster to rounds they stop.
   armour(slot, dmg, pen, armourMul) {
     if (!slot || slot.tier <= 0 || slot.dur <= 0) return { dmg, blocked: false, broke: false };
-    const T = slot.tier; let mul, wear; if (pen >= T) { mul = 1; wear = 0.35; } else if (pen === T - 1) { mul = 0.55; wear = 0.7; } else { mul = 0.22; wear = 1.0; }
+    const T = slot.tier; let mul, wear; if (pen >= T) { mul = 1; wear = 0.35; } else if (pen === T - 1) { mul = 0.82; wear = 0.7; } else { mul = 0.62; wear = 1.0; }
     slot.dur = Math.max(0, slot.dur - dmg * wear * (armourMul || 1) * 0.45); const broke = slot.dur <= 0; return { dmg: dmg * mul, blocked: mul < 1, broke };
   },
   bullet(s, part, p, hp, dir) {
@@ -2746,6 +2775,7 @@ function camoTexture(camoId) {
   const t = canvasTex(c, 1); gunMats.set(key, t); return t;
 }
 // returns { group, muzzle, mag, magHome, bolt, sightY, sightZ, optic }
+const VM_GLASS = { m: null };
 function buildGunModel(gun, opts = {}) {
   const def = gun.def, M = def.model || {}; const g = new THREE.Group(); const body = gunMat(parseHex(M.color || '#2a2a2a')), acc = gunMat(parseHex(M.accent || '#444'), 0.7, 0.3), dark = gunMat(0x151515, 0.5, 0.6);
   let bodyMat = body; if (gun.camo && gun.camo !== 'factory') { const t = camoTexture(gun.camo); if (t) { bodyMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, metalness: 0.3 }); } }
@@ -2784,16 +2814,19 @@ function buildGunModel(gun, opts = {}) {
   if (gun.att.grip === 'bipod') { box(dark, 0.02, -0.04, front - 0.05, 0.01, 0.07, 0.01); box(dark, -0.02, -0.04, front - 0.05, 0.01, 0.07, 0.01); }
   if (gun.att.laser) { box(dark, 0.03, 0.02, front - 0.06, 0.02, 0.025, 0.05); const glow = new THREE.Mesh(GEO.sphere, gun.att.laser === 'laser' ? MAT.glowRed : MAT.glowAmber); glow.scale.setScalar(0.006); glow.position.set(0.03, 0.02, front - 0.09); g.add(glow); }
   // optic
-  let sightY = M.pistol ? 0.085 : 0.075, sightZ = 0.05; const op = gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron'); const top = 0.02 + H / 2;
+  const optic = []; let sightY = M.pistol ? 0.085 : 0.075, sightZ = 0.05; const op = gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron'); const top = 0.02 + H / 2;
   if (op === 'iron') { box(dark, 0, top + 0.02, front + 0.02, 0.006, 0.03, 0.006); box(dark, 0, top + 0.02, rz1 - 0.04, 0.02, 0.025, 0.006); sightY = top + 0.035; }
   else { const A = DATA.attachments[op] || {}; const zoom = A.zoom || 1; if (!M.pistol) box(dark, 0, top + 0.006, 0, 0.03, 0.012, 0.14);
-    if (zoom <= 1.35) { box(dark, 0, top + 0.035, 0, 0.034, 0.045, 0.05); const gl = new THREE.Mesh(GEO.box, MAT.glass); gl.scale.set(0.028, 0.035, 0.002); gl.position.set(0, top + 0.04, -0.026); g.add(gl); sightY = top + 0.04; }
-    else if (A.vision) { box(dark, 0, top + 0.045, 0.0, 0.05, 0.06, 0.16); sightY = top + 0.045; }
-    else { const sl = 0.12 + Math.min(zoom, 12) * 0.018; cyl(dark, 0, top + 0.045, 0, 0.022, sl, g, GEO.cyl16); cyl(dark, 0, top + 0.045, -sl / 2, 0.03, 0.04, g, GEO.cyl16); cyl(dark, 0, top + 0.045, sl / 2, 0.026, 0.03, g, GEO.cyl16); sightY = top + 0.045; } }
+    if (zoom <= 1.35) { // open frame: you look through it, a red dot floats in the window
+      const cy = top + 0.04; box(dark, 0, top + 0.012, 0, 0.036, 0.008, 0.05); box(dark, 0, cy + 0.024, -0.02, 0.036, 0.004, 0.012); box(dark, -0.0175, cy, -0.02, 0.002, 0.05, 0.012); box(dark, 0.0175, cy, -0.02, 0.002, 0.05, 0.012);
+      if (!VM_GLASS.m) VM_GLASS.m = new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.08, depthWrite: false }); const gl = new THREE.Mesh(GEO.box, VM_GLASS.m); gl.scale.set(0.032, 0.044, 0.001); gl.position.set(0, cy, -0.026); g.add(gl);
+      const dot = new THREE.Mesh(GEO.sphere, MAT.glowRed || new THREE.MeshBasicMaterial({ color: 0xff2a1a })); dot.scale.setScalar(op === "holo" ? 0.0022 : 0.0016); dot.position.set(0, cy, -0.027); g.add(dot); sightY = cy; }
+    else if (A.vision) { optic.push(box(dark, 0, top + 0.045, 0.0, 0.05, 0.06, 0.16)); sightY = top + 0.045; }
+    else { const sl = 0.12 + Math.min(zoom, 12) * 0.018; optic.push(cyl(dark, 0, top + 0.045, 0, 0.022, sl, g, GEO.cyl16), cyl(dark, 0, top + 0.045, -sl / 2, 0.03, 0.04, g, GEO.cyl16), cyl(dark, 0, top + 0.045, sl / 2, 0.026, 0.03, g, GEO.cyl16)); sightY = top + 0.045; } }
   if (M.pump) box(acc, 0, -0.01, front - hand * 0.4, W * 1.25, H * 0.7, 0.12);
   const bolt = box(dark, W / 2 + 0.004, 0.03, rz1 - 0.08, 0.01, 0.012, 0.03);
   g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
-  return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt, boltHome: bolt.position.clone(), sightY, sightZ, optic: op, front, rz1 };
+  return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt, boltHome: bolt.position.clone(), sightY, sightZ, optic: op, opticMeshes: optic, front, rz1 };
 }
 
 // keyframes: t in [0,1] of the animation; g = gun offset [x,y,z,rx,ry,rz], lh = left-hand target (gun space), mag = mag offset [x,y,z,visible]
@@ -2864,6 +2897,7 @@ class ViewModel {
       if (A) { px += A.g[0]; py += A.g[1]; pz += A.g[2]; rx += A.g[3]; ry += A.g[4]; rz += A.g[5]; lhKey = A.lh || 'hand'; rhKey = A.rh; magOff = A.mag; if (A.snd && !this.sndDone.has(A.snd)) { this.sndDone.add(A.snd); Audio.play(A.snd, 0.7); } }
       if (this.animT >= 1) { const cb = this.animCb; this.anim = null; this.animCb = null; if (cb) cb(); }
     }
+    if (M.opticMeshes && M.opticMeshes.length) { const hide = adsT > 0.7; for (const m of M.opticMeshes) m.visible = !hide; }
     this.holder.position.set(px + this.kick.x, py + this.kick.y, pz + this.kick.z); this.holder.rotation.set(rx + this.kickR.x, ry + this.kickR.y, rz + this.kickR.z, 'YXZ');
     if (M.mag) { if (magOff) { M.mag.position.set(M.magHome.x + magOff[0], M.magHome.y + magOff[1], M.magHome.z + magOff[2]); M.mag.visible = magOff[3] > 0.5; } else { M.mag.position.copy(M.magHome); M.mag.visible = true; } }
     if (M.bolt) M.bolt.position.z = M.boltHome.z + (rhKey === 'boltback' ? 0.06 : 0);
@@ -2922,7 +2956,7 @@ class Soldier {
     this.vest = gear(L.vest); this.helmet = gear(L.helmet); if (L.vestDur != null) this.vest.dur = L.vestDur; if (L.helmetDur != null) this.helmet.dur = L.helmetDur;
     this.throwables = Object.assign({}, L.throwables || { frag: 2, smoke: 1 }); this.throwSel = Object.keys(this.throwables)[0] || 'frag';
     this.meds = Object.assign({ bandage: 3, medkit: 1, stim: 1 }, L.meds || {}); this.reserve = {};
-    for (const g of this.weapons) if (g && !L.ammo) { const per = g.isLauncher ? 3 : g.def.class === 'sniper' ? g.stats.mag * 5 : g.def.class === 'lmg' ? g.stats.mag * 2 : g.stats.mag * 4; this.reserve[g.ammo] = (this.reserve[g.ammo] || 0) + per; }
+    for (const g of this.weapons) if (g && !L.ammo) { const per = g.isLauncher ? 8 : g.def.sidearm ? Math.max(120, g.stats.mag * 8) : Math.max(240, g.stats.mag * 8); this.reserve[g.ammo] = (this.reserve[g.ammo] || 0) + per; }
     if (L.ammo) for (const k in L.ammo) this.reserve[k] = L.ammo[k];
     this.recalcWeight(); if (this.player) this.player.vm.setGun(this.gun);
   }
@@ -3332,7 +3366,7 @@ class Soldier {
     if (!(this.throwables[t] > 0)) this.cycleThrow(); return true;
   }
   cycleThrow() { const ks = Object.keys(this.throwables).filter((k) => this.throwables[k] > 0); if (!ks.length) return; const i = ks.indexOf(this.throwSel); this.throwSel = ks[(i + 1) % ks.length]; }
-  addAmmo(frac = 1) { for (const g of this.weapons) if (g) { const per = g.isLauncher ? 2 : g.stats.mag * 3; this.reserve[g.ammo] = Math.min((this.reserve[g.ammo] || 0) + Math.ceil(per * frac), per * 2 + g.stats.mag); } }
+  addAmmo(frac = 1) { for (const g of this.weapons) if (g) { const per = g.isLauncher ? 3 : g.def.sidearm ? Math.max(60, g.stats.mag * 4) : Math.max(120, g.stats.mag * 4); this.reserve[g.ammo] = Math.min((this.reserve[g.ammo] || 0) + Math.ceil(per * frac), g.isLauncher ? 10 : per * 3); } }
   noise(r, kind) { AI.noise(this.pos, r, this, kind); }
   remove() { Soldiers.remove(this); Grapples.remove(this); Chutes.remove(this); if (this.vehicle) this.vehicle.exit(this, true); }
 }
@@ -3387,13 +3421,13 @@ const SoldierGfx = {
   meshes: {}, free: [], mats: [], hidden: null,
   init() {
     for (const [id] of SG_PARTS) {
-      const geo = id === 'head' ? new THREE.BoxGeometry(1, 1, 1, 1, 1, 1) : GEO.box; const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: id === 'visor' ? 0.2 : 0.85, metalness: id === 'gun' || id === 'visor' ? 0.5 : 0.05, emissive: 0xffffff, emissiveIntensity: 0 });
+      const geo = id === 'head' ? new THREE.BoxGeometry(1, 1, 1, 1, 1, 1) : GEO.box; const mat = id === 'band' || id === 'visor' ? new THREE.MeshBasicMaterial({ color: 0xffffff }) : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: id === 'gun' || id === 'visor' ? 0.5 : 0.05, emissive: 0xffffff, emissiveIntensity: 0 });
       this.mats.push(mat); const m = new THREE.InstancedMesh(geo, mat, SG_CAP); m.count = SG_CAP; m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
       for (let i = 0; i < SG_CAP; i++) { m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.setColorAt(i, _c1.setHex(0x888888)); } WORLD.add(m); this.meshes[id] = m;
     }
     for (let i = SG_CAP - 1; i >= 0; i--) this.free.push(i);
   },
-  thermal(on) { for (const m of this.mats) { m.emissive.setRGB(1, 0.95, 0.85); m.emissiveIntensity = on ? 1.6 : 0; } },
+  thermal(on) { for (const m of this.mats) { if (!m.emissive) continue; m.emissive.setRGB(1, 0.95, 0.85); m.emissiveIntensity = on ? 1.6 : 0; } },
   acquire(s) {
     if (s.gfx >= 0) return s.gfx; const i = this.free.pop(); if (i === undefined) return -1; s.gfx = i;
     const look = s.look || Looks.forSoldier(s); s.look = look; const set = (id, hex) => this.meshes[id].setColorAt(i, _c1.setHex(hex));
@@ -3470,7 +3504,7 @@ const SoldierGfx = {
     // arms
     for (const side of [-1, 1]) { const a = side < 0 ? armL : armR; const sd = side < 0 ? armSideL : armSideR;
       M[6].copy(M[4]).multiply(_m1.makeTranslation(side * 0.28, 0.48, 0)).multiply(_m2.makeRotationFromEuler(_e1.set(a, 0, side * sd * 0.6, 'XYZ'))); this.put(side < 0 ? 'uarmL' : 'uarmR', i, M[6], 0, -0.15, 0, 0.12, 0.3, 0.12);
-      if (side < 0) this.put('band', i, M[6], 0, -0.08, 0, 0.13, 0.07, 0.13);
+      if (side < 0) this.put('band', i, M[6], 0, -0.06, 0, 0.15, 0.13, 0.15);
       M[7].copy(M[6]).multiply(_m1.makeTranslation(0, -0.3, 0)).multiply(_m2.makeRotationX(side < 0 ? -elb - 0.3 : -elb)); this.put(side < 0 ? 'farmL' : 'farmR', i, M[7], 0, -0.14, 0, 0.1, 0.28, 0.1); }
     // weapon: held in front of the chest, pitched with the aim
     if (gunShow && s.gun && state !== 'dead') { const L = s.gun.def.model.tube ? 1.0 : s.gun.def.model.pistol ? 0.25 : clamp((s.gun.def.model.len || 0.4) + (s.gun.def.model.barrel || 0.3) + 0.25, 0.5, 1.4);
@@ -3482,11 +3516,11 @@ const SoldierGfx = {
 const Looks = {
   forSoldier(s) {
     const op = s.op; const camo = (DATA.camos || []).find((c) => c.id === s.camo) || null; const fac = DATA.factions[s.faction] || null;
-    const band = s.team === 0 ? 0x3f8fd8 : 0xd8402a; const skins = [0xc08a62, 0x8a5a3a, 0xe0b090, 0x6a4430, 0xd8a078];
-    if (op && op.look && !s.isBot) return { top: parseHex(op.look.top), pants: parseHex(op.look.pants), helmet: parseHex(op.look.helmet), visor: parseHex(op.look.visor || '#1a2a3a'), skin: parseHex(op.look.skin || '#c08a62'), gear: parseHex(op.look.gear || '#3a3a30'), band, vest: parseHex(op.look.vest || op.look.top) };
+    const band = s.team === 0 ? 0x3aa8ff : s.team === 1 ? 0xff3a28 : 0xff9a20; const packT = _c2.setHex(band).multiplyScalar(0.55).getHex(); const skins = [0xc08a62, 0x8a5a3a, 0xe0b090, 0x6a4430, 0xd8a078];
+    if (op && op.look && !s.isBot) return { top: parseHex(op.look.top), pants: parseHex(op.look.pants), helmet: parseHex(op.look.helmet), visor: band, skin: parseHex(op.look.skin || '#c08a62'), gear: packT, band, vest: parseHex(op.look.vest || op.look.top) };
     const c = camo ? camo.colors.map(parseHex) : fac ? [parseHex(fac.uniform), parseHex(fac.uniform2 || fac.uniform)] : [0x4a5040, 0x3a3e34]; const r = new RNG(s.id * 77);
     const dark = (h, k) => _c2.setHex(h).multiplyScalar(k).getHex();
-    return { top: c[0], pants: c[1] ?? dark(c[0], 0.8), helmet: dark(c[0], s.boss ? 0.5 : 0.85), visor: s.boss ? 0xd8402a : 0x1a2028, skin: skins[r.int(0, skins.length - 1)], gear: dark(c[1] ?? c[0], 0.7), band: s.boss ? 0xffd040 : band, vest: dark(c[0], 0.75) };
+    return { top: c[0], pants: c[1] ?? dark(c[0], 0.8), helmet: dark(c[0], s.boss ? 0.5 : 0.85), visor: s.boss ? 0xffd040 : band, skin: skins[r.int(0, skins.length - 1)], gear: packT, band: s.boss ? 0xffd040 : band, vest: dark(c[0], 0.75) };
   },
 };
 
@@ -4676,6 +4710,57 @@ const SupplyDrop = {
   land(d) { const pos = d.g.position.clone(); if (d.loot && typeof Loot !== 'undefined') Loot.container(pos, d.loot === true ? 'supply' : d.loot, d.g); else Deployables.add('supply', null, pos, 0, { hp: 400, life: 120, uses: 8 }).team = d.team; },
   clear() { for (const d of this.list) WORLD.remove(d.g); this.list.length = 0; },
 };
+// §CHESTS ------------------------------------------------------------------------------------------------
+// Glowing supply chests hidden around every combat map (mostly inside buildings). Hold interact to crack one:
+// a special weapon (minigun, railgun, auto-shotgun, hand cannon, suppressed SMG, rocket pod), heavy armour,
+// a full resupply or a charged ultimate. A light beam marks each chest; opened chests come back elsewhere.
+const SPECIALS = () => Object.values(DATA.weapons).filter((w) => w.special);
+const Chests = {
+  list: [], geo: null, mats: null, respawnQ: [], mode: null,
+  clear() { for (const c of this.list) this.removeChest(c); this.list.length = 0; this.respawnQ.length = 0; this.mode = null; },
+  initMats() { if (this.mats) return; this.geo = { box: new THREE.BoxGeometry(1, 1, 1), beam: new THREE.CylinderGeometry(0.35, 0.6, 1, 10, 1, true) };
+    this.mats = { body: new THREE.MeshStandardMaterial({ color: 0x2a2238, roughness: 0.5, metalness: 0.6 }), trim: new THREE.MeshStandardMaterial({ color: 0xe0b040, roughness: 0.3, metalness: 0.9, emissive: 0x805010, emissiveIntensity: 0.6 }),
+      glow: new THREE.MeshBasicMaterial({ color: 0xffd860 }), beam: new THREE.MeshBasicMaterial({ color: 0xffc040, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }) }; },
+  // where chests go: inside houses first, then open ground near sites; limited to the mode's play area
+  spots(area, n, rng) {
+    const out = []; const inArea = (x, z) => !area || Math.hypot(x - area.x, z - area.z) < area.r; const ok = (x, z) => World.inBounds(x, z, -80) && (!Nav.F || Nav.free(x, z)) && World.waterAt(x, z) < World.heightAt(x, z) && !out.some((p) => Math.hypot(p.x - x, p.z - z) < 25) && !this.list.some((c) => Math.hypot(c.pos.x - x, c.pos.z - z) < 25);
+    const houses = Build.houses.filter((h) => inArea(h.cx, h.cz) && h.w > 3.5 && h.d > 3.5).sort(() => rng.next() - 0.5);
+    for (const h of houses) { if (out.length >= Math.ceil(n * 0.7)) break; const c = Math.cos(h.yaw), s = Math.sin(h.yaw); const f = h.floors > 1 && h.stairs && rng.chance(0.5) ? rng.int(1, h.floors - 1) : 0; const lx = rng.range(0.6, h.w / 2 - 1.0) * (h.stairs ? 1 : rng.chance(0.5) ? 1 : -1), lz = rng.range(-h.d / 2 + 1.2, h.d / 2 - 1.2);
+      const x = h.cx + lx * c + lz * s, z = h.cz - lx * s + lz * c; if (!ok(x, z) && f === 0) continue; out.push(V3(x, h.base + f * FH, z)); }
+    for (let k = 0; k < 400 && out.length < n; k++) { const a = rng.range(0, TAU), r = area ? Math.sqrt(rng.next()) * area.r * 0.9 : 0; const st = !area && World.sites.length ? rng.pick(World.sites) : null; const x = area ? area.x + Math.cos(a) * r : st ? st.x + rng.range(-1, 1) * (st.r || 100) : rng.range(-1, 1) * World.playHalf * 0.85, z = area ? area.z + Math.sin(a) * r : st ? st.z + rng.range(-1, 1) * (st.r || 100) : rng.range(-1, 1) * World.playHalf * 0.85;
+      if (!ok(x, z)) continue; out.push(V3(x, Col.ground(x, z, World.heightAt(x, z) + 1.5, 0.4, 2).y, z)); }
+    return out;
+  },
+  populate(mode, n, area = null) { this.initMats(); this.mode = mode; this.area = area; this.n = n; const rng = new RNG(Math.random() * 1e9); for (const p of this.spots(area, n, rng)) this.spawn(p); },
+  spawn(p) {
+    const g = new THREE.Group(); const b = (mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(this.geo.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+    b(this.mats.body, 0, 0.28, 0, 1.1, 0.56, 0.7); b(this.mats.trim, 0, 0.3, 0, 1.14, 0.08, 0.74); b(this.mats.trim, -0.5, 0.28, 0, 0.08, 0.6, 0.74); b(this.mats.trim, 0.5, 0.28, 0, 0.08, 0.6, 0.74);
+    const lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); g.add(lid); const lb = new THREE.Mesh(this.geo.box, this.mats.body); lb.scale.set(1.1, 0.18, 0.7); lb.position.set(0, 0.09, 0.35); lid.add(lb); const lt = new THREE.Mesh(this.geo.box, this.mats.trim); lt.scale.set(1.14, 0.06, 0.2); lt.position.set(0, 0.12, 0.35); lid.add(lt);
+    const gem = b(this.mats.glow, 0, 0.3, 0.37, 0.18, 0.18, 0.02); const beam = new THREE.Mesh(this.geo.beam, this.mats.beam); beam.scale.set(1, 60, 1); beam.position.y = 30; g.add(beam);
+    g.position.copy(p); g.rotation.y = rand(0, TAU); WORLD.add(g);
+    const c = { pos: p.clone(), g, lid, beam, gem, open: false, t: rand(0, 6) };
+    c.it = Interact.add({ pos: p.clone().add(V3(0, 0.7, 0)), r: 2.6, prio: 2, label: 'Open supply chest', hold: 0.7, cond: (s) => !c.open && s.state === 'alive' && !s.vehicle, fn: (s) => this.open(c, s) });
+    this.list.push(c); return c;
+  },
+  removeChest(c) { if (c.g) WORLD.remove(c.g); if (c.it) Interact.remove(c.it); },
+  // what's inside: mostly special weapons, sometimes armour / resupply / ultimate
+  open(c, s) {
+    if (c.open) return; c.open = true; c.openT = 0; Interact.remove(c.it); Audio.at('loot', c.pos, 1); Audio.play('level', 0.5); FX.sparks(c.pos.clone().add(V3(0, 0.8, 0)), 18, 6);
+    const roll = Math.random(); const P = s.player; const say = (t, cls = 'big') => { if (P) P.note(t, cls, 0, 3.5); };
+    if (roll < 0.6) { const W = rand(0, 1) < 0.5 && s.weapons[0] ? SPECIALS().filter((w) => w.class !== 'launcher' && !w.sidearm) : SPECIALS(); const w = W[Math.floor(Math.random() * W.length)];
+      const slot = w.sidearm ? 1 : w.class === 'launcher' ? 2 : 0; const g = new Gun(w.id, defaultAttach(w)); if (w.class !== 'launcher' && !w.sidearm) g.att.optic = w.class === 'sniper' ? 'x8' : 'holo'; g.refresh?.(); s.weapons[slot] = g; s.cur = slot;
+      s.reserve[g.ammo] = Math.max(s.reserve[g.ammo] || 0, g.isLauncher ? 12 : Math.max(300, g.stats.mag * 4)); if (P) P.vm.setGun(s.gun); say('★ ' + w.name.toUpperCase()); if (P) P.note(w.desc || '', 'good', 0, 3.5); }
+    else if (roll < 0.75) { const gv = DATA.gear.vest6, gh = DATA.gear.helm6; s.vest = { tier: gv.tier, dur: gv.dur, max: gv.dur, id: 'vest6' }; s.helmet = { tier: gh.tier, dur: gh.dur, max: gh.dur, id: 'helm6' }; s.hp = s.maxHp; say('★ HEAVY ARMOUR · TIER 6'); }
+    else if (roll < 0.9) { s.addAmmo(3); for (const g of s.weapons) if (g) s.reserve[g.ammo] = Math.max(s.reserve[g.ammo] || 0, g.isLauncher ? 10 : 400); s.throwables.frag = (s.throwables.frag || 0) + 3; s.meds.medkit = (s.meds.medkit || 0) + 2; s.meds.stim = (s.meds.stim || 0) + 1; s.hp = s.maxHp; say('★ FULL RESUPPLY'); }
+    else { if (s.ult) s.ult.charge = 1; s.meds.medkit = (s.meds.medkit || 0) + 1; say('★ ULTIMATE CHARGED'); }
+    s.recalcWeight?.(); Challenges.track('loot', s, { type: 'chest' }); this.respawnQ.push({ t: 75 });
+  },
+  update(dt) {
+    for (const c of this.list) { c.t += dt; if (!c.open) { c.beam.material.opacity = 0.16 + Math.sin(c.t * 2) * 0.06; c.gem.scale.setScalar(0.18 + Math.sin(c.t * 4) * 0.03); } else { c.openT += dt; c.lid.rotation.x = -Math.min(1.9, c.openT * 5); c.beam.visible = false; if (c.openT > 20 && !c.gone) { c.gone = true; this.removeChest(c); } } }
+    this.list = this.list.filter((c) => !c.gone);
+    for (let i = this.respawnQ.length - 1; i >= 0; i--) { const q = this.respawnQ[i]; q.t -= dt; if (q.t <= 0) { this.respawnQ.splice(i, 1); const p = this.spots(this.area, 1, new RNG(Math.random() * 1e9))[0]; if (p) this.spawn(p); } }
+  },
+};
 
 // §MODES ---------------------------------------------------------------------------------------------
 // Loadouts, names, the GameMode base (teams, bots in squads, spawning, respawns, vehicle pads, scoring) and the
@@ -4686,7 +4771,7 @@ const Names = {
 };
 const Loadouts = {
   camoFor(biome) { return biome?.camo || 'factory'; },
-  weaponsFor(cls, slot = 'primary') { const C = DATA.classes[cls]; return Object.values(DATA.weapons).filter((w) => !w.sidearm && w.class !== 'launcher' && (!C || C.weapons.includes(w.class))); },
+  weaponsFor(cls, slot = 'primary') { const C = DATA.classes[cls]; return Object.values(DATA.weapons).filter((w) => !w.special && !w.sidearm && w.class !== 'launcher' && (!C || C.weapons.includes(w.class))); },
   randomAtt(def, rng, lvl) { const out = {}; for (const slot of DATA.slots) { const opts = Object.values(DATA.attachments).filter((a) => a.slot === slot && a.fits.includes(def.class) && !a.default && (a.lvl ?? 0) <= lvl); if (opts.length && rng.chance(0.55)) out[slot] = rng.pick(opts).id; } if (def.class === 'sniper' && !out.optic) out.optic = 'x8'; return out; },
   tierFor(diff) { return { recruit: 2, regular: 3, hardened: 4, veteran: 5 }[diff] || 3; },
   // bot loadout from the operator's kit (if any) or the class weapon pool, scaled by difficulty
@@ -4727,7 +4812,10 @@ class GameMode {
   name() { return 'Mode'; }
   async load() { await Game.loadMap(this.mapId, this.variant); }
   setup() {}
-  start() { this.setup(); }
+  start() { this.setup(); this.placeChests(); }
+  // supply chests with special weapons: a few in close-quarters areas, more across big maps
+  placeChests() { const k = this.kind; if (k === 'range' || k === 'training' || k === 'extraction' || this.o.bench) return; const A = this.bounds || this.area || (k === 'dom' ? (World.def.areas || [])[0] : null);
+    const area = A ? { x: A.x, z: A.z, r: A.r } : k === 'campaign' && this.def ? { x: this.def.start[0], z: this.def.start[1], r: 1100 } : null; Chests.populate(this, A ? 4 : k === 'campaign' ? 7 : 14, area); }
   allowDowned(s) { if (!s.squad && !s.player) return false; const mates = Soldiers.near(s.pos.x, s.pos.z, 80).some((m) => m !== s && m.team === s.team && m.state === 'alive' && (m.squad === s.squad || m.player || s.player)); return mates || (G.players.length > 1 && s.player); }
   // ---- teams of bots in squads ---------------------------------------------------------------------
   addBots(team, n, at, o = {}) {
@@ -5212,6 +5300,7 @@ class Extraction extends GameMode {
       for (let i = 0; i < n; i++) { const pt = this.spot(p, rng, 0.9); if (pt) Loot.container(pt, rng.pick(kinds), null, { tier: p.tier }); }
       if (p.key) { const pt = this.spot(p, rng, 0.35); if (pt) { const items = Loot.roll('strong', p.tier, rng); if (quest.length && rng.chance(0.7)) items.push(Items.make(quest.shift())); Loot.container(pt, 'strong', null, { tier: p.tier, key: p.key, items, name: p.name + ' strongroom' }); } } }
     for (const id of quest) { const p = pois.slice().sort((a, b) => b.tier - a.tier)[0]; const pt = p && this.spot(p, rng, 0.5); if (pt) Loot.container(pt, 'safe', null, { tier: p.tier, items: [Items.make(id), ...Loot.roll('safe', p.tier, rng)] }); }
+    for (let i = 0; i < 3; i++) { const p = rng.pick(pois); const pt = p && this.spot(p, rng, 0.6); if (pt) { const sp = SPECIALS(); Loot.container(pt, 'strong', null, { tier: 5, name: 'Supply chest', items: [Items.make(rng.pick(sp).id), ...Loot.roll('supply', 4, rng)] }); } }
     for (let i = 0; i < 26; i++) { const st = rng.pick(World.sites.length ? World.sites : [{ x: 0, z: 0, r: 200 }]); const pt = this.spot({ x: st.x, z: st.z, r: st.r || 80 }, rng, 1); if (pt) Loot.container(pt, 'jacket', null, { tier: 1 }); }
     // garrison at each POI, boss + escort at the boss POI
     const tierDiff = ['recruit', 'recruit', 'recruit', 'regular', 'hardened', 'veteran'];
@@ -5393,10 +5482,10 @@ class Hud {
       <div class="ammo"><div class="wtop"><span class="wname"></span><span class="mode"></span></div><div class="wmid"><span class="mag"></span><span class="res"></span></div><div class="mbar"><i></i></div><div class="wbot"><span class="ammot"></span><span class="wslots"></span></div></div>
       <div class="kit"></div><div class="vehicle"></div><div class="lock"></div><div class="warn"></div><div class="prompt"><span class="pt"></span><div class="holdbar"></div></div>
       <div class="dmg"></div><div class="dirs">${'<i></i>'.repeat(6)}</div><div class="flashfx"></div><div class="radio"><canvas width="44" height="44"></canvas><div class="who"></div><div class="txt"></div></div>
-      <div class="scope"><div class="r"></div></div><div class="thermal-tag"></div><div class="downed"><div class="t">DOWNED</div><div class="s"></div></div>`;
+      <div class="scan"></div><div class="mret"><i></i></div><div class="scope"><div class="lens"><div class="r"></div><div class="glare"></div></div><div class="ring"></div><div class="sread t"></div><div class="sread l"></div><div class="sread rr"></div><div class="sread b"><div class="bt"></div><div class="bb"><i></i></div></div></div><div class="thermal-tag"></div><div class="downed"><div class="t">DOWNED</div><div class="s"></div></div>`;
     const q = (s) => r.querySelector(s); this.e = { mini: q('.mini canvas'), squad: q('.squad'), objtext: q('.objtext'), compass: q('.compass'), bearing: q('.bearing'), obj: q('.obj'), tickets: q('.tickets'), modeinfo: q('.modeinfo'), timer: q('.timer'), feed: q('.feed'), extract: q('.extract'), pings: q('.pings'), notes: q('.notes'), xh: q('.xh'), hit: q('.hit'),
       hpSeg: [...r.querySelectorAll('.hpseg i')], hpn: q('.hpn'), ar: q('.bar.ar>i'), arn: q('.arn'), art: q('.art'), hm: q('.bar.hm>i'), hmn: q('.hmn'), hmt: q('.hmt'), st: q('.stline>i'), pname: q('.pname'), weight: q('.weight'), wname: q('.wname'), mag: q('.mag'), res: q('.res'), ammot: q('.ammot'), mode: q('.mode'), mbar: q('.mbar>i'), wslots: q('.wslots'), kit: q('.kit'), vehicle: q('.vehicle'), lock: q('.lock'), warn: q('.warn'),
-      prompt: q('.prompt'), pt: q('.prompt .pt'), holdbar: q('.holdbar'), dmg: q('.dmg'), dirs: [...r.querySelectorAll('.dirs i')], flash: q('.flashfx'), radio: q('.radio'), radioWho: q('.radio .who'), radioTxt: q('.radio .txt'), radioC: q('.radio canvas'), scope: q('.scope'), reticle: q('.scope .r'), ttag: q('.thermal-tag'), downed: q('.downed'), downedS: q('.downed .s'), ammoBox: q('.ammo'), vit: q('.vitals') };
+      prompt: q('.prompt'), pt: q('.prompt .pt'), holdbar: q('.holdbar'), dmg: q('.dmg'), dirs: [...r.querySelectorAll('.dirs i')], flash: q('.flashfx'), radio: q('.radio'), radioWho: q('.radio .who'), radioTxt: q('.radio .txt'), radioC: q('.radio canvas'), scope: q('.scope'), reticle: q('.scope .r'), sTop: q('.sread.t'), sLeft: q('.sread.l'), sRight: q('.sread.rr'), sBreath: q('.sread.b .bt'), sBreathBar: q('.sread.b .bb i'), scan: q('.scan'), lens: q('.scope .lens'), mret: q('.mret'), ttag: q('.thermal-tag'), downed: q('.downed'), downedS: q('.downed .s'), ammoBox: q('.ammo'), vit: q('.vitals') };
     this.mg = this.e.mini.getContext('2d'); this.hitT = 0; this.dirT = this.e.dirs.map(() => ({ t: 0, a: 0 })); this.dirI = 0; this.radioT = 0; this.compassTicks(); this.feedKey = ''; this.kitKey = ''; this.squadKey = ''; this.pingEls = []; this.lastReticle = '';
   }
   setRect(x, y, w, h, small) { const s = this.root.style; s.left = x + 'px'; s.top = y + 'px'; s.width = w + 'px'; s.height = h + 'px'; this.root.classList.toggle('small', !!small); this.w = w; this.h = h; }
@@ -5450,10 +5539,42 @@ class Hud {
     // prompt
     const it = P.interactTarget; if (it && s.state === 'alive') { e.prompt.style.display = 'block'; e.pt.innerHTML = (typeof Touch !== 'undefined' && Touch.on && P.idx === 0 ? '' : `<kbd>${P.padIdx != null ? 'X' : 'F'}</kbd>`) + esc(it.label) + (it.hold ? ' <span class="dim">(hold)</span>' : ''); e.holdbar.style.width = (it.hold ? clamp(P.holdT / it.hold, 0, 1) * 100 : 0) + '%'; } else if (P.warnText) { e.prompt.style.display = 'block'; e.pt.textContent = P.warnText; e.holdbar.style.width = '0'; } else e.prompt.style.display = 'none';
     // scope
-    e.scope.style.display = scoped ? 'block' : 'none'; if (scoped) { const rt = g.stats.reticle; if (rt !== this.lastReticle) { this.lastReticle = rt; e.reticle.innerHTML = rt === 'mil' ? '<i style="left:-40vmin;top:-1px;width:80vmin;height:2px"></i><i style="top:-40vmin;left:-1px;height:80vmin;width:2px"></i>' + [1, 2, 3, 4].map((k) => `<i style="left:-6px;top:${k * 5}vmin;width:12px;height:2px"></i>`).join('') : '<i style="left:-2px;top:-2px;width:4px;height:4px;background:#e33;border-radius:50%"></i>'; } }
+    e.scope.style.display = scoped ? 'block' : 'none'; if (scoped) this.scopeHud(s, P, g, dt); else this.scopeIn = 0;
+    e.mret.style.display = !scoped && !inVeh && g && s.adsAmt > 0.7 && g.stats.zoom > 1.35 && g.stats.zoom < 3.5 ? 'block' : 'none';
+    this.scan(s, P, g, dt, scoped, inVeh);
+    // crosshair colour: red over an enemy, blue over a friend
+    if ((G.frame + P.idx) % 2 === 0) { const tg = this.aimedAt(s, P); const cls = !tg ? '' : tg.team === s.team ? 'friend' : 'enemy'; if (cls !== this.xhCls) { this.xhCls = cls; e.xh.className = 'xh ' + cls; } }
     e.ttag.style.display = P.visMode ? 'block' : 'none'; e.ttag.textContent = P.visMode === VIS.THERMAL ? 'THERMAL' : P.visMode === VIS.NV ? 'NIGHT VISION' : '';
     if (P.sixth) e.warn.style.display = 'block', e.warn.textContent = 'SIXTH SENSE — YOU ARE BEING WATCHED'; else if (!(inVeh && s.vehicle.lockWarn > 0)) e.warn.style.display = 'none';
     this.compass(s, P); this.minimap(s, P, info); this.world(s, P, info);
+  }
+  // which soldier the crosshair is over (cheap cone test + line of sight)
+  aimedAt(s, P) { const d = P.camera.getWorldDirection(_v2); const o = P.eyePos; let best = null, bd = 320; for (const x of Soldiers.list) { if (x === s || x.state === 'dead' || x.dummy) continue; const c = x.center(_v3); const tx = c.x - o.x, ty = c.y - o.y, tz = c.z - o.z; const along = tx * d.x + ty * d.y + tz * d.z; if (along < 1 || along > bd) continue; const px = tx - d.x * along, py = ty - d.y * along, pz = tz - d.z * along; if (px * px + py * py + pz * pz > 0.55 * 0.55 + along * along * 0.00012) continue; if (!Col.los(o.x, o.y, o.z, c.x, c.y, c.z)) continue; bd = along; best = x; } return best; }
+  // thermal scan: whenever you aim down sights, every soldier in view (through smoke and foliage, not walls) is bracketed red / blue
+  scan(s, P, g, dt, scoped, inVeh) {
+    const on = !inVeh && g && s.adsAmt > 0.8 && s.state === 'alive'; const out = []; const R = scoped ? 900 : 260; const cam = P.camera; const lensR = Math.min(this.w, this.h) * 0.34;
+    if (on) for (const x of Soldiers.list) { if (x === s || x.state === 'dead' || x.dummy) continue; const c = x.center(_v3); const d = P.eyePos.distanceTo(c); if (d > R) continue; const v = _v1.copy(c).project(cam); if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue; const sx = (v.x + 1) / 2 * this.w, sy = (1 - v.y) / 2 * this.h;
+      if (scoped && Math.hypot(sx - this.w / 2, sy - this.h / 2) > lensR) continue; x._scanT = (x._scanT || 0) - dt; if (x._scanT <= 0) { x._scanT = 0.2 + Math.random() * 0.1; x._scanVis = Col.los(P.eyePos.x, P.eyePos.y, P.eyePos.z, c.x, c.y, c.z); } if (!x._scanVis) continue;
+      const hpx = clamp(1.9 / Math.max(1, d) * (this.h / 2) / Math.tan(cam.fov * Math.PI / 360) * 0.5, 10, 160); out.push({ x: sx, y: sy, h: hpx, f: x.team === s.team, d }); if (out.length >= 18) break; }
+    while ((this.scanEls ||= []).length < out.length) { const d2 = el('div', { class: 'sc' }, '<span></span>'); this.e.scan.appendChild(d2); this.scanEls.push(d2); }
+    this.scanEls.forEach((d2, i) => { const m = out[i]; if (!m) { d2.style.display = 'none'; return; } d2.style.display = 'block'; d2.className = 'sc ' + (m.f ? 'f' : 'e'); d2.style.left = m.x + 'px'; d2.style.top = m.y + 'px'; d2.style.width = m.h * 0.7 + 'px'; d2.style.height = m.h * 1.1 + 'px'; d2.firstChild.textContent = (m.f ? 'FRIEND ' : 'HOSTILE ') + Math.round(m.d) + 'm'; });
+  }
+  // the scope: lens + reticle + rangefinder, zoom, heading, holdover and breath
+  scopeHud(s, P, g, dt) {
+    const e = this.e; this.scopeIn = Math.min(1, (this.scopeIn || 0) + dt * 6); e.lens.style.transform = `translate(-50%,-50%) scale(${0.92 + this.scopeIn * 0.08})`; e.scope.style.opacity = 0.4 + this.scopeIn * 0.6;
+    const rt = g.stats.reticle; if (rt !== this.lastReticle) { this.lastReticle = rt; e.reticle.innerHTML = this.reticleSvg(rt); }
+    if ((this.rngT = (this.rngT || 0) - dt) <= 0) { this.rngT = 0.1; const d = P.camera.getWorldDirection(_v2); const H = Col.ray(P.eyePos.x, P.eyePos.y, P.eyePos.z, d.x, d.y, d.z, 1500); this.rng = H.t < 1499 ? H.t : 0; }
+    const r = this.rng; const vel = g.stats.vel || 800; const tof = r / vel; const drop = 0.5 * 9.81 * tof * tof; const mil = r ? drop / r * 1000 : 0; const brg = String(Math.round(((-P.camYaw * 180 / Math.PI) % 360 + 540) % 360)).padStart(3, '0');
+    e.sTop.innerHTML = `<b>${(g.stats.zoom).toFixed(1)}×</b> · ${esc(g.def.name.toUpperCase())} · <span class="th">THERMAL SCAN</span>`; e.sRight.innerHTML = `RNG<b>${r ? Math.round(r) : '---'}</b>m<br>HOLD<b>${mil.toFixed(1)}</b>mil<br>TOF<b>${tof.toFixed(2)}</b>s`; e.sLeft.innerHTML = `HDG<b>${brg}</b><br>MAG<b>${g.inMag}</b><br>${esc(DATA.ammo[g.ammo]?.name || '')}`;
+    e.sBreath.textContent = s.holdBreath ? 'HOLDING BREATH' : (typeof Touch !== 'undefined' && Touch.on ? 'STEADY' : 'SHIFT · HOLD BREATH'); e.sBreathBar.style.width = (s.breath * 100) + '%'; e.sBreathBar.classList.toggle('low', s.breath < 0.3);
+  }
+  reticleSvg(rt) {
+    const line = (x1, y1, x2, y2, w = 0.5) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${w}"/>`; let g = '';
+    if (rt === 'mil') { g += line(-100, 0, -6, 0, 0.45) + line(6, 0, 100, 0, 0.45) + line(0, -100, 0, -6, 0.45) + line(0, 6, 0, 100, 0.45) + line(-100, 0, -60, 0, 2) + line(60, 0, 100, 0, 2) + line(0, 60, 0, 100, 2) + line(0, -100, 0, -60, 2);
+      for (let k = 1; k <= 5; k++) { g += line(-k * 10, -1.6, -k * 10, 1.6, 0.4) + line(k * 10, -1.6, k * 10, 1.6, 0.4) + line(-1.6, -k * 10, 1.6, -k * 10, 0.4) + line(-(5 - k * 0.6), k * 10, 5 - k * 0.6, k * 10, 0.45) + `<text x="${7 - k * 0.6}" y="${k * 10 + 1.2}">${k}</text>`; }
+      g += '<circle cx="0" cy="0" r="0.9" class="dot"/>'; }
+    else g += line(-100, 0, -14, 0, 0.6) + line(14, 0, 100, 0, 0.6) + line(0, 14, 0, 100, 0.6) + '<path d="M -5 6 L 0 0 L 5 6" class="chev"/>' + '<circle cx="0" cy="0" r="22" class="ring"/>';
+    return `<svg viewBox="-100 -100 200 200">${g}</svg>`;
   }
   vehicle(v, s) {
     const e = this.e; e.vehicle.style.display = 'block'; const seat = v.def.seats[s.seat]; const W = s.seat === 0 ? v.driverWeapons[v.dw] : v.seatWeapons[s.seat]; const hpf = v.hp / v.maxHp;
@@ -5494,7 +5615,8 @@ class Hud {
     for (const pg of Pings.list) if (pg.team === s.team) add(pg.pos, pg.kind === 'danger' ? 'enemy' : pg.kind, pg.kind === 'enemy' ? 'ENEMY' : pg.kind === 'danger' ? 'DANGER' : pg.kind === 'loot' ? 'LOOT' : pg.kind === 'veh' ? 'VEHICLE' : pg.kind === 'down' ? 'DOWN' : '');
     if (info.flags) for (const f of info.flags) if (!f.hidden && !f.locked) add(f.pos.clone().add(V3(0, 10, 0)), 'obj', f.id);
     if (info.markers) for (const m of info.markers) add(m.pos.clone().add(V3(0, 2, 0)), m.kind || 'loot', m.label || '', m.maxD || 3000);
-    for (const o of Soldiers.list) { if (o === s || o.team !== s.team || o.state === 'dead') continue; if (o.state === 'downed') add(o.pos.clone().add(V3(0, 1.2, 0)), 'down', '✚ ' + o.name, 120); else if (o.squad === s.squad || o.player) add(o.pos.clone().add(V3(0, 2.3, 0)), 'mate', o.name, 250); }
+    for (const o of Soldiers.list) { if (o === s || o.team !== s.team || o.state === 'dead' || o.dummy) continue; if (o.state === 'downed') add(o.pos.clone().add(V3(0, 1.2, 0)), 'down', '✚ ' + o.name, 120); else if (o.squad === s.squad || o.player) add(o.pos.clone().add(V3(0, 2.3, 0)), 'mate', o.name, 250); else { const dd = P.eyePos.distanceTo(o.pos); if (dd < 160) list.push({ p: o.pos.clone().add(V3(0, 2.2, 0)), cls: 'ally', txt: dd < 40 ? o.name.split(' ').slice(-1)[0] : '' }); } }
+    for (const c of Chests.list) if (!c.open) add(c.pos.clone().add(V3(0, 1.4, 0)), 'chest', '★ CHEST', 140);
     for (const o of Soldiers.list) if (o.team !== s.team && o.state === 'alive' && Spotting.isSpotted(o, s.team)) add(o.center(V3()).add(V3(0, 1.2, 0)), 'enemy', '', 500);
     while (this.pingEls.length < list.length) { const d2 = el('div', { class: 'pg' }, '<div class="d"></div><span></span>'); this.e.pings.appendChild(d2); this.pingEls.push(d2); }
     this.pingEls.forEach((d2, i) => { const m = list[i]; if (!m) { d2.style.display = 'none'; return; } const v = _v1.copy(m.p).project(cam); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) { d2.style.display = 'none'; return; } d2.style.display = 'block'; d2.className = 'pg ' + m.cls; d2.style.left = ((v.x + 1) / 2 * this.w) + 'px'; d2.style.top = ((1 - v.y) / 2 * this.h) + 'px'; d2.lastChild.textContent = m.txt; });
@@ -5598,7 +5720,7 @@ const UI = {
   // gunsmith: pick a weapon for the slot, then attachments / ammo / camo with live stat bars and a 3D preview
   s_gunsmith(o) {
     const opId = o.op || G.save.lastOperator; const op = DATA.operators[opId]; const slotK = o.slot || 'primary'; const A = Progress.armoury(opId);
-    const pool = Object.values(DATA.weapons).filter((w) => slotK === 'secondary' ? w.sidearm : slotK === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && (o.free || DATA.classes[op.class].weapons.includes(w.class))));
+    const pool = Object.values(DATA.weapons).filter((w) => (!w.special || Progress.ownsWeapon(w.id))) .filter((w) => slotK === 'secondary' ? w.sidearm : slotK === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && (o.free || DATA.classes[op.class].weapons.includes(w.class))));
     let cur = this.gsWork; if (!cur || cur.slot !== slotK || cur.op !== opId) { const bp = G.save.blueprints.find((x) => x.id === A[slotK]); const wid = bp ? bp.weapon : (pool.find((w) => w.id === (slotK === 'primary' ? op.loadout.primary : slotK === 'secondary' ? op.loadout.secondary : op.loadout.launcher)) || pool[0]).id;
       cur = this.gsWork = { op: opId, slot: slotK, weapon: wid, att: bp ? Object.assign({}, bp.att) : defaultAttach(DATA.weapons[wid]), ammo: bp?.ammo || defaultAmmo(DATA.weapons[wid].caliber), camo: bp?.camo || 'factory', name: bp?.name || DATA.weapons[wid].name }; }
     const def = DATA.weapons[cur.weapon]; const wl = Progress.weaponLevel(cur.weapon); const base = weaponStats(def, {}, cur.ammo), st = weaponStats(def, cur.att, cur.ammo);
@@ -5958,7 +6080,7 @@ Object.assign(UI, {
   // full-screen weapon picker: big cards, plain names, four bars, buy if needed
   weaponPicker(opId, k) {
     const op = DATA.operators[opId]; const A = Progress.armoury(opId); const cur = this.slotWeapon(opId, k);
-    const pool = Object.values(DATA.weapons).filter((w) => k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
+    const pool = Object.values(DATA.weapons).filter((w) => !w.special || Progress.ownsWeapon(w.id)).filter((w) => k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
     const box = el('div', { class: 'pick' }); box.innerHTML = `<div class="row" style="margin-bottom:12px"><h2 class="amber" style="margin:0;letter-spacing:.2em">CHOOSE ${k === 'secondary' ? 'PISTOL' : k === 'launcher' ? 'LAUNCHER' : 'MAIN GUN'}</h2><span class="sp"></span><span class="gold mono">${fmtMoney(G.save.credits)}</span><button class="btn" data-x="1">Close</button></div>
       <div class="grid2">${pool.map((w) => { const own = Progress.ownsWeapon(w.id); return `<div class="wc ${w.id === cur.id ? 'sel' : ''} ${own ? '' : 'lock'}" data-w="${w.id}">${own ? '' : `<span class="pr">${fmtMoney(w.price)}</span>`}<div class="nm">${esc(w.name)}</div><div class="ty">${WCLASS_NAME[w.class] || w.class}</div>${this.statBars(w.id, defaultAttach(w))}</div>`; }).join('')}</div>`;
     this.root.querySelector('.screen').appendChild(box);
@@ -6110,7 +6232,7 @@ class Player {
     if (s.tool) { if (s.tool.id === 'torch' || s.tool.id === 'scope') { const held = a.tool; if (held || s.scoping) Operators.useTool(s, held, dt); if (!held) s.scoping = false; } else if (pr('tool')) Operators.useTool(s); }
     if (pr('ping')) { Pings.fromAim(s); s.lastPingT = G.time; }
     if (pr('orders')) UI.orders(this); if (pr('commander')) UI.commander(this); if (pr('inv') && G.mode?.kind === 'extraction' && s.state === 'alive') UI.inventory(this);
-    if (pr('nv')) { const opt = s.gun?.stats.vision; this.nvOn = !this.nvOn; this.note(this.nvOn ? (opt === 'thermal' ? 'Thermal optic' : 'Night vision on') : 'Vision normal', '', 0, 1); Audio.play('ui', 0.5); }
+    if (pr('nv')) { this.nvOn = !this.nvOn; this.note(this.nvOn ? 'Thermal vision on' : 'Thermal vision off', '', 0, 1); Audio.play('ui', 0.5); }
     if (pr('map')) this.mapZoom = this.mapZoom === 140 ? 380 : 140;
     if (this.idx === 0) UI.scoreboard(a.score);
     if (pr('inv') && G.mode?.openInventory) G.mode.openInventory(this);
@@ -6147,7 +6269,7 @@ class Player {
     const g = s.gun; if (g) { const z = g.stats.zoom * (s.scoping ? 1 : 1); fov = lerp(fovBase, fovBase / Math.max(1, z), s.adsAmt); } if (s.scoping) fov = fovBase / 5; if (s.sprinting) fov += 4;
     cam.fov = damp(cam.fov, fov, 18, dt); cam.updateProjectionMatrix(); this.camYaw = this.lookYaw; this.pxPerDeg = this.rect.h / cam.fov;
     // vision: optic (thermal / night vision when aiming), helmet NVG toggle, Ghost's Phantom
-    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision && this.nvOn !== false) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.nvOn) this.visMode = VIS.NV;
+    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision && this.nvOn !== false) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.nvOn) this.visMode = VIS.THERMAL;
     this.vm.cam.fov = CONFIG.render.vmFov * (fov / fovBase) ** 0.3; this.vm.cam.aspect = cam.aspect; this.vm.cam.updateProjectionMatrix();
   }
 }
@@ -6181,7 +6303,7 @@ const Game = {
   },
   clearWorld() {
     Soldiers.clear(); Vehicles.clear(); Ballistics.clear(); Throwables.clear(); Deployables.clear(); Drones.clear(); Grapples.clear(); Chutes.clear(); Interact.clear(); Pings.clear(); HUDFeed.clear(); Radio.clear(); AI.clear(); SupplyDrop.clear();
-    FX.clear(); Foliage.reset(); Blocks.reset(); Col.clear(); Nav.reset(); Cover.reset(); SoldierGfx.clear(); Events.clearAll(); if (typeof Loot !== 'undefined') Loot.clear(); Audio.forceIntensity = null;
+    FX.clear(); Foliage.reset(); Blocks.reset(); Col.clear(); Nav.reset(); Cover.reset(); SoldierGfx.clear(); Events.clearAll(); Chests.clear(); if (typeof Loot !== 'undefined') Loot.clear(); Audio.forceIntensity = null;
   },
   teardown() { if (G.mode) { try { G.mode.dispose(); } catch (e) { console.error(e); } } G.mode = null; G.inGame = false; this.clearWorld(); },
   quit(to = 'title') { this.teardown(); for (const P of G.players) P.dispose(); G.players = []; Precip.clear(); document.getElementById('hudRoot').innerHTML = ''; document.getElementById('split').innerHTML = ''; UI.scoreboard(false); Input.unlock(); Save.save(); UI.open(to); },
@@ -6200,7 +6322,7 @@ function logicStep(dt) {
   // one misbehaving bot must never freeze the world: isolate each brain, report the first failure
   for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') { try { s.brain.update(dt); } catch (e) { if (!G.brainErr) { G.brainErr = 1; console.error('bot brain', e); } s.ctl.mz = s.ctl.mx = 0; s.ctl.fire = false; } }
   Soldiers.rebuild(); for (const s of Soldiers.list) s.step(dt);
-  Vehicles.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
+  Vehicles.update(dt); Chests.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
   if (G.mode) G.mode.update(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
 }
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
@@ -6329,7 +6451,7 @@ async function boot() {
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();
 
 </script>

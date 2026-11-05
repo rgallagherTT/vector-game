@@ -84,6 +84,6 @@ const KEYHELP = [
   ['W A S D', 'move'], ['Shift', 'sprint (scoped: hold breath)'], ['Space', 'jump / mantle / vault · in the air: wingsuit, then parachute'], ['C / Ctrl', 'crouch (toggle / hold) · sprint + C slides'], ['Z', 'prone'],
   ['Q / E', 'lean'], ['LMB / RMB', 'fire / aim down sights'], ['R', 'reload (hold: check ammo)'], ['B', 'fire mode'], ['V', 'melee'], ['1 2 3 / wheel', 'primary · sidearm · launcher'],
   ['G / 5', 'throw equipment / cycle'], ['Y', 'grappling hook'], ['F', 'interact · hold: revive, loot, repair · enter vehicles · rappel from edges'],
-  ['X', 'signature gadget'], ['4', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'night vision / thermal optic'],
+  ['X', 'signature gadget'], ['4', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'thermal vision on / off'],
   ['U', 'squad orders'], ['O', 'commander support'], ['M / Tab', 'map / scoreboard'], ['I', 'inventory (extraction)'], ['Esc', 'pause'],
 ];
