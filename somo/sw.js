@@ -5,7 +5,7 @@
      audio/<lang>/index.json is refreshed in the background like the page.
    - Kidi's chat (the relay) and Claude: network only; the app has rules-based coaching when they cannot be reached.
    The grown-ups panel can delete voice packs to free space; deleted packs come back when needed. */
-const VERSION = '6d580c4fa3';
+const VERSION = 'b810915009';
 const SHELL = 'somo-shell-' + VERSION, AUDIO = 'somo-audio';
 const SHELL_FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-180.png'];
 
