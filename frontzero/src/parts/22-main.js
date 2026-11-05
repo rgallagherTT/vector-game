@@ -30,6 +30,7 @@ class Player {
   onExitVehicle(v) { this.vm.visible = true; this.lookYaw = this.soldier.yaw; this.vm.setGun(this.soldier.gun); }
   onRespawn() { this.vm.visible = true; this.vm.setGun(this.soldier.gun); this.lookYaw = this.soldier.yaw; this.lookPitch = 0; this.deadT = 0; this.flash = 0; this.drone = null; }
   order(type) { const s = this.soldier; if (!s.squad) return; const sq = s.squad; sq.leader = s; if (type === 'auto') { sq.order = null; this.note('Squad: following objectives'); return; } let p = s.pos.clone(); if (type === 'attack') { const pg = Pings.list.filter((x) => x.by === s).pop(); p = pg ? pg.pos.clone() : s.aimPoint(V3()); } sq.setOrder({ type, pos: p, r: 14, byPlayer: true }); this.note('Squad order: ' + type.toUpperCase(), 'good'); Audio.play('radio', 0.5); Radio.say(sq.members.find((m) => m !== s)?.name || 'Squad', type === 'regroup' ? 'Moving to you.' : type === 'defend' ? 'Holding here.' : 'On it — moving.'); }
+  setVision(v) { this.vision = v; this.nvOn = !!v; this.note(v === 'ti' ? 'Thermal vision (TI) on' : v === 'nv' ? 'Night vision (NV) on' : 'Vision normal', '', 0, 1); Audio.play('ui', 0.5); }
   carryWeight() { return G.mode?.carryWeight?.(this) || 0; }
   // ---- input → controller -----------------------------------------------------------------------------
   input(dt) {
@@ -61,7 +62,7 @@ class Player {
     if (s.tool) { if (s.tool.id === 'torch' || s.tool.id === 'scope') { const held = a.tool; if (held || s.scoping) Operators.useTool(s, held, dt); if (!held) s.scoping = false; } else if (pr('tool')) Operators.useTool(s); }
     if (pr('ping')) { Pings.fromAim(s); s.lastPingT = G.time; }
     if (pr('orders')) UI.orders(this); if (pr('commander')) UI.commander(this); if (pr('inv') && G.mode?.kind === 'extraction' && s.state === 'alive') UI.inventory(this);
-    if (pr('nv')) { this.nvOn = !this.nvOn; this.note(this.nvOn ? 'Thermal vision on' : 'Thermal vision off', '', 0, 1); Audio.play('ui', 0.5); }
+    if (pr('nv')) this.setVision(this.vision === 'ti' ? null : 'ti'); if (pr('nvg')) this.setVision(this.vision === 'nv' ? null : 'nv');
     if (pr('map')) this.mapZoom = this.mapZoom === 140 ? 380 : 140;
     if (this.idx === 0) UI.scoreboard(a.score);
     if (pr('inv') && G.mode?.openInventory) G.mode.openInventory(this);
@@ -72,7 +73,7 @@ class Player {
     const s = this.soldier, v = s.vehicle, C = s.ctl; const pr = (n) => Input.pressed(this.idx, n); this.interactTarget = { label: v.def.rappel && s.seat > 0 && !v.def.seats[s.seat].turret && v.alt < 45 && v.alt > 4 ? 'Rappel down (hold)' : v.def.air && v.alt > 6 ? 'Bail out' : 'Exit ' + v.def.name, hold: 0 };
     if (pr('interact')) { if (v.def.rappel && s.seat > 0 && !v.def.seats[s.seat].turret && v.alt < 45 && v.alt > 4) v.rappelOut(s); else v.exit(s); return; }
     for (let k = 1; k <= 6; k++) if (Input.pressed(this.idx, 'w' + k) || (k === 6 && pr('w6'))) v.swapSeat(s, k - 1);
-    if (a.wheel) C.swapW = true; if (pr('gadget')) C.gadget = true; if (pr('ping')) Pings.fromAim(s); if (pr('nv')) this.nvOn = !this.nvOn; if (pr('melee')) this.vehView = (this.vehView + 1) % 2;
+    if (a.wheel) C.swapW = true; if (pr('gadget')) C.gadget = true; if (pr('ping')) Pings.fromAim(s); if (pr('nv')) this.setVision(this.vision === 'ti' ? null : 'ti'); if (pr('nvg')) this.setVision(this.vision === 'nv' ? null : 'nv'); if (pr('melee')) this.vehView = (this.vehView + 1) % 2;
     if (this.idx === 0) UI.scoreboard(a.score);
   }
   droneInput(a, dt) { const C = this.droneCtl; C.yaw = (C.yaw ?? this.lookYaw) - a.lookX; C.pitch = clamp((C.pitch ?? 0) + a.lookY, -1.3, 1); C.mx = a.mx; C.mz = a.mz; C.up = a.jump || a.up; C.down = a.crouchHold || a.down; C.fire = Input.pressed(this.idx, 'fire'); if (Input.pressed(this.idx, 'interact') || Input.pressed(this.idx, 'gadget')) { if (this.drone.remote) this.drone.destroy?.({}); this.drone = null; } const s = this.soldier; s.ctl.mx = 0; s.ctl.mz = 0; s.ctl.fire = false; }
@@ -90,7 +91,7 @@ class Player {
       else { const dist = v.radius * 2.4 + 3 + (v.def.air ? 6 : 0); const pivot = _v2.copy(v.pos).add(_v3.set(0, v.def.phys === 'walker' ? (v.def.height || 3) * 0.9 : v.half.y + 1.6, 0)); cam.position.copy(pivot).addScaledVector(look, -dist); const gy = World.heightAt(cam.position.x, cam.position.z) + 0.6; if (cam.position.y < gy) cam.position.y = gy;
         const hit = Col.ray(pivot.x, pivot.y, pivot.z, -look.x, -look.y, -look.z, dist, { terrain: true }); if (hit && hit.t < dist) cam.position.copy(pivot).addScaledVector(look, -(hit.t - 0.4)); cam.lookAt(_v4.copy(pivot).addScaledVector(look, 30)); fov = s.ctl.ads ? fovBase / 2 : fovBase + clamp(v.speed / 60, 0, 1) * 10; }
       shake(); this.eyePos.copy(cam.position); this.camYaw = this.lookYaw; cam.fov = fov; cam.updateProjectionMatrix(); this.pxPerDeg = this.rect.h / fov;
-      this.visMode = this.nvOn ? (Sky.night > 0.3 ? VIS.NV : VIS.THERMAL) : VIS.NORMAL; return; }
+      this.visMode = this.vision === 'ti' ? VIS.THERMAL : this.vision === 'nv' ? VIS.NV : VIS.NORMAL; return; }
     // first person
     const e = s.eye(this.eyePos); const kick = this.landKick * 0.12; cam.position.set(e.x, e.y - kick, e.z);
     const roll = -s.leanAmt * CONFIG.move.leanAngle + (s.moveState === 'rappel' ? 0 : 0); cam.rotation.set(this.lookPitch, this.lookYaw + Math.PI, roll * (s.stance === 'prone' ? 0.3 : 1), 'YXZ'); shake();
@@ -98,7 +99,7 @@ class Player {
     const g = s.gun; if (g) { const z = g.stats.zoom * (s.scoping ? 1 : 1); fov = lerp(fovBase, fovBase / Math.max(1, z), s.adsAmt); } if (s.scoping) fov = fovBase / 5; if (s.sprinting) fov += 4;
     cam.fov = damp(cam.fov, fov, 18, dt); cam.updateProjectionMatrix(); this.camYaw = this.lookYaw; this.pxPerDeg = this.rect.h / cam.fov;
     // vision: optic (thermal / night vision when aiming), helmet NVG toggle, Ghost's Phantom
-    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision && this.nvOn !== false) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.nvOn) this.visMode = VIS.THERMAL;
+    if (this.thermalUlt) this.visMode = VIS.THERMAL; else if (g && s.adsAmt > 0.9 && g.stats.vision) this.visMode = g.stats.vision === 'thermal' ? VIS.THERMAL : VIS.NV; else if (this.vision === 'ti') this.visMode = VIS.THERMAL; else if (this.vision === 'nv') this.visMode = VIS.NV;
     this.vm.cam.fov = CONFIG.render.vmFov * (fov / fovBase) ** 0.3; this.vm.cam.aspect = cam.aspect; this.vm.cam.updateProjectionMatrix();
   }
 }
@@ -152,7 +153,7 @@ function logicStep(dt) {
   for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') { try { s.brain.update(dt); } catch (e) { if (!G.brainErr) { G.brainErr = 1; console.error('bot brain', e); } s.ctl.mz = s.ctl.mx = 0; s.ctl.fire = false; } }
   Soldiers.rebuild(); for (const s of Soldiers.list) s.step(dt);
   Vehicles.update(dt); Chests.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
-  if (G.mode) { if (G.mode.net === 'client') G.mode.t += dt; else G.mode.update(dt); } Net.tick(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
+  if (G.mode) { if (G.mode.net === 'client') { G.mode.t += dt; G.mode.netTick?.(dt); } else G.mode.update(dt); } Net.tick(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
 }
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
 function frame() {

@@ -233,7 +233,7 @@ function drawEmblem(g, shape, r) {
 
 // Weather state (biome weather → gameplay: vision, sound masking, wind, wet ground, lightning)
 const Weather = { id: 'clear', def: null, windDir: V3(1, 0, 0.3).normalize(), windStr: 3, flash: 0, lightT: 6, vis: 1, mask: 0,
-  set(id) { this.id = id; this.def = (DATA.weatherTypes && DATA.weatherTypes[id]) || { vis: 1, fog: 1, mask: 0, wind: 3, light: 1 }; this.windStr = this.def.wind; this.vis = this.def.vis; this.mask = this.def.mask; const a = rand(0, TAU); this.windDir.set(Math.cos(a), 0, Math.sin(a)); },
+  set(id) { if (Net.host && Net.ready && !Net.applying) Net.broadcast({ t: 'weather', id }); this.id = id; this.def = (DATA.weatherTypes && DATA.weatherTypes[id]) || { vis: 1, fog: 1, mask: 0, wind: 3, light: 1 }; this.windStr = this.def.wind; this.vis = this.def.vis; this.mask = this.def.mask; const a = rand(0, TAU); this.windDir.set(Math.cos(a), 0, Math.sin(a)); },
   update(dt) { this.flash = Math.max(0, this.flash - dt * 2.5); if (this.def && this.def.lightning) { this.lightT -= dt; if (this.lightT <= 0) { this.lightT = rand(5, 16); const p = G.players[0]?.soldier?.pos; if (p) FX.bolt(p.x + rand(-700, 700), p.z + rand(-700, 700)); } }
     const n = Noise.s2(G.time * 0.05, 3.3); this.windStr = this.def ? this.def.wind * (0.75 + 0.35 * n) : 3; },
   // how far a soldier can be seen (m) in this weather at this time, before camo / stance / foliage

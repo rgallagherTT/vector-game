@@ -26,7 +26,8 @@ const TOUCH_BTNS = [
   ['orders', 'SQUAD', 'orders', 'right:46vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
   ['commander', 'CMD', 'commander', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top cmd'],
   ['inv', 'BAG', 'inv', 'right:57vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top bag'],
-  ['nv', 'THERM', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top'],
+  ['nv', 'TI', 'nv', 'right:68vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top ti'],
+  ['nvg', 'NV', 'nvg', 'right:79vmin;top:2vmin;width:9vmin;height:9vmin;bottom:auto', 'tap', 'sm top nvb'],
   ['melee', 'KNIFE', 'melee', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm'],
   ['seat', 'SEAT', 'seat', 'right:57vmin;bottom:5vmin;width:10vmin;height:10vmin', 'tap', 'sm veh'],
 ];
@@ -84,6 +85,6 @@ const Touch = {
     vis('commander', !!m?.support); vis('inv', m?.kind === 'extraction'); vis('orders', !!s.squad && !v); vis('fireL', !v || s.seat > 0 || v.driverWeapons.length > 0); vis('scope', !v); vis('ads', !v || !!v.def.turret || s.seat > 0);
     const lbl = (id, t) => { const e = this.els[id]; if (e && e.firstChild.textContent !== t) e.firstChild.textContent = t; };
     lbl('jump', v ? (v.def.air || v.def.phys === 'heli' ? 'UP' : 'HOP') : 'JUMP'); lbl('crouch', v ? 'DOWN' : s.stance === 'prone' ? 'PRONE' : s.stance === 'crouch' ? 'STAND' : 'DUCK'); lbl('swap', v ? 'WPN' : 'SWAP'); lbl('gadget', v ? 'FLARE' : 'GADGET');
-    this.els.ult?.classList.toggle('ready', s.ult?.charge >= 1); this.els.ads?.classList.toggle('on', this.toggles.has('ads')); this.els.score?.classList.toggle('on', this.toggles.has('score'));
+    this.els.ult?.classList.toggle('ready', s.ult?.charge >= 1); this.els.nv?.classList.toggle('on', P.vision === 'ti'); this.els.nvg?.classList.toggle('on', P.vision === 'nv'); this.els.ads?.classList.toggle('on', this.toggles.has('ads')); this.els.score?.classList.toggle('on', this.toggles.has('score'));
   },
 };

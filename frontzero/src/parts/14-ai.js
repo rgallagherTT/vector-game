@@ -317,7 +317,7 @@ const CALLOUTS = {
 };
 const Radio = {
   q: [], last: 0,
-  say(who, text, portrait = null, team = 0) { if (!G.players.length) return; this.q.push({ who, text, portrait, t: 0 }); if (this.q.length > 3) this.q.shift(); },
+  say(who, text, portrait = null, team = 0) { if (!G.players.length) return; if (Net.host && Net.ready && !Net.applying && G.mode && G.mode.t > 2) Net.broadcast({ t: 'radio', who, text, portrait }); this.q.push({ who, text, portrait, t: 0 }); if (this.q.length > 3) this.q.shift(); },
   callout(s, kind) { if (!s || !s.squad || G.time - (s.lastCallout || -99) < 6) return; s.lastCallout = G.time; if (!G.players.some((P) => P.soldier.team === s.team && P.soldier.pos.distanceTo(s.pos) < 120)) return; const L = CALLOUTS[kind]; if (L) this.say(s.name + ' · ' + (s.squad?.name || ''), pick(L), s.op?.id || null); },
   update(dt) { if (!this.q.length) return; const m = this.q[0]; if (m.t === 0) { Audio.play('radio', 0.5); for (const P of G.players) P.hud.radio(m); } m.t += dt; if (m.t > 3.2) this.q.shift(); },
   clear() { this.q.length = 0; },

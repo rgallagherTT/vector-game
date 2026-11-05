@@ -111,7 +111,7 @@ class TeamDeathmatch extends GameMode {
   constructor(o) { super(o); this.kind = 'tdm'; this.limit = o.limit || 60; this.time = o.time || 600; this.perTeam = o.perTeam ?? 12; this.botRespawn = 4; }
   name() { return 'Team deathmatch'; }
   setup() {
-    const A = this.area = (World.def.areas || [])[this.o.area || 0] || { x: 0, z: 0, r: 150, spawns: [[-100, -100], [100, 100]] }; this.bounds = A;
+    const A = this.area = (World.def.areas || [])[this.o.area || 0] || { x: 0, z: 0, r: 150, spawns: [[-100, -100], [100, 100]] }; this.bounds = { x: A.x, z: A.z, r: Math.max(A.r, ...A.spawns.map((sp) => Math.hypot(sp[0] - A.x, sp[1] - A.z) + 45)) };
     const sp = (t) => { const s = A.spawns[t]; return V3(s[0], 0, s[1]); };
     G.players.forEach((P, i) => this.playerSoldier(P, this.playerTeam, this.spawnAt({ pos: sp(this.playerTeam), r: 10 }), Math.atan2(A.x - sp(this.playerTeam).x, A.z - sp(this.playerTeam).z)));
     this.addBots(this.playerTeam, Math.max(0, this.perTeam - G.players.length), () => this.spawnAt({ pos: sp(this.playerTeam), r: 18 }));
@@ -147,7 +147,7 @@ class Domination extends GameMode {
   constructor(o) { super(o); this.kind = 'dom'; this.limit = o.limit || 250; this.perTeam = o.perTeam ?? 10; this.botRespawn = 5; this.points = []; this.tick = 0; }
   name() { return 'Domination'; }
   setup() {
-    const A = this.area = (World.def.areas || [])[this.o.area || 0]; this.bounds = A; const letters = ['A', 'B', 'C'];
+    const A = this.area = (World.def.areas || [])[this.o.area || 0]; this.bounds = A && { x: A.x, z: A.z, r: Math.max(A.r, ...(A.spawns || []).map((sp) => Math.hypot(sp[0] - A.x, sp[1] - A.z) + 45)) }; const letters = ['A', 'B', 'C'];
     this.points = A.dom.map((d, i) => new CapturePoint({ id: letters[i], name: letters[i], x: d[0], z: d[1], r: 9, time: 9 }));
     const sp = (t) => V3(A.spawns[t][0], 0, A.spawns[t][1]);
     G.players.forEach((P) => this.playerSoldier(P, this.playerTeam, this.spawnAt({ pos: sp(this.playerTeam), r: 10 }), Math.atan2(A.x - sp(this.playerTeam).x, A.z - sp(this.playerTeam).z)));

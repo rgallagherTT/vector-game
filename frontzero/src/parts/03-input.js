@@ -6,7 +6,7 @@ const KEYMAPS = {
     fwd: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'], jump: ['Space'], sprint: ['ShiftLeft'], crouchHold: ['ControlLeft'], crouch: ['KeyC'], prone: ['KeyZ'],
     leanL: ['KeyQ'], leanR: ['KeyE'], interact: ['KeyF'], reload: ['KeyR'], melee: ['KeyV'], mode: ['KeyB'], throw: ['KeyG'], cycleThrow: ['KeyK'], tool: ['KeyN'], gadget: ['KeyX'], ult: ['KeyT'],
     grapple: ['KeyY'], heal: ['KeyH'], stim: ['KeyJ'], ping: ['Backquote'], map: ['KeyM'], score: ['Tab'], inv: ['KeyI'], orders: ['KeyU'], commander: ['KeyO'], nv: ['KeyL'],
-    w1: ['Digit1'], w2: ['Digit2'], w3: ['Digit3'], w4: ['Digit4'], w5: ['Digit5'], w6: ['Digit6'], w7: ['Digit7'], w8: ['Digit8'], w9: ['Digit9'], w10: ['Digit0'], pause: ['Escape', 'KeyP'], down: ['ControlLeft'], up: ['Space'], seat: ['F1'],
+    w1: ['Digit1'], w2: ['Digit2'], w3: ['Digit3'], w4: ['Digit4'], w5: ['Digit5'], w6: ['Digit6'], w7: ['Digit7'], w8: ['Digit8'], w9: ['Digit9'], w10: ['Digit0'], pause: ['Escape'], nvg: ['KeyP'], down: ['ControlLeft'], up: ['Space'], seat: ['F1'],
   },
   kb2: { // second player on the same keyboard (right-hand block) when no pad is plugged in
     fwd: ['ArrowUp'], back: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], lookU: ['Numpad8'], lookD: ['Numpad5'], lookL: ['Numpad4'], lookR: ['Numpad6'],
@@ -15,7 +15,7 @@ const KEYMAPS = {
   },
 };
 const PADB = { jump: 0, crouch: 1, reload: 2, swap: 3, gadget: 4, throw: 5, ads: 6, fire: 7, map: 8, pause: 9, sprint: 10, melee: 11, ping: 12, heal: 13, tool: 14, mode: 15 };
-const ACTION_LIST = ['qscope', 'jump', 'sprint', 'crouch', 'crouchHold', 'prone', 'leanL', 'leanR', 'interact', 'reload', 'melee', 'mode', 'throw', 'cycleThrow', 'tool', 'gadget', 'ult', 'grapple', 'heal', 'stim', 'ping', 'map', 'score', 'inv', 'orders', 'commander', 'nv', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'pause', 'fire', 'ads', 'up', 'down', 'seat', 'swap'];
+const ACTION_LIST = ['nvg', 'qscope', 'jump', 'sprint', 'crouch', 'crouchHold', 'prone', 'leanL', 'leanR', 'interact', 'reload', 'melee', 'mode', 'throw', 'cycleThrow', 'tool', 'gadget', 'ult', 'grapple', 'heal', 'stim', 'ping', 'map', 'score', 'inv', 'orders', 'commander', 'nv', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'pause', 'fire', 'ads', 'up', 'down', 'seat', 'swap'];
 const Input = {
   keys: new Set(), mouse: { dx: 0, dy: 0, b0: false, b1: false, b2: false, wheel: 0, locked: false }, prev: [{}, {}], cur: [{}, {}], listeners: [], padPrev: [],
   init() {
@@ -84,6 +84,6 @@ const KEYHELP = [
   ['W A S D', 'move'], ['Shift', 'sprint (scoped: hold breath)'], ['Space', 'jump / mantle / vault · in the air: wingsuit, then parachute'], ['C / Ctrl', 'crouch (toggle / hold) · sprint + C slides'], ['Z', 'prone'],
   ['Q / E', 'lean'], ['LMB / RMB', 'fire / aim down sights'], ['R', 'reload (hold: check ammo)'], ['B', 'fire mode'], ['V', 'melee'], ['1 – 0 / wheel', 'weapon slots 1-10 (main · pistol · launcher · 7 extra)'],
   ['G / K', 'throw equipment / cycle'], ['Y', 'grappling hook'], ['F', 'interact · hold: revive, loot, repair · enter vehicles · rappel from edges'],
-  ['X', 'signature gadget'], ['N', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L', 'thermal vision on / off'],
+  ['X', 'signature gadget'], ['N', 'class tool'], ['T', 'ultimate'], ['H / J', 'bandage + medkit / stim'], ['` or MMB', 'ping (double: danger)'], ['L / P', 'thermal (TI) / night vision (NV)'],
   ['U', 'squad orders'], ['O', 'commander support'], ['M / Tab', 'map / scoreboard'], ['I', 'inventory (extraction)'], ['Esc', 'pause'],
 ];
