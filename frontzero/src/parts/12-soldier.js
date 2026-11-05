@@ -34,7 +34,7 @@ class Soldier {
     this.vest = gear(L.vest); this.helmet = gear(L.helmet); if (L.vestDur != null) this.vest.dur = L.vestDur; if (L.helmetDur != null) this.helmet.dur = L.helmetDur;
     this.throwables = Object.assign({}, L.throwables || { frag: 2, smoke: 1 }); this.throwSel = Object.keys(this.throwables)[0] || 'frag';
     this.meds = Object.assign({ bandage: 3, medkit: 1, stim: 1 }, L.meds || {}); this.reserve = {};
-    for (const g of this.weapons) if (g && !L.ammo) { const per = g.isLauncher ? 8 : g.def.sidearm ? Math.max(120, g.stats.mag * 8) : Math.max(240, g.stats.mag * 8); this.reserve[g.ammo] = (this.reserve[g.ammo] || 0) + per; }
+    for (const g of this.weapons) if (g && !L.ammo) { const per = g.def.caliber === 'cell' ? 99999 : g.isLauncher ? 8 : g.def.sidearm ? Math.max(120, g.stats.mag * 8) : Math.max(240, g.stats.mag * 8); this.reserve[g.ammo] = (this.reserve[g.ammo] || 0) + per; }
     if (L.ammo) for (const k in L.ammo) this.reserve[k] = L.ammo[k];
     this.recalcWeight(); if (this.player) this.player.vm.setGun(this.gun);
   }
@@ -362,6 +362,8 @@ class Soldier {
   weaponTick(dt, inVehicle) {
     const g = this.gun; const C = this.ctl; if (!g || inVehicle && !this.seatExposed) { this.adsAmt = damp(this.adsAmt, 0, 10, dt); return; }
     const st = g.stats; g.cool = Math.max(0, g.cool - dt);
+    if (g.def.caliber === 'cell' && (this.reserve[g.ammo] || 0) < 9000) this.reserve[g.ammo] = 99999;
+    for (const w of this.weapons) if (w && w.def.energy && w.inMag < w.stats.mag && G.time - (w === g ? this.lastShotT : 0) > w.def.energy.delay && this.action !== 'reload') { w.regen = (w.regen || 0) + w.def.energy.regen * dt; if (w.regen >= 1) { const k = Math.floor(w.regen); w.regen -= k; w.inMag = Math.min(w.stats.mag, w.inMag + k); } }
     // ADS
     const wantAds = C.ads && !this.sprinting && this.state === 'alive' && (!this.action || this.action === 'reload') && this.moveState !== 'swim' && this.moveState !== 'wing' && this.moveState !== 'para' && !this.mantle;
     this.adsAmt = clamp(this.adsAmt + (wantAds ? 1 : -1.6) * dt / Math.max(0.08, st.ads * Operators.adsMul(this)), 0, 1);
@@ -407,7 +409,11 @@ class Soldier {
         const kind = def.launcher === 'aa' ? 'missile' : 'rocket'; const tgt = def.launcher === 'aa' && g.lockT >= def.lockTime ? g.lockTarget : null;
         Ballistics.fire({ x: e.x + d.x * 0.6, y: e.y + d.y * 0.6 - 0.1, z: e.z + d.z * 0.6, dx: d.x, dy: d.y, dz: d.z, vel: st.vel, dmg, pen: 9, ammo: g.ammo, owner: this, team: this.team, weapon: def, range0: 0, range1: 999, minMul: 1, tracer: false, kind, blast: def.blast, target: tgt, guided: def.launcher === 'guided', turn: def.launcher === 'aa' ? 3.2 : 2.2, life: 8 });
         g.lockT = 0; Audio.play('launch', this.player ? 0.9 : 0); if (!this.player) Audio.at('launch', this.pos, 0.8); FX.smoke(_v6.copy(e).addScaledVector(d, -1.2), 6, 0.7, 1.2, 0.8, 2.5);
-      } else Ballistics.fire({ x: e.x, y: e.y - 0.02, z: e.z, dx: d.x, dy: d.y, dz: d.z, vel: st.vel, dmg, pen: g.pen, ammo: g.ammo, owner: this, team: this.team, weapon: def, range0: st.range0, range1: st.range1, minMul: st.minMul, tracer: (g.shot % CONFIG.ballistic.tracerEvery === 0) && !st.suppressed, kind: 'bullet' });
+      } else { const tech = def.tech; const col = tech ? hexToRgb(parseHex(def.glow || '#40e0ff')) : null; let tgt = null;
+        if (tech === 'smart') { let bd = 0.42; for (const o of Soldiers.near(e.x, e.z, 160)) { if (o.team === this.team || o.state !== 'alive') continue; const c = o.center(_v6); const to = _v7.subVectors(c, e); const L = to.length(); const a = Math.acos(clamp(to.dot(d) / L, -1, 1)); if (a < bd && Col.los(e.x, e.y, e.z, c.x, c.y, c.z)) { bd = a; tgt = o; } } }
+        Ballistics.fire({ x: e.x, y: e.y - 0.02, z: e.z, dx: d.x, dy: d.y, dz: d.z, vel: st.vel, dmg, pen: g.pen, ammo: g.ammo, owner: this, team: this.team, weapon: def, range0: st.range0, range1: st.range1, minMul: st.minMul, tracer: tech ? (pellets === 1 || i < 4) : (g.shot % CONFIG.ballistic.tracerEvery === 0) && !st.suppressed, tracerCol: col, kind: tech === 'plasma' ? 'plasma' : 'bullet', blast: def.blast, nograv: !!def.noDrop, col,
+          target: tgt ? { get pos() { return tgt.center(V3()); }, get alive() { return tgt.state === 'alive'; } } : null, homing: !!tgt, turn: 7, life: tech === 'plasma' ? 4 : undefined });
+        if (tech && this.player) FX.glow.emit(e.x + d.x * 0.8, e.y + d.y * 0.8 - 0.05, e.z + d.z * 0.8, 0, 0, 0, col[0], col[1], col[2], 1, 0.4, 0.08, 0.6, 0, 0); }
     }
     // recoil: learnable pattern, first-shot kick, stance + bipod + attachments
     const pat = g.pattern[Math.min(g.shot | 0, g.pattern.length - 1)]; const deployed = (def.bipod || g.att.grip === 'bipod') && (this.stance === 'prone' || this.braced) ? st.deployRecoil * 0.6 : 1;

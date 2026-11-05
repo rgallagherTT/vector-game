@@ -6,7 +6,8 @@ const TOUCH_BTNS = [
   // id, label, action, style (right/bottom/size in vmin unless noted), kind: hold | tap | toggle
   ['fire', 'FIRE', 'fire', 'right:5vmin;bottom:17vmin;width:21vmin;height:21vmin', 'hold', 'big'],
   ['fireL', '●', 'fire', 'left:4vmin;bottom:50vmin;width:12vmin;height:12vmin', 'hold', ''],
-  ['ads', 'AIM', 'ads', 'right:29vmin;bottom:31vmin', 'toggle', ''],
+  ['scope', 'SCOPE', 'qscope', 'right:28vmin;bottom:29vmin;width:15vmin;height:15vmin', 'hold', 'scopeb'],
+  ['ads', 'AIM', 'ads', 'right:57vmin;bottom:20vmin;width:10vmin;height:10vmin', 'toggle', 'sm'],
   ['jump', 'JUMP', 'jump', 'right:29vmin;bottom:5vmin', 'hold', ''],
   ['crouch', 'DUCK', 'crouch', 'right:44vmin;bottom:5vmin', 'tap', ''],
   ['reload', 'RLD', 'reload', 'right:44vmin;bottom:20vmin;width:11vmin;height:11vmin', 'tap', ''],
@@ -47,7 +48,7 @@ const Touch = {
       if (kind === 'btn') { const B = TOUCH_BTNS.find((b) => b[0] === id); const act = this.actFor(id, B[2]); const k = B[4]; this.els[id].classList.add('on');
         p.act = act; if (id === 'crouch' && act === 'crouch') { this.crouchT = performance.now(); return; } if (k === 'toggle') { if (this.toggles.has(act)) this.toggles.delete(act); else this.toggles.add(act); } else if (k === 'tap' && id !== 'crouch') this.taps.add(act); else this.held.add(act); } };
     const moveH = (e) => { const p = ptr.get(e.pointerId); if (!p) return; e.preventDefault(); const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-      if (p.kind === 'look' || (p.kind === 'btn' && (p.id === 'fire' || p.id === 'ads' || p.id === 'fireL'))) { this.look.x += dx * sens(); this.look.y += -dy * sens() * (G.settings.invertY ? -1 : 1); }
+      if (p.kind === 'look' || (p.kind === 'btn' && (p.id === 'fire' || p.id === 'ads' || p.id === 'fireL' || p.id === 'scope'))) { this.look.x += dx * sens(); this.look.y += -dy * sens() * (G.settings.invertY ? -1 : 1); }
       if (p.kind === 'move') { const R = Math.min(innerWidth, innerHeight) * 0.13; let ox = p.x - p.ox, oy = p.y - p.oy; const L = Math.hypot(ox, oy); if (L > R * 1.6) { p.ox += ox * (1 - R * 1.6 / L); p.oy += oy * (1 - R * 1.6 / L); stickEl.style.left = p.ox + 'px'; stickEl.style.top = p.oy + 'px'; ox = p.x - p.ox; oy = p.y - p.oy; }
         const l2 = Math.min(1, Math.hypot(ox, oy) / R); const a = Math.atan2(oy, ox); this.mv.x = Math.cos(a) * l2; this.mv.z = -Math.sin(a) * l2; this.mv.sprint = Math.hypot(ox, oy) > R * 1.25 && this.mv.z > 0.6; knob.style.transform = `translate(calc(-50% + ${Math.cos(a) * Math.min(Math.hypot(ox, oy), R)}px),calc(-50% + ${Math.sin(a) * Math.min(Math.hypot(ox, oy), R)}px))`; stickEl.classList.toggle('sprint', this.mv.sprint); } };
     const up = (e) => { const p = ptr.get(e.pointerId); if (!p) return; ptr.delete(e.pointerId);
@@ -80,7 +81,7 @@ const Touch = {
     const v = s.vehicle; const m = G.mode; const vis = (id, on) => { const e = this.els[id]; if (e) e.style.display = on ? '' : 'none'; };
     const it = P.interactTarget; vis('use', !!it || !!v); if (this.els.use) this.els.use.firstChild.textContent = v ? 'EXIT' : (it ? (it.label.split(' ')[0] || 'USE').toUpperCase().slice(0, 8) : 'USE');
     vis('seat', !!v && v.def.seats.length > 1); vis('melee', !v); vis('grapple', !v && (s.op?.id === 'wren' || !!s.grappleCharges)); vis('tool', !v && !!s.tool); vis('gadget', !!s.gadget || (v && v.flares > 0)); vis('ult', !v && !!s.op); vis('heal', !v); vis('throw', !v); vis('reload', !v || (s.seat === 0 && v.driverWeapons.length > 0));
-    vis('commander', !!m?.support); vis('inv', m?.kind === 'extraction'); vis('orders', !!s.squad && !v); vis('fireL', !v || s.seat > 0 || v.driverWeapons.length > 0); vis('ads', !v || !!v.def.turret || s.seat > 0);
+    vis('commander', !!m?.support); vis('inv', m?.kind === 'extraction'); vis('orders', !!s.squad && !v); vis('fireL', !v || s.seat > 0 || v.driverWeapons.length > 0); vis('scope', !v); vis('ads', !v || !!v.def.turret || s.seat > 0);
     const lbl = (id, t) => { const e = this.els[id]; if (e && e.firstChild.textContent !== t) e.firstChild.textContent = t; };
     lbl('jump', v ? (v.def.air || v.def.phys === 'heli' ? 'UP' : 'HOP') : 'JUMP'); lbl('crouch', v ? 'DOWN' : s.stance === 'prone' ? 'PRONE' : s.stance === 'crouch' ? 'STAND' : 'DUCK'); lbl('swap', v ? 'WPN' : 'SWAP'); lbl('gadget', v ? 'FLARE' : 'GADGET');
     this.els.ult?.classList.toggle('ready', s.ult?.charge >= 1); this.els.ads?.classList.toggle('on', this.toggles.has('ads')); this.els.score?.classList.toggle('on', this.toggles.has('score'));

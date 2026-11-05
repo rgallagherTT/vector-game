@@ -45,7 +45,9 @@ class Player {
     if (s.state === 'downed') { C.yaw = this.lookYaw; C.pitch = this.lookPitch; C.mx = a.mx; C.mz = a.mz; if (a.interact) { this.giveUpT = (this.giveUpT || 0) + dt; C.giveUp = this.giveUpT > 1.5; } else this.giveUpT = 0; return; }
     if (s.state === 'dead') return;
     C.yaw = this.lookYaw; C.pitch = this.lookPitch; C.mx = a.mx; C.mz = a.mz; C.jump = s.vehicle ? a.jump : pr('jump'); C.sprint = a.sprint; C.crouch = pr('crouch'); C.crouchHold = a.crouchHold || (s.vehicle && a.down); C.prone = pr('prone'); C.lean = (a.leanR ? 1 : 0) - (a.leanL ? 1 : 0);
-    C.fire = a.fire; C.firePressed = pr('fire'); C.ads = a.ads; C.reload = pr('reload'); C.mode = pr('mode'); C.up = a.up; C.down = a.down; C.gadget = false;
+    let qsPress = false; if (a.qscope) { a.ads = true; this.qsHeld = (this.qsHeld || 0) + dt; if (a.fire) this.qsShot = true; } else if (this.qsHeld) { if (!this.qsShot && this.qsHeld > 0.12 && !s.vehicle) { this.qsFireT = s.gun && s.gun.mode === 'auto' ? 0.16 : 0.05; qsPress = true; } this.qsHeld = 0; this.qsShot = false; }
+    if (this.qsFireT > 0) { this.qsFireT -= dt; a.fire = true; a.ads = true; }
+    C.fire = a.fire; C.firePressed = pr('fire') || qsPress; C.ads = a.ads; C.reload = pr('reload'); C.mode = pr('mode'); C.up = a.up; C.down = a.down; C.gadget = false;
     if (s.vehicle) { this.vehicleInput(a, dt); return; }
     if (a.reload) { this.reloadHeld = (this.reloadHeld || 0) + dt; if (this.reloadHeld > 0.45 && !s.action && s.gun) { s.startAction('check', 1.6, () => { if (this.idx >= 0) this.note(s.gun.inMag + ' rounds · ' + (s.reserve[s.gun.ammo] || 0) + ' spare', '', 0, 1.4); }); this.reloadHeld = -9; } } else this.reloadHeld = 0;
     if (pr('melee')) s.melee(); if (pr('throw')) s.throwItem(); if (pr('cycleThrow')) { s.cycleThrow(); this.note(DATA.items[s.throwSel]?.name || '', '', 0, 1); }

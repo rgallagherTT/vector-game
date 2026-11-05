@@ -15,7 +15,7 @@ const KEYMAPS = {
   },
 };
 const PADB = { jump: 0, crouch: 1, reload: 2, swap: 3, gadget: 4, throw: 5, ads: 6, fire: 7, map: 8, pause: 9, sprint: 10, melee: 11, ping: 12, heal: 13, tool: 14, mode: 15 };
-const ACTION_LIST = ['jump', 'sprint', 'crouch', 'crouchHold', 'prone', 'leanL', 'leanR', 'interact', 'reload', 'melee', 'mode', 'throw', 'cycleThrow', 'tool', 'gadget', 'ult', 'grapple', 'heal', 'stim', 'ping', 'map', 'score', 'inv', 'orders', 'commander', 'nv', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'pause', 'fire', 'ads', 'up', 'down', 'seat', 'swap'];
+const ACTION_LIST = ['qscope', 'jump', 'sprint', 'crouch', 'crouchHold', 'prone', 'leanL', 'leanR', 'interact', 'reload', 'melee', 'mode', 'throw', 'cycleThrow', 'tool', 'gadget', 'ult', 'grapple', 'heal', 'stim', 'ping', 'map', 'score', 'inv', 'orders', 'commander', 'nv', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'pause', 'fire', 'ads', 'up', 'down', 'seat', 'swap'];
 const Input = {
   keys: new Set(), mouse: { dx: 0, dy: 0, b0: false, b1: false, b2: false, wheel: 0, locked: false }, prev: [{}, {}], cur: [{}, {}], listeners: [], padPrev: [],
   init() {
@@ -51,7 +51,7 @@ const Input = {
       const M = KEYMAPS.kbm; const k = (n) => this.any(M[n]);
       a.mz = (k('fwd') ? 1 : 0) - (k('back') ? 1 : 0); a.mx = (k('right') ? 1 : 0) - (k('left') ? 1 : 0);
       for (const n of ACTION_LIST) if (M[n] && k(n)) a[n] = true;
-      a.fire = this.mouse.b0; a.ads = this.mouse.b2; if (this.mouse.b1) a.ping = true;
+      a.fire = this.mouse.b0; a.ads = this.mouse.b2; a.qscope = this.mouse.b2 && G.settings.quickScope !== false; if (this.mouse.b1) a.ping = true;
       a.lookX = this.mouse.dx * sens; a.lookY = -this.mouse.dy * sens * inv; this.mouse.dx = 0; this.mouse.dy = 0; a.wheel = this.mouse.wheel; this.mouse.wheel = 0;
       if (i === 0 && typeof Touch !== 'undefined') Touch.apply(a);
     }
