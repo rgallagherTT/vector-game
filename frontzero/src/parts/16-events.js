@@ -12,6 +12,7 @@ const Events = {
 // spawn a group of soldiers from a spec — used by scripts, extraction guards, warfare reinforcements
 // spec: { n, pos:[x,z] | V3, r, team, faction, difficulty, tag, goal:{type,pos,r}, guard, hunt, boss, ops:[...], weapons:[...], vest, helmet, name, vehicle }
 function spawnGroup(spec, mode) {
+  if (Net.client) return [];
   const n = spec.n || 1; const center = Array.isArray(spec.pos) ? V3(spec.pos[0], 0, spec.pos[1]) : (spec.pos || V3()).clone(); const out = []; const sq = new Squad(spec.team ?? 1, spec.squadName);
   const fac = DATA.factions[spec.faction] || DATA.factions[spec.team === 0 ? 'accord' : 'mandate']; const rng = new RNG(strHash((spec.tag || 'g') + G.time));
   for (let i = 0; i < n; i++) {

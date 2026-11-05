@@ -19,8 +19,8 @@ const Chests = {
       if (!ok(x, z)) continue; out.push(V3(x, Col.ground(x, z, World.heightAt(x, z) + 1.5, 0.4, 2).y, z)); }
     return out;
   },
-  populate(mode, n, area = null) { this.initMats(); this.mode = mode; this.area = area; this.n = n; const rng = new RNG(Math.random() * 1e9); for (const p of this.spots(area, n, rng)) this.spawn(p); },
-  spawn(p) {
+  populate(mode, n, area = null) { if (Net.client) return; this.initMats(); this.mode = mode; this.area = area; this.n = n; const rng = new RNG(Math.random() * 1e9); for (const p of this.spots(area, n, rng)) this.spawn(p); },
+  spawn(p) { this.initMats();
     const g = new THREE.Group(); const b = (mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(this.geo.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
     b(this.mats.body, 0, 0.28, 0, 1.1, 0.56, 0.7); b(this.mats.trim, 0, 0.3, 0, 1.14, 0.08, 0.74); b(this.mats.trim, -0.5, 0.28, 0, 0.08, 0.6, 0.74); b(this.mats.trim, 0.5, 0.28, 0, 0.08, 0.6, 0.74);
     const lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); g.add(lid); const lb = new THREE.Mesh(this.geo.box, this.mats.body); lb.scale.set(1.1, 0.18, 0.7); lb.position.set(0, 0.09, 0.35); lid.add(lb); const lt = new THREE.Mesh(this.geo.box, this.mats.trim); lt.scale.set(1.14, 0.06, 0.2); lt.position.set(0, 0.12, 0.35); lid.add(lt);
@@ -28,12 +28,13 @@ const Chests = {
     g.position.copy(p); g.rotation.y = rand(0, TAU); WORLD.add(g);
     const c = { pos: p.clone(), g, lid, beam, gem, open: false, t: rand(0, 6) };
     c.it = Interact.add({ pos: p.clone().add(V3(0, 0.7, 0)), r: 2.6, prio: 2, label: 'Open supply chest', hold: 0.7, cond: (s) => !c.open && s.state === 'alive' && !s.vehicle, fn: (s) => this.open(c, s) });
+    c.cid = ++Net.chestN; if (Net.host && !Net.applying) Net.broadcast({ t: 'chest', cid: c.cid, p: [p.x, p.y, p.z] });
     this.list.push(c); return c;
   },
   removeChest(c) { if (c.g) WORLD.remove(c.g); if (c.it) Interact.remove(c.it); },
   // what's inside: mostly special weapons, sometimes armour / resupply / ultimate
   open(c, s) {
-    if (c.open) return; c.open = true; c.openT = 0; Interact.remove(c.it); Audio.at('loot', c.pos, 1); Audio.play('level', 0.5); FX.sparks(c.pos.clone().add(V3(0, 0.8, 0)), 18, 6);
+    if (c.open) return; c.open = true; c.openT = 0; Interact.remove(c.it); if (Net.on && !Net.applying) Net.send({ t: 'chestOpen', cid: c.cid }); if (!s) { this.respawnQ.push({ t: 75 }); return; } Audio.at('loot', c.pos, 1); Audio.play('level', 0.5); FX.sparks(c.pos.clone().add(V3(0, 0.8, 0)), 18, 6);
     const roll = Math.random(); const P = s.player; const say = (t, cls = 'big') => { if (P) P.note(t, cls, 0, 3.5); };
     if (roll < 0.6) { const W = rand(0, 1) < 0.5 && s.weapons[0] ? SPECIALS().filter((w) => w.class !== 'launcher' && !w.sidearm) : SPECIALS(); const w = W[Math.floor(Math.random() * W.length)];
       let slot = w.sidearm ? 1 : w.class === 'launcher' ? 2 : 0; if (s.weapons[slot]) { const free = s.weapons.findIndex((x, i) => i >= 3 && !x); slot = free >= 0 ? free : slot; } const g = new Gun(w.id, defaultAttach(w)); if (w.class !== 'launcher' && !w.sidearm) g.att.optic = w.class === 'sniper' ? 'x8' : 'holo'; g.refresh?.(); s.weapons[slot] = g; s.cur = slot;
@@ -46,6 +47,7 @@ const Chests = {
   update(dt) {
     for (const c of this.list) { c.t += dt; if (!c.open) { c.beam.material.opacity = 0.16 + Math.sin(c.t * 2) * 0.06; c.gem.scale.setScalar(0.18 + Math.sin(c.t * 4) * 0.03); } else { c.openT += dt; c.lid.rotation.x = -Math.min(1.9, c.openT * 5); c.beam.visible = false; if (c.openT > 20 && !c.gone) { c.gone = true; this.removeChest(c); } } }
     this.list = this.list.filter((c) => !c.gone);
+    if (Net.client) this.respawnQ.length = 0;
     for (let i = this.respawnQ.length - 1; i >= 0; i--) { const q = this.respawnQ[i]; q.t -= dt; if (q.t <= 0) { this.respawnQ.splice(i, 1); const p = this.spots(this.area, 1, new RNG(Math.random() * 1e9))[0]; if (p) this.spawn(p); } }
   },
 };

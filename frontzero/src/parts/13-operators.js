@@ -230,6 +230,7 @@ const Spotting = {
 const Pings = {
   list: [],
   add(team, pos, kind, by, target = null) { // kind: loc | enemy | danger | loot | veh | obj
+    if (by && by.player && Net.on && !Net.applying) Net.send({ t: 'ping', p: [pos.x, pos.y, pos.z], kind });
     if (by) for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i].by === by && this.list[i].kind !== 'enemy') this.list.splice(i, 1);
     const p = { team, pos: pos.clone(), kind, by, target, t: G.time, life: kind === 'enemy' ? 6 : 12 }; this.list.push(p); if (target && (kind === 'enemy' || kind === 'veh')) Spotting.mark(target, team, 6, 'ping', by);
     for (const P of G.players) if (P.soldier.team === team) Audio.play(kind === 'enemy' || kind === 'danger' ? 'pingEnemy' : 'ping', 0.7); return p;

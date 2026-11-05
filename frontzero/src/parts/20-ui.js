@@ -9,7 +9,7 @@ const UI = {
   clear() { this.root.innerHTML = ''; this.screen = null; },
   open(name, opts = {}) { if (G.inGame && !opts.keepPlaying) G.paused = !(G.online); Input.unlock(); this.root.innerHTML = ''; this.screen = name; this.opts = opts; Audio.play('ui', 0.5); (this['s_' + name] || this.s_title).call(this, opts); },
   close() { this.root.innerHTML = ''; this.screen = null; if (G.inGame) { G.paused = false; if (!NORENDER && !G.bench) Input.lock(); } },
-  back() { if (G.inGame) { if (this.opts.after) { const a = this.opts.after; this.opts.after = null; this.close(); a(); return; } this.open('pause'); } else this.open('title'); },
+  back() { if (!G.inGame && this.opts && this.opts.after) { const a = this.opts.after; this.opts.after = null; a(); return; } if (G.inGame) { if (this.opts.after) { const a = this.opts.after; this.opts.after = null; this.close(); a(); return; } this.open('pause'); } else this.open('title'); },
   panel(html, cls = '') { const s = el('div', { class: 'screen ' + cls }); s.innerHTML = html; this.root.appendChild(s); return s; },
   topbar(active, tabs) { return `<div class="topbar"><div class="logo">FRONT <b>ZERO</b></div><div class="tabs">${tabs.map(([id, label]) => `<div class="tab ${id === active ? 'on' : ''}" data-tab="${id}">${label}</div>`).join('')}</div><div class="cur">${fmtMoney(G.save.credits)} · LVL ${Progress.accountLevel()}</div><button class="btn" data-act="back">Back</button></div>`; },
   wire(s, handlers) { s.querySelectorAll('[data-tab]').forEach((t) => t.onclick = () => this.open(t.dataset.tab, this.opts)); s.querySelectorAll('[data-act]').forEach((b) => b.onclick = (ev) => { Audio.play('ui', 0.6); (handlers[b.dataset.act] || (b.dataset.act === 'back' ? () => this.back() : () => {}))(b, ev); }); },
@@ -21,6 +21,7 @@ const UI = {
     G.inGame = false; const s = this.panel(`<div class="title-wrap"><div class="big">FRONT <b>ZERO</b></div><div class="sub">NEAR-FUTURE TACTICAL WARFARE</div>
       <button class="mbtn" data-act="warfare">Warfare<small>32 vs 32 combined arms — Breakthrough and Conquest</small></button>
       <button class="mbtn" data-act="extraction">Extraction<small>Drop in, loot, get out alive — or lose it all</small></button>
+      <button class="mbtn" data-act="online">Online co-op<small>Up to 4 phones, tablets and laptops in one room link — like Brawler</small></button>
       <button class="mbtn" data-act="campaign">Campaign<small>Eight missions across six nations — solo with an AI squad or split-screen co-op</small></button>
       <button class="mbtn" data-act="quick">Quick match<small>Team deathmatch and domination</small></button>
       <button class="mbtn" data-act="range">Firing range + vehicle training</button>
@@ -29,7 +30,7 @@ const UI = {
       <button class="mbtn" data-act="settings">Settings · controls · co-op</button>
       ${Save.canMigrate() ? '<button class="mbtn" data-act="migrate">Import BOUNTY RUN career<small>Credits and paint jobs carry over</small></button>' : ''}</div>
       <div style="position:absolute;right:26px;bottom:18px;font-size:12px;color:var(--dim);text-align:right">${G.players.length > 1 || G.settings.coop ? 'SPLIT-SCREEN CO-OP ON · ' : ''}${fmtMoney(G.save.credits)} · Account level ${Progress.accountLevel()}<br>Click the game to capture the mouse · Esc pauses</div>`, 'clear');
-    this.wire(s, { warfare: () => this.open('warfareSetup'), extraction: () => this.open('hub'), campaign: () => this.open('campaign'), quick: () => this.open('quickSetup'), range: () => this.open('rangeSetup'), armoury: () => this.open('armoury'), progress: () => this.open('progress'), settings: () => this.open('settings'), migrate: () => { const r = Save.migrate(); this.toast(r); this.open('title'); } });
+    this.wire(s, { online: () => this.open(Net.peer ? 'onlineLobby' : 'online'), warfare: () => this.open('warfareSetup'), extraction: () => this.open('hub'), campaign: () => this.open('campaign'), quick: () => this.open('quickSetup'), range: () => this.open('rangeSetup'), armoury: () => this.open('armoury'), progress: () => this.open('progress'), settings: () => this.open('settings'), migrate: () => { const r = Save.migrate(); this.toast(r); this.open('title'); } });
   },
   toast(text) { const t = el('div', { class: 'note', style: 'position:fixed;left:50%;top:30%;transform:translateX(-50%);z-index:50;background:rgba(0,0,0,.8);padding:10px 18px' }, esc(text)); document.body.appendChild(t); setTimeout(() => t.remove(), 3200); },
   mapCards(filter, sel) { return DATA.mapOrder.filter((id) => filter(DATA.maps[id])).map((id) => { const m = DATA.maps[id]; const c = DATA.countries[m.country]; return `<div class="card ${id === sel ? 'sel' : ''}" data-map="${id}"><div class="tag">${esc(c?.name || '')}</div><h3>${esc(m.name)}</h3><div class="s">${esc(m.blurb || '')}</div><div class="s">${m.biomes.map((b) => DATA.biomes[b].name).join(' · ')} · ${(m.size / 1000).toFixed(1)} km</div></div>`; }).join(''); },

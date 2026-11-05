@@ -135,7 +135,7 @@ const Game = {
     FX.clear(); Foliage.reset(); Blocks.reset(); Col.clear(); Nav.reset(); Cover.reset(); SoldierGfx.clear(); Events.clearAll(); Chests.clear(); if (typeof Loot !== 'undefined') Loot.clear(); Audio.forceIntensity = null;
   },
   teardown() { if (G.mode) { try { G.mode.dispose(); } catch (e) { console.error(e); } } G.mode = null; G.inGame = false; this.clearWorld(); },
-  quit(to = 'title') { this.teardown(); for (const P of G.players) P.dispose(); G.players = []; Precip.clear(); document.getElementById('hudRoot').innerHTML = ''; document.getElementById('split').innerHTML = ''; UI.scoreboard(false); Input.unlock(); Save.save(); UI.open(to); },
+  quit(to = 'title') { if (Net.peer) { if (Net.inMatch) Net.backToLobby(); if (to === 'title' || to === 'campaign' || to === 'hub') to = 'onlineLobby'; } this.teardown(); for (const P of G.players) P.dispose(); G.players = []; Precip.clear(); document.getElementById('hudRoot').innerHTML = ''; document.getElementById('split').innerHTML = ''; UI.scoreboard(false); Input.unlock(); Save.save(); UI.open(to); },
   layout() {
     const W = innerWidth, H = innerHeight; const n = G.players.length; G.split = n > 1; document.getElementById('split').innerHTML = n > 1 ? '<div class="v"></div>' : '';
     G.players.forEach((P, i) => { const r = n > 1 ? { x: i * W / 2, y: 0, w: W / 2, h: H } : { x: 0, y: 0, w: W, h: H }; P.rect = r; P.hud.setRect(r.x, r.y, r.w, r.h, n > 1); P.camera.aspect = r.w / r.h; P.camera.updateProjectionMatrix(); P.vm.cam.aspect = r.w / r.h; P.vm.cam.updateProjectionMatrix(); });
@@ -152,7 +152,7 @@ function logicStep(dt) {
   for (const s of Soldiers.list) if (s.brain && s.state !== 'dead') { try { s.brain.update(dt); } catch (e) { if (!G.brainErr) { G.brainErr = 1; console.error('bot brain', e); } s.ctl.mz = s.ctl.mx = 0; s.ctl.fire = false; } }
   Soldiers.rebuild(); for (const s of Soldiers.list) s.step(dt);
   Vehicles.update(dt); Chests.update(dt); Grapples.update(dt); Chutes.update(dt); Ballistics.update(dt); Throwables.update(dt); Deployables.update(dt); Drones.update(dt); Operators.updateMeshes(); Build.update(dt); World.update(dt); SupplyDrop.update(dt);
-  if (G.mode) G.mode.update(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
+  if (G.mode) { if (G.mode.net === 'client') G.mode.t += dt; else G.mode.update(dt); } Net.tick(dt); Pings.update(); Radio.update(dt); AI.update(dt); Weather.update(dt);
 }
 let lastT = performance.now(), acc = 0, fpsSm = 60; const frameTimes = [];
 function frame() {
@@ -277,8 +277,9 @@ async function boot() {
   const quick = QS.get('quick'); const map = QS.get('map') || 'dustwater';
   if (quick === 'range') Game.start(new FiringRange({})); else if (quick === 'tdm') Game.start(new TeamDeathmatch({ map, perTeam: +(QS.get('n') || 8) })); else if (quick === 'dom') Game.start(new Domination({ map })); else if (quick === 'warfare') Game.start(new Warfare({ map, warfare: QS.get('wf') || 'breakthrough', perTeam: +(QS.get('n') || 16) }));
   else if (quick === 'conquest') Game.start(new Warfare({ map, warfare: 'conquest', perTeam: +(QS.get('n') || 16) })); else if (quick === 'training') Game.start(new VehicleTraining({ vehicle: QS.get('veh') || 'speeder_bike' })); else if (quick === 'extraction') Extraction.quickStart(map); else if (quick === 'campaign') Campaign.start(+(QS.get('m') || 0));
+  else if (QS.get('room')) { const nm = QS.get('name') || (G.save.callsign !== 'Operator' ? G.save.callsign : ''); if (nm) Net.join(QS.get('room'), nm); else UI.open('online'); }
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { HUDFeed, Net, Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();
