@@ -21,7 +21,7 @@ The page loads `data/*.json` over HTTP, so opening `index.html` straight from di
 
 ## Controls (keyboard + mouse; gamepad and a second keyboard player are supported)
 
-WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim (release RMB to fire) · R reload · B fire mode · V melee · 1–0 weapon slots (main, pistol, launcher, 7 extra) · G throw, K cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · N class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal vision · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
+WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim (release RMB to fire) · R reload · B fire mode · V melee · 1–0 weapon slots (main, pistol, launcher, 7 extra) · G throw, K cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · N class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal (TI) · P night vision (NV) · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
 
 On phones and tablets the game shows touch controls automatically: drag the left side to move (push to the edge to sprint), drag the right side to look, and use the thumb buttons. Add `?touch=1` to force them on or `?touch=0` to hide them.
 
@@ -47,7 +47,15 @@ Online co-op works the same way as Brawler and SANDLINE. Pick **Online co-op** o
 - **Vehicles:** get in any vehicle and you drive or gun it. The host's device simulates it from your controls.
 - **Leaving:** if the host quits, everyone goes back to the lobby.
 
-Devices connect directly (WebRTC). The free PeerJS broker only introduces them. Some strict networks (school or corporate) block WebRTC, and a phone hotspot usually gets around that. `?broker=host:port` points at a self-hosted PeerJS server instead. Extraction raids stay single-device, since each stash belongs to one device.
+Devices connect directly (WebRTC). The free PeerJS broker only introduces them. Some strict networks (school or corporate) block WebRTC, and a phone hotspot usually gets around that. `?broker=host:port` points at a self-hosted PeerJS server instead. **Extraction raids work online too.** Everyone brings their own kit (or a free kit) from their own stash and keeps what they extract. The map, loot spots and exits are identical on every device, and whoever opens a crate or body first gets its contents. Each player extracts on their own; the raid carries on until the last one is out, or the host leaves (anyone still inside comes out with their gear). Flares, supply drops, storms and radio calls reach everyone.
+
+## Split-screen
+
+Turn on split-screen co-op in Settings. Player 2 uses a gamepad, or the right-hand keyboard block when no pad is connected: arrows move, the numpad looks and Num0 fires. The screen splits in two, each half with its own compact HUD.
+
+## Night vision and thermal
+
+L switches thermal (TI) on or off and P switches night vision (NV), with any weapon; on touch screens there are separate TI and NV buttons. Thermal and night-vision optics still switch on automatically when you aim through them.
 
 ## Futuristic weapons
 
