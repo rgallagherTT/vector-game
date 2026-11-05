@@ -21,7 +21,7 @@ The page loads `data/*.json` over HTTP, so opening `index.html` straight from di
 
 ## Controls (keyboard + mouse; gamepad and a second keyboard player are supported)
 
-WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1 2 3 weapons · G throw, 5 cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · 4 class tool · T ultimate · H / J heal / stim · \` or MMB ping · L night vision / thermal · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
+WASD move · Shift sprint / hold breath when scoped · Space jump, mantle, vault (in the air: wingsuit, then parachute) · C / Ctrl crouch (sprint + C slides) · Z prone · Q / E lean · LMB / RMB fire / aim · R reload · B fire mode · V melee · 1 2 3 weapons · G throw, 5 cycle · Y grappling hook · F interact (revive, loot, enter vehicles, rappel from edges) · X gadget · 4 class tool · T ultimate · H / J heal / stim · \` or MMB ping · L thermal vision · U squad orders · O commander · M map · Tab scoreboard · I inventory (extraction) · Esc pause.
 
 On phones and tablets the game shows touch controls automatically: drag the left side to move (push to the edge to sprint), drag the right side to look, and use the thumb buttons. Add `?touch=1` to force them on or `?touch=0` to hide them.
 
@@ -37,6 +37,14 @@ Vehicles: W/S throttle, A/D steer, mouse aims the turret, Space hops (speeders) 
 - **19 vehicles**: the four SANDLINE speeders (bike, quad, buggy, hauler), hover tank, APC, artillery skiff, assault mech, exo-suit, VTOL gunship and dropship, interceptor, strike fighter, patrol boat, assault hovercraft, snow sled and three drones. All have part damage, repair, lock-on and flares, EMP, hijacking, seats and bail-out.
 
 Content lives in `data/` as JSON. Code lives in `index.html`, generated from `src/parts/` by `src/assemble.sh`.
+
+## Supply chests, thermal scan, team colours
+
+- **Supply chests** glow with a gold light beam and are mostly hidden inside buildings: four in close-quarters modes, fourteen across Warfare maps, seven along a campaign mission and three per extraction raid. Hold interact on one to crack it. It holds a special weapon (Tempest minigun, Lance railgun, Havoc auto-shotgun, Gold Viper hand cannon, Specter suppressed SMG or Hydra rocket pod), tier-6 armour, a full resupply or a charged ultimate. Opened chests reappear somewhere else after a while.
+- **Thermal scan**: whenever you aim down sights, every soldier in view is bracketed, red for enemies and blue for friends, with the distance. It works through smoke and foliage but not through walls. L (or THERM on touch) switches full thermal vision on with any weapon.
+- **Scopes** show the lens, a mil reticle with holdover marks, a rangefinder, time of flight, heading, rounds in the magazine and a breath bar.
+- **Team colours**: every soldier's visor, armband and backpack glow in their team colour (blue for the Accord, red for the Mandate, orange for rival crews). Friendlies carry blue name tags, and the crosshair turns red over an enemy and blue over a friend.
+- Every house has a doorstep you can walk up and stairs to its upper floors and flat roofs.
 
 ## Debug and benchmarks
 
