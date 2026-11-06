@@ -1,0 +1,2 @@
+(async () => { const F = window.FZ; const out = []; for (let i = 0; i < 6; i++) { await new Promise((r) => setTimeout(r, 4000)); const st = {}; for (const s of F.Soldiers.list) if (s.brain) { const k = s.state === 'alive' ? s.brain.state : s.state; st[k] = (st[k] || 0) + 1; }
+  out.push({ t: +F.G.time.toFixed(0), score: F.G.mode.teams.map((t) => t.score), st, bullets: F.Ballistics.list.length, me: F.G.players[0].soldier.state, err: document.getElementById('err').textContent.slice(0, 300) }); } return out; })()

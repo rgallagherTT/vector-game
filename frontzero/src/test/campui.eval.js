@@ -1,0 +1,1 @@
+(async () => { const F = window.FZ; for (let i = 0; i < 40 && !(F.UI.root && F.UI.screen); i++) await new Promise((r) => setTimeout(r, 250)); F.G.save.campaign.done = ['m1','m2']; F.UI.open('campaign'); await new Promise((r) => setTimeout(r, 600)); return document.getElementById('err').textContent.slice(0,200); })()

@@ -1,0 +1,2 @@
+(() => { const P = window.FZ.G.players[0]; const vm = P.vm; const r = (v) => [v.x, v.y, v.z].map((a) => +a.toFixed(3));
+  return { holder: r(vm.holder.position), hrot: r(vm.holder.rotation), l: r(vm.lArm.position), lsc: r(vm.lArm.userData.sleeve.scale), rr: r(vm.rArm.position), rsc: r(vm.rArm.userData.sleeve.scale), gun: vm.gun && vm.gun.id, bb: (() => { const b = new window.FZ.THREE.Box3().setFromObject(vm.gunNode); return [r(b.min), r(b.max)]; })(), camfov: vm.cam.fov, aspect: vm.cam.aspect }; })()

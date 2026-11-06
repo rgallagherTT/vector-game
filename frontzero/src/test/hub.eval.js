@@ -1,0 +1,1 @@
+(async () => { const F = window.FZ; for (let i = 0; i < 40 && !(F.UI.root && F.UI.screen); i++) await new Promise((r) => setTimeout(r, 250)); F.UI.open('hub', { sel: F.Econ.S.kit.primary.uid }); await new Promise((r) => setTimeout(r, 400)); return 1; })()
