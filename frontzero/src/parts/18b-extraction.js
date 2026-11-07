@@ -114,6 +114,8 @@ const LOOT_KINDS = {
   supply: { name: 'Supply drop', col: 0x4a5a3a, size: [1.4, 1.0, 1.0], cats: { weapon: 2, attachment: 3, gear: 2, med: 2, valuable: 1 }, n: [5, 7], hold: 1.5, tierBonus: 2 },
   debug: { name: 'Debug cache', col: 0xff00ff, size: [1, 1, 1], cats: { weapon: 1, valuable: 1, med: 1, ammo: 1, gear: 1 }, n: [6, 6], hold: 0.2 },
 };
+// kit models for loot containers: crate colour follows the container's tier
+const LOOT_KIT = { crate: (t) => ['l_crate_common', 'l_crate_common', 'l_crate_uncommon', 'l_crate_rare', 'l_crate_epic', 'l_crate_legendary'][clamp(t | 0, 0, 5)], ammo: 'l_ammo_box', med: 'l_medkit', tool: 'l_weapon_case', strong: 'l_crate_epic', armour: 'l_armour_plate' };
 const Loot = {
   list: [], geo: null,
   clear() { for (const c of this.list) { if (c.mesh) WORLD.remove(c.mesh); if (c.it) Interact.remove(c.it); } this.list.length = 0; this.n = 0; },
@@ -129,7 +131,9 @@ const Loot = {
   },
   container(pos, kind, group = null, o = {}) {
     const K = LOOT_KINDS[kind] || LOOT_KINDS.jacket; const c = { cid: o.cid || 'c' + (this.n = (this.n || 0) + 1), pos: pos.clone(), kind, name: o.name || K.name, items: o.items || null, tier: o.tier || 2, key: o.key || null, searched: false, body: o.body || null };
-    if (!group && !o.body) { this.geo ||= new THREE.BoxGeometry(1, 1, 1); const m = new THREE.Mesh(this.geo, colMat(K.col)); m.scale.set(...K.size); m.position.set(pos.x, pos.y + K.size[1] / 2, pos.z); m.rotation.y = o.yaw ?? rand(0, TAU); m.castShadow = true; WORLD.add(m); c.mesh = m;
+    const kk = LOOT_KIT[kind] ? (typeof LOOT_KIT[kind] === 'function' ? LOOT_KIT[kind](c.tier) : LOOT_KIT[kind]) : null; const km = !group && !o.body && kk ? Kit.prop(kk, K.size[0], K.size[1], K.size[2], { wide: 1.2 }) : null;
+    if (km) { km.position.copy(pos); km.rotation.y = o.yaw ?? rand(0, TAU); WORLD.add(km); c.mesh = km; }
+    else if (!group && !o.body) { this.geo ||= new THREE.BoxGeometry(1, 1, 1); const m = new THREE.Mesh(this.geo, colMat(K.col)); m.scale.set(...K.size); m.position.set(pos.x, pos.y + K.size[1] / 2, pos.z); m.rotation.y = o.yaw ?? rand(0, TAU); m.castShadow = true; WORLD.add(m); c.mesh = m;
       if (kind === 'strong' || kind === 'safe') { const h = new THREE.Mesh(this.geo, colMat(0xd8c040, { metalness: 0.6 })); h.scale.set(0.12, 0.12, 0.05); h.position.set(0, 0.1, 0.52); m.add(h); } }
     c.it = Interact.add({ pos: pos.clone().add(V3(0, o.body ? 0.3 : 0.6, 0)), r: o.body ? 2.2 : 2.4, prio: 1, get label() { return c.key && !c.unlocked ? c.name + ' · locked (' + Items.def(c.key).name + ')' : (c.searched ? 'Loot ' : 'Search ') + c.name; }, get hold() { return c.searched ? 0 : K.hold * (o.body ? 0.8 : 1); }, cond: (s) => s.player && G.mode?.kind === 'extraction', fn: (s) => this.open(c, s) });
     this.list.push(c); return c;

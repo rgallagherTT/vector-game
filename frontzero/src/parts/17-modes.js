@@ -48,7 +48,7 @@ class GameMode {
     this.net = o.net || null; this.squads = []; this.bots = []; this.pads = []; this.respawnQ = []; this.friendlyFire = false; this.vehiclesForBots = false; this.playerTeam = o.side ?? 0; this.botRespawn = 10; this.feedNames = true;
   }
   name() { return 'Mode'; }
-  async load() { await Game.loadMap(this.mapId, this.variant); }
+  async load() { await Promise.all([Game.loadMap(this.mapId, this.variant), Kit.forMatch(this)]); }
   setup() {}
   start() { this.setup(); this.placeChests(); }
   // supply chests with special weapons: a few in close-quarters areas, more across big maps
@@ -130,8 +130,8 @@ class TeamDeathmatch extends GameMode {
 // ---- domination (three flags, ticket race) ------------------------------------------------------------------
 class CapturePoint {
   constructor(o) { this.id = o.id; this.name = o.name; this.pos = V3(o.x, World.heightAt(o.x, o.z), o.z); this.r = o.r || CONFIG.warfare.capRadius; this.owner = o.owner ?? -1; this.prog = this.owner >= 0 ? 1 : 0; this.capTeam = this.owner; this.contested = false; this.time = o.time || CONFIG.warfare.capTime; this.counts = [0, 0]; this.flag = null; this.makeFlag(); this.locked = !!o.locked; }
-  makeFlag() { const y = Col.ground(this.pos.x, this.pos.z, this.pos.y + 30, 0.2, 40).y; this.pos.y = y; const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 9, 0.06); pole.position.set(this.pos.x, y + 4.5, this.pos.z); WORLD.add(pole); this.pole = pole;
-    this.flagTex = [flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' }), flagTex(['#d8402a', '#7a2a1a'], { shape: 'gear', color: '#fff' }), flagTex(['#d8d8d8', '#a0a0a0'], { shape: 'star', color: '#555' })];
+  makeFlag() { const y = Col.ground(this.pos.x, this.pos.z, this.pos.y + 30, 0.2, 40).y; this.pos.y = y; const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 9, 0.06); pole.position.set(this.pos.x, y + 4.5, this.pos.z); WORLD.add(pole); this.pole = pole; const kb = Kit.clone('p_capture_flag'); if (kb) { kb.getObjectByName('flag_cloth')?.removeFromParent(); kb.position.set(this.pos.x, y, this.pos.z); WORLD.add(kb); this.base = kb; }
+    this.flagTex = [Kit.flagTex('accord', flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' })), Kit.flagTex('mandate', flagTex(['#d8402a', '#7a2a1a'], { shape: 'gear', color: '#fff' })), flagTex(['#d8d8d8', '#a0a0a0'], { shape: 'star', color: '#555' })];
     this.cloth = Cloths.add({ w: 2.4, h: 1.5, nx: 10, ny: 7, origin: V3(this.pos.x, y + 8.8, this.pos.z), yaw: 0, tex: this.flagTex[this.owner >= 0 ? this.owner : 2] });
     const ring = new THREE.Mesh(new THREE.RingGeometry(this.r - 0.3, this.r, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(this.pos.x, y + 0.15, this.pos.z); WORLD.add(ring); this.ring = ring; }
   setOwner(t) { this.owner = t; this.cloth.mesh.material.map = this.flagTex[t >= 0 ? t : 2]; this.cloth.mesh.material.needsUpdate = true; this.ring.material.color.setHex(t === 0 ? 0x3f8fd8 : t === 1 ? 0xd8402a : 0xffffff); }
@@ -141,7 +141,7 @@ class CapturePoint {
     if (this.capTeam !== t) { this.prog -= rate; if (this.prog <= 0) { this.prog = 0; this.capTeam = t; if (this.owner >= 0 && this.owner !== t) { const was = this.owner; this.setOwner(-1); mode.onNeutral?.(this, was); } } }
     else if (this.prog < 1) { this.prog = Math.min(1, this.prog + rate); if (this.prog >= 1 && this.owner !== t) { this.setOwner(t); mode.onCaptured?.(this, t); for (const s of Soldiers.near(this.pos.x, this.pos.z, this.r)) if (s.team === t && s.state === 'alive') { s.score += 150; Operators.charge(s, 0.15, 'capture'); if (s.player) s.player.note(this.name + ' captured', 'good', 150); Challenges.track('capture', s); } } }
   }
-  dispose() { WORLD.remove(this.pole); WORLD.remove(this.ring); }
+  dispose() { WORLD.remove(this.pole); WORLD.remove(this.ring); if (this.base) WORLD.remove(this.base); }
 }
 class Domination extends GameMode {
   constructor(o) { super(o); this.kind = 'dom'; this.limit = o.limit || 250; this.perTeam = o.perTeam ?? 10; this.botRespawn = 5; this.points = []; this.tick = 0; }

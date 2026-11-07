@@ -82,6 +82,19 @@ You carry up to ten guns: main gun, pistol, launcher and seven extra slots. Fill
 
 Sunspire (desert tower city), Mangrove (jungle river delta with stilt villages), Frostline (glacier radar station above a frozen lake), Vinehollow (vineyards and a hilltop château), Neon Docks (night-time port city) and Saltpan (open salt flats for vehicle battles).
 
+## Art kit
+
+`design/` holds the FRONT ZERO art kit as GLB models and SVG icons. It loads at start-up, and the game falls back to its procedural models for anything missing (or for everything with `?nokit=1`).
+
+- **Soldiers:** every bot and player uses the kit's soldier. The body is cut at the joints into the same limbs the animation system already moves, so it stays one draw per body part. Accord troops wear the Accord helmet, vest and pack with blue stripes, and the Mandate and rival crews wear the Mandate kit with red or orange stripes. Uniforms take the map's camo pattern.
+- **Operators and bosses:** the loadout screen shows each operator's own model holding the chosen gun. Raid bosses wear one of the three boss models (Warden, Viper, Matriarch), and in split-screen or online you see the other humans as their operators.
+- **Weapons:** the 24 standard guns use the kit models in first person, in your hands and in the gunsmith. Kit optics (3x, 8x, thermal), suppressors, compensators, flash hiders, grips, lasers and lights fit the guns' sockets. Red dots and holo sights keep an open frame so you can see through them. The game keeps its own weapon names: for example, the Harrow AR-7 uses the AR-7 Talon model and the Viper P9 uses the P9 Sentry model. The special and futuristic guns keep their glowing procedural models.
+- **Vehicles:** the hover tank, APC, speeder buggy, hover-bike interceptor, VTOL gunship, VTOL dropship and strike fighter use the kit models. Their turrets, mounts and rotors still move, and their stripes show the team colour.
+- **Gadgets and loot:** the shield wall, cover, sentry turret, sticky mine, healing drone, ammo crate and recon drone use kit models. So do grenades and C4, supply chests, raid crates (coloured by tier), ammo boxes, med kits, air drops and capture points.
+- **Menus and HUD:** weapon silhouettes on the loadout and in the kill feed, rank badges next to your level, the Accord and Mandate flags on capture points and bases, mood-board art on the map cards and trader portraits.
+
+`src/kit/build_kit.sh <unzipped kit> <out>` rebuilds `design/m` from the source kit. It moves the textures that were repeated in every file into `design/m/tex` (shared) and keeps only the parts the game uses, which takes the models from 45 MB down to 15 MB. About 6 MB loads at start: weapons, vehicles, the soldier kit, gadgets and loot. Operators load when the loadout screen or a match needs them, and bosses load when a raid starts.
+
 ## Supply chests, thermal scan, team colours
 
 - **Supply chests** glow with a gold light beam and are mostly hidden inside buildings: four in close-quarters modes, fourteen across Warfare maps, seven along a campaign mission and three per extraction raid. Hold interact on one to crack it. It holds a special weapon (Tempest minigun, Lance railgun, Havoc auto-shotgun, Gold Viper hand cannon, Specter suppressed SMG or Hydra rocket pod), tier-6 armour, a full resupply or a charged ultimate. Opened chests reappear somewhere else after a while.

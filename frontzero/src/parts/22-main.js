@@ -129,7 +129,7 @@ const Game = {
     const focus = def.bases?.[0] ? [V3(def.bases[0].x, 0, def.bases[0].z)] : [V3()]; TerrainGfx.update(focus, true);
     for (const st of Build.structures) if (st.type === 'radio_tower' || st.type === 'fuel_depot') st.repairable = false;
     // flags at bases
-    for (const [i, b2] of (def.bases || []).entries()) { const y = World.heightAt(b2.x, b2.z); const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 8, 0.06); pole.position.set(b2.x + 6, y + 4, b2.z + 6); Build.decor.add(pole); Cloths.add({ w: 2.6, h: 1.6, nx: 10, ny: 7, origin: V3(b2.x + 6, y + 7.8, b2.z + 6), yaw: 0, tex: i === 0 ? flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' }) : flagTex(['#d8402a', '#4a4a4e'], { shape: 'gear', color: '#fff' }) }); }
+    for (const [i, b2] of (def.bases || []).entries()) { const y = World.heightAt(b2.x, b2.z); const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 8, 0.06); pole.position.set(b2.x + 6, y + 4, b2.z + 6); Build.decor.add(pole); Cloths.add({ w: 2.6, h: 1.6, nx: 10, ny: 7, origin: V3(b2.x + 6, y + 7.8, b2.z + 6), yaw: 0, tex: i === 0 ? Kit.flagTex('accord', flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' })) : Kit.flagTex('mandate', flagTex(['#d8402a', '#4a4a4e'], { shape: 'gear', color: '#fff' })) }); }
   },
   clearWorld() {
     Soldiers.clear(); Vehicles.clear(); Ballistics.clear(); Throwables.clear(); Deployables.clear(); Drones.clear(); Grapples.clear(); Chutes.clear(); Interact.clear(); Pings.clear(); HUDFeed.clear(); Radio.clear(); AI.clear(); SupplyDrop.clear();
@@ -268,7 +268,7 @@ async function boot() {
   const bar = document.getElementById('loadbar'), msg = document.getElementById('loadmsg'); let n = 0;
   try { await Data.load((f) => { n++; bar.style.width = clamp(n / 24, 0.05, 0.9) * 100 + '%'; msg.textContent = 'loading ' + f + '…'; }); }
   catch (e) { msg.textContent = 'Could not load data/*.json — serve this folder over HTTP (npx serve .). ' + e.message; return; }
-  msg.textContent = 'loading models…'; await Models.load();
+  msg.textContent = 'loading models…'; await Promise.all([Models.load(), Kit.init()]);
   buildTextures(); buildMaterials(); Post.init(); Sky.init(); TerrainGfx.init(); WaterGfx.init(); FX.init(); Foliage.init(); SoldierGfx.init(); UI.init(); Input.init(); Touch.init();
   G.settings = Object.assign({}, G.settings); Save.load(); if (G.save.vehicleCamos.length) for (const c of G.save.vehicleCamos) if (!DATA.camos.find((x) => x.id === c.id)) DATA.camos.push({ id: c.id, name: c.name + ' (BOUNTY RUN)', biome: null, colors: c.colors, vehicle: true });
   Game.applyQuality(); bar.style.width = '100%'; Game.loading(false); if (G.debug) DebugUI.init();
@@ -282,5 +282,5 @@ async function boot() {
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { HUDFeed, Net, Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { Kit, HUDFeed, Net, Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();

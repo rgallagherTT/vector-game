@@ -196,7 +196,8 @@ const Throwables = {
   list: [], meshes: {},
   mesh(type) {
     const col = { frag: 0x3a4a2a, smoke: 0x8a8a8a, flash: 0x3a3a4a, emp: 0x2a5a8a, sticky: 0xb8a030, c4: 0xd8c8a0, breach: 0xc84a2a, sensor: 0x2a2a2a, flare: 0xd83a2a, mine: 0x3a3a2a }[type] || 0x666666;
-    const g = new THREE.Group(); const m = new THREE.Mesh(type === 'c4' || type === 'breach' ? GEO.box : GEO.cyl, colMat(col, { roughness: 0.6, metalness: 0.3 })); m.scale.set(type === 'c4' ? 0.2 : 0.06, type === 'c4' ? 0.07 : 0.11, type === 'c4' ? 0.12 : 0.06); g.add(m);
+    const g = new THREE.Group(); const kt = Kit.key('throwables', type === 'breach' || type === 'sticky' ? 'c4' : type); const km = kt ? Kit.clone(kt) : null;
+    if (km) { km.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(km); km.position.sub(bb.getCenter(V3())); g.add(km); } else { const m = new THREE.Mesh(type === 'c4' || type === 'breach' ? GEO.box : GEO.cyl, colMat(col, { roughness: 0.6, metalness: 0.3 })); m.scale.set(type === 'c4' ? 0.2 : 0.06, type === 'c4' ? 0.07 : 0.11, type === 'c4' ? 0.12 : 0.06); g.add(m); }
     if (type === 'sensor' || type === 'c4' || type === 'sticky' || type === 'breach' || type === 'mine') { const l = new THREE.Mesh(GEO.sphere, MAT.glowRed); l.scale.setScalar(0.02); l.position.y = 0.07; g.add(l); g.userData.led = l; }
     g.castShadow = true; WORLD.add(g); return g;
   },

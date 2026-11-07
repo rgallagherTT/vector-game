@@ -28,8 +28,35 @@ function camoTexture(camoId) {
 }
 // returns { group, muzzle, mag, magHome, bolt, sightY, sightZ, optic }
 const VM_GLASS = { m: null };
+// the art kit's model of this gun (barrel along +Z, origin at the grip) turned to gun space, with its sockets used for
+// the attachments: kit optics / muzzle devices / grips / side rails, our open-frame red dot (so you can see through it)
+function buildKitGun(gun, key, op) {
+  const def = gun.def, M = def.model || {}; const src = Kit.clone(key); if (!src) return null; Kit.dress(src, null, gun.camo && gun.camo !== 'factory' ? gun.camo : null);
+  const g = new THREE.Group(); src.rotation.y = Math.PI; if (M.tube) src.position.set(0.02, -0.05, 0); g.add(src); g.updateMatrixWorld(true);
+  const at = (name) => { const n = src.getObjectByName(name); return n ? n.getWorldPosition(V3()) : null; };
+  const dark = gunMat(0x181818, 0.35, 0.8); const box = (mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(GEO.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); g.add(m); return m; };
+  // magazine in its own group so reloads can drop it; bolt / charging handle so bolt actions can rack it
+  const mag = new THREE.Group(); g.add(mag); const magN = src.getObjectByName('magazine'); if (magN) { mag.position.copy(at('magazine')); mag.updateMatrixWorld(true); mag.attach(magN); }
+  const boltN = src.getObjectByName('bolt') || src.getObjectByName('charging_handle'); let bolt = null; if (boltN) { g.attach(boltN); bolt = boltN; }
+  const muzzle = new THREE.Object3D(); muzzle.position.copy(at('muzzle') || V3(0, 0.06, -0.6)); g.add(muzzle);
+  const fit = (akey, sock) => { const k = Kit.has(akey) ? akey : null; const p = at(sock); if (!k || !p) return null; const a = Kit.clone(k); a.rotation.y = Math.PI; a.position.copy(p); if (/optic/.test(k)) a.scale.setScalar(0.85); g.add(a); a.updateMatrixWorld(true); return a; };
+  const A = gun.att || {}; const mz = A.muzzle || (M.can ? 'suppressor' : M.brake ? 'brake' : null);
+  if (mz) { const a = fit(Kit.man.attachments[mz], 'socket_muzzle'); if (a) { const b = new THREE.Box3().setFromObject(a); muzzle.position.z = Math.min(muzzle.position.z, b.min.z); } }
+  if (A.grip && A.grip !== 'bipod') fit(Kit.man.attachments[A.grip], 'socket_underbarrel'); if (A.laser) fit(Kit.man.attachments[A.laser], 'socket_side');
+  const so = at('socket_optic') || V3(0, 0.12, 0); const opticMeshes = []; let sightY = so.y + 0.012; const muzZ = muzzle.position.z;
+  if (op === 'iron' || M.tube) { if (!M.tube) { box(dark, 0, so.y + 0.008, muzZ + 0.05, 0.003, 0.022, 0.004); box(dark, 0, so.y - 0.002, so.z + 0.04, 0.026, 0.006, 0.008); for (const sx of [-1, 1]) box(dark, sx * 0.008, so.y + 0.008, so.z + 0.04, 0.007, 0.016, 0.008); } sightY = so.y + (M.tube ? -0.01 : 0.015); }
+  else { const AD = DATA.attachments[op] || {}; const zoom = AD.zoom || 1;
+    if (zoom <= 1.35) { const top = so.y - 0.012; const cy = top + 0.04; box(dark, 0, top + 0.012, so.z, 0.036, 0.008, 0.05); box(dark, 0, cy + 0.024, so.z - 0.02, 0.036, 0.004, 0.012); box(dark, -0.0175, cy, so.z - 0.02, 0.002, 0.05, 0.012); box(dark, 0.0175, cy, so.z - 0.02, 0.002, 0.05, 0.012);
+      if (!VM_GLASS.m) VM_GLASS.m = new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.08, depthWrite: false }); const gl = new THREE.Mesh(GEO.box, VM_GLASS.m); gl.scale.set(0.032, 0.044, 0.001); gl.position.set(0, cy, so.z - 0.026); g.add(gl);
+      const dot = new THREE.Mesh(GEO.sphere, MAT.glowRed || new THREE.MeshBasicMaterial({ color: 0xff2a1a })); dot.scale.setScalar(op === 'holo' ? 0.0022 : 0.0016); dot.position.set(0, cy, so.z - 0.027); g.add(dot); sightY = cy; }
+    else { const a = fit(Kit.man.attachments[op], 'socket_optic'); if (a) { a.traverse((o) => { if (o.isMesh) opticMeshes.push(o); }); const b = new THREE.Box3().setFromObject(a); sightY = (b.min.y + b.max.y) / 2 + (b.max.y - b.min.y) * 0.15; } else sightY = so.y + 0.045; } }
+  const hl = at('hand_l'); const front = hl ? hl.z - 0.06 : -0.25;
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+  return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt, boltHome: bolt ? bolt.position.clone() : null, sightY, sightZ: 0.05, optic: op, opticMeshes, front, rz1: M.pistol ? 0.05 : M.tube ? 0.05 : clamp(new THREE.Box3().setFromObject(src).max.z - 0.1, 0.1, 0.45), rocket: M.tube ? mag : null, kit: true };
+}
 function buildGunModel(gun, opts = {}) {
-  gunEnv(); const def = gun.def, M = def.model || {}; const g = new THREE.Group(); const body = gunMat(parseHex(M.color || '#2a2a2a'), 0.42, 0.42), lower = gunMat(_c2.setHex(parseHex(M.color || '#2a2a2a')).multiplyScalar(0.82).getHex(), 0.5, 0.5), acc = gunMat(parseHex(M.accent || '#444'), 0.62, 0.25), dark = gunMat(0x181818, 0.35, 0.8), rubber = gunMat(0x141414, 0.95, 0.0), steel = gunMat(0x3a3c3e, 0.28, 0.9);
+  gunEnv(); const def = gun.def, M = def.model || {};
+  { const kk = !def.special && !M.tech && !opts.procedural && Kit.key('weapons', def.id); if (kk) { const r = buildKitGun(gun, kk, gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron')); if (r) return r; } } const g = new THREE.Group(); const body = gunMat(parseHex(M.color || '#2a2a2a'), 0.42, 0.42), lower = gunMat(_c2.setHex(parseHex(M.color || '#2a2a2a')).multiplyScalar(0.82).getHex(), 0.5, 0.5), acc = gunMat(parseHex(M.accent || '#444'), 0.62, 0.25), dark = gunMat(0x181818, 0.35, 0.8), rubber = gunMat(0x141414, 0.95, 0.0), steel = gunMat(0x3a3c3e, 0.28, 0.9);
   const special = !!def.special; const gold = special ? gunMat(0xe0b040, 0.25, 1.0, { key: 'gold', mat: { emissive: new THREE.Color(0x604010), emissiveIntensity: 0.4 } }) : null; const glowLine = special ? new THREE.MeshBasicMaterial({ color: 0xb070ff }) : null;
   let bodyMat = body; if (gun.camo && gun.camo !== 'factory') { const t = camoTexture(gun.camo); if (t) { bodyMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0.3, envMapIntensity: 0.8 }); } }
   const box = (mat, x, y, z, sx, sy, sz, parent = g, rx = 0) => { const m = new THREE.Mesh(GEO.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.x = rx; parent.add(m); return m; };
@@ -154,7 +181,7 @@ class ViewModel {
     for (let i = 0; i < 4; i++) R(this.glove, -0.021 + i * 0.014, -0.026, -0.05, 0.012, 0.022, 0.03, 0.45); R(this.glove, 0.034, 0.006, -0.022, 0.016, 0.016, 0.04, 0.45); g.userData.sleeve = sleeve; this.holder.add(g); return g; }
   setUniform(rgb) { const k = rgb[0] > 1.5 || rgb[1] > 1.5 ? 1 / 255 : 1; this.armMat.color.setRGB(rgb[0] * k, rgb[1] * k, rgb[2] * k).convertSRGBToLinear(); }
   setGun(gun) {
-    if (this.gunNode) { this.holder.remove(this.gunNode); this.gunNode.traverse((o) => { if (o.isMesh && o.material && o.material.map && o.material !== MAT.glass && !gunMats.has(o.material)) o.material.dispose?.(); }); }
+    if (this.gunNode) { this.holder.remove(this.gunNode); this.gunNode.traverse((o) => { if (o.isMesh && o.material && o.material.map && o.material !== MAT.glass && !gunMats.has(o.material) && !o.material.userData?.kit) o.material.dispose?.(); }); }
     this.gun = gun; if (!gun) { this.gunNode = null; this.model = null; return; } this.model = buildGunModel(gun); this.gunNode = this.model.group; this.holder.add(this.gunNode);
   }
   play(name, dur, cb = null) { this.anim = name; this.animT = 0; this.animDur = Math.max(0.05, dur); this.animCb = cb; this.sndDone.clear(); }

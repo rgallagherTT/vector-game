@@ -590,6 +590,159 @@ const Models = {
   clone(k) { return this.src[k] ? this.src[k].clone(true) : null; },
 };
 
+// §KIT ------------------------------------------------------------------------------------------------
+// The FRONT ZERO art kit (frontzero/design/): GLB weapons, attachments, soldiers, operators, bosses, vehicles,
+// gadgets, loot, props and SVG icons, slimmed from the source kit by src/kit/build_kit.sh (textures shared under
+// design/m/tex). Everything is optional — a missing file, a failed load or ?nokit=1 leaves the procedural model.
+// Soldiers: the kit's T-pose body is cut into the same limb segments the procedural rig animates, so every soldier
+// still costs one instanced draw per body part.
+const KIT_DIR = (QS.get('kit') || 'design/').replace(/\/?$/, '/');
+const KIT_PX = { // [offset xyz, size xyz] of each body part in its joint frame (SoldierGfx.pose uses the same table)
+  pelvis: [0, 0, 0, 0.34, 0.2, 0.22], thighL: [0, -0.22, 0, 0.16, 0.44, 0.17], thighR: [0, -0.22, 0, 0.16, 0.44, 0.17], shinL: [0, -0.22, 0, 0.13, 0.44, 0.14], shinR: [0, -0.22, 0, 0.13, 0.44, 0.14],
+  torso: [0, 0.27, 0, 0.42, 0.52, 0.25], vest: [0, 0.3, 0.01, 0.46, 0.34, 0.3], pack: [0, 0.3, -0.2, 0.32, 0.38, 0.16], head: [0, 0.11, 0, 0.2, 0.24, 0.22], helmet: [0, 0.23, -0.01, 0.26, 0.12, 0.28],
+  visor: [0, 0.13, 0.11, 0.18, 0.06, 0.03], uarmL: [0, -0.15, 0, 0.12, 0.3, 0.12], uarmR: [0, -0.15, 0, 0.12, 0.3, 0.12], farmL: [0, -0.14, 0, 0.1, 0.28, 0.1], farmR: [0, -0.14, 0, 0.1, 0.28, 0.1],
+  band: [0, -0.06, 0, 0.15, 0.13, 0.15],
+};
+const KIT_JOINT = { pelvis: 'pelvis', thighL: 'thighL', thighR: 'thighR', shinL: 'shinL', shinR: 'shinR', torso: 'torso', vest: 'torso', pack: 'torso', head: 'head', helmet: 'head', uarmL: 'uarmL', uarmR: 'uarmR', farmL: 'farmL', farmR: 'farmR' };
+const Kit = {
+  man: null, src: {}, loading: {}, mats: new Map(), avg: new Map(), loader: null, charMatCache: null, greyCache: new Map(),
+  async init() {
+    if (QS.get('nokit') === '1') return;
+    try { const r = await fetch(KIT_DIR + 'manifest.json', { cache: 'no-cache' }); if (!r.ok) return; this.man = await r.json(); } catch (e) { this.man = null; return; }
+    try { const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js'); this.loader = new GLTFLoader(); } catch (e) { this.man = null; return; }
+    await this.load(this.man.core || [], 45000);
+  },
+  // models a match needs beyond the core set: bosses for raids, operators for the humans in it
+  forMatch(mode) { if (!this.man) return Promise.resolve(); const ks = []; if (mode instanceof Extraction) ks.push('b_boss_warden', 'b_boss_viper', 'b_boss_matriarch');
+    const ops = new Set(G.players.map((P) => P.operator).filter(Boolean)); if (Net.peer) for (const k in this.man.operators) ops.add(k); for (const o of ops) if (this.man.operators[o]) ks.push(this.man.operators[o]); return this.load(ks, 20000); },
+  get on() { return !!this.man; },
+  url(p) { return this.man && p ? KIT_DIR + p : null; },
+  // load models by key (in parallel); resolves when all are in or after the timeout — failures are just skipped
+  load(keys, timeout = 30000) {
+    if (!this.loader) return Promise.resolve();
+    const ps = keys.filter((k) => this.man.models[k] && !this.src[k]).map((k) => this.loading[k] ||= new Promise((res) => this.loader.load(KIT_DIR + this.man.models[k], (g) => { try { this.src[k] = this.prep(g.scene); } catch (e) { /* skip */ } res(); }, undefined, () => res())));
+    return Promise.race([Promise.all(ps), new Promise((r) => setTimeout(r, timeout))]);
+  },
+  prep(root) { // one material per (name, textures, colour) across every file; damaged / destroyed variants hidden
+    root.traverse((o) => { if (/_damaged$|^chunks$|^rubble$/.test(o.name)) o.visible = false; if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true; o.material = Array.isArray(o.material) ? o.material.map((m) => this.share(m)) : this.share(o.material); });
+    return root;
+  },
+  share(m) { const key = [m.name, m.userData?.tex || '', m.color?.getHexString(), m.emissive?.getHexString(), m.emissiveIntensity, m.roughness, m.metalness].join(';'); const s = this.mats.get(key); if (s) return s; m.envMapIntensity = 0.8; m.userData.kit = true; this.mats.set(key, m); return m; },
+  has(k) { return !!this.src[k]; },
+  clone(k) { return this.src[k] ? this.src[k].clone(true) : null; },
+  // map a game id through a manifest table (weapons, vehicles, gadgets…) to a loaded model key
+  key(table, id) { const k = this.man?.[table]?.[id]; return k && this.src[k] ? k : null; },
+  icon(table, id) { const p = this.man?.[table]?.[id]; return p ? KIT_DIR + p : null; },
+  // fit a model into the box of the procedural one: uniform scale on the longest horizontal axis, centred, bottom aligned
+  fit(obj, box, o = {}) {
+    obj.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(obj, true); const sz = b.getSize(V3()), tz = box.getSize(V3());
+    const k = o.scale || Math.min(tz.z / Math.max(1e-3, sz.z), (tz.x / Math.max(1e-3, sz.x)) * (o.wide || 1.25)); obj.scale.multiplyScalar(k);
+    obj.updateMatrixWorld(true); b.setFromObject(obj, true); const c = b.getCenter(V3()), tc = box.getCenter(V3());
+    obj.position.x += tc.x - c.x; obj.position.z += tc.z - c.z; obj.position.y += (o.alignY === 'center' ? tc.y - c.y : box.min.y - b.min.y); return k;
+  },
+  // <img> for a manifest image (weapon icon, ui icon, rank badge…) or '' when the kit isn't there
+  img(table, id, style = '') { const u = this.icon(table, id); return u ? `<img src="${u}" alt="" draggable="false" style="${style}">` : ''; },
+  rank(lvl) { const r = this.man?.ranks; if (!r || !r.length) return null; return KIT_DIR + r[clamp(Math.floor((lvl - 1) / 5), 0, r.length - 1)]; },
+  traderArt(id) { const k = { sable: 'trader_mags', imre: 'trader_doc_halloran', magpie: 'trader_fixer' }[id]; return k ? this.icon('traderArt', k) : null; },
+  // an alliance / country flag from the kit's SVG drawn into a cloth texture (fills in when the image arrives)
+  flagTex(id, fallback) { if (!this.man?.flags?.[id + '_flag']) return fallback; const { c, g } = makeCanvas(256, 160); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; if (fallback?.image) g.drawImage(fallback.image, 0, 0, 256, 160);
+    const im = new Image(); im.onload = () => { g.drawImage(im, 0, 0, 256, 160); t.needsUpdate = true; }; im.src = KIT_DIR + this.man.flags[id + '_flag']; return t; },
+  // a kit model fitted into a box (the procedural model's size), bottom at y=0 (or centred), in a fresh group
+  prop(k, sx, sy, sz, o = {}) { const m = this.clone(k); if (!m) return null; const g = new THREE.Group(); g.add(m); this.fit(m, new THREE.Box3(V3(-sx / 2, o.cy ? -sy / 2 : 0, -sz / 2), V3(sx / 2, o.cy ? sy / 2 : sy, sz / 2)), { wide: o.wide || 1, alignY: o.cy ? 'center' : null, scale: o.scale }); if (o.team != null) this.dress(m, o.team, null); g.userData.kit = m; return g; },
+  // team colour on the faction stripes; camo pattern on the camo panels
+  dress(obj, team, camoId) {
+    const fac = team === 0 ? 0x3aa8ff : team === 1 ? 0xff3a28 : team === 2 ? 0xff9a20 : null; const camoT = camoId ? camoTexture(camoId) : null;
+    obj.traverse((o) => { if (!o.isMesh) return; const sw = (m) => { if (fac != null && m.name === 'mat_faction') return this.variant(m, 'team' + team, (c) => { c.color.setHex(fac); c.emissive = new THREE.Color(fac); c.emissiveIntensity = 0.35; });
+      if (camoT && m.name === 'mat_camo') return this.variant(m, 'camo' + camoId, (c) => { c.map = camoT; c.color.setHex(0xffffff); }); return m; };
+      o.material = Array.isArray(o.material) ? o.material.map(sw) : sw(o.material); });
+    return obj;
+  },
+  variant(m, tag, fn) { const k = m.uuid + ':' + tag; let v = this.mats.get(k); if (!v) { v = m.clone(); v.userData.kit = true; fn(v); this.mats.set(k, v); } return v; },
+  // average colour of a texture (for flat-shaded far-away parts)
+  avgOf(tex) {
+    const img = tex?.image; if (!img) return [1, 1, 1]; const k = tex.uuid; if (this.avg.has(k)) return this.avg.get(k);
+    let out = [0.5, 0.5, 0.5]; try { const { c, g } = makeCanvas(16, 16); g.drawImage(img, 0, 0, 16, 16); const d = g.getImageData(0, 0, 16, 16).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; out = [r / n / 255, gg / n / 255, b / n / 255].map((v) => Math.pow(v, 2.2)); c.width = 1; } catch (e) { /* tainted */ }
+    this.avg.set(k, out); return out;
+  },
+  // the camo pattern as a bright greyscale texture, so a soldier's uniform colour can tint it
+  greyOf(tex) {
+    if (!tex?.image) return null; if (this.greyCache.has(tex.uuid)) return this.greyCache.get(tex.uuid); let t = null;
+    try { const w = Math.min(256, tex.image.width || 256), h = Math.min(256, tex.image.height || 256); const { c, g } = makeCanvas(w, h); g.drawImage(tex.image, 0, 0, w, h); const im = g.getImageData(0, 0, w, h); const d = im.data; let mn = 255, mx = 0;
+      for (let i = 0; i < d.length; i += 4) { const l = d[i] * 0.3 + d[i + 1] * 0.55 + d[i + 2] * 0.15; d[i] = l; if (l < mn) mn = l; if (l > mx) mx = l; }
+      for (let i = 0; i < d.length; i += 4) { const v = 150 + (d[i] - mn) / Math.max(1, mx - mn) * 105; d[i] = d[i + 1] = d[i + 2] = v; } g.putImageData(im, 0, 0); t = canvasTex(c, 1); t.colorSpace = THREE.SRGBColorSpace; } catch (e) { t = null; }
+    this.greyCache.set(tex.uuid, t); return t;
+  },
+  // one shared material for every kit body part: vertex colours, an optional per-instance tint and the camo pattern,
+  // switched per vertex by the 'tint' attribute (0 fixed colour, 0.5 tinted, 1 tinted + camo pattern)
+  charMat(map) {
+    const k = map ? map.uuid : 'none'; if (this.charMatCache?.[k]) return this.charMatCache[k]; this.charMatCache ||= {};
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, map, roughness: 0.82, metalness: 0.06, emissive: 0xffffff, emissiveIntensity: 0 });
+    m.onBeforeCompile = (sh) => {
+      sh.vertexShader = 'attribute float tint;\nvarying float vTint;\n' + sh.vertexShader.replace('#include <color_vertex>', 'vColor = vec3(1.0);\n#ifdef USE_COLOR\nvColor *= color;\n#endif\nvTint = tint;\n#ifdef USE_INSTANCING_COLOR\nvColor *= mix(vec3(1.0), instanceColor.xyz, step(0.25, tint));\n#endif');
+      sh.fragmentShader = 'varying float vTint;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#ifdef USE_MAP\nvec4 sampledDiffuseColor = texture2D( map, vMapUv );\ndiffuseColor *= mix(vec4(1.0), sampledDiffuseColor, step(0.75, vTint));\n#endif');
+    };
+    m.customProgramCacheKey = () => 'fzkitchar'; this.charMatCache[k] = m; return m;
+  },
+  // ---- cutting a T-pose character into animated segments ------------------------------------------------
+  // returns { parts: { partId: BufferGeometry in KIT_PX unit space }, J: { shX, hipX }, camo: texture }
+  slice(root, o = {}) {
+    root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(); const meshes = [];
+    root.traverse((m) => { if (!m.isMesh || !m.visible) return; let p = m, skip = false; while (p && p !== root) { if (o.skip && o.skip.test(p.name)) skip = true; if (p.visible === false) skip = true; p = p.parent; } if (!skip) meshes.push(m); });
+    const roleOf = (m) => { for (let p = m; p && p !== root; p = p.parent) { const n = p.name || ''; if (/(^|_)body(_|$)/.test(n)) return 'body'; if (/^head(_\d+)?$/.test(n)) return 'head'; if (/helmet|headgear|mask|recon_visor/.test(n)) return 'helmet'; if (/pack/.test(n)) return 'pack'; if (/vest|apron|cloak|gadget|jetpack/.test(n)) return 'vest'; if (/shield|shotgun|rifle|tablet|weapon|torch/.test(n)) return 'hand'; } return 'vest'; };
+    // gather triangles in root space
+    const tris = []; let camo = null; const pv = V3(), nv = V3(); const nm = new THREE.Matrix3();
+    for (const m of meshes) { const role = roleOf(m); const g = m.geometry; const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv; const mw = _m1.multiplyMatrices(inv, m.matrixWorld); nm.getNormalMatrix(mw); const idx = g.index;
+      const groups = g.groups.length ? g.groups : [{ start: 0, count: idx ? idx.count : P.count, materialIndex: 0 }];
+      for (const gr of groups) { const mat = Array.isArray(m.material) ? m.material[gr.materialIndex] : m.material; if (mat.name === 'mat_camo' && mat.map && !camo) camo = mat.map;
+        for (let t = gr.start; t < gr.start + gr.count; t += 3) { const tri = { role, mat, v: [] }; for (let k = 0; k < 3; k++) { const vi = idx ? idx.getX(t + k) : t + k; pv.fromBufferAttribute(P, vi).applyMatrix4(mw); if (N) nv.fromBufferAttribute(N, vi).applyMatrix3(nm).normalize(); else nv.set(0, 1, 0); tri.v.push({ p: pv.clone(), n: nv.clone(), u: U ? [U.getX(vi), U.getY(vi)] : [0, 0] }); } tris.push(tri); } } }
+    const body = tris.filter((t) => t.role === 'body'); if (!body.length) return null;
+    // landmarks from the body: height, torso width, arm span, neck
+    let Htop = 0, xmax = 0; for (const t of body) for (const v of t.v) { Htop = Math.max(Htop, v.p.y); xmax = Math.max(xmax, Math.abs(v.p.x)); }
+    // proportions are measured from the shoulder line (the hands' height in the T-pose), so a body with or without a head works the same
+    let hy = 0, hn = 0; for (const t of body) for (const v of t.v) if (Math.abs(v.p.x) > xmax * 0.6) { hy += v.p.y; hn++; } const Hb = hn ? Math.min(Htop, (hy / hn) / 0.907) : Htop;
+    let tw = 0; for (const t of body) for (const v of t.v) if (v.p.y > 0.6 * Hb && v.p.y < 0.76 * Hb) tw = Math.max(tw, Math.abs(v.p.x)); tw = tw || 0.18;
+    const armX0 = tw + 0.012, isArm = (c) => Math.abs(c.x) > armX0 && c.y > 0.74 * Hb; let ay = 0, an = 0; for (const t of body) { const c = this.cen(t); if (isArm(c)) { ay += c.y; an++; } } const armY = an ? ay / an : 0.92 * Hb;
+    const elbowX = armX0 + (xmax - armX0) * 0.46; const hipY = 0.54 * Hb, kneeY = 0.29 * Hb; let lx = 0, ln = 0; for (const t of body) { const c = this.cen(t); if (c.y < hipY && c.y > kneeY) { lx += Math.abs(c.x); ln++; } } const hipX = ln ? lx / ln : 0.09;
+    const ownHead = tris.some((t) => t.role === 'head'); let neck = Hb; if (ownHead) { for (const t of tris) if (t.role === 'head') for (const v of t.v) neck = Math.min(neck, v.p.y); } else neck = Math.min(Hb * 0.9, armY + 0.12); // head modelled into the body: cut it off at the neck
+    const tb = hipY + 0.14, kT = 0.44 / (hipY - kneeY), kS = 0.44 / Math.max(0.1, kneeY), kTo = 0.56 / Math.max(0.2, neck - tb), kU = 0.3 / Math.max(0.05, elbowX - armX0), kF = 0.28 / Math.max(0.05, (xmax - elbowX) * 0.82);
+    // segment → joint-frame transform for a point/normal
+    const X = {
+      pelvis: (p) => [p.x, p.y - (hipY + 0.06), p.z], torso: (p) => [p.x, (p.y - tb) * kTo, p.z], head: (p) => [p.x, p.y - neck, p.z],
+      thigh: (p, s) => [p.x - s * hipX, (p.y - hipY) * kT, p.z], shin: (p, s) => [p.x - s * hipX, (p.y - kneeY) * kS, p.z],
+      uarm: (p, s) => { const dx = p.x - s * armX0, dy = p.y - armY; return s < 0 ? [-dy, dx * kU, p.z] : [dy, -dx * kU, p.z]; },
+      farm: (p, s) => { const dx = p.x - s * elbowX, dy = p.y - armY; return s < 0 ? [-dy, dx * kF, p.z] : [dy, -dx * kF, p.z]; },
+    };
+    const rotN = (n, s) => s < 0 ? [-n.y, n.x, n.z] : [n.y, -n.x, n.z];
+    const out = {}; const push = (part, tri, fn, s, armRot) => { const L = out[part] ||= { p: [], n: [], u: [], c: [], t: [] }; const px = KIT_PX[part] || KIT_PX[part.replace(/F$/, '')]; const col = o.palette(tri.mat, part, this);
+      for (const v of tri.v) { const q = fn(v.p, s); const n = armRot ? rotN(v.n, s) : [v.n.x, v.n.y, v.n.z]; L.p.push((q[0] - px[0]) / px[3], (q[1] - px[1]) / px[4], (q[2] - px[2]) / px[5]); const nn = [n[0] * px[3], n[1] * px[4], n[2] * px[5]]; const nl = Math.hypot(...nn) || 1; L.n.push(nn[0] / nl, nn[1] / nl, nn[2] / nl); L.u.push(v.u[0], v.u[1]); L.c.push(col[0], col[1], col[2]); L.t.push(col[3]); } };
+    for (const t of tris) {
+      const c = this.cen(t); const s = c.x < 0 ? -1 : 1; const S = s < 0 ? 'L' : 'R'; const fac = t.mat.name === 'mat_faction' && o.factionSplit;
+      if (t.role === 'body') {
+        if (isArm(c)) { if (Math.abs(c.x) < elbowX) push('uarm' + S, t, X.uarm, s, true); else push('farm' + S, t, X.farm, s, true); }
+        else if (!ownHead && c.y > neck && Math.abs(c.x) < 0.2) push('head', t, X.head, s); else if (c.y < kneeY) push('shin' + S, t, X.shin, s); else if (c.y < hipY) push('thigh' + S, t, X.thigh, s); else if (c.y < hipY + 0.09 * Hb) push('pelvis', t, X.pelvis, s); else push('torso', t, X.torso, s);
+      } else if (t.role === 'head') push('head', t, X.head, s);
+      else if (t.role === 'helmet') push(fac ? 'helmetF' : 'helmet', t, X.head, s);
+      else if (t.role === 'hand') { if (Math.abs(c.x) > armX0 && c.y > 0.6 * Hb) push('farm' + S, t, X.farm, s, true); else push('torso', t, X.torso, s); }
+      else push(fac ? t.role + 'F' : t.role, t, X.torso, s);
+    }
+    const parts = {}; for (const k in out) { const L = out[k]; const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(L.p, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(L.n, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(L.u, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(L.c, 3)); g.setAttribute('tint', new THREE.Float32BufferAttribute(L.t, 1)); g.computeBoundingSphere(); parts[k] = g; }
+    return { parts, J: { shX: armX0 + 0.02, hipX }, camo };
+  },
+  cen(t) { return _v4.set((t.v[0].p.x + t.v[1].p.x + t.v[2].p.x) / 3, (t.v[0].p.y + t.v[1].p.y + t.v[2].p.y) / 3, (t.v[0].p.z + t.v[1].p.z + t.v[2].p.z) / 3); },
+  // flat colour of a kit material (texture averaged)
+  flat(mat) { const c = mat.color ? [mat.color.r, mat.color.g, mat.color.b] : [1, 1, 1]; if (mat.map) { const a = this.avgOf(mat.map); return [c[0] * a[0], c[1] * a[1], c[2] * a[2]]; } return c; },
+  // a whole model squashed into one geometry (vertex colours, unit box centred at the origin) — for instanced props
+  merged(k, o = {}) {
+    const src = this.src[k]; if (!src) return null; src.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(src.matrixWorld).invert(); const P = [], N = [], U = [], C = [], T = [];
+    const nm = new THREE.Matrix3(); const pv = V3(), nv = V3();
+    src.traverse((m) => { if (!m.isMesh || !m.visible) return; let hid = false; for (let p = m; p; p = p.parent) if (p.visible === false) hid = true; if (hid) return; const g = m.geometry; const mw = _m1.multiplyMatrices(inv, m.matrixWorld); nm.getNormalMatrix(mw); const idx = g.index; const groups = g.groups.length ? g.groups : [{ start: 0, count: idx ? idx.count : g.attributes.position.count, materialIndex: 0 }];
+      for (const gr of groups) { const mat = Array.isArray(m.material) ? m.material[gr.materialIndex] : m.material; const col = o.palette ? o.palette(mat) : [...this.flat(mat), 0];
+        for (let t = gr.start; t < gr.start + gr.count; t++) { const vi = idx ? idx.getX(t) : t; pv.fromBufferAttribute(g.attributes.position, vi).applyMatrix4(mw); nv.fromBufferAttribute(g.attributes.normal, vi).applyMatrix3(nm).normalize(); P.push(pv.x, pv.y, pv.z); N.push(nv.x, nv.y, nv.z); U.push(g.attributes.uv ? g.attributes.uv.getX(vi) : 0, g.attributes.uv ? g.attributes.uv.getY(vi) : 0); C.push(col[0], col[1], col[2]); T.push(col[3]); } } });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('tint', new THREE.Float32BufferAttribute(T, 1));
+    g.computeBoundingBox(); const size = g.boundingBox.getSize(V3()); const cen = g.boundingBox.getCenter(V3()); return { geo: g, size, cen };
+  },
+};
+
 // §AUDIO --------------------------------------------------------------------------------
 // Everything is synthesised. Gunfire = transient crack + body + low thump + tail, sent through a reverb whose impulse
 // response and echo are rebuilt from the biome's acoustics (canyon echoes, jungle damping, city reverb). Distant shots
@@ -2715,7 +2868,8 @@ const Throwables = {
   list: [], meshes: {},
   mesh(type) {
     const col = { frag: 0x3a4a2a, smoke: 0x8a8a8a, flash: 0x3a3a4a, emp: 0x2a5a8a, sticky: 0xb8a030, c4: 0xd8c8a0, breach: 0xc84a2a, sensor: 0x2a2a2a, flare: 0xd83a2a, mine: 0x3a3a2a }[type] || 0x666666;
-    const g = new THREE.Group(); const m = new THREE.Mesh(type === 'c4' || type === 'breach' ? GEO.box : GEO.cyl, colMat(col, { roughness: 0.6, metalness: 0.3 })); m.scale.set(type === 'c4' ? 0.2 : 0.06, type === 'c4' ? 0.07 : 0.11, type === 'c4' ? 0.12 : 0.06); g.add(m);
+    const g = new THREE.Group(); const kt = Kit.key('throwables', type === 'breach' || type === 'sticky' ? 'c4' : type); const km = kt ? Kit.clone(kt) : null;
+    if (km) { km.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(km); km.position.sub(bb.getCenter(V3())); g.add(km); } else { const m = new THREE.Mesh(type === 'c4' || type === 'breach' ? GEO.box : GEO.cyl, colMat(col, { roughness: 0.6, metalness: 0.3 })); m.scale.set(type === 'c4' ? 0.2 : 0.06, type === 'c4' ? 0.07 : 0.11, type === 'c4' ? 0.12 : 0.06); g.add(m); }
     if (type === 'sensor' || type === 'c4' || type === 'sticky' || type === 'breach' || type === 'mine') { const l = new THREE.Mesh(GEO.sphere, MAT.glowRed); l.scale.setScalar(0.02); l.position.y = 0.07; g.add(l); g.userData.led = l; }
     g.castShadow = true; WORLD.add(g); return g;
   },
@@ -2799,8 +2953,35 @@ function camoTexture(camoId) {
 }
 // returns { group, muzzle, mag, magHome, bolt, sightY, sightZ, optic }
 const VM_GLASS = { m: null };
+// the art kit's model of this gun (barrel along +Z, origin at the grip) turned to gun space, with its sockets used for
+// the attachments: kit optics / muzzle devices / grips / side rails, our open-frame red dot (so you can see through it)
+function buildKitGun(gun, key, op) {
+  const def = gun.def, M = def.model || {}; const src = Kit.clone(key); if (!src) return null; Kit.dress(src, null, gun.camo && gun.camo !== 'factory' ? gun.camo : null);
+  const g = new THREE.Group(); src.rotation.y = Math.PI; if (M.tube) src.position.set(0.02, -0.05, 0); g.add(src); g.updateMatrixWorld(true);
+  const at = (name) => { const n = src.getObjectByName(name); return n ? n.getWorldPosition(V3()) : null; };
+  const dark = gunMat(0x181818, 0.35, 0.8); const box = (mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(GEO.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); g.add(m); return m; };
+  // magazine in its own group so reloads can drop it; bolt / charging handle so bolt actions can rack it
+  const mag = new THREE.Group(); g.add(mag); const magN = src.getObjectByName('magazine'); if (magN) { mag.position.copy(at('magazine')); mag.updateMatrixWorld(true); mag.attach(magN); }
+  const boltN = src.getObjectByName('bolt') || src.getObjectByName('charging_handle'); let bolt = null; if (boltN) { g.attach(boltN); bolt = boltN; }
+  const muzzle = new THREE.Object3D(); muzzle.position.copy(at('muzzle') || V3(0, 0.06, -0.6)); g.add(muzzle);
+  const fit = (akey, sock) => { const k = Kit.has(akey) ? akey : null; const p = at(sock); if (!k || !p) return null; const a = Kit.clone(k); a.rotation.y = Math.PI; a.position.copy(p); if (/optic/.test(k)) a.scale.setScalar(0.85); g.add(a); a.updateMatrixWorld(true); return a; };
+  const A = gun.att || {}; const mz = A.muzzle || (M.can ? 'suppressor' : M.brake ? 'brake' : null);
+  if (mz) { const a = fit(Kit.man.attachments[mz], 'socket_muzzle'); if (a) { const b = new THREE.Box3().setFromObject(a); muzzle.position.z = Math.min(muzzle.position.z, b.min.z); } }
+  if (A.grip && A.grip !== 'bipod') fit(Kit.man.attachments[A.grip], 'socket_underbarrel'); if (A.laser) fit(Kit.man.attachments[A.laser], 'socket_side');
+  const so = at('socket_optic') || V3(0, 0.12, 0); const opticMeshes = []; let sightY = so.y + 0.012; const muzZ = muzzle.position.z;
+  if (op === 'iron' || M.tube) { if (!M.tube) { box(dark, 0, so.y + 0.008, muzZ + 0.05, 0.003, 0.022, 0.004); box(dark, 0, so.y - 0.002, so.z + 0.04, 0.026, 0.006, 0.008); for (const sx of [-1, 1]) box(dark, sx * 0.008, so.y + 0.008, so.z + 0.04, 0.007, 0.016, 0.008); } sightY = so.y + (M.tube ? -0.01 : 0.015); }
+  else { const AD = DATA.attachments[op] || {}; const zoom = AD.zoom || 1;
+    if (zoom <= 1.35) { const top = so.y - 0.012; const cy = top + 0.04; box(dark, 0, top + 0.012, so.z, 0.036, 0.008, 0.05); box(dark, 0, cy + 0.024, so.z - 0.02, 0.036, 0.004, 0.012); box(dark, -0.0175, cy, so.z - 0.02, 0.002, 0.05, 0.012); box(dark, 0.0175, cy, so.z - 0.02, 0.002, 0.05, 0.012);
+      if (!VM_GLASS.m) VM_GLASS.m = new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.08, depthWrite: false }); const gl = new THREE.Mesh(GEO.box, VM_GLASS.m); gl.scale.set(0.032, 0.044, 0.001); gl.position.set(0, cy, so.z - 0.026); g.add(gl);
+      const dot = new THREE.Mesh(GEO.sphere, MAT.glowRed || new THREE.MeshBasicMaterial({ color: 0xff2a1a })); dot.scale.setScalar(op === 'holo' ? 0.0022 : 0.0016); dot.position.set(0, cy, so.z - 0.027); g.add(dot); sightY = cy; }
+    else { const a = fit(Kit.man.attachments[op], 'socket_optic'); if (a) { a.traverse((o) => { if (o.isMesh) opticMeshes.push(o); }); const b = new THREE.Box3().setFromObject(a); sightY = (b.min.y + b.max.y) / 2 + (b.max.y - b.min.y) * 0.15; } else sightY = so.y + 0.045; } }
+  const hl = at('hand_l'); const front = hl ? hl.z - 0.06 : -0.25;
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+  return { group: g, muzzle, mag, magHome: mag.position.clone(), bolt, boltHome: bolt ? bolt.position.clone() : null, sightY, sightZ: 0.05, optic: op, opticMeshes, front, rz1: M.pistol ? 0.05 : M.tube ? 0.05 : clamp(new THREE.Box3().setFromObject(src).max.z - 0.1, 0.1, 0.45), rocket: M.tube ? mag : null, kit: true };
+}
 function buildGunModel(gun, opts = {}) {
-  gunEnv(); const def = gun.def, M = def.model || {}; const g = new THREE.Group(); const body = gunMat(parseHex(M.color || '#2a2a2a'), 0.42, 0.42), lower = gunMat(_c2.setHex(parseHex(M.color || '#2a2a2a')).multiplyScalar(0.82).getHex(), 0.5, 0.5), acc = gunMat(parseHex(M.accent || '#444'), 0.62, 0.25), dark = gunMat(0x181818, 0.35, 0.8), rubber = gunMat(0x141414, 0.95, 0.0), steel = gunMat(0x3a3c3e, 0.28, 0.9);
+  gunEnv(); const def = gun.def, M = def.model || {};
+  { const kk = !def.special && !M.tech && !opts.procedural && Kit.key('weapons', def.id); if (kk) { const r = buildKitGun(gun, kk, gun.att.optic || (def.class === 'sniper' ? 'x8' : 'iron')); if (r) return r; } } const g = new THREE.Group(); const body = gunMat(parseHex(M.color || '#2a2a2a'), 0.42, 0.42), lower = gunMat(_c2.setHex(parseHex(M.color || '#2a2a2a')).multiplyScalar(0.82).getHex(), 0.5, 0.5), acc = gunMat(parseHex(M.accent || '#444'), 0.62, 0.25), dark = gunMat(0x181818, 0.35, 0.8), rubber = gunMat(0x141414, 0.95, 0.0), steel = gunMat(0x3a3c3e, 0.28, 0.9);
   const special = !!def.special; const gold = special ? gunMat(0xe0b040, 0.25, 1.0, { key: 'gold', mat: { emissive: new THREE.Color(0x604010), emissiveIntensity: 0.4 } }) : null; const glowLine = special ? new THREE.MeshBasicMaterial({ color: 0xb070ff }) : null;
   let bodyMat = body; if (gun.camo && gun.camo !== 'factory') { const t = camoTexture(gun.camo); if (t) { bodyMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0.3, envMapIntensity: 0.8 }); } }
   const box = (mat, x, y, z, sx, sy, sz, parent = g, rx = 0) => { const m = new THREE.Mesh(GEO.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.x = rx; parent.add(m); return m; };
@@ -2925,7 +3106,7 @@ class ViewModel {
     for (let i = 0; i < 4; i++) R(this.glove, -0.021 + i * 0.014, -0.026, -0.05, 0.012, 0.022, 0.03, 0.45); R(this.glove, 0.034, 0.006, -0.022, 0.016, 0.016, 0.04, 0.45); g.userData.sleeve = sleeve; this.holder.add(g); return g; }
   setUniform(rgb) { const k = rgb[0] > 1.5 || rgb[1] > 1.5 ? 1 / 255 : 1; this.armMat.color.setRGB(rgb[0] * k, rgb[1] * k, rgb[2] * k).convertSRGBToLinear(); }
   setGun(gun) {
-    if (this.gunNode) { this.holder.remove(this.gunNode); this.gunNode.traverse((o) => { if (o.isMesh && o.material && o.material.map && o.material !== MAT.glass && !gunMats.has(o.material)) o.material.dispose?.(); }); }
+    if (this.gunNode) { this.holder.remove(this.gunNode); this.gunNode.traverse((o) => { if (o.isMesh && o.material && o.material.map && o.material !== MAT.glass && !gunMats.has(o.material) && !o.material.userData?.kit) o.material.dispose?.(); }); }
     this.gun = gun; if (!gun) { this.gunNode = null; this.model = null; return; } this.model = buildGunModel(gun); this.gunNode = this.model.group; this.holder.add(this.gunNode);
   }
   play(name, dur, cb = null) { this.anim = name; this.animT = 0; this.animDur = Math.max(0.05, dur); this.animCb = cb; this.sndDone.clear(); }
@@ -3477,42 +3658,69 @@ const Chutes = {
 };
 
 // §SOLDIERGFX -------------------------------------------------------------------------------------
-// Every soldier on the map is drawn with one InstancedMesh per body part (≈16 draws for 64+ soldiers), posed by
+// Every soldier on the map is drawn with one InstancedMesh per body part (≈20 draws for 64+ soldiers), posed by
 // forward kinematics from keyframe-style pose tables (stand, walk, run, crouch, prone, swim, parachute, wingsuit,
 // rappel, downed, seated, throw, reload, revive). The fallen tip over, lie still for a moment, then fade away.
+// With the art kit loaded the parts are the kit's soldier cut into segments (Accord kit for the Accord, Mandate kit
+// for everyone else); bosses and online players get their own full model ("rig") posed by the same code.
 const SG_PARTS = [
   ['pelvis', 0.34, 0.2, 0.22], ['torso', 0.44, 0.52, 0.27], ['head', 0.2, 0.24, 0.22], ['helmet', 0.26, 0.13, 0.28], ['visor', 0.2, 0.06, 0.03],
   ['uarmL', 0.12, 0.3, 0.12], ['uarmR', 0.12, 0.3, 0.12], ['farmL', 0.1, 0.28, 0.1], ['farmR', 0.1, 0.28, 0.1], ['thighL', 0.16, 0.44, 0.17], ['thighR', 0.16, 0.44, 0.17],
   ['shinL', 0.13, 0.44, 0.14], ['shinR', 0.13, 0.44, 0.14], ['pack', 0.32, 0.4, 0.16], ['gun', 0.06, 0.1, 1], ['band', 0.13, 0.07, 0.13], ['vest', 0.47, 0.34, 0.31],
 ];
 const SG_CAP = 220;
+const SG_TINT = { pelvis: 'pants', thighL: 'pants', thighR: 'pants', shinL: 'pants', shinR: 'pants', torso: 'top', uarmL: 'top', uarmR: 'top', farmL: 'top', farmR: 'top', head: 'skin', helmet: 'helmet', helmet2: 'helmet', visor: 'visor', pack: 'gear', pack2: 'gear', vest: 'vest', vest2: 'vest', band: 'band', vestF: 'band', vest2F: 'band', helmetF: 'band', helmet2F: 'band', packF: 'band', pack2F: 'band' };
+const SG_VISOR_KIT = [0, 0.14, 0.126, 0.17, 0.035, 0.012];
 const _sm = Array.from({ length: 8 }, () => new THREE.Matrix4()); const _sr = new THREE.Matrix4(); const _ss = new THREE.Matrix4();
 const SoldierGfx = {
-  meshes: {}, free: [], mats: [], hidden: null,
+  meshes: {}, free: [], mats: [], hidden: null, kit: null, hi: 0, cur: null, rigs: new Set(), guns: {},
   init() {
-    for (const [id] of SG_PARTS) {
+    if (Kit.has('kit_accord')) { try { this.initKit(); } catch (e) { console.warn('kit soldiers failed, using boxes', e); this.kit = null; for (const id in this.meshes) WORLD.remove(this.meshes[id]); this.meshes = {}; this.mats = []; } }
+    if (!this.kit) for (const [id] of SG_PARTS) {
       const geo = id === 'head' ? new THREE.BoxGeometry(1, 1, 1, 1, 1, 1) : GEO.box; const mat = id === 'band' || id === 'visor' ? new THREE.MeshBasicMaterial({ color: 0xffffff }) : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: id === 'gun' || id === 'visor' ? 0.5 : 0.05, emissive: 0xffffff, emissiveIntensity: 0 });
-      this.mats.push(mat); const m = new THREE.InstancedMesh(geo, mat, SG_CAP); m.count = SG_CAP; m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
-      for (let i = 0; i < SG_CAP; i++) { m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.setColorAt(i, _c1.setHex(0x888888)); } WORLD.add(m); this.meshes[id] = m;
+      this.mats.push(mat); this.addMesh(id, geo, mat);
     }
     for (let i = SG_CAP - 1; i >= 0; i--) this.free.push(i);
   },
+  addMesh(id, geo, mat) { const m = new THREE.InstancedMesh(geo, mat, SG_CAP); m.count = 0; m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; for (let i = 0; i < SG_CAP; i++) { m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.setColorAt(i, _c1.setHex(0x888888)); } WORLD.add(m); this.meshes[id] = m; return m; },
+  palette(mat, part) { const n = mat.name; const base = part.replace(/2?F?$/, ''); if (n === 'mat_camo') return [1, 1, 1, 1]; if (n === 'mat_faction') return [1, 1, 1, 0.5];
+    if ((n === 'mat_skin' && base === 'head') || (n === 'mat_ceramic_plate' && (base === 'helmet' || base === 'vest')) || (n === 'mat_canvas' && base === 'pack')) return [1, 1, 1, 0.5]; const f = Kit.flat(mat); return [f[0], f[1], f[2], 0]; },
+  initKit() {
+    for (const k of ['kit_accord', 'kit_mandate']) Kit.src[k]?.traverse((o) => { if (/^(bodies|heads|helmets|vests|packs)$/.test(o.parent?.name || '')) o.position.set(0, 0, 0); }); // undo the kit sheet's side-by-side layout
+    const A = Kit.slice(Kit.src.kit_accord, { skip: /head_03/, factionSplit: true, palette: (m, p) => this.palette(m, p) }); if (!A) return;
+    const M = Kit.has('kit_mandate') ? Kit.slice(Kit.src.kit_mandate, { factionSplit: true, palette: (m, p) => this.palette(m, p) }) : null;
+    const mat = Kit.charMat(Kit.greyOf(A.camo)); this.mats.push(mat); this.kit = { J: A.J, parts: new Set() };
+    for (const id in A.parts) { this.addMesh(id, A.parts[id], mat); this.kit.parts.add(id); }
+    if (M) for (const id of ['helmet', 'helmetF', 'vest', 'vestF', 'pack', 'packF']) if (M.parts[id]) { const k = id.replace(/^(helmet|vest|pack)/, '$12'); this.addMesh(k, M.parts[id], mat); this.kit.parts.add(k); }
+    const vm = new THREE.MeshBasicMaterial({ color: 0xffffff }); this.mats.push(vm); this.addMesh('visor', GEO.box, vm); this.addMesh('band', GEO.box, vm);
+    // gun in hand: the kit rifle (scaled down for pistols, up for launchers), coloured flat with the camo panels kept — one
+    // shared model keeps the hidden-instance vertex cost down
+    for (const [id, key] of [['gun', 'w_ar7_talon']]) { const g = Kit.merged(key, { palette: (m) => m.name === 'mat_camo' ? [1, 1, 1, 1] : [...Kit.flat(m), 0] }); if (!g) continue; const p = g.geo.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, (p.getX(i) - g.cen.x) / g.size.x, (p.getY(i) - g.cen.y) / g.size.y, (p.getZ(i) - g.cen.z) / g.size.z); const nn = g.geo.attributes.normal; for (let i = 0; i < nn.count; i++) { _v1.set(nn.getX(i) * g.size.x, nn.getY(i) * g.size.y, nn.getZ(i) * g.size.z).normalize(); nn.setXYZ(i, _v1.x, _v1.y, _v1.z); } this.guns[id] = g; this.addMesh(id, g.geo, mat); this.kit.parts.add(id); }
+    if (!this.meshes.gun) { this.addMesh('gun', GEO.box, new THREE.MeshStandardMaterial({ color: 0x1e1e1e, roughness: 0.6, metalness: 0.5 })); }
+  },
   thermal(on) { for (const m of this.mats) { if (!m.emissive) continue; m.emissive.setRGB(1, 0.95, 0.85); m.emissiveIntensity = on ? 1.6 : 0; } },
   acquire(s) {
-    if (s.gfx >= 0) return s.gfx; const i = this.free.pop(); if (i === undefined) return -1; s.gfx = i;
-    const look = s.look || Looks.forSoldier(s); s.look = look; const set = (id, hex) => this.meshes[id].setColorAt(i, _c1.setHex(hex));
-    set('pelvis', look.pants); set('torso', look.top); set('head', look.skin); set('helmet', look.helmet); set('visor', look.visor); for (const k of ['uarmL', 'uarmR', 'farmL', 'farmR']) set(k, look.top);
-    for (const k of ['thighL', 'thighR', 'shinL', 'shinR']) set(k, look.pants); set('pack', look.gear); set('gun', 0x1e1e1e); set('band', look.band); set('vest', look.vest);
+    if (s.gfx >= 0) return s.gfx; const i = this.free.pop(); if (i === undefined) return -1; s.gfx = i; if (i + 1 > this.hi) { this.hi = i + 1; for (const id in this.meshes) this.meshes[id].count = this.hi; }
+    const look = s.look || Looks.forSoldier(s); s.look = look;
+    for (const id in this.meshes) { const k = SG_TINT[id]; this.meshes[id].setColorAt(i, _c1.setHex(k ? look[k] : this.kit ? 0xffffff : 0x1e1e1e)); }
     s.uniformRgb = hexToRgb(look.top); if (s.player) s.player.vm.setUniform(s.uniformRgb);
     for (const id in this.meshes) if (this.meshes[id].instanceColor) this.meshes[id].instanceColor.needsUpdate = true; return i;
   },
-  release(s) { if (s.gfx < 0) return; const i = s.gfx; for (const id in this.meshes) this.meshes[id].setMatrixAt(i, _m1.makeScale(0, 0, 0)); this.free.push(i); s.gfx = -1; this.dirty = true; },
-  clear() { for (const s of Soldiers.list) s.gfx = -1; this.free.length = 0; for (let i = SG_CAP - 1; i >= 0; i--) this.free.push(i); for (const id in this.meshes) { const m = this.meshes[id]; for (let i = 0; i < SG_CAP; i++) m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.instanceMatrix.needsUpdate = true; } },
-  put(id, i, M, ox, oy, oz, sx, sy, sz) { _ss.makeScale(sx, sy, sz).setPosition(ox, oy, oz); _sr.multiplyMatrices(M, _ss); this.meshes[id].setMatrixAt(i, _sr); },
-  zero(i) { for (const id in this.meshes) this.meshes[id].setMatrixAt(i, _m1.makeScale(0, 0, 0)); },
+  release(s) { if (s.rig) this.dropRig(s); if (s.gfx < 0) return; const i = s.gfx; for (const id in this.meshes) this.meshes[id].setMatrixAt(i, _m1.makeScale(0, 0, 0)); this.free.push(i); s.gfx = -1; this.dirty = true; },
+  clear() { for (const s of Soldiers.list) { s.gfx = -1; if (s.rig) this.dropRig(s); } for (const r of this.rigs) WORLD.remove(r.group); this.rigs.clear(); this.free.length = 0; for (let i = SG_CAP - 1; i >= 0; i--) this.free.push(i); this.hi = 0; for (const id in this.meshes) { const m = this.meshes[id]; for (let i = 0; i < SG_CAP; i++) m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.count = 0; m.instanceMatrix.needsUpdate = true; } },
+  put(id, i, M, px) {
+    _ss.makeScale(px[3], px[4], px[5]).setPosition(px[0], px[1], px[2]);
+    if (this.cur) { const o = this.cur.parts[id]; if (o) { o.matrix.multiplyMatrices(M, _ss); o.visible = true; } if (id === 'gun' || id === 'gunP' || id === 'gunT') (this.cur.gunM ||= new THREE.Matrix4()).copy(M); return; }
+    const m = this.meshes[id]; if (!m) return; _sr.multiplyMatrices(M, _ss); m.setMatrixAt(i, _sr);
+  },
+  hidePart(id, i) { if (this.cur) { const o = this.cur.parts[id]; if (o) o.visible = false; return; } const m = this.meshes[id]; if (m) m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); },
+  zero(i) { if (this.cur) { this.cur.group.visible = false; return; } for (const id in this.meshes) this.meshes[id].setMatrixAt(i, _m1.makeScale(0, 0, 0)); },
   update(dt, cams) {
     let changed = this.dirty; this.dirty = false;
     for (const s of Soldiers.list) {
+      if (s.rigKey === undefined) { s.rigKey = this.rigFor(s); if (s.rigKey) this.giveRig(s, s.rigKey); }
+      if (s.rig) { if (s.gfx >= 0) { this.release(s); changed = true; } const R = s.rig; this.cur = R; R.group.visible = true;
+        if ((s.state === 'dead' && s.deadT > 7.5) || (s.vehicle && !s.seatVisible)) R.group.visible = false; else this.pose(s, -1, dt); this.cur = null; continue; }
       if (s.state === 'dead' && s.deadT > 7.5) { if (s.gfx >= 0) { this.release(s); changed = true; } continue; }
       if (s.vehicle && !s.seatVisible) { if (s.gfx >= 0) { this.zero(s.gfx); changed = true; } continue; }
       const i = this.acquire(s); if (i < 0) continue;
@@ -3524,17 +3732,34 @@ const SoldierGfx = {
     if (changed) for (const id in this.meshes) this.meshes[id].instanceMatrix.needsUpdate = true;
   },
   // hide one soldier for one render pass (first-person body) and restore after
-  hideFor(s) { if (!s || s.gfx < 0) return null; const i = s.gfx; const saved = {}; for (const id in this.meshes) { const m = this.meshes[id]; saved[id] = m.instanceMatrix.array.slice(i * 16, i * 16 + 16); m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.instanceMatrix.needsUpdate = true; } return { i, saved }; },
-  restore(h) { if (!h) return; for (const id in this.meshes) { const m = this.meshes[id]; m.instanceMatrix.array.set(h.saved[id], h.i * 16); m.instanceMatrix.needsUpdate = true; } },
+  hideFor(s) { if (!s) return null; if (s.rig) { const v = s.rig.group.visible; s.rig.group.visible = false; return { rig: s.rig, v }; } if (s.gfx < 0) return null; const i = s.gfx; const saved = {}; for (const id in this.meshes) { const m = this.meshes[id]; saved[id] = m.instanceMatrix.array.slice(i * 16, i * 16 + 16); m.setMatrixAt(i, _m1.makeScale(0, 0, 0)); m.instanceMatrix.needsUpdate = true; } return { i, saved }; },
+  restore(h) { if (!h) return; if (h.rig) { h.rig.group.visible = h.v; return; } for (const id in this.meshes) { const m = this.meshes[id]; m.instanceMatrix.array.set(h.saved[id], h.i * 16); m.instanceMatrix.needsUpdate = true; } },
+  // a full model of its own (boss, operator) for one soldier: the kit model cut into parts and coloured once
+  makeRig(key, look, o = {}) {
+    const src = Kit.src[key]; if (!src) return null; const hex = (h) => { _c1.setHex(h); return [_c1.r, _c1.g, _c1.b]; };
+    const top = hex(look.top), pants = hex(look.pants), band = hex(look.band);
+    const sl = Kit.slice(src, { skip: /bodyguard/, palette: (m, part) => { if (m.name === 'mat_camo') return [...(/^(pelvis|thigh|shin)/.test(part) ? pants : top), 1]; if (m.name === 'mat_faction') return [...band, 0]; return [...Kit.flat(m), 0]; } }); if (!sl) return null;
+    const mat = Kit.charMat(Kit.greyOf(sl.camo)); if (!this.mats.includes(mat)) this.mats.push(mat); const group = new THREE.Group(); group.matrixAutoUpdate = false; const parts = {};
+    for (const id in sl.parts) { const m = new THREE.Mesh(sl.parts[id], mat); m.matrixAutoUpdate = false; m.frustumCulled = false; m.castShadow = true; m.receiveShadow = true; group.add(m); parts[id] = m; }
+    const vis = new THREE.Mesh(GEO.box, new THREE.MeshBasicMaterial({ color: look.visor })); vis.matrixAutoUpdate = false; vis.frustumCulled = false; group.add(vis); parts.visor = vis;
+    const bnd = new THREE.Mesh(GEO.box, new THREE.MeshBasicMaterial({ color: look.band })); bnd.matrixAutoUpdate = false; bnd.frustumCulled = false; group.add(bnd); parts.band = bnd;
+    for (const g of ['gun', 'gunP', 'gunT']) { if (!this.guns[g]) continue; const m = new THREE.Mesh(this.guns[g].geo, mat); m.matrixAutoUpdate = false; m.frustumCulled = false; m.castShadow = true; group.add(m); parts[g] = m; }
+    const R = { group, parts, J: sl.J, key, own: true }; if (!o.noWorld) { WORLD.add(group); this.rigs.add(R); } return R;
+  },
+  // bosses wear their kit model; human players (split-screen / online) wear their operator's
+  rigFor(s) { if (!this.kit) return null; if (s.boss) { const ks = ['b_boss_warden', 'b_boss_viper', 'b_boss_matriarch'].filter((k) => Kit.has(k)); return ks.length ? ks[strHash(s.name || 'boss') % ks.length] : null; } if ((s.player || s.human) && s.op && Kit.has('op_' + s.op.id)) return 'op_' + s.op.id; return null; },
+  giveRig(s, key) { if (!this.kit || !Kit.has(key) || s.rig) return; const look = s.look || Looks.forSoldier(s); s.look = look; const R = this.makeRig(key, look); if (!R) return; if (s.gfx >= 0) this.release(s); s.rig = R; },
+  dropRig(s) { const R = s.rig; s.rig = null; if (!R) return; WORLD.remove(R.group); this.rigs.delete(R); },
   pose(s, i, dt) {
-    const M = _sm; const p = s.pos; s.bodyYaw = dampAngle(s.bodyYaw, s.yaw, s.speedXZ > 0.5 ? 12 : 4, dt);
+    const M = _sm; const p = s.pos; s.bodyYaw = dampAngle(s.bodyYaw, s.yaw, s.speedXZ > 0.5 ? 12 : 4, dt); const K = this.kit; const J = (this.cur && this.cur.J) || (K && K.J) || null; const shX = J ? J.shX : 0.28, hipX = J ? J.hipX : 0.1;
+    const P = KIT_PX; const mand = !this.cur && K && s.team !== 0 && this.meshes.helmet2; const sfx = mand ? '2' : '';
     // cloaked soldiers are a shimmer at best
-    if (s.cloakT > 0 && !s.player) { const near = G.players.some((P) => P.soldier.team !== s.team && G.dist(P.eyePos, p) < 9); if (!near || (G.frame % 5) > 1) { this.zero(i); return; } }
+    if (s.cloakT > 0 && !s.player) { const near = G.players.some((PL) => PL.soldier.team !== s.team && G.dist(PL.eyePos, p) < 9); if (!near || (G.frame % 5) > 1) { this.zero(i); return; } }
     let state = 'stand'; const ms = s.moveState;
     if (s.state === 'dead') state = 'dead'; else if (s.vehicle) state = 'seated'; else if (s.state === 'downed') state = 'downed'; else if (ms === 'swim') state = 'swim'; else if (ms === 'para') state = 'para'; else if (ms === 'wing') state = 'wing'; else if (ms === 'rappel') state = 'rappel'; else if (s.mantle) state = 'climb'; else if (s.stance === 'prone') state = 'prone'; else if (s.stance === 'crouch' || s.slideT > 0) state = 'crouch';
     const sp = s.speedXZ; s.gait = (s.gait || 0) + sp * dt * (s.sprinting ? 2.1 : 2.6); const ph = s.gait; const moving = sp > 0.4 && s.grounded;
     let hipY = 0.92, torsoP = 0, torsoR = -s.leanAmt * 0.32, headP = 0, rootP = 0, rootR = 0; const aim = clamp(s.pitch, -1, 1);
-    let thL = 0, thR = 0, knL = 0, knR = 0, arm = -1.35 - aim * 0.6, elb = 0.15, armSideL = 0.25, armSideR = -0.1, armL = arm, armR = arm, gunShow = 1, rootY = 0, hide = false, scale = 1;
+    let thL = 0, thR = 0, knL = 0, knR = 0, arm = -1.35 - aim * 0.6, elb = 0.15, armSideL = 0.25, armSideR = -0.1, armL = arm, armR = arm, gunShow = 1, rootY = 0, scale = 1;
     const amp = s.sprinting ? 0.95 : 0.6;
     switch (state) {
       case 'stand': if (moving) { thL = Math.sin(ph) * amp; thR = -thL; knL = Math.max(0, -Math.sin(ph - 0.6)) * amp * 1.6; knR = Math.max(0, Math.sin(ph - 0.6)) * amp * 1.6; hipY += Math.abs(Math.cos(ph)) * 0.04; }
@@ -3560,26 +3785,30 @@ const SoldierGfx = {
       _m1.makeTranslation(0, hipY, 0); _sm[0].multiply(_m1); _m1.makeRotationFromEuler(_e1.set(rootP, 0, rootR, 'XYZ')); _sm[0].multiply(_m1); _m1.makeTranslation(0, -hipY, 0); _sm[0].multiply(_m1);
     }
     // pelvis
-    M[1].copy(M[0]).multiply(_m1.makeTranslation(0, hipY, 0)); this.put('pelvis', i, M[1], 0, 0, 0, 0.34, 0.2, 0.22);
+    M[1].copy(M[0]).multiply(_m1.makeTranslation(0, hipY, 0)); this.put('pelvis', i, M[1], P.pelvis);
     // legs
-    for (const side of [-1, 1]) { const th = side < 0 ? thL : thR, kn = side < 0 ? knL : knR; M[2].copy(M[1]).multiply(_m1.makeTranslation(side * 0.1, -0.06, 0)).multiply(_m2.makeRotationX(-th));
-      this.put(side < 0 ? 'thighL' : 'thighR', i, M[2], 0, -0.22, 0, 0.16, 0.44, 0.17); M[3].copy(M[2]).multiply(_m1.makeTranslation(0, -0.44, 0)).multiply(_m2.makeRotationX(kn)); this.put(side < 0 ? 'shinL' : 'shinR', i, M[3], 0, -0.22, 0, 0.13, 0.44, 0.14); }
-    // torso, vest, pack
-    M[4].copy(M[1]).multiply(_m1.makeTranslation(0, 0.08, 0)).multiply(_m2.makeRotationFromEuler(_e1.set(torsoP, 0, torsoR, 'XYZ'))); this.put('torso', i, M[4], 0, 0.27, 0, 0.42, 0.52, 0.25);
-    if (s.vest.tier > 0) this.put('vest', i, M[4], 0, 0.3, 0.01, 0.46, 0.34, 0.3); else this.meshes.vest.setMatrixAt(i, _m1.makeScale(0, 0, 0));
-    this.put('pack', i, M[4], 0, 0.3, -0.2, 0.32, 0.38, 0.16);
+    for (const side of [-1, 1]) { const th = side < 0 ? thL : thR, kn = side < 0 ? knL : knR; const S = side < 0 ? 'L' : 'R'; M[2].copy(M[1]).multiply(_m1.makeTranslation(side * hipX, -0.06, 0)).multiply(_m2.makeRotationX(-th));
+      this.put('thigh' + S, i, M[2], P['thigh' + S]); M[3].copy(M[2]).multiply(_m1.makeTranslation(0, -0.44, 0)).multiply(_m2.makeRotationX(kn)); this.put('shin' + S, i, M[3], P['shin' + S]); }
+    // torso, vest, pack (kit: Accord or Mandate gear by team)
+    M[4].copy(M[1]).multiply(_m1.makeTranslation(0, 0.08, 0)).multiply(_m2.makeRotationFromEuler(_e1.set(torsoP, 0, torsoR, 'XYZ'))); this.put('torso', i, M[4], P.torso);
+    const kit = !!K || !!this.cur;
+    if (s.vest.tier > 0) { this.put('vest' + sfx, i, M[4], P.vest); if (kit) this.put('vest' + sfx + 'F', i, M[4], P.vest); } else { this.hidePart('vest' + sfx, i); this.hidePart('vest' + sfx + 'F', i); }
+    this.put('pack' + sfx, i, M[4], P.pack); if (kit) this.put('pack' + sfx + 'F', i, M[4], P.pack);
+    if (K && !this.cur) for (const k of ['vest', 'vestF', 'pack', 'packF', 'helmet', 'helmetF']) this.hidePart(mand ? k : k.replace(/^(helmet|vest|pack)/, '$12'), i);
     // head + helmet
-    M[5].copy(M[4]).multiply(_m1.makeTranslation(0, 0.56, 0)).multiply(_m2.makeRotationX(headP)); this.put('head', i, M[5], 0, 0.11, 0, 0.2, 0.24, 0.22);
-    this.put('helmet', i, M[5], 0, 0.23, -0.01, 0.26, 0.12, 0.28); this.put('visor', i, M[5], 0, 0.13, 0.11, 0.18, 0.06, 0.03);
+    M[5].copy(M[4]).multiply(_m1.makeTranslation(0, 0.56, 0)).multiply(_m2.makeRotationX(headP)); this.put('head', i, M[5], P.head);
+    this.put('helmet' + sfx, i, M[5], P.helmet); if (kit) this.put('helmet' + sfx + 'F', i, M[5], P.helmet); this.put('visor', i, M[5], kit ? SG_VISOR_KIT : P.visor);
     // arms
-    for (const side of [-1, 1]) { const a = side < 0 ? armL : armR; const sd = side < 0 ? armSideL : armSideR;
-      M[6].copy(M[4]).multiply(_m1.makeTranslation(side * 0.28, 0.48, 0)).multiply(_m2.makeRotationFromEuler(_e1.set(a, 0, side * sd * 0.6, 'XYZ'))); this.put(side < 0 ? 'uarmL' : 'uarmR', i, M[6], 0, -0.15, 0, 0.12, 0.3, 0.12);
-      if (side < 0) this.put('band', i, M[6], 0, -0.06, 0, 0.15, 0.13, 0.15);
-      M[7].copy(M[6]).multiply(_m1.makeTranslation(0, -0.3, 0)).multiply(_m2.makeRotationX(side < 0 ? -elb - 0.3 : -elb)); this.put(side < 0 ? 'farmL' : 'farmR', i, M[7], 0, -0.14, 0, 0.1, 0.28, 0.1); }
+    for (const side of [-1, 1]) { const a = side < 0 ? armL : armR; const sd = side < 0 ? armSideL : armSideR; const S = side < 0 ? 'L' : 'R';
+      M[6].copy(M[4]).multiply(_m1.makeTranslation(side * shX, 0.48, 0)).multiply(_m2.makeRotationFromEuler(_e1.set(a, 0, side * sd * 0.6, 'XYZ'))); this.put('uarm' + S, i, M[6], P['uarm' + S]);
+      if (side < 0) this.put('band', i, M[6], P.band);
+      M[7].copy(M[6]).multiply(_m1.makeTranslation(0, -0.3, 0)).multiply(_m2.makeRotationX(side < 0 ? -elb - 0.3 : -elb)); this.put('farm' + S, i, M[7], P['farm' + S]); }
     // weapon: held in front of the chest, pitched with the aim
-    if (gunShow && s.gun && state !== 'dead') { const L = s.gun.def.model.tube ? 1.0 : s.gun.def.model.pistol ? 0.25 : clamp((s.gun.def.model.len || 0.4) + (s.gun.def.model.barrel || 0.3) + 0.25, 0.5, 1.4);
-      M[6].copy(M[4]).multiply(_m1.makeTranslation(0.12, 0.38, 0.18)).multiply(_m2.makeRotationX(-(aim * 0.6 + torsoP) + (s.sprinting ? 0.6 : 0))); this.put('gun', i, M[6], 0, 0, L * 0.35, s.gun.def.model.tube ? 0.14 : 0.06, s.gun.def.model.tube ? 0.14 : 0.1, L); }
-    else this.meshes.gun.setMatrixAt(i, _m1.makeScale(0, 0, 0));
+    const GM = s.gun && s.gun.def.model; const gkey = 'gun';
+    if (gunShow && s.gun && state !== 'dead') { M[6].copy(M[4]).multiply(_m1.makeTranslation(0.12, 0.38, 0.18)).multiply(_m2.makeRotationX(-(aim * 0.6 + torsoP) + (s.sprinting ? 0.6 : 0)));
+      const G2 = this.guns[gkey]; if (kit && G2) { const k = GM.tube ? 1.2 : GM.pistol ? 0.34 : 1; const sz = G2.size, c = G2.cen; this.put(gkey, i, M[6], [c.x * k, c.y * k, c.z * k, sz.x * k, sz.y * k, sz.z * k]); }
+      else { const L = GM.tube ? 1.0 : GM.pistol ? 0.25 : clamp((GM.len || 0.4) + (GM.barrel || 0.3) + 0.25, 0.5, 1.4); this.put('gun', i, M[6], [0, 0, L * 0.35, GM.tube ? 0.14 : 0.06, GM.tube ? 0.14 : 0.1, L]); } }
+    else this.hidePart(gkey, i);
   },
 };
 // uniforms: operators have signature looks; bots wear their faction's uniform in the map's camo
@@ -3746,7 +3975,10 @@ const Deployables = {
         d.sub = [Deployables.add('turret', owner, pos.clone().add(_v3.set(s * 1.5, 0, c * 1.5)), yaw, { hp: 800, life: o.life, heavy: true }), Deployables.add('supply', owner, pos.clone().add(_v3.set(-s * 1.5 + c * 1.6, 0, -c * 1.5 - s * 1.6)), yaw, { hp: 300, life: o.life, uses: 8 })];
         FX.dustBurst(pos, 3, 'concrete'); Audio.at('explode', pos, 0.5); break; }
     }
-    mb.build(d.mesh, { static: false }); d.mesh.position.copy(pos); d.mesh.rotation.y = yaw; WORLD.add(d.mesh);
+    const KD = { shield: [3.0, 2.0, 0.3], cover: [1.8, 1.15, 0.5], turret: [0.7, 1.25, 0.8], atmine: [0.36, 0.14, 0.36], healdrone: [0.5, 0.22, 0.5, 1], supply: [0.9, 0.62, 0.6] }[type]; const kk = KD && Kit.key('gadgets', type);
+    const kd = kk ? Kit.prop(kk, KD[0], KD[1], KD[2], { cy: !!KD[3], team: d.team }) : null;
+    if (kd) { d.mesh.add(kd); if (type === 'turret') { const yawN = kd.getObjectByName('turret_yaw'); if (yawN) { d.mesh.remove(d.head); d.head = yawN; } } } else mb.build(d.mesh, { static: false });
+    d.mesh.position.copy(pos); d.mesh.rotation.y = yaw; WORLD.add(d.mesh);
     d.damage = (amt, by) => { if (d.dead || (by && by.team === d.team && by !== d.owner)) return; d.hp -= amt; if (d.hp <= 0) d.destroy(); };
     d.repair = (amt) => { if (d.dead || d.hp >= d.max) return 0; const a = Math.min(amt, d.max - d.hp); d.hp += a; return a; };
     d.stun = (t) => { d.stunT = Math.max(d.stunT, t); };
@@ -3781,7 +4013,7 @@ const Deployables = {
 // ---- drones: Wren's recon drone (player-flown or bot-directed) and the swarm ---------------------------
 const Drones = {
   list: [],
-  mesh(team) { const g = new THREE.Group(); const src = Models.clone('pip'); if (src) { src.scale.setScalar(0.9); g.add(src); } else { const mb = new MeshBuilder(); mb.box(colMat(0xd8a03a), 0, 0, 0, 0.45, 0.14, 0.45); mb.add(MAT.glowCyan, GEO.sphere, mtx(0, -0.02, 0.24, 0, 0, 0, 0.06, 0.06, 0.06)); for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) mb.add(MAT.darkMetal, GEO.cyl, mtx(x, 0.06, z, 0, 0, 0, 0.16, 0.01, 0.16)); mb.build(g, { static: false }); }
+  mesh(team) { const g = new THREE.Group(); const kd = Kit.prop('g_wren_recon_drone', 0.55, 0.2, 0.55, { cy: true, team }); const src = kd ? null : Models.clone('pip'); if (kd) g.add(kd); else if (src) { src.scale.setScalar(0.9); g.add(src); } else { const mb = new MeshBuilder(); mb.box(colMat(0xd8a03a), 0, 0, 0, 0.45, 0.14, 0.45); mb.add(MAT.glowCyan, GEO.sphere, mtx(0, -0.02, 0.24, 0, 0, 0, 0.06, 0.06, 0.06)); for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) mb.add(MAT.darkMetal, GEO.cyl, mtx(x, 0.06, z, 0, 0, 0, 0.16, 0.01, 0.16)); mb.build(g, { static: false }); }
     const l = new THREE.Mesh(GEO.sphere, team === 0 ? MAT.glowCyan : MAT.glowRed); l.scale.setScalar(0.04); l.position.y = -0.1; g.add(l); WORLD.add(g); return g; },
   launch(s, o = {}) { const d = { kind: 'recon', owner: s, team: s.team, pos: s.eye(V3()).add(V3(0, 0.6, 0)), vel: V3(), yaw: s.yaw, pitch: -0.2, hp: 60, life: o.life || 30, mesh: this.mesh(s.team), zapCD: 0, dead: false, flown: !!s.player };
     this.list.push(d); if (s.player) s.player.drone = d; else d.goal = s.brain?.droneGoal?.() || s.pos.clone().addScaledVector(dirFromYaw(s.yaw, V3()), 60).add(V3(0, 22, 0)); return d; },
@@ -4347,6 +4579,11 @@ const VBUILD = {
   sdrone(B) { B.box(B.metal, 0, 0, 0, 0.5, 0.2, 0.5); const rotors = []; for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { const r = B.node(x, 0.12, z); B.box(B.dark, 0, 0, 0, 0.5, 0.01, 0.05, 0, 0, 0, r); rotors.push(r); } B.add(MAT.glowCyan, GEO.sphere, mtx(0, -0.12, 0, 0, 0, 0, 0.08, 0.08, 0.08)); return { rotors }; },
   mdrone(B) { B.box(B.hull, 0, 0, 0, 0.9, 0.35, 0.9); B.box(colMat(0xd8c040), 0, -0.3, 0, 0.6, 0.3, 0.5); const rotors = []; for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) { const r = B.node(x, 0.2, z); B.box(B.dark, 0, 0, 0, 0.7, 0.01, 0.06, 0, 0, 0, r); rotors.push(r); } return { rotors }; },
 };
+// which kit model nodes drive which moving parts (vehicles not listed keep their procedural model)
+const VKIT = {
+  hover_tank: { turret: 'turret', gun: 'turret_barrel', keepTurrets: true }, hover_apc: { turret: 'turret', gun: 'turret_barrel' }, speeder_buggy: { turrets: [['mg_mount', 'mg']] },
+  interceptor: {}, vtol_gunship: { turrets: [['chin_gun', 'chin_gun']] }, vtol_dropship: { rotors: ['rotor_l', 'rotor_r'], keepTurrets: true }, strike_fighter: {},
+};
 let VEH_ID = 0;
 class Vehicle {
   constructor(defId, pos, yaw, team = null, o = {}) {
@@ -4377,8 +4614,22 @@ class Vehicle {
     const moving = new Set(); const mark = (n) => n && n.traverse((o) => moving.add(o)); const N = this.nodes; mark(N.turret); mark(N.gun); (N.rotors || []).forEach(mark); (N.turrets || []).forEach((t) => mark(t.yaw)); (N.arms || []).forEach(mark); (N.legs || []).forEach((l) => mark(l.hip)); mark(N.torso);
     const by = new Map(); for (const c of [...this.body.children]) { if (moving.has(c) || !c.isMesh) continue; if (!by.has(c.material)) by.set(c.material, []); by.get(c.material).push({ geo: c.geometry, m: c.matrix.clone() }); this.body.remove(c); }
     for (const [mat, list] of by) { const m = new THREE.Mesh(mergeGeos(list), mat); m.castShadow = true; m.receiveShadow = true; this.body.add(m); }
+    const kk = Kit.key('vehicles', def.id); if (kk && VKIT[def.id]) { try { this.kitBody(kk, VKIT[def.id], mil); } catch (e) { console.warn('kit vehicle', def.id, e); } }
     this.root.traverse((o) => { if (o.isMesh) o.userData.veh = this; });
     WORLD.add(root); this.syncMesh();
+  }
+  // the art kit's model replaces the procedural hull, fitted to the same box; its turret / barrel / mounts / rotors
+  // become the moving nodes (procedural secondary mounts stay where the kit model has none)
+  kitBody(kk, spec, mil) {
+    const body = this.body; body.updateMatrixWorld(true); const box = new THREE.Box3(); body.traverse((o) => { if (o.isMesh) box.expandByObject(o, true); }); if (box.isEmpty()) return;
+    const glb = Kit.dress(Kit.clone(kk), this.team ?? 2, mil ? this.camo : null); const N = this.nodes; const keep = new Set();
+    if (spec.keepTurrets && N.turrets) for (const t of N.turrets) keep.add(t.yaw); if (spec.keepRotors && N.rotors) for (const r of N.rotors) keep.add(r);
+    for (const c of [...body.children]) if (!keep.has(c)) body.remove(c);
+    if (spec.rot) glb.rotation.y = spec.rot; body.add(glb); Kit.fit(glb, box, { wide: spec.wide || 1.3 }); const nd = (n) => n && glb.getObjectByName(n);
+    N.turret = spec.turret ? nd(spec.turret) : null; N.gun = spec.turret ? (nd(spec.gun) || N.turret) : null;
+    if (spec.turrets) N.turrets = spec.turrets.map(([y, p]) => ({ yaw: nd(y), pitch: nd(p) })).filter((t) => t.yaw && t.pitch); else if (!spec.keepTurrets) N.turrets = [];
+    if (spec.rotors) N.rotors = spec.rotors.map(nd).filter(Boolean); else if (!spec.keepRotors) N.rotors = [];
+    this.kit = glb;
   }
   syncMesh() { this.root.position.copy(this.pos); this.root.quaternion.copy(this.q); }
   // ---- seats -------------------------------------------------------------------------------------
@@ -4780,9 +5031,10 @@ class Script {
 // supply drop: a crate falls from the sky under a parachute (extraction events, commander support, ultimates)
 const SupplyDrop = {
   list: [],
-  call(p, team, loot = null, cid = null) { cid ||= 'd' + Math.round(p.x) + '_' + Math.round(p.z); if (Net.host && !Net.applying) Net.broadcast({ t: 'drop', p: [p.x, p.y, p.z], team, loot, cid }); const g = new THREE.Group(); const mb = new MeshBuilder(); mb.box(colMat(0x4a5a3a), 0, 0.5, 0, 1.4, 1.0, 1.0); mb.box(colMat(0xd8c040), 0, 1.01, 0, 1.42, 0.05, 0.3); mb.build(g, { static: false }); const c = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 5, 0, TAU, 0, 1.2), colMat(0xd8d0c0, { side: THREE.DoubleSide })); c.position.y = 5; c.scale.y = 0.5; g.add(c); g.userData.chute = c;
+  call(p, team, loot = null, cid = null) { cid ||= 'd' + Math.round(p.x) + '_' + Math.round(p.z); if (Net.host && !Net.applying) Net.broadcast({ t: 'drop', p: [p.x, p.y, p.z], team, loot, cid }); const ks = Kit.clone('l_supply_drop'); const kchute = ks && ks.getObjectByName('parachute'); let g;
+    if (ks && kchute) { g = new THREE.Group(); g.add(ks); g.userData.chute = kchute; } else { g = new THREE.Group(); const mb = new MeshBuilder(); mb.box(colMat(0x4a5a3a), 0, 0.5, 0, 1.4, 1.0, 1.0); mb.box(colMat(0xd8c040), 0, 1.01, 0, 1.42, 0.05, 0.3); mb.build(g, { static: false }); const c = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 5, 0, TAU, 0, 1.2), colMat(0xd8d0c0, { side: THREE.DoubleSide })); c.position.y = 5; c.scale.y = 0.5; g.add(c); g.userData.chute = c; }
     g.position.set(p.x, World.heightAt(p.x, p.z) + 140, p.z); WORLD.add(g); const d = { g, p: p.clone(), team, loot, landed: false, cid }; this.list.push(d); FX.smokeVolume(V3(p.x, World.heightAt(p.x, p.z) + 1, p.z), 3, 30); return d; },
-  update(dt) { for (const d of this.list) { if (d.landed) continue; const gy = Col.ground(d.g.position.x, d.g.position.z, d.g.position.y, 0.6, 2).y; d.g.position.y -= 7 * dt; d.g.rotation.y += dt * 0.3; if (d.g.position.y <= gy) { d.g.position.y = gy; d.landed = true; d.g.remove(d.g.userData.chute); Audio.at('land', d.g.position, 1); FX.dustBurst(d.g.position, 2, 'concrete'); this.land(d); } } },
+  update(dt) { for (const d of this.list) { if (d.landed) continue; const gy = Col.ground(d.g.position.x, d.g.position.z, d.g.position.y, 0.6, 2).y; d.g.position.y -= 7 * dt; d.g.rotation.y += dt * 0.3; if (d.g.position.y <= gy) { d.g.position.y = gy; d.landed = true; d.g.userData.chute.parent?.remove(d.g.userData.chute); Audio.at('land', d.g.position, 1); FX.dustBurst(d.g.position, 2, 'concrete'); this.land(d); } } },
   land(d) { const pos = d.g.position.clone(); if (d.loot && typeof Loot !== 'undefined') Loot.container(pos, d.loot === true ? 'supply' : d.loot, d.g, { cid: d.cid }); else Deployables.add('supply', null, pos, 0, { hp: 400, life: 120, uses: 8 }).team = d.team; },
   clear() { for (const d of this.list) WORLD.remove(d.g); this.list.length = 0; },
 };
@@ -4810,8 +5062,9 @@ const Chests = {
   populate(mode, n, area = null) { if (Net.client) return; this.initMats(); this.mode = mode; this.area = area; this.n = n; const rng = new RNG(Math.random() * 1e9); for (const p of this.spots(area, n, rng)) this.spawn(p); },
   spawn(p) { this.initMats();
     const g = new THREE.Group(); const b = (mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(this.geo.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
-    b(this.mats.body, 0, 0.28, 0, 1.1, 0.56, 0.7); b(this.mats.trim, 0, 0.3, 0, 1.14, 0.08, 0.74); b(this.mats.trim, -0.5, 0.28, 0, 0.08, 0.6, 0.74); b(this.mats.trim, 0.5, 0.28, 0, 0.08, 0.6, 0.74);
-    const lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); g.add(lid); const lb = new THREE.Mesh(this.geo.box, this.mats.body); lb.scale.set(1.1, 0.18, 0.7); lb.position.set(0, 0.09, 0.35); lid.add(lb); const lt = new THREE.Mesh(this.geo.box, this.mats.trim); lt.scale.set(1.14, 0.06, 0.2); lt.position.set(0, 0.12, 0.35); lid.add(lt);
+    let lid = null; const kc = Kit.prop('l_crate_legendary', 1.15, 0.78, 0.75); if (kc) { g.add(kc); const kl = kc.getObjectByName('lid'); if (kl) { kc.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kl); lid = new THREE.Group(); lid.position.copy(kl.parent.worldToLocal(V3(bb.getCenter(V3()).x, bb.min.y, bb.min.z))); kl.parent.add(lid); lid.updateMatrixWorld(true); lid.attach(kl); } }
+    if (!lid) { b(this.mats.body, 0, 0.28, 0, 1.1, 0.56, 0.7); b(this.mats.trim, 0, 0.3, 0, 1.14, 0.08, 0.74); b(this.mats.trim, -0.5, 0.28, 0, 0.08, 0.6, 0.74); b(this.mats.trim, 0.5, 0.28, 0, 0.08, 0.6, 0.74);
+      lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); g.add(lid); const lb = new THREE.Mesh(this.geo.box, this.mats.body); lb.scale.set(1.1, 0.18, 0.7); lb.position.set(0, 0.09, 0.35); lid.add(lb); const lt = new THREE.Mesh(this.geo.box, this.mats.trim); lt.scale.set(1.14, 0.06, 0.2); lt.position.set(0, 0.12, 0.35); lid.add(lt); }
     const gem = b(this.mats.glow, 0, 0.3, 0.37, 0.18, 0.18, 0.02); const beam = new THREE.Mesh(this.geo.beam, this.mats.beam); beam.scale.set(1, 60, 1); beam.position.y = 30; g.add(beam);
     g.position.copy(p); g.rotation.y = rand(0, TAU); WORLD.add(g);
     const c = { pos: p.clone(), g, lid, beam, gem, open: false, t: rand(0, 6) };
@@ -4889,7 +5142,7 @@ class GameMode {
     this.net = o.net || null; this.squads = []; this.bots = []; this.pads = []; this.respawnQ = []; this.friendlyFire = false; this.vehiclesForBots = false; this.playerTeam = o.side ?? 0; this.botRespawn = 10; this.feedNames = true;
   }
   name() { return 'Mode'; }
-  async load() { await Game.loadMap(this.mapId, this.variant); }
+  async load() { await Promise.all([Game.loadMap(this.mapId, this.variant), Kit.forMatch(this)]); }
   setup() {}
   start() { this.setup(); this.placeChests(); }
   // supply chests with special weapons: a few in close-quarters areas, more across big maps
@@ -4971,8 +5224,8 @@ class TeamDeathmatch extends GameMode {
 // ---- domination (three flags, ticket race) ------------------------------------------------------------------
 class CapturePoint {
   constructor(o) { this.id = o.id; this.name = o.name; this.pos = V3(o.x, World.heightAt(o.x, o.z), o.z); this.r = o.r || CONFIG.warfare.capRadius; this.owner = o.owner ?? -1; this.prog = this.owner >= 0 ? 1 : 0; this.capTeam = this.owner; this.contested = false; this.time = o.time || CONFIG.warfare.capTime; this.counts = [0, 0]; this.flag = null; this.makeFlag(); this.locked = !!o.locked; }
-  makeFlag() { const y = Col.ground(this.pos.x, this.pos.z, this.pos.y + 30, 0.2, 40).y; this.pos.y = y; const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 9, 0.06); pole.position.set(this.pos.x, y + 4.5, this.pos.z); WORLD.add(pole); this.pole = pole;
-    this.flagTex = [flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' }), flagTex(['#d8402a', '#7a2a1a'], { shape: 'gear', color: '#fff' }), flagTex(['#d8d8d8', '#a0a0a0'], { shape: 'star', color: '#555' })];
+  makeFlag() { const y = Col.ground(this.pos.x, this.pos.z, this.pos.y + 30, 0.2, 40).y; this.pos.y = y; const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 9, 0.06); pole.position.set(this.pos.x, y + 4.5, this.pos.z); WORLD.add(pole); this.pole = pole; const kb = Kit.clone('p_capture_flag'); if (kb) { kb.getObjectByName('flag_cloth')?.removeFromParent(); kb.position.set(this.pos.x, y, this.pos.z); WORLD.add(kb); this.base = kb; }
+    this.flagTex = [Kit.flagTex('accord', flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' })), Kit.flagTex('mandate', flagTex(['#d8402a', '#7a2a1a'], { shape: 'gear', color: '#fff' })), flagTex(['#d8d8d8', '#a0a0a0'], { shape: 'star', color: '#555' })];
     this.cloth = Cloths.add({ w: 2.4, h: 1.5, nx: 10, ny: 7, origin: V3(this.pos.x, y + 8.8, this.pos.z), yaw: 0, tex: this.flagTex[this.owner >= 0 ? this.owner : 2] });
     const ring = new THREE.Mesh(new THREE.RingGeometry(this.r - 0.3, this.r, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(this.pos.x, y + 0.15, this.pos.z); WORLD.add(ring); this.ring = ring; }
   setOwner(t) { this.owner = t; this.cloth.mesh.material.map = this.flagTex[t >= 0 ? t : 2]; this.cloth.mesh.material.needsUpdate = true; this.ring.material.color.setHex(t === 0 ? 0x3f8fd8 : t === 1 ? 0xd8402a : 0xffffff); }
@@ -4982,7 +5235,7 @@ class CapturePoint {
     if (this.capTeam !== t) { this.prog -= rate; if (this.prog <= 0) { this.prog = 0; this.capTeam = t; if (this.owner >= 0 && this.owner !== t) { const was = this.owner; this.setOwner(-1); mode.onNeutral?.(this, was); } } }
     else if (this.prog < 1) { this.prog = Math.min(1, this.prog + rate); if (this.prog >= 1 && this.owner !== t) { this.setOwner(t); mode.onCaptured?.(this, t); for (const s of Soldiers.near(this.pos.x, this.pos.z, this.r)) if (s.team === t && s.state === 'alive') { s.score += 150; Operators.charge(s, 0.15, 'capture'); if (s.player) s.player.note(this.name + ' captured', 'good', 150); Challenges.track('capture', s); } } }
   }
-  dispose() { WORLD.remove(this.pole); WORLD.remove(this.ring); }
+  dispose() { WORLD.remove(this.pole); WORLD.remove(this.ring); if (this.base) WORLD.remove(this.base); }
 }
 class Domination extends GameMode {
   constructor(o) { super(o); this.kind = 'dom'; this.limit = o.limit || 250; this.perTeam = o.perTeam ?? 10; this.botRespawn = 5; this.points = []; this.tick = 0; }
@@ -5311,6 +5564,8 @@ const LOOT_KINDS = {
   supply: { name: 'Supply drop', col: 0x4a5a3a, size: [1.4, 1.0, 1.0], cats: { weapon: 2, attachment: 3, gear: 2, med: 2, valuable: 1 }, n: [5, 7], hold: 1.5, tierBonus: 2 },
   debug: { name: 'Debug cache', col: 0xff00ff, size: [1, 1, 1], cats: { weapon: 1, valuable: 1, med: 1, ammo: 1, gear: 1 }, n: [6, 6], hold: 0.2 },
 };
+// kit models for loot containers: crate colour follows the container's tier
+const LOOT_KIT = { crate: (t) => ['l_crate_common', 'l_crate_common', 'l_crate_uncommon', 'l_crate_rare', 'l_crate_epic', 'l_crate_legendary'][clamp(t | 0, 0, 5)], ammo: 'l_ammo_box', med: 'l_medkit', tool: 'l_weapon_case', strong: 'l_crate_epic', armour: 'l_armour_plate' };
 const Loot = {
   list: [], geo: null,
   clear() { for (const c of this.list) { if (c.mesh) WORLD.remove(c.mesh); if (c.it) Interact.remove(c.it); } this.list.length = 0; this.n = 0; },
@@ -5326,7 +5581,9 @@ const Loot = {
   },
   container(pos, kind, group = null, o = {}) {
     const K = LOOT_KINDS[kind] || LOOT_KINDS.jacket; const c = { cid: o.cid || 'c' + (this.n = (this.n || 0) + 1), pos: pos.clone(), kind, name: o.name || K.name, items: o.items || null, tier: o.tier || 2, key: o.key || null, searched: false, body: o.body || null };
-    if (!group && !o.body) { this.geo ||= new THREE.BoxGeometry(1, 1, 1); const m = new THREE.Mesh(this.geo, colMat(K.col)); m.scale.set(...K.size); m.position.set(pos.x, pos.y + K.size[1] / 2, pos.z); m.rotation.y = o.yaw ?? rand(0, TAU); m.castShadow = true; WORLD.add(m); c.mesh = m;
+    const kk = LOOT_KIT[kind] ? (typeof LOOT_KIT[kind] === 'function' ? LOOT_KIT[kind](c.tier) : LOOT_KIT[kind]) : null; const km = !group && !o.body && kk ? Kit.prop(kk, K.size[0], K.size[1], K.size[2], { wide: 1.2 }) : null;
+    if (km) { km.position.copy(pos); km.rotation.y = o.yaw ?? rand(0, TAU); WORLD.add(km); c.mesh = km; }
+    else if (!group && !o.body) { this.geo ||= new THREE.BoxGeometry(1, 1, 1); const m = new THREE.Mesh(this.geo, colMat(K.col)); m.scale.set(...K.size); m.position.set(pos.x, pos.y + K.size[1] / 2, pos.z); m.rotation.y = o.yaw ?? rand(0, TAU); m.castShadow = true; WORLD.add(m); c.mesh = m;
       if (kind === 'strong' || kind === 'safe') { const h = new THREE.Mesh(this.geo, colMat(0xd8c040, { metalness: 0.6 })); h.scale.set(0.12, 0.12, 0.05); h.position.set(0, 0.1, 0.52); m.add(h); } }
     c.it = Interact.add({ pos: pos.clone().add(V3(0, o.body ? 0.3 : 0.6, 0)), r: o.body ? 2.2 : 2.4, prio: 1, get label() { return c.key && !c.unlocked ? c.name + ' · locked (' + Items.def(c.key).name + ')' : (c.searched ? 'Loot ' : 'Search ') + c.name; }, get hold() { return c.searched ? 0 : K.hold * (o.body ? 0.8 : 1); }, cond: (s) => s.player && G.mode?.kind === 'extraction', fn: (s) => this.open(c, s) });
     this.list.push(c); return c;
@@ -5550,7 +5807,7 @@ const Campaign = {
 // §HUD -------------------------------------------------------------------------------------------------
 const HUDFeed = {
   list: [],
-  kill(k, v, info) { if (Net.client && !Net.applying) return; if (Net.host) Net.broadcast({ t: 'feed', k: Net.nidOf(k), kn: k?.name, kt: k?.team, v: Net.nidOf(v), vn: v.name, vt: v.team, w: info.weapon?.name || (info.kind === 'explosion' ? 'Explosion' : info.kind || ''), hs: !!info.headshot }); this.list.push({ k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.name, team: v.team, me: !!v.player }, w: info.weapon?.name || (info.kind === 'fall' ? 'Fall' : info.kind === 'explosion' ? 'Explosion' : info.kind === 'bleed' ? 'Bled out' : info.kind || ''), hs: !!info.headshot, t: G.time }); if (this.list.length > 30) this.list.shift(); },
+  kill(k, v, info) { if (Net.client && !Net.applying) return; if (Net.host) Net.broadcast({ t: 'feed', k: Net.nidOf(k), kn: k?.name, kt: k?.team, v: Net.nidOf(v), vn: v.name, vt: v.team, w: info.weapon?.name || (info.kind === 'explosion' ? 'Explosion' : info.kind || ''), wid: info.weapon?.id, hs: !!info.headshot }); this.list.push({ wid: info.weapon?.id, k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.name, team: v.team, me: !!v.player }, w: info.weapon?.name || (info.kind === 'fall' ? 'Fall' : info.kind === 'explosion' ? 'Explosion' : info.kind === 'bleed' ? 'Bled out' : info.kind || ''), hs: !!info.headshot, t: G.time }); if (this.list.length > 30) this.list.shift(); },
   vehicle(k, v) { if (Net.client && !Net.applying) return; if (Net.host) Net.broadcast({ t: 'feed', k: Net.nidOf(k), kn: k?.name, kt: k?.team, v: null, vn: v.def.name, vt: v.team, w: 'destroyed', hs: false }); this.list.push({ k: k ? { name: k.name, team: k.team, me: !!k.player } : null, v: { name: v.def.name, team: v.team, me: false }, w: 'destroyed', hs: false, t: G.time }); },
   clear() { this.list.length = 0; },
 };
@@ -5573,12 +5830,12 @@ class Hud {
       <div class="xh"><i class="dot"></i><i class="h l"></i><i class="h r"></i><i class="v t"></i><i class="v b"></i></div>
       <div class="hit"><i style="transform:rotate(45deg) translate(6px,0)"></i><i style="transform:rotate(135deg) translate(6px,0)"></i><i style="transform:rotate(225deg) translate(6px,0)"></i><i style="transform:rotate(315deg) translate(6px,0)"></i></div>
       <div class="vitals"><div class="pname"></div><div class="hpw"><span class="hpn"></span><div class="hpseg">${'<i></i>'.repeat(10)}</div></div><div class="armr"><span class="tg">ARM<b class="art"></b></span><div class="bar ar"><i></i></div><span class="num arn"></span><span class="tg">HLM<b class="hmt"></b></span><div class="bar hm"><i></i></div><span class="num hmn"></span></div><div class="stline"><i></i></div><div class="weight"></div></div>
-      <div class="ammo"><div class="wtop"><span class="wname"></span><span class="mode"></span></div><div class="wmid"><span class="mag"></span><span class="res"></span></div><div class="mbar"><i></i></div><div class="wbot"><span class="ammot"></span><span class="wslots"></span></div></div>
+      <div class="ammo"><div class="wtop"><span class="wname"></span><span class="mode"></span></div><div class="wmid"><span class="mag"></span><span class="res"></span><img class="wicon" alt="" style="height:30px;margin-left:auto;align-self:center;opacity:.75;display:none"></div><div class="mbar"><i></i></div><div class="wbot"><span class="ammot"></span><span class="wslots"></span></div></div>
       <div class="kit"></div><div class="vehicle"></div><div class="lock"></div><div class="warn"></div><div class="prompt"><span class="pt"></span><div class="holdbar"></div></div>
       <div class="dmg"></div><div class="dirs">${'<i></i>'.repeat(6)}</div><div class="flashfx"></div><div class="radio"><canvas width="44" height="44"></canvas><div class="who"></div><div class="txt"></div></div>
       <div class="scan"></div><div class="mret"><i></i></div><div class="scope"><div class="lens"><div class="r"></div><div class="glare"></div></div><div class="ring"></div><div class="sread t"></div><div class="sread l"></div><div class="sread rr"></div><div class="sread b"><div class="bt"></div><div class="bb"><i></i></div></div></div><div class="thermal-tag"></div><div class="downed"><div class="t">DOWNED</div><div class="s"></div></div>`;
     const q = (s) => r.querySelector(s); this.e = { mini: q('.mini canvas'), squad: q('.squad'), objtext: q('.objtext'), compass: q('.compass'), bearing: q('.bearing'), obj: q('.obj'), tickets: q('.tickets'), modeinfo: q('.modeinfo'), timer: q('.timer'), feed: q('.feed'), extract: q('.extract'), pings: q('.pings'), notes: q('.notes'), xh: q('.xh'), hit: q('.hit'),
-      hpSeg: [...r.querySelectorAll('.hpseg i')], hpn: q('.hpn'), ar: q('.bar.ar>i'), arn: q('.arn'), art: q('.art'), hm: q('.bar.hm>i'), hmn: q('.hmn'), hmt: q('.hmt'), st: q('.stline>i'), pname: q('.pname'), weight: q('.weight'), wname: q('.wname'), mag: q('.mag'), res: q('.res'), ammot: q('.ammot'), mode: q('.mode'), mbar: q('.mbar>i'), wslots: q('.wslots'), kit: q('.kit'), vehicle: q('.vehicle'), lock: q('.lock'), warn: q('.warn'),
+      hpSeg: [...r.querySelectorAll('.hpseg i')], hpn: q('.hpn'), ar: q('.bar.ar>i'), arn: q('.arn'), art: q('.art'), hm: q('.bar.hm>i'), hmn: q('.hmn'), hmt: q('.hmt'), st: q('.stline>i'), pname: q('.pname'), weight: q('.weight'), wname: q('.wname'), wicon: q('.wicon'), mag: q('.mag'), res: q('.res'), ammot: q('.ammot'), mode: q('.mode'), mbar: q('.mbar>i'), wslots: q('.wslots'), kit: q('.kit'), vehicle: q('.vehicle'), lock: q('.lock'), warn: q('.warn'),
       prompt: q('.prompt'), pt: q('.prompt .pt'), holdbar: q('.holdbar'), dmg: q('.dmg'), dirs: [...r.querySelectorAll('.dirs i')], flash: q('.flashfx'), radio: q('.radio'), radioWho: q('.radio .who'), radioTxt: q('.radio .txt'), radioC: q('.radio canvas'), scope: q('.scope'), reticle: q('.scope .r'), sTop: q('.sread.t'), sLeft: q('.sread.l'), sRight: q('.sread.rr'), sBreath: q('.sread.b .bt'), sBreathBar: q('.sread.b .bb i'), scan: q('.scan'), lens: q('.scope .lens'), mret: q('.mret'), ttag: q('.thermal-tag'), downed: q('.downed'), downedS: q('.downed .s'), ammoBox: q('.ammo'), vit: q('.vitals') };
     this.mg = this.e.mini.getContext('2d'); this.hitT = 0; this.dirT = this.e.dirs.map(() => ({ t: 0, a: 0 })); this.dirI = 0; this.radioT = 0; this.compassTicks(); this.feedKey = ''; this.kitKey = ''; this.squadKey = ''; this.pingEls = []; this.lastReticle = '';
   }
@@ -5603,7 +5860,7 @@ class Hud {
     e.st.style.width = (s.stamina / CONFIG.move.stamina * 100) + '%'; e.st.parentNode.style.opacity = s.stamina < CONFIG.move.stamina - 0.5 ? 1 : 0.25; const pn = (s.op ? s.op.name.toUpperCase() + ' · ' + (DATA.classes?.[s.op.class]?.name || s.op.class).toUpperCase() : (s.cls || '').toUpperCase()); if (e.pname.textContent !== pn) e.pname.textContent = pn;
     if (mode && mode.kind === 'extraction') { const w = P.carryWeight?.() || 0; e.weight.textContent = 'LOAD ' + w.toFixed(1) + ' kg'; e.weight.classList.toggle('over', w > 30); } else e.weight.textContent = '';
     // ammo + kit
-    e.ammoBox.style.display = inVeh || !g ? 'none' : 'block'; if (g && !inVeh) { e.wname.textContent = g.def.name.toUpperCase(); e.mag.textContent = g.inMag; const low = g.inMag <= g.stats.mag * 0.25; e.mag.classList.toggle('low', low); e.res.textContent = (s.reserve[g.ammo] || 0) > 9000 ? '∞' : (s.reserve[g.ammo] || 0); e.mode.textContent = g.mode.toUpperCase(); e.mbar.style.width = (g.inMag / g.stats.mag * 100) + '%'; e.mbar.classList.toggle('low', low); e.mbar.parentNode.style.setProperty('--ticks', Math.min(g.stats.mag, 60)); e.wslots.innerHTML = s.weapons.map((w, i) => w ? `<i class="${i === s.cur ? 'on' : ''}" title="${esc(w.def.name)}">${(i + 1) % 10}</i>` : '').join(''); e.ammot.textContent = (DATA.ammo[g.ammo]?.name || '') + (g.def.launcher === 'aa' ? (g.lockT >= g.def.lockTime ? ' · LOCKED' : g.lockTarget ? ' · LOCKING' : '') : ''); }
+    e.ammoBox.style.display = inVeh || !g ? 'none' : 'block'; if (g && !inVeh) { e.wname.textContent = g.def.name.toUpperCase(); if (this.wiconId !== g.id) { this.wiconId = g.id; const u = Kit.icon('weaponIcons', g.id); e.wicon.style.display = u ? 'block' : 'none'; if (u) e.wicon.src = u; } e.mag.textContent = g.inMag; const low = g.inMag <= g.stats.mag * 0.25; e.mag.classList.toggle('low', low); e.res.textContent = (s.reserve[g.ammo] || 0) > 9000 ? '∞' : (s.reserve[g.ammo] || 0); e.mode.textContent = g.mode.toUpperCase(); e.mbar.style.width = (g.inMag / g.stats.mag * 100) + '%'; e.mbar.classList.toggle('low', low); e.mbar.parentNode.style.setProperty('--ticks', Math.min(g.stats.mag, 60)); e.wslots.innerHTML = s.weapons.map((w, i) => w ? `<i class="${i === s.cur ? 'on' : ''}" title="${esc(w.def.name)}">${(i + 1) % 10}</i>` : '').join(''); e.ammot.textContent = (DATA.ammo[g.ammo]?.name || '') + (g.def.launcher === 'aa' ? (g.lockT >= g.def.lockTime ? ' · LOCKED' : g.lockTarget ? ' · LOCKING' : '') : ''); }
     const kk = [s.throwSel, s.throwables[s.throwSel], s.gadget?.charges, Math.round((s.gadget?.t || 0) * 2), s.tool?.charges, Math.round(s.ult.charge * 40), s.ult.active > 0, s.meds.bandage, s.meds.medkit, s.meds.stim, inVeh].join();
     if (kk !== this.kitKey) { this.kitKey = kk; const touch = typeof Touch !== 'undefined' && Touch.on;
       const k = (key, icon, label, n, cd = 0, cls = '') => `<div class="ab ${cls}" style="--cd:${Math.round(cd * 360)}deg"><span class="key">${touch ? '' : key}</span><div class="ic">${icon}</div><div class="lb">${label}</div>${n !== '' ? `<span class="n">${n}</span>` : ''}</div>`;
@@ -5623,7 +5880,7 @@ class Hud {
     // squad
     const sq = s.squad; const skey = sq ? sq.members.map((m) => m.name + m.state + Math.round(m.hp / 10)).join() + (sq.order?.type || '') : ''; if (skey !== this.squadKey) { this.squadKey = skey; e.squad.innerHTML = sq ? `<div class="order">${esc(sq.name.toUpperCase())}${sq.order && !sq.order.auto ? ' · ' + sq.order.type.toUpperCase() : ''}</div>` + sq.members.filter((m) => m !== s).map((m) => `<div class="m ${m.state}"><div class="nm"><b>${m === sq.leader ? '★' : ''}</b>${esc(m.name.split(' ').slice(-1)[0])}${m.op ? ' <span class="dim">' + esc(m.op.name) + '</span>' : ''}${m.state === 'downed' ? ' <span class="red">✚ DOWN</span>' : m.state === 'dead' ? ' <span class="dim">KIA</span>' : ''}</div><div class="hb"><i style="width:${m.state === 'alive' ? m.hp / m.maxHp * 100 : 0}%"></i></div></div>`).join('') : ''; }
     // kill feed
-    const fl = HUDFeed.list.filter((f) => G.time - f.t < 7).slice(-5); const fkey = fl.map((f) => f.t).join(); if (fkey !== this.feedKey) { this.feedKey = fkey; const side = (x) => !x ? '' : `<span class="${x.me ? 'me' : x.team === s.team ? 'a' : 'b'}">${esc(x.name)}</span>`; e.feed.innerHTML = fl.map((f) => `<div><span class="e">${side(f.k)}<span class="w">[${esc(f.w)}${f.hs ? ' ◎' : ''}]</span>${side(f.v)}</span></div>`).join(''); }
+    const fl = HUDFeed.list.filter((f) => G.time - f.t < 7).slice(-5); const fkey = fl.map((f) => f.t).join(); if (fkey !== this.feedKey) { this.feedKey = fkey; const side = (x) => !x ? '' : `<span class="${x.me ? 'me' : x.team === s.team ? 'a' : 'b'}">${esc(x.name)}</span>`; e.feed.innerHTML = fl.map((f) => `<div><span class="e">${side(f.k)}<span class="w">${Kit.icon('weaponIcons', f.wid) ? `<img src="${Kit.icon('weaponIcons', f.wid)}" alt="${esc(f.w)}" style="height:15px;vertical-align:middle;margin:0 2px">` : `[${esc(f.w)}]`}${f.hs ? (Kit.icon('ui', 'headshot') ? `<img src="${Kit.icon('ui', 'headshot')}" alt="headshot" style="height:13px;vertical-align:middle;margin-left:2px">` : ' ◎') : ''}</span>${side(f.v)}</span></div>`).join(''); }
     // damage
     e.dmg.style.opacity = clamp(P.hurtFx + (1 - hpf) * 0.35 * (hpf < 0.5 ? 1 : 0), 0, 1); P.hurtFx = Math.max(0, P.hurtFx - dt * 1.5);
     for (let i = 0; i < this.dirT.length; i++) { const d = this.dirT[i]; const el2 = e.dirs[i]; if (d.t > 0) { d.t -= dt; const rel = wrapAngle(d.a - P.camYaw); el2.style.opacity = clamp(d.t, 0, 1); el2.style.transform = `rotate(${-rel + Math.PI / 2}rad) translate(${Math.min(this.w, this.h) * 0.16}px,0) rotate(90deg)`; } else el2.style.opacity = 0; }
@@ -5729,7 +5986,7 @@ const UI = {
   close() { this.root.innerHTML = ''; this.screen = null; if (G.inGame) { G.paused = false; if (!NORENDER && !G.bench) Input.lock(); } },
   back() { if (!G.inGame && this.opts && this.opts.after) { const a = this.opts.after; this.opts.after = null; a(); return; } if (G.inGame) { if (this.opts.after) { const a = this.opts.after; this.opts.after = null; this.close(); a(); return; } this.open('pause'); } else this.open('title'); },
   panel(html, cls = '') { const s = el('div', { class: 'screen ' + cls }); s.innerHTML = html; this.root.appendChild(s); return s; },
-  topbar(active, tabs) { return `<div class="topbar"><div class="logo">FRONT <b>ZERO</b></div><div class="tabs">${tabs.map(([id, label]) => `<div class="tab ${id === active ? 'on' : ''}" data-tab="${id}">${label}</div>`).join('')}</div><div class="cur">${fmtMoney(G.save.credits)} · LVL ${Progress.accountLevel()}</div><button class="btn" data-act="back">Back</button></div>`; },
+  topbar(active, tabs) { return `<div class="topbar"><div class="logo">FRONT <b>ZERO</b></div><div class="tabs">${tabs.map(([id, label]) => `<div class="tab ${id === active ? 'on' : ''}" data-tab="${id}">${label}</div>`).join('')}</div><div class="cur">${fmtMoney(G.save.credits)} · ${Kit.rank(Progress.accountLevel()) ? `<img src="${Kit.rank(Progress.accountLevel())}" alt="" style="height:22px;vertical-align:middle;margin:-4px 4px 0 0">` : ''}LVL ${Progress.accountLevel()}</div><button class="btn" data-act="back">Back</button></div>`; },
   wire(s, handlers) { s.querySelectorAll('[data-tab]').forEach((t) => t.onclick = () => this.open(t.dataset.tab, this.opts)); s.querySelectorAll('[data-act]').forEach((b) => b.onclick = (ev) => { Audio.play('ui', 0.6); (handlers[b.dataset.act] || (b.dataset.act === 'back' ? () => this.back() : () => {}))(b, ev); }); },
   cine(t, s) { const c = document.getElementById('cine'); c.querySelector('.t').textContent = t || ''; c.querySelector('.s').textContent = s || ''; c.style.opacity = 1; clearTimeout(this.cineT); this.cineT = setTimeout(() => { c.style.opacity = 0; }, 4200); },
   fade(on) { document.getElementById('fade').style.opacity = on ? 1 : 0; },
@@ -5751,7 +6008,7 @@ const UI = {
     this.wire(s, { online: () => this.open(Net.peer ? 'onlineLobby' : 'online'), warfare: () => this.open('warfareSetup'), extraction: () => this.open('hub'), campaign: () => this.open('campaign'), quick: () => this.open('quickSetup'), range: () => this.open('rangeSetup'), armoury: () => this.open('armoury'), progress: () => this.open('progress'), settings: () => this.open('settings'), migrate: () => { const r = Save.migrate(); this.toast(r); this.open('title'); } });
   },
   toast(text) { const t = el('div', { class: 'note', style: 'position:fixed;left:50%;top:30%;transform:translateX(-50%);z-index:50;background:rgba(0,0,0,.8);padding:10px 18px' }, esc(text)); document.body.appendChild(t); setTimeout(() => t.remove(), 3200); },
-  mapCards(filter, sel) { return DATA.mapOrder.filter((id) => filter(DATA.maps[id])).map((id) => { const m = DATA.maps[id]; const c = DATA.countries[m.country]; return `<div class="card ${id === sel ? 'sel' : ''}" data-map="${id}"><div class="tag">${esc(c?.name || '')}</div><h3>${esc(m.name)}</h3><div class="s">${esc(m.blurb || '')}</div><div class="s">${m.biomes.map((b) => DATA.biomes[b].name).join(' · ')} · ${(m.size / 1000).toFixed(1)} km</div></div>`; }).join(''); },
+  mapCards(filter, sel) { return DATA.mapOrder.filter((id) => filter(DATA.maps[id])).map((id) => { const m = DATA.maps[id]; const c = DATA.countries[m.country]; const art = Kit.icon('mapArt', id); return `<div class="card ${id === sel ? 'sel' : ''}" data-map="${id}"${art ? ` style="background:linear-gradient(rgba(8,12,15,.35),rgba(8,12,15,.88)),url(${art}) center/cover"` : ''}><div class="tag">${esc(c?.name || '')}</div><h3>${esc(m.name)}</h3><div class="s">${esc(m.blurb || '')}</div><div class="s">${m.biomes.map((b) => DATA.biomes[b].name).join(' · ')} · ${(m.size / 1000).toFixed(1)} km</div></div>`; }).join(''); },
   diffRow(cur) { return Object.keys(DIFFICULTY).map((k) => `<button class="btn ${k === cur ? 'on' : ''}" data-diff="${k}">${DIFFICULTY[k].name}</button>`).join(' '); },
   // ---- warfare setup ------------------------------------------------------------------------------------
   s_warfareSetup(o) {
@@ -5988,7 +6245,7 @@ Object.assign(UI, {
     this.xcss(); const S = Econ.S; const T = DATA.traders.traders; const t = T.find((x) => x.id === o.t) || T[0]; const st = Econ.stash(); const rep = S.rep[t.id] || 0;
     const stock = Econ.stock(t); const sellable = st.items.filter((r) => Econ.traderTakes(t, r)); const K = S.kit; const rep2 = ['vest', 'helmet'].filter((k) => K[k] && K[k].dur < DATA.gear[K[k].id].dur - 0.5);
     const repairCost = (r) => Math.round((1 - r.dur / DATA.gear[r.id].dur) * Items.base(r.id) * 0.3 * (Econ.lvl('workbench') >= 2 ? 0.7 : 1));
-    const s = this.panel(this.topbar('traders', this.HUB_TABS) + `<div class="body"><div class="row">${T.map((x) => `<div class="card ${x === t ? 'sel' : ''}" data-tr="${x.id}" style="min-width:200px"><div class="tag" style="color:${x.color}">${esc(x.title)}</div><h3>${esc(x.name)}</h3><div class="xrep"><i style="width:${(S.rep[x.id] || 0) * 100}%;background:${x.color}"></i></div><div class="s">Reputation ${Math.round((S.rep[x.id] || 0) * 100)}</div></div>`).join('')}</div>
+    const s = this.panel(this.topbar('traders', this.HUB_TABS) + `<div class="body"><div class="row">${T.map((x) => `<div class="card ${x === t ? 'sel' : ''}" data-tr="${x.id}" style="min-width:200px${Kit.traderArt(x.id) ? ';padding-left:92px;min-height:96px' : ''}">${Kit.traderArt(x.id) ? `<img src="${Kit.traderArt(x.id)}" alt="" style="position:absolute;left:6px;top:6px;width:80px;height:80px;object-fit:cover;border-radius:6px">` : ''}<div class="tag" style="color:${x.color}">${esc(x.title)}</div><h3>${esc(x.name)}</h3><div class="xrep"><i style="width:${(S.rep[x.id] || 0) * 100}%;background:${x.color}"></i></div><div class="s">Reputation ${Math.round((S.rep[x.id] || 0) * 100)}</div></div>`).join('')}</div>
       <p class="dim">${esc(t.desc)} Buys: ${t.buys.join(', ')}.</p><div class="cols"><div class="box"><h2>Buy</h2><div class="xlist">${stock.map((x) => { const p = Econ.traderBuy(t, x.id); const n = DATA.ammo[x.id] ? 60 : 1; return `<div class="xrow ${x.locked ? 'lock' : ''}"><span class="nm" style="color:${Items.color(Items.make(x.id))}">${esc(Items.def(x.id).name)}${n > 1 ? ' ×' + n : ''}</span>${x.locked ? `<span class="dim">rep ${Math.round(x.rep * 100)}</span>` : `<span class="pr">${fmtMoney(p * n)}</span><button class="btn" data-buy="${x.id}" data-n="${n}" data-p="${p * n}">Buy</button>`}</div>`; }).join('')}</div></div>
       <div class="box"><h2>Sell to ${esc(t.name)}</h2><div class="xlist">${sellable.length ? sellable.map((r) => `<div class="xrow"><span class="nm">${esc(Items.label(r))}</span><span class="pr">${fmtMoney(Econ.traderSell(t, r))}</span><button class="btn" data-sell="${r.uid}">Sell</button></div>`).join('') : '<div class="dim">Nothing in your stash this trader wants.</div>'}</div>
       ${t.id === 'imre' ? `<h2 style="margin-top:12px">Repairs</h2>${rep2.length ? rep2.map((k) => `<div class="xrow"><span class="nm">${esc(Items.label(K[k]))}</span><span class="pr">${fmtMoney(repairCost(K[k]))}</span><button class="btn" data-fix="${k}">Repair</button></div>`).join('') : '<div class="dim">Your armour is in good shape.</div>'}` : ''}</div></div></div>`);
@@ -6158,7 +6415,7 @@ Object.assign(UI, {
     this.lcss(); const sel = this.armOp ||= G.save.lastOperator || 'kestrel'; const op = DATA.operators[sel]; const A = Progress.armoury(sel); const cls = DATA.classes[op.class];
     if (G.save.lastOperator !== sel) { G.save.lastOperator = sel; for (const P of G.players) P.operator = sel; Save.save(); }
     const P1 = this.slotWeapon(sel, 'primary'), P2 = this.slotWeapon(sel, 'secondary'), P3 = op.class === 'engineer' ? this.slotWeapon(sel, 'launcher') : null; const T = A.throwables || op.loadout.throwables; const tSel = Object.keys(T)[0] || 'frag';
-    const card = (k, label, w) => `<div class="ls" data-slot="${k}"><span class="chg">CHANGE ›</span><div class="k">${label}</div><div class="nm">${esc(w.name)}</div><div class="ty">${WCLASS_NAME[DATA.weapons[w.id].class] || ''}${w.bp ? ' · customized' : ''}</div>${k !== 'launcher' ? this.statBars(w.id, w.att) : ''}</div>`;
+    const card = (k, label, w) => `<div class="ls" data-slot="${k}"><span class="chg">CHANGE ›</span><div class="k">${label}</div><div class="nm">${esc(w.name)}</div>${Kit.img('weaponIcons', w.id, 'height:44px;display:block;margin:-6px 0 -4px auto;opacity:.92')}<div class="ty">${WCLASS_NAME[DATA.weapons[w.id].class] || ''}${w.bp ? ' · customized' : ''}</div>${k !== 'launcher' ? this.statBars(w.id, w.att) : ''}</div>`;
     const s = this.panel(this.topbar('armoury', this.MAIN_TABS) + `<div class="body"><div class="lo">
       <div class="ops">${Object.values(DATA.operators).map((x) => `<div class="opc ${x.id === sel ? 'sel' : ''}" data-op="${x.id}"><canvas width="44" height="44" data-portrait="${x.id}"></canvas><div><b>${esc(x.name)}</b><span>${esc(DATA.classes[x.class].name)}</span></div></div>`).join('')}</div>
       <div class="stage"><canvas class="figure" width="720" height="560"></canvas><div class="who"><h1>${esc(op.name.toUpperCase())}</h1><div>${esc(cls.name.toUpperCase())} · ${esc(cls.role || '')} · LEVEL ${Progress.opLevel(sel)}</div></div>
@@ -6180,7 +6437,7 @@ Object.assign(UI, {
     const op = DATA.operators[opId]; const A = Progress.armoury(opId); const xi = k[0] === 'x' ? +k.slice(1) : -1; const cur = xi >= 0 ? { id: (A.extra || [])[xi] || null } : this.slotWeapon(opId, k);
     const pool = Object.values(DATA.weapons).filter((w) => !w.special || Progress.ownsWeapon(w.id)).filter((w) => xi >= 0 ? true : k === 'secondary' ? w.sidearm : k === 'launcher' ? w.class === 'launcher' : (!w.sidearm && w.class !== 'launcher' && DATA.classes[op.class].weapons.includes(w.class)));
     const box = el('div', { class: 'pick' }); box.innerHTML = `<div class="row" style="margin-bottom:12px"><h2 class="amber" style="margin:0;letter-spacing:.2em">CHOOSE ${xi >= 0 ? 'GUN FOR SLOT ' + ((xi + 4) % 10) : k === 'secondary' ? 'PISTOL' : k === 'launcher' ? 'LAUNCHER' : 'MAIN GUN'}</h2><span class="sp"></span>${xi >= 0 && cur.id ? '<button class="btn" data-clr="1">Empty this slot</button>' : ''}<span class="gold mono">${fmtMoney(G.save.credits)}</span><button class="btn" data-x="1">Close</button></div>
-      <div class="grid2">${pool.map((w) => { const own = Progress.ownsWeapon(w.id); return `<div class="wc ${w.id === cur.id ? 'sel' : ''} ${own ? '' : 'lock'}" data-w="${w.id}">${own ? '' : `<span class="pr">${fmtMoney(w.price)}</span>`}<div class="nm">${esc(w.name)}</div><div class="ty">${WCLASS_NAME[w.class] || w.class}</div>${this.statBars(w.id, defaultAttach(w))}</div>`; }).join('')}</div>`;
+      <div class="grid2">${pool.map((w) => { const own = Progress.ownsWeapon(w.id); return `<div class="wc ${w.id === cur.id ? 'sel' : ''} ${own ? '' : 'lock'}" data-w="${w.id}">${own ? '' : `<span class="pr">${fmtMoney(w.price)}</span>`}<div class="nm">${esc(w.name)}</div>${Kit.img('weaponIcons', w.id, 'height:46px;display:block;margin:2px auto;opacity:.92')}<div class="ty">${WCLASS_NAME[w.class] || w.class}</div>${this.statBars(w.id, defaultAttach(w))}</div>`; }).join('')}</div>`;
     this.root.querySelector('.screen').appendChild(box);
     box.querySelector('[data-x]').onclick = () => box.remove(); box.querySelector('[data-clr]')?.addEventListener('click', () => { A.extra[xi] = null; Save.save(); this.open('armoury', this.opts); });
     box.querySelectorAll('[data-w]').forEach((c) => c.onclick = () => { const w = DATA.weapons[c.dataset.w]; if (!Progress.ownsWeapon(w.id)) { if (G.save.credits < w.price) { this.toast('Not enough credits — play matches to earn more'); return; } if (!confirm('Buy the ' + w.name + ' for ' + fmtMoney(w.price) + '?')) return; G.save.credits -= w.price; G.save.ownedWeapons.push(w.id); Audio.play('cash'); } if (xi >= 0) { A.extra ||= [null, null, null, null, null, null, null]; A.extra[xi] = w.id; } else A[k] = w.id; Save.save(); this.open('armoury', this.opts); });
@@ -6190,15 +6447,23 @@ Object.assign(UI, {
     if (this.fr) this.fr.dispose(); const r = this.fr = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.setSize(cv.width, cv.height, false); r.outputColorSpace = THREE.SRGBColorSpace;
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3020, 1.6)); const dl = new THREE.DirectionalLight(0xffffff, 2.4); dl.position.set(2, 3, 3); sc.add(dl); const rim = new THREE.DirectionalLight(0xffb43c, 1.2); rim.position.set(-3, 2, -2); sc.add(rim);
     const L = op.look; const C = (DATA.camos || []).find((c) => c.id === camo); const M = (hex) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.8 }); const B = new THREE.BoxGeometry(1, 1, 1);
-    const fig = new THREE.Group(); const part = (mat, x, y, z, sx, sy, sz, parent = fig, rx = 0, rz = 0) => { const m = new THREE.Mesh(B, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.x = rx; m.rotation.z = rz; parent.add(m); return m; };
+    const fig = new THREE.Group(); const okey = Kit.man?.operators?.[op.id]; let armR = new THREE.Group();
+    if (okey && !Kit.has(okey)) Kit.load([okey]).then(() => { if (cv.isConnected && Kit.has(okey) && this.fr && this.fr.domElement === cv) this.figurePreview(cv, op, w, camo); });
+    const rig = okey && Kit.has(okey) && SoldierGfx.kit ? SoldierGfx.makeRig(okey, { top: parseHex(C ? C.colors[0] : L.top), pants: parseHex(C ? (C.colors[1] || L.pants) : L.pants), helmet: parseHex(L.helmet), visor: 0x3aa8ff, skin: parseHex(L.skin || '#c08a62'), gear: 0x20506e, band: 0x3aa8ff, vest: parseHex(L.vest || L.top) }, { noWorld: true }) : null;
+    if (rig) { // the operator's own kit model, posed holding the chosen gun like in game
+      const gun = new Gun(w.id, w.att); gun.camo = camo; const fake = { pos: V3(), yaw: 0, bodyYaw: 0, speedXZ: 0, cloakT: 0, state: 'alive', vehicle: null, moveState: 'ground', stance: 'stand', slideT: 0, gait: 0, sprinting: false, grounded: true, leanAmt: 0, pitch: 0.1, action: null, reviving: false, vest: { tier: 3 }, gun, team: 0, deathDir: 1, mantle: null };
+      SoldierGfx.cur = rig; try { SoldierGfx.pose(fake, -1, 0); } finally { SoldierGfx.cur = null; } for (const k of ['gun', 'gunP', 'gunT']) if (rig.parts[k]) rig.parts[k].visible = false; fig.add(rig.group);
+      if (rig.gunM) { const gm = buildGunModel(gun).group; gm.matrixAutoUpdate = false; gm.matrix.copy(rig.gunM).multiply(_m1.makeRotationY(Math.PI)); fig.add(gm); }
+      this.figRig = rig;
+    } else { const part = (mat, x, y, z, sx, sy, sz, parent = fig, rx = 0, rz = 0) => { const m = new THREE.Mesh(B, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.x = rx; m.rotation.z = rz; parent.add(m); return m; };
     const top = M(C ? C.colors[0] : L.top), pants = M(C ? (C.colors[1] || L.pants) : L.pants), vest = M(L.vest || L.gear), gear = M(L.gear || '#333'), skin = M(L.skin || '#c08a62'), helm = M(L.helmet), visor = new THREE.MeshStandardMaterial({ color: L.visor, emissive: L.visor, emissiveIntensity: 0.6, roughness: 0.3 });
     part(pants, -0.11, 0.45, 0, 0.16, 0.9, 0.18); part(pants, 0.11, 0.45, 0.04, 0.16, 0.9, 0.18); part(gear, -0.11, 0.05, 0.03, 0.17, 0.1, 0.26); part(gear, 0.11, 0.05, 0.07, 0.17, 0.1, 0.26);
     part(top, 0, 1.2, 0, 0.44, 0.62, 0.24); part(vest, 0, 1.22, 0.02, 0.48, 0.48, 0.3); part(gear, 0, 1.08, 0.17, 0.36, 0.12, 0.05); part(gear, 0, 0.92, 0, 0.46, 0.08, 0.28);
     part(skin, 0, 1.63, 0, 0.2, 0.22, 0.22); part(helm, 0, 1.76, 0, 0.27, 0.12, 0.28); part(helm, 0, 1.72, -0.02, 0.29, 0.06, 0.3); part(visor, 0, 1.64, 0.115, 0.2, 0.06, 0.02);
     // arms reaching for the gun held across the chest
-    const armR = new THREE.Group(); armR.position.set(0.27, 1.42, 0); fig.add(armR); part(top, 0, -0.15, 0.08, 0.12, 0.32, 0.12, armR, -0.6); part(top, -0.05, -0.3, 0.26, 0.11, 0.11, 0.26, armR, 0, 0); part(gear, -0.1, -0.31, 0.4, 0.1, 0.1, 0.1, armR);
+    armR = new THREE.Group(); armR.position.set(0.27, 1.42, 0); fig.add(armR); part(top, 0, -0.15, 0.08, 0.12, 0.32, 0.12, armR, -0.6); part(top, -0.05, -0.3, 0.26, 0.11, 0.11, 0.26, armR, 0, 0); part(gear, -0.1, -0.31, 0.4, 0.1, 0.1, 0.1, armR);
     const armL = new THREE.Group(); armL.position.set(-0.27, 1.42, 0); fig.add(armL); part(top, 0.05, -0.14, 0.1, 0.12, 0.32, 0.12, armL, -0.7, 0.4); part(top, 0.18, -0.3, 0.3, 0.26, 0.1, 0.1, armL, 0, 0); part(gear, 0.32, -0.28, 0.42, 0.1, 0.1, 0.1, armL);
-    const gun = new Gun(w.id, w.att); gun.camo = camo; const gm = buildGunModel(gun).group; gm.scale.setScalar(1.7); gm.rotation.set(0.1, -Math.PI / 2 + 0.45, 0.18); gm.position.set(0.16, 1.1, 0.34); fig.add(gm);
+    const gun = new Gun(w.id, w.att); gun.camo = camo; const gm = buildGunModel(gun).group; gm.scale.setScalar(1.7); gm.rotation.set(0.1, -Math.PI / 2 + 0.45, 0.18); gm.position.set(0.16, 1.1, 0.34); fig.add(gm); }
     const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.06, 32), new THREE.MeshStandardMaterial({ color: 0x1a2328, roughness: 0.6, metalness: 0.3 })); stand.position.y = -0.03; sc.add(stand); sc.add(fig);
     const cam = new THREE.PerspectiveCamera(32, cv.width / cv.height, 0.05, 20); cam.position.set(0, 1.05, 5.4); cam.lookAt(0, 0.88, 0);
     const resize = () => { const b = cv.getBoundingClientRect(); if (b.width > 10 && b.height > 10) { r.setSize(b.width, b.height, false); cam.aspect = b.width / b.height; cam.updateProjectionMatrix(); } }; resize();
@@ -6467,7 +6732,7 @@ const Net = {
     v.syncMesh(); v.animate?.(dt);
   },
   applyFeed(d) {
-    const k = d.k != null ? { name: d.kn, team: d.kt, me: d.k === this.myId } : null; HUDFeed.list.push({ k, v: { name: d.vn, team: d.vt, me: d.v === this.myId }, w: d.w, hs: d.hs, t: G.time }); if (HUDFeed.list.length > 30) HUDFeed.list.shift();
+    const k = d.k != null ? { name: d.kn, team: d.kt, me: d.k === this.myId } : null; HUDFeed.list.push({ k, v: { name: d.vn, team: d.vt, me: d.v === this.myId }, w: d.w, wid: d.wid, hs: d.hs, t: G.time }); if (HUDFeed.list.length > 30) HUDFeed.list.shift();
     const me = G.players[0]?.soldier; if (me && d.k === this.myId && d.v !== this.myId && G.mode?.kind === 'extraction') { const vp = this.puppets.get(d.v); if (vp) G.mode.creditKill(vp, me); }
     if (me && d.k === this.myId && d.v !== this.myId) { me.kills++; me.score += 100 + (d.hs ? 25 : 0); Operators.charge(me, 0.1, 'kill'); me.player?.onKill({ name: d.vn }, { headshot: d.hs }); }
   },
@@ -6639,7 +6904,7 @@ const Game = {
     const focus = def.bases?.[0] ? [V3(def.bases[0].x, 0, def.bases[0].z)] : [V3()]; TerrainGfx.update(focus, true);
     for (const st of Build.structures) if (st.type === 'radio_tower' || st.type === 'fuel_depot') st.repairable = false;
     // flags at bases
-    for (const [i, b2] of (def.bases || []).entries()) { const y = World.heightAt(b2.x, b2.z); const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 8, 0.06); pole.position.set(b2.x + 6, y + 4, b2.z + 6); Build.decor.add(pole); Cloths.add({ w: 2.6, h: 1.6, nx: 10, ny: 7, origin: V3(b2.x + 6, y + 7.8, b2.z + 6), yaw: 0, tex: i === 0 ? flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' }) : flagTex(['#d8402a', '#4a4a4e'], { shape: 'gear', color: '#fff' }) }); }
+    for (const [i, b2] of (def.bases || []).entries()) { const y = World.heightAt(b2.x, b2.z); const pole = new THREE.Mesh(GEO.cyl6, MAT.darkMetal); pole.scale.set(0.06, 8, 0.06); pole.position.set(b2.x + 6, y + 4, b2.z + 6); Build.decor.add(pole); Cloths.add({ w: 2.6, h: 1.6, nx: 10, ny: 7, origin: V3(b2.x + 6, y + 7.8, b2.z + 6), yaw: 0, tex: i === 0 ? Kit.flagTex('accord', flagTex(['#3f8fd8', '#2a5a8a'], { shape: 'shield', color: '#fff' })) : Kit.flagTex('mandate', flagTex(['#d8402a', '#4a4a4e'], { shape: 'gear', color: '#fff' })) }); }
   },
   clearWorld() {
     Soldiers.clear(); Vehicles.clear(); Ballistics.clear(); Throwables.clear(); Deployables.clear(); Drones.clear(); Grapples.clear(); Chutes.clear(); Interact.clear(); Pings.clear(); HUDFeed.clear(); Radio.clear(); AI.clear(); SupplyDrop.clear();
@@ -6778,7 +7043,7 @@ async function boot() {
   const bar = document.getElementById('loadbar'), msg = document.getElementById('loadmsg'); let n = 0;
   try { await Data.load((f) => { n++; bar.style.width = clamp(n / 24, 0.05, 0.9) * 100 + '%'; msg.textContent = 'loading ' + f + '…'; }); }
   catch (e) { msg.textContent = 'Could not load data/*.json — serve this folder over HTTP (npx serve .). ' + e.message; return; }
-  msg.textContent = 'loading models…'; await Models.load();
+  msg.textContent = 'loading models…'; await Promise.all([Models.load(), Kit.init()]);
   buildTextures(); buildMaterials(); Post.init(); Sky.init(); TerrainGfx.init(); WaterGfx.init(); FX.init(); Foliage.init(); SoldierGfx.init(); UI.init(); Input.init(); Touch.init();
   G.settings = Object.assign({}, G.settings); Save.load(); if (G.save.vehicleCamos.length) for (const c of G.save.vehicleCamos) if (!DATA.camos.find((x) => x.id === c.id)) DATA.camos.push({ id: c.id, name: c.name + ' (BOUNTY RUN)', biome: null, colors: c.colors, vehicle: true });
   Game.applyQuality(); bar.style.width = '100%'; Game.loading(false); if (G.debug) DebugUI.init();
@@ -6792,7 +7057,7 @@ async function boot() {
   else UI.open('title');
 }
 // test + console hook
-window.FZ = { HUDFeed, Net, Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
+window.FZ = { Kit, HUDFeed, Net, Chests, Campaign, CampaignMode, Loot, Econ, Items, Inv, Extraction, TDM: TeamDeathmatch, Range: FiringRange, G, Game, THREE, World, Soldiers, Vehicles, UI, DATA, Col, Nav, Build, Blocks, Foliage, Operators, Ballistics, Weather, Sky, Save, Progress, Challenges, Deployables, Pings, Interact, spawnGroup, respawnSoldier, TerrainGfx, SoldierGfx, Input, Audio, FX, CONFIG };
 boot();
 
 </script>
