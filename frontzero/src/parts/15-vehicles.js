@@ -80,6 +80,11 @@ const VBUILD = {
   sdrone(B) { B.box(B.metal, 0, 0, 0, 0.5, 0.2, 0.5); const rotors = []; for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { const r = B.node(x, 0.12, z); B.box(B.dark, 0, 0, 0, 0.5, 0.01, 0.05, 0, 0, 0, r); rotors.push(r); } B.add(MAT.glowCyan, GEO.sphere, mtx(0, -0.12, 0, 0, 0, 0, 0.08, 0.08, 0.08)); return { rotors }; },
   mdrone(B) { B.box(B.hull, 0, 0, 0, 0.9, 0.35, 0.9); B.box(colMat(0xd8c040), 0, -0.3, 0, 0.6, 0.3, 0.5); const rotors = []; for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) { const r = B.node(x, 0.2, z); B.box(B.dark, 0, 0, 0, 0.7, 0.01, 0.06, 0, 0, 0, r); rotors.push(r); } return { rotors }; },
 };
+// which kit model nodes drive which moving parts (vehicles not listed keep their procedural model)
+const VKIT = {
+  hover_tank: { turret: 'turret', gun: 'turret_barrel', keepTurrets: true }, hover_apc: { turret: 'turret', gun: 'turret_barrel' }, speeder_buggy: { turrets: [['mg_mount', 'mg']] },
+  interceptor: {}, vtol_gunship: { turrets: [['chin_gun', 'chin_gun']] }, vtol_dropship: { rotors: ['rotor_l', 'rotor_r'], keepTurrets: true }, strike_fighter: {},
+};
 let VEH_ID = 0;
 class Vehicle {
   constructor(defId, pos, yaw, team = null, o = {}) {
@@ -110,8 +115,22 @@ class Vehicle {
     const moving = new Set(); const mark = (n) => n && n.traverse((o) => moving.add(o)); const N = this.nodes; mark(N.turret); mark(N.gun); (N.rotors || []).forEach(mark); (N.turrets || []).forEach((t) => mark(t.yaw)); (N.arms || []).forEach(mark); (N.legs || []).forEach((l) => mark(l.hip)); mark(N.torso);
     const by = new Map(); for (const c of [...this.body.children]) { if (moving.has(c) || !c.isMesh) continue; if (!by.has(c.material)) by.set(c.material, []); by.get(c.material).push({ geo: c.geometry, m: c.matrix.clone() }); this.body.remove(c); }
     for (const [mat, list] of by) { const m = new THREE.Mesh(mergeGeos(list), mat); m.castShadow = true; m.receiveShadow = true; this.body.add(m); }
+    const kk = Kit.key('vehicles', def.id); if (kk && VKIT[def.id]) { try { this.kitBody(kk, VKIT[def.id], mil); } catch (e) { console.warn('kit vehicle', def.id, e); } }
     this.root.traverse((o) => { if (o.isMesh) o.userData.veh = this; });
     WORLD.add(root); this.syncMesh();
+  }
+  // the art kit's model replaces the procedural hull, fitted to the same box; its turret / barrel / mounts / rotors
+  // become the moving nodes (procedural secondary mounts stay where the kit model has none)
+  kitBody(kk, spec, mil) {
+    const body = this.body; body.updateMatrixWorld(true); const box = new THREE.Box3(); body.traverse((o) => { if (o.isMesh) box.expandByObject(o, true); }); if (box.isEmpty()) return;
+    const glb = Kit.dress(Kit.clone(kk), this.team ?? 2, mil ? this.camo : null); const N = this.nodes; const keep = new Set();
+    if (spec.keepTurrets && N.turrets) for (const t of N.turrets) keep.add(t.yaw); if (spec.keepRotors && N.rotors) for (const r of N.rotors) keep.add(r);
+    for (const c of [...body.children]) if (!keep.has(c)) body.remove(c);
+    if (spec.rot) glb.rotation.y = spec.rot; body.add(glb); Kit.fit(glb, box, { wide: spec.wide || 1.3 }); const nd = (n) => n && glb.getObjectByName(n);
+    N.turret = spec.turret ? nd(spec.turret) : null; N.gun = spec.turret ? (nd(spec.gun) || N.turret) : null;
+    if (spec.turrets) N.turrets = spec.turrets.map(([y, p]) => ({ yaw: nd(y), pitch: nd(p) })).filter((t) => t.yaw && t.pitch); else if (!spec.keepTurrets) N.turrets = [];
+    if (spec.rotors) N.rotors = spec.rotors.map(nd).filter(Boolean); else if (!spec.keepRotors) N.rotors = [];
+    this.kit = glb;
   }
   syncMesh() { this.root.position.copy(this.pos); this.root.quaternion.copy(this.q); }
   // ---- seats -------------------------------------------------------------------------------------

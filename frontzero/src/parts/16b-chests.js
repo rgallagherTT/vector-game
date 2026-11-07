@@ -22,8 +22,9 @@ const Chests = {
   populate(mode, n, area = null) { if (Net.client) return; this.initMats(); this.mode = mode; this.area = area; this.n = n; const rng = new RNG(Math.random() * 1e9); for (const p of this.spots(area, n, rng)) this.spawn(p); },
   spawn(p) { this.initMats();
     const g = new THREE.Group(); const b = (mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(this.geo.box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
-    b(this.mats.body, 0, 0.28, 0, 1.1, 0.56, 0.7); b(this.mats.trim, 0, 0.3, 0, 1.14, 0.08, 0.74); b(this.mats.trim, -0.5, 0.28, 0, 0.08, 0.6, 0.74); b(this.mats.trim, 0.5, 0.28, 0, 0.08, 0.6, 0.74);
-    const lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); g.add(lid); const lb = new THREE.Mesh(this.geo.box, this.mats.body); lb.scale.set(1.1, 0.18, 0.7); lb.position.set(0, 0.09, 0.35); lid.add(lb); const lt = new THREE.Mesh(this.geo.box, this.mats.trim); lt.scale.set(1.14, 0.06, 0.2); lt.position.set(0, 0.12, 0.35); lid.add(lt);
+    let lid = null; const kc = Kit.prop('l_crate_legendary', 1.15, 0.78, 0.75); if (kc) { g.add(kc); const kl = kc.getObjectByName('lid'); if (kl) { kc.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kl); lid = new THREE.Group(); lid.position.copy(kl.parent.worldToLocal(V3(bb.getCenter(V3()).x, bb.min.y, bb.min.z))); kl.parent.add(lid); lid.updateMatrixWorld(true); lid.attach(kl); } }
+    if (!lid) { b(this.mats.body, 0, 0.28, 0, 1.1, 0.56, 0.7); b(this.mats.trim, 0, 0.3, 0, 1.14, 0.08, 0.74); b(this.mats.trim, -0.5, 0.28, 0, 0.08, 0.6, 0.74); b(this.mats.trim, 0.5, 0.28, 0, 0.08, 0.6, 0.74);
+      lid = new THREE.Group(); lid.position.set(0, 0.56, -0.35); g.add(lid); const lb = new THREE.Mesh(this.geo.box, this.mats.body); lb.scale.set(1.1, 0.18, 0.7); lb.position.set(0, 0.09, 0.35); lid.add(lb); const lt = new THREE.Mesh(this.geo.box, this.mats.trim); lt.scale.set(1.14, 0.06, 0.2); lt.position.set(0, 0.12, 0.35); lid.add(lt); }
     const gem = b(this.mats.glow, 0, 0.3, 0.37, 0.18, 0.18, 0.02); const beam = new THREE.Mesh(this.geo.beam, this.mats.beam); beam.scale.set(1, 60, 1); beam.position.y = 30; g.add(beam);
     g.position.copy(p); g.rotation.y = rand(0, TAU); WORLD.add(g);
     const c = { pos: p.clone(), g, lid, beam, gem, open: false, t: rand(0, 6) };

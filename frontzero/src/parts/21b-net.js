@@ -196,7 +196,7 @@ const Net = {
     v.syncMesh(); v.animate?.(dt);
   },
   applyFeed(d) {
-    const k = d.k != null ? { name: d.kn, team: d.kt, me: d.k === this.myId } : null; HUDFeed.list.push({ k, v: { name: d.vn, team: d.vt, me: d.v === this.myId }, w: d.w, hs: d.hs, t: G.time }); if (HUDFeed.list.length > 30) HUDFeed.list.shift();
+    const k = d.k != null ? { name: d.kn, team: d.kt, me: d.k === this.myId } : null; HUDFeed.list.push({ k, v: { name: d.vn, team: d.vt, me: d.v === this.myId }, w: d.w, wid: d.wid, hs: d.hs, t: G.time }); if (HUDFeed.list.length > 30) HUDFeed.list.shift();
     const me = G.players[0]?.soldier; if (me && d.k === this.myId && d.v !== this.myId && G.mode?.kind === 'extraction') { const vp = this.puppets.get(d.v); if (vp) G.mode.creditKill(vp, me); }
     if (me && d.k === this.myId && d.v !== this.myId) { me.kills++; me.score += 100 + (d.hs ? 25 : 0); Operators.charge(me, 0.1, 'kill'); me.player?.onKill({ name: d.vn }, { headshot: d.hs }); }
   },

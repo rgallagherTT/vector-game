@@ -151,7 +151,10 @@ const Deployables = {
         d.sub = [Deployables.add('turret', owner, pos.clone().add(_v3.set(s * 1.5, 0, c * 1.5)), yaw, { hp: 800, life: o.life, heavy: true }), Deployables.add('supply', owner, pos.clone().add(_v3.set(-s * 1.5 + c * 1.6, 0, -c * 1.5 - s * 1.6)), yaw, { hp: 300, life: o.life, uses: 8 })];
         FX.dustBurst(pos, 3, 'concrete'); Audio.at('explode', pos, 0.5); break; }
     }
-    mb.build(d.mesh, { static: false }); d.mesh.position.copy(pos); d.mesh.rotation.y = yaw; WORLD.add(d.mesh);
+    const KD = { shield: [3.0, 2.0, 0.3], cover: [1.8, 1.15, 0.5], turret: [0.7, 1.25, 0.8], atmine: [0.36, 0.14, 0.36], healdrone: [0.5, 0.22, 0.5, 1], supply: [0.9, 0.62, 0.6] }[type]; const kk = KD && Kit.key('gadgets', type);
+    const kd = kk ? Kit.prop(kk, KD[0], KD[1], KD[2], { cy: !!KD[3], team: d.team }) : null;
+    if (kd) { d.mesh.add(kd); if (type === 'turret') { const yawN = kd.getObjectByName('turret_yaw'); if (yawN) { d.mesh.remove(d.head); d.head = yawN; } } } else mb.build(d.mesh, { static: false });
+    d.mesh.position.copy(pos); d.mesh.rotation.y = yaw; WORLD.add(d.mesh);
     d.damage = (amt, by) => { if (d.dead || (by && by.team === d.team && by !== d.owner)) return; d.hp -= amt; if (d.hp <= 0) d.destroy(); };
     d.repair = (amt) => { if (d.dead || d.hp >= d.max) return 0; const a = Math.min(amt, d.max - d.hp); d.hp += a; return a; };
     d.stun = (t) => { d.stunT = Math.max(d.stunT, t); };
@@ -186,7 +189,7 @@ const Deployables = {
 // ---- drones: Wren's recon drone (player-flown or bot-directed) and the swarm ---------------------------
 const Drones = {
   list: [],
-  mesh(team) { const g = new THREE.Group(); const src = Models.clone('pip'); if (src) { src.scale.setScalar(0.9); g.add(src); } else { const mb = new MeshBuilder(); mb.box(colMat(0xd8a03a), 0, 0, 0, 0.45, 0.14, 0.45); mb.add(MAT.glowCyan, GEO.sphere, mtx(0, -0.02, 0.24, 0, 0, 0, 0.06, 0.06, 0.06)); for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) mb.add(MAT.darkMetal, GEO.cyl, mtx(x, 0.06, z, 0, 0, 0, 0.16, 0.01, 0.16)); mb.build(g, { static: false }); }
+  mesh(team) { const g = new THREE.Group(); const kd = Kit.prop('g_wren_recon_drone', 0.55, 0.2, 0.55, { cy: true, team }); const src = kd ? null : Models.clone('pip'); if (kd) g.add(kd); else if (src) { src.scale.setScalar(0.9); g.add(src); } else { const mb = new MeshBuilder(); mb.box(colMat(0xd8a03a), 0, 0, 0, 0.45, 0.14, 0.45); mb.add(MAT.glowCyan, GEO.sphere, mtx(0, -0.02, 0.24, 0, 0, 0, 0.06, 0.06, 0.06)); for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) mb.add(MAT.darkMetal, GEO.cyl, mtx(x, 0.06, z, 0, 0, 0, 0.16, 0.01, 0.16)); mb.build(g, { static: false }); }
     const l = new THREE.Mesh(GEO.sphere, team === 0 ? MAT.glowCyan : MAT.glowRed); l.scale.setScalar(0.04); l.position.y = -0.1; g.add(l); WORLD.add(g); return g; },
   launch(s, o = {}) { const d = { kind: 'recon', owner: s, team: s.team, pos: s.eye(V3()).add(V3(0, 0.6, 0)), vel: V3(), yaw: s.yaw, pitch: -0.2, hp: 60, life: o.life || 30, mesh: this.mesh(s.team), zapCD: 0, dead: false, flown: !!s.player };
     this.list.push(d); if (s.player) s.player.drone = d; else d.goal = s.brain?.droneGoal?.() || s.pos.clone().addScaledVector(dirFromYaw(s.yaw, V3()), 60).add(V3(0, 22, 0)); return d; },
