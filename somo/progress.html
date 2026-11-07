@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Somo progress</title>
+<style>
+/* Somo progress for families and teachers: a private page opened with a family link (#f=…) or a class code and
+   teacher key (#c=…&k=…). Data comes from the somo-progress Supabase function; nothing is stored by this page. */
+:root{--bg:#FBF5EC;--card:#FFFFFF;--ink:#2B1B12;--soft:#6E5644;--line:#E6D7C3;--num:#C4572F;--lit:#2D7FB3;--kis:#3FA34D;--sun:#F6A623;--rose:#E8577A;--track:#F1E6D6}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1E140E;--card:#2A1C14;--ink:#FFF7EA;--soft:#CDB9A3;--line:#4A3426;--num:#E08A5A;--lit:#56B4E9;--kis:#6CC77A;--sun:#FFD447;--rose:#FF8FB1;--track:#3A2A1E}}
+:root[data-theme="dark"]{--bg:#1E140E;--card:#2A1C14;--ink:#FFF7EA;--soft:#CDB9A3;--line:#4A3426;--num:#E08A5A;--lit:#56B4E9;--kis:#6CC77A;--sun:#FFD447;--rose:#FF8FB1;--track:#3A2A1E}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:26px;margin:4px 0 2px}h2{font-size:18px;margin:0 0 10px}
+.sub{color:var(--soft);font-size:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.big{font-size:28px;font-weight:800;line-height:1.1}.big small{font-size:14px;color:var(--soft);font-weight:600}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--soft);margin-top:6px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+svg{display:block;width:100%;height:auto}svg text{fill:var(--soft);font-size:20px}
+.units{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.u{border-radius:10px;padding:4px 8px;font-size:12px;font-weight:700;border:2px solid var(--line);background:var(--track);color:var(--ink)}
+.u.s1{background:color-mix(in srgb,var(--sun) 30%,var(--card))}.u.s2{background:color-mix(in srgb,var(--sun) 60%,var(--card))}.u.s3{background:var(--sun);color:#2B1B12}
+.u.cur{border-color:var(--ink)}
+.bars .row{display:grid;grid-template-columns:minmax(120px,40%) 1fr 36px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.bars .track{height:12px;background:var(--track);border-radius:6px;overflow:hidden}.bars .fill{height:100%;background:var(--rose);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}th{color:var(--soft);font-weight:600;font-size:13px}
+tr.kid{cursor:pointer}tr.kid:hover{background:color-mix(in srgb,var(--sun) 12%,transparent)}
+.mini{display:flex;height:10px;width:70px;background:var(--track);border-radius:5px;overflow:hidden}.mini i{display:block;height:100%}
+.tag{display:inline-block;background:color-mix(in srgb,var(--rose) 18%,var(--card));border-radius:8px;padding:2px 8px;font-size:12px}
+.scroll{overflow-x:auto}
+form.ask{display:grid;gap:10px;max-width:420px}input,button{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}button{background:var(--num);color:#fff;border:0;font-weight:700;cursor:pointer}
+.muted{color:var(--soft);font-size:13px}.err{color:var(--rose);font-weight:700}
+.av{width:52px;height:52px;border-radius:50%;background:var(--sun);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#2B1B12;flex:none}
+.head{display:flex;gap:14px;align-items:center}
+</style>
+</head>
+<body>
+<main id="app"><p class="muted">Loading…</p></main>
+<script>
+const API = 'https://obyudvdunzuyyskxujrt.supabase.co/functions/v1/somo-progress';
+const STR = { num: ['Numbers', 'var(--num)'], lit: ['Reading', 'var(--lit)'], kis: ['Kusoma', 'var(--kis)'] };
+const HOME = { forgotCarry: 'Add piles of bottle caps; swap ten loose caps for one bundle of ten.', smallerFromLarger: 'Take away with sticks: open a bundle of ten when the ones run out.', reversal: 'Say a number like 47 and show it with bundles of ten and loose sticks.', offByTen: 'Count bundles of ten sticks: 10, 20, 30…', offByOne: 'Count beans together, touching each one once.', countedStart: 'Count on from the bigger number with fingers: "8… 9, 10, 11".', miscount: 'Count beans together, touching each one once.', vowel: 'Say short words slowly and listen for the middle sound: c-a-t, c-u-t.', onset: 'Play "I spy something that starts with…" at home or at the market.', letterReversal: 'Trace b and d in the sand: b is the bat then the ball; d is the ball then the bat.', firstLetter: 'Read signs together, looking at every letter, not just the first.', smallWord: 'Play "put the cup on / in / by the box" with real things.', addedInstead: 'Put the same number of mangoes in each bag and count them all.', groupOff: 'Share beans into cups equally and count each cup.', countCoins: 'Count real coins together by their value.', hourHand: 'Look at a clock together: the short hand shows the hour.', unequalParts: 'Cut a chapati into equal halves and quarters.' };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const hash = new URLSearchParams(location.hash.slice(1));
+async function call(body) { const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'error ' + r.status); return j; }
+const isoDay = d => d.toISOString().slice(0, 10);
+const lastN = (days, n) => { const out = []; const end = new Date(); for (let i = n - 1; i >= 0; i--) { const d = new Date(end - i * 864e5); out.push(isoDay(d)); } const by = Object.fromEntries(days.map(x => [x.day, x.data])); return out.map(k => ({ day: k, data: by[k] || null })); };
+const sum = (a, f) => a.reduce((s, x) => s + (f(x) || 0), 0);
+
+/* ---------------- charts (SVG, drawn here) ---------------- */
+function bars(series, { h = 170, color = 'var(--sun)', label = v => v } = {}) {
+  const W = 640, n = series.length, max = Math.max(1, ...series.map(s => s.v)), bw = W / n; h += 10;
+  let g = ''; series.forEach((s, i) => { const bh = Math.round((s.v / max) * (h - 40)); g += `<rect x="${i * bw + 2}" y="${h - 28 - bh}" width="${Math.max(2, bw - 4)}" height="${bh}" rx="3" fill="${color}"><title>${esc(s.day)}: ${esc(label(s.v))}</title></rect>`; if (i % 7 === n % 7) g += `<text x="${i * bw + bw / 2}" y="${h - 4}" text-anchor="middle">${s.day.slice(5)}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="bar chart">${g}<line x1="0" x2="${W}" y1="${h - 28}" y2="${h - 28}" stroke="var(--line)"/></svg>`;
+}
+function lines(sets, { h = 220, max: fixed = null, pct = false } = {}) {
+  const W = 640, P = 70, n = Math.max(...sets.map(s => s.pts.length)), max = fixed || Math.max(1, ...sets.flatMap(s => s.pts.filter(p => p != null)));
+  const X = i => P + i * (W - P - 8) / Math.max(1, n - 1), Y = v => h - 14 - v / max * (h - 34);
+  let g = ''; for (let k = 0; k <= 4; k++) { const v = max * k / 4; g += `<line x1="${P}" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-dasharray="${k ? '3 4' : ''}"/><text x="${P - 8}" y="${Y(v) + 7}" text-anchor="end">${pct ? Math.round(v) + '%' : Math.round(v)}</text>`; }
+  for (const s of sets) { let d = '', on = false; s.pts.forEach((v, i) => { if (v == null) { on = false; return; } d += (on ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); on = true; });
+    g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`; const li = s.pts.map((v, i) => [v, i]).filter(x => x[0] != null).pop(); if (li) g += `<circle cx="${X(li[1])}" cy="${Y(li[0])}" r="4.5" fill="${s.color}"/>`; }
+  return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="line chart">${g}</svg>`;
+}
+const legend = keys => `<div class="legend">${keys.map(k => `<span><i style="background:${STR[k][1]}"></i>${STR[k][0]}</span>`).join('')}</div>`;
+/* carry the last known value forward so a day without practice keeps the line going */
+const carry = arr => { let last = null; return arr.map(v => v == null ? last : (last = v)); };
+
+/* ---------------- one child ---------------- */
+function childView(name, days, meta = {}) {
+  const latest = (days[days.length - 1] || {}).data; const d30 = lastN(days, 30), d7 = d30.slice(-7);
+  if (!latest) return `<div class="panel"><h2>${esc(name || 'This child')}</h2><p class="muted">No progress has been sent yet. It appears after the next practice with a connection.</p></div>`;
+  const keys = Object.keys(latest.strands || {});
+  const mins7 = sum(d7, x => x.data && x.data.today.minutes), ans7 = sum(d7, x => x.data && x.data.today.answers), right7 = sum(d7, x => x.data && x.data.today.right);
+  const cards = `<div class="grid">${keys.map(k => { const s = latest.strands[k]; return `<div class="card"><div class="sub">${STR[k][0]}: units learned</div><div class="big" style="color:${STR[k][1]}">${s.mastered}<small> of ${s.total}</small></div><div class="sub">Now: ${esc(s.names && s.names[s.cur] || s.cur)}</div></div>`; }).join('')}
+    <div class="card"><div class="sub">Practice this week</div><div class="big">${mins7}<small> min</small></div><div class="sub">${ans7} questions</div></div>
+    <div class="card"><div class="sub">Right first time (week)</div><div class="big">${ans7 ? Math.round(right7 / ans7 * 100) : '–'}<small>%</small></div><div class="sub">Level ${latest.level || 1} · ${latest.stickers || 0} stickers</div></div></div>`;
+  const minutes = `<div class="panel"><h2>Minutes practised (last 30 days)</h2>${bars(d30.map(x => ({ day: x.day, v: x.data ? x.data.today.minutes : 0 })), { label: v => v + ' min' })}</div>`;
+  const growth = `<div class="panel"><h2>Units learned over time</h2>${lines(keys.map(k => ({ color: STR[k][1], pts: carry(d30.map(x => x.data && x.data.strands[k] ? x.data.strands[k].mastered : null)) })))}${legend(keys)}</div>`;
+  const acc = d30.map((x, i) => { const w = d30.slice(Math.max(0, i - 6), i + 1); const a = sum(w, y => y.data && y.data.today.answers), r = sum(w, y => y.data && y.data.today.right); return a >= 5 ? Math.round(r / a * 100) : null; });
+  const accuracy = `<div class="panel"><h2>Right first time (7-day average)</h2>${lines([{ color: 'var(--rose)', pts: acc }], { max: 100, pct: true })}<p class="muted">Somo only counts the first answer to each question, so this shows real understanding, not guessing.</p></div>`;
+  const path = `<div class="panel"><h2>The path</h2>${keys.map(k => { const s = latest.strands[k]; return `<div class="sub" style="font-weight:700;color:${STR[k][1]}">${STR[k][0]}</div><div class="units">${Object.keys(s.stars).map(id => `<span class="u s${s.stars[id]}${id === s.cur ? ' cur' : ''}" title="${esc(s.names && s.names[id])}: ${s.stars[id]} stars, about ${s.p ? s.p[id] : '?'}% sure">${esc(s.names && s.names[id] || id)} ${'★'.repeat(s.stars[id])}</span>`).join('')}</div>`; }).join('')}<p class="muted">Three stars: learned well. The outlined unit is where she is now.</p></div>`;
+  const tagTot = {}; for (const x of days.slice(-14)) for (const [t, n, label] of (x.data.tags || [])) { tagTot[t] = tagTot[t] || [0, label]; tagTot[t][0] += n; }
+  const top = Object.entries(tagTot).sort((a, b) => b[1][0] - a[1][0]).slice(0, 5); const mx = Math.max(1, ...top.map(t => t[1][0]));
+  const still = top.length ? `<div class="panel"><h2>Still learning (last 2 weeks)</h2><div class="bars">${top.map(([t, [n, label]]) => `<div class="row"><span>${esc(label)}</span><span class="track"><span class="fill" style="display:block;width:${n / mx * 100}%"></span></span><span>${n}×</span></div>`).join('')}</div>
+    ${HOME[top[0][0]] ? `<p><b>Try at home:</b> ${esc(HOME[top[0][0]])}</p>` : ''}</div>` : '';
+  const ck = (latest.checkins || []).filter(c => c.scores); const checks = ck.length >= 1 ? `<div class="panel"><h2>Check-ins</h2><table><tr><th>Skill</th><th>First</th><th>Latest</th></tr>${Object.keys(ck[ck.length - 1].scores).map(s => `<tr><td>${esc(s)}</td><td>${esc(ck[0].scores[s])}</td><td><b>${esc(ck[ck.length - 1].scores[s])}</b></td></tr>`).join('')}</table></div>` : '';
+  return cards + growth + minutes + accuracy + path + still + checks;
+}
+function familyPage(r) {
+  const c = r.child, name = c.first_name || 'Your child';
+  document.title = `${name}'s progress · Somo`;
+  return `<div class="head"><div class="av">${esc(name[0] || '★')}</div><div><h1>${esc(name)}'s progress</h1><div class="sub">Reading and numbers with Somo${c.last_sync ? ' · updated ' + new Date(c.last_sync).toLocaleString() : ''}</div></div></div>${childView(name, r.days)}
+    <p class="muted">This page is private to whoever has the link. It shows learning progress only: no answers, chats, location, voice or photos. A grown-up can stop sharing and delete it in Somo's grown-ups panel.</p>`;
+}
+/* ---------------- a class ---------------- */
+function classPage(r, code) {
+  document.title = `${r.class.name} · Somo`;
+  const kids = r.children.map(k => { const d7 = lastN(k.days, 7), latest = (k.days[k.days.length - 1] || {}).data; const mins = sum(d7, x => x.data && x.data.today.minutes), a = sum(d7, x => x.data && x.data.today.answers), rt = sum(d7, x => x.data && x.data.today.right);
+    const tags = {}; for (const x of k.days.slice(-14)) for (const [t, n, label] of (x.data.tags || [])) { tags[t] = tags[t] || [0, label]; tags[t][0] += n; } const top = Object.values(tags).sort((x, y) => y[0] - x[0])[0];
+    return { k, latest, mins, a, acc: a ? Math.round(rt / a * 100) : null, help: top ? top[1] : null, active: a > 0 }; });
+  const active = kids.filter(x => x.active).length, keys = [...new Set(kids.flatMap(x => x.latest ? Object.keys(x.latest.strands) : []))];
+  const mini = (x, k) => { const s = x.latest && x.latest.strands[k]; if (!s) return '–'; return `<div class="mini" title="${s.mastered} of ${s.total}"><i style="width:${s.mastered / s.total * 100}%;background:${STR[k][1]}"></i></div><span class="muted">${s.mastered}/${s.total}</span>`; };
+  const rows = kids.sort((a, b) => (b.mins - a.mins)).map((x, i) => `<tr class="kid" data-i="${r.children.indexOf(x.k)}"><td><b>${esc(x.k.first_name || 'Child')}</b></td>${keys.map(k => `<td>${mini(x, k)}</td>`).join('')}<td>${x.mins} min</td><td>${x.acc == null ? '–' : x.acc + '%'}</td><td>${x.help ? `<span class="tag">${esc(x.help)}</span>` : ''}</td><td class="muted">${x.k.last_sync ? new Date(x.k.last_sync).toLocaleDateString() : 'never'}</td></tr>`).join('');
+  const dist = `<div class="panel"><h2>Units learned, by child</h2><p class="muted">The full bar is every unit on her paths.</p>${(() => { const W = 640, rowH = 34, list = kids.filter(x => x.latest); const max = Math.max(1, ...list.map(x => keys.reduce((s, k) => s + (x.latest.strands[k] ? x.latest.strands[k].total : 0), 0))); let g = '';
+    list.forEach((x, i) => { let off = 130; g += `<rect x="130" y="${i * rowH + 6}" width="${W - 140}" height="20" rx="4" fill="var(--track)"/><text x="122" y="${i * rowH + 23}" text-anchor="end">${esc((x.k.first_name || 'Child').slice(0, 14))}</text>`; for (const k of keys) { const v = x.latest.strands[k] ? x.latest.strands[k].mastered : 0, w = v / max * (W - 140); if (w > 0) g += `<rect x="${off}" y="${i * rowH + 6}" width="${w}" height="20" rx="4" fill="${STR[k][1]}"><title>${STR[k][0]}: ${v}</title></rect>`; off += w; } });
+    return `<svg viewBox="0 0 ${W} ${Math.max(40, list.length * rowH + 6)}">${g}</svg>`; })()}${legend(keys)}</div>`;
+  return `<h1>${esc(r.class.name)}</h1><div class="sub">Class ${esc(code)} · ${r.children.length} children · ${active} practised this week</div>
+    <div class="panel scroll"><h2>The class this week</h2><table><tr><th>Child</th>${keys.map(k => `<th>${STR[k][0]}</th>`).join('')}<th>Practice</th><th>Right first time</th><th>Needs help with</th><th>Last seen</th></tr>${rows}</table><p class="muted">Tap a child to see their graphs.</p></div>${dist}<div id="detail"></div>`;
+}
+function ask(msg) {
+  return `<h1>Somo progress</h1><p class="sub">Open the family link from Somo's grown-ups panel, or enter a class code and teacher key.</p>${msg ? `<p class="err">${esc(msg)}</p>` : ''}
+    <form class="ask" id="f"><input name="c" placeholder="Class code (ABC123)" maxlength="6" autocapitalize="characters"><input name="k" placeholder="Teacher key" type="password"><button>Open the class</button></form>`;
+}
+(async () => {
+  const app = document.getElementById('app');
+  try {
+    if (hash.get('f')) { const r = await call({ action: 'family', token: hash.get('f') }); app.innerHTML = familyPage(r); }
+    else if (hash.get('c') && hash.get('k')) { const r = await call({ action: 'class', code: hash.get('c'), teacher_key: hash.get('k') }); app.innerHTML = classPage(r, hash.get('c').toUpperCase());
+      app.addEventListener('click', e => { const tr = e.target.closest('tr.kid'); if (!tr) return; const k = r.children[+tr.dataset.i]; document.getElementById('detail').innerHTML = `<h2 style="margin-top:24px">${esc(k.first_name || 'Child')}</h2>${childView(k.first_name, k.days)}`; document.getElementById('detail').scrollIntoView({ behavior: 'smooth' }); }); }
+    else app.innerHTML = ask();
+  } catch (e) { app.innerHTML = ask(e.message === 'link not found' ? 'That link was not found. Sharing may have been turned off.' : e.message); }
+  const f = document.getElementById('f'); if (f) f.addEventListener('submit', e => { e.preventDefault(); location.hash = `c=${encodeURIComponent(f.c.value.trim().toUpperCase())}&k=${encodeURIComponent(f.k.value.trim())}`; location.reload(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Jambo Letters: tracing, letter sounds, books and games for 5-year-olds.">
+<meta name="theme-color" content="#f7f5ef">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='52' r='40' fill='%23ebd07a' stroke='%232b3550' stroke-width='6'/%3E%3Ccircle cx='36' cy='46' r='6' fill='%232b3550'/%3E%3Ccircle cx='64' cy='46' r='6' fill='%232b3550'/%3E%3Cpath d='M38 64 Q50 76 62 64' fill='none' stroke='%232b3550' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Jambo Letters</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --ink: #2b3550;
+    --red: #d98a80;
+    --blue: #86abd2;
+    --yellow: #ebd07a;
+    --red-t: #f6dcd8;
+    --blue-t: #dce8f4;
+    --yellow-t: #f8efc9;
+    --font: "Arial Rounded MT Bold", "Trebuchet MS", Verdana, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 1.1rem; line-height: 1.55; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1rem; }
+
+  header { padding: 2rem 0 1.25rem; text-align: center; }
+  header h1 { margin: 0; font-size: clamp(2.6rem, 13vw, 4.5rem); line-height: 1; letter-spacing: .02em; }
+  header h1 span:nth-child(1) { color: var(--blue); }
+  header h1 span:nth-child(2) { color: var(--red); }
+  header h1 span:nth-child(3) { color: var(--yellow); }
+  header p { margin: .6rem 0 0; font-size: 1.15rem; }
+
+  nav { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 3px solid var(--ink); }
+  nav ul { list-style: none; margin: 0; padding: .6rem 1rem; display: flex; gap: .5rem; overflow-x: auto; }
+  nav a { display: block; white-space: nowrap; padding: .5rem 1rem; border: 3px solid var(--ink); border-radius: 2rem; color: var(--ink); text-decoration: none; background: #fff; }
+  nav li:nth-child(3n+1) a { background: var(--blue-t); }
+  nav li:nth-child(3n+2) a { background: var(--yellow-t); }
+  nav li:nth-child(3n) a { background: var(--red-t); }
+
+  section { scroll-margin-top: 4.5rem; margin: 1.75rem 0; padding: 1.25rem; border: 3px solid var(--ink); border-radius: 1.5rem; box-shadow: 0 6px 0 var(--ink); }
+  #books, #rhymes { background: var(--blue-t); }
+  #upper, #trace { background: var(--yellow-t); }
+  #lower, #phonics { background: var(--red-t); }
+  h2 { margin: 0 0 .5rem; font-size: 1.8rem; line-height: 1.2; }
+  h3 { margin: 0 0 .25rem; font-size: 1.15rem; }
+  p { margin: 0 0 .75rem; }
+
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+  .list li { background: #fff; border: 3px solid var(--ink); border-radius: 1rem; padding: .8rem 1rem; }
+  .list p { margin: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr)); gap: .5rem; margin: .75rem 0; }
+  .block { font: inherit; font-size: 1.8rem; line-height: 1; aspect-ratio: 1; border: 3px solid var(--ink); border-radius: .8rem; color: var(--ink); cursor: pointer; box-shadow: 0 4px 0 var(--ink); }
+  .block:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  .block.c0 { background: var(--blue); }
+  .block.c1 { background: var(--yellow); }
+  .block.c2 { background: var(--red); }
+  .block.on { outline: 4px solid var(--ink); outline-offset: 2px; }
+  .mini { font-size: 1.4rem; }
+
+  .btn { font: inherit; display: inline-block; padding: .6rem 1.2rem; border: 3px solid var(--ink); border-radius: 2rem; background: #fff; color: var(--ink); cursor: pointer; text-decoration: none; box-shadow: 0 4px 0 var(--ink); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+
+  .stage { position: relative; width: 100%; aspect-ratio: 5 / 4; max-width: 30rem; background: #fff; border: 3px solid var(--ink); border-radius: 1rem; overflow: hidden; margin: .75rem auto; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage.tall { aspect-ratio: 1 / 1; }
+  #draw { touch-action: none; cursor: crosshair; }
+  .row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: .75rem; }
+  label { display: block; margin-bottom: .25rem; }
+  input[type=text] { font: inherit; width: 100%; max-width: 12rem; padding: .55rem .8rem; border: 3px solid var(--ink); border-radius: 1rem; background: #fff; color: var(--ink); }
+
+  .big { display: flex; align-items: center; gap: 1rem; background: #fff; border: 3px solid var(--ink); border-radius: 1rem; padding: .75rem 1rem; margin: .75rem 0; }
+  .big strong { font-size: 3.5rem; line-height: 1; }
+
+  footer { padding: 1rem 0 2.5rem; text-align: center; }
+  h2 { display: flex; align-items: center; gap: .6rem; }
+  .mm { width: 2.8rem; height: 2.8rem; flex: none; }
+  .crew { display: flex; justify-content: center; gap: .75rem; margin-top: 1rem; }
+  .mh { width: clamp(4rem, 20vw, 6rem); height: clamp(4rem, 20vw, 6rem); }
+  .small { font-size: .95rem; }
+  .crew figure { margin: 0; text-align: center; }
+  .crew figcaption { font-weight: bold; font-size: 1.15rem; }
+  .list .btn { margin-top: .5rem; }
+  #gMsg, .gm { min-height: 1.6rem; font-weight: bold; }
+  #quiz { background: var(--blue-t); }
+  #games { background: var(--yellow-t); }
+  #qText { font-size: 1.3rem; min-height: 2rem; }
+  .qc { font-size: 1.6rem; min-width: 4.5rem; }
+  [hidden] { display: none !important; }
+  .rhyme { margin: 0 0 .25rem; }
+  .starbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; max-width: 28rem; margin: 1rem auto 0; padding: .5rem 1rem; background: #fff; border: 3px solid var(--ink); border-radius: 2rem; color: var(--ink); text-decoration: none; text-align: left; }
+  #starNum { font-size: 1.4rem; font-weight: bold; }
+  .bar { flex: 1; min-width: 6rem; height: 1rem; border: 3px solid var(--ink); border-radius: 1rem; background: #fff; overflow: hidden; }
+  #starFill { display: block; height: 100%; width: 0; background: var(--yellow); }
+  .mission { max-width: 28rem; margin: .75rem auto 0; padding: .75rem 1rem; background: var(--yellow-t); border: 3px solid var(--ink); border-radius: 1.25rem; text-align: left; }
+  .mission p { margin: 0; }
+  #mText { font-size: 1.3rem; font-weight: bold; }
+  .mrow { display: flex; align-items: center; gap: .75rem; margin-top: .5rem; }
+  #mFill { display: block; height: 100%; width: 0; background: var(--red); }
+  #badges { background: var(--red-t); }
+  .badges { grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); }
+  .badge { text-align: center; }
+  .badge svg { width: 3.5rem; height: 3.5rem; }
+  .badge strong { display: block; font-size: 1.2rem; }
+  .badge span, .badge small { display: block; overflow-wrap: anywhere; }
+  .badge.on { background: var(--yellow-t); }
+  .badge.off { border-style: dashed; color: var(--muted, #4a5a75); }
+  .badge.off svg { filter: grayscale(1); opacity: .55; }
+  .rcard { background: #fff; border: 3px solid var(--ink); border-radius: 1rem; padding: 1rem; font-size: 1.5rem; line-height: 1.5; min-height: 7rem; }
+  .scene { width: 100%; height: auto; display: block; border: 3px solid var(--ink); border-radius: 1rem; margin-bottom: .75rem; }
+  #reader { scroll-margin-top: 4.5rem; }
+  #grownups h3 { margin: 1rem 0 .25rem; }
+  #grownups ol, #grownups ul { padding-left: 1.3rem; margin: 0 0 .75rem; }
+  #grownups li { margin: .4rem 0; }
+  .tiles { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 .75rem; }
+  .tile { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border: 3px solid var(--ink); border-radius: .8rem; font-size: 1.6rem; box-shadow: 0 4px 0 var(--ink); }
+  .tile.c0 { background: var(--blue); }
+  .tile.c1 { background: var(--yellow); }
+  .tile.c2 { background: var(--red); }
+  .preview { border: 3px dashed var(--ink); border-radius: 1rem; padding: .6rem .8rem; margin: .25rem 0 .5rem; background: #fdfbf3; pointer-events: none; user-select: none; }
+  .pv-label { margin: 0 0 .25rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: #4a5a75; }
+  .pv-q { margin: 0 0 .5rem; }
+  .pv-msg { margin: .25rem 0 0; font-weight: bold; }
+  #grownups { background: var(--yellow-t); }
+  input[type=password] { font: inherit; width: 8rem; padding: .55rem .8rem; border: 3px solid var(--ink); border-radius: 1rem; background: #fff; color: var(--ink); letter-spacing: .3rem; }
+  select { font: inherit; width: 100%; max-width: 22rem; padding: .55rem .8rem; border: 3px solid var(--ink); border-radius: 1rem; background: #fff; color: var(--ink); }
+  #helpBtn { position: fixed; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); z-index: 15; display: flex; align-items: center; gap: .4rem; padding: .4rem 1rem .4rem .5rem; }
+  #helpBtn svg { width: 2.2rem; height: 2.2rem; }
+  #helpPanel { position: fixed; left: .75rem; right: .75rem; bottom: calc(.75rem + env(safe-area-inset-bottom, 0px)); max-width: 30rem; margin-left: auto; z-index: 18; max-height: 78vh; display: flex; flex-direction: column; background: #fff; border: 3px solid var(--ink); border-radius: 1.5rem; box-shadow: 0 6px 0 var(--ink); overflow: hidden; }
+  .hhead { display: flex; justify-content: space-between; align-items: center; padding: .6rem .8rem; background: var(--blue-t); border-bottom: 3px solid var(--ink); }
+  #helpLog { flex: 1; overflow-y: auto; padding: .75rem; display: flex; flex-direction: column; gap: .5rem; min-height: 6rem; }
+  .msg { padding: .6rem .8rem; border: 3px solid var(--ink); border-radius: 1rem; max-width: 92%; }
+  .msg.bot { background: var(--blue-t); align-self: flex-start; }
+  .msg.me { background: var(--yellow-t); align-self: flex-end; }
+  .msg .row { margin: .5rem 0 0; }
+  #helpQ { display: flex; flex-wrap: wrap; gap: .4rem; padding: .5rem .75rem; max-height: 8.5rem; overflow-y: auto; border-top: 3px solid var(--ink); }
+  #helpQ button { font: inherit; font-size: .95rem; padding: .35rem .8rem; border: 3px solid var(--ink); border-radius: 2rem; background: #fff; color: var(--ink); cursor: pointer; }
+  #helpQ .more { display: none; }
+  #helpQ.open .more { display: inline-block; }
+  #helpQ.open { max-height: 12rem; }
+  .hask { display: flex; gap: .5rem; padding: .6rem .75rem; border-top: 3px solid var(--ink); }
+  #helpIn { flex: 1; min-width: 0; max-width: none; }
+  #toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 20; max-width: 90%; padding: .7rem 1.2rem; background: var(--ink); color: #fff; border-radius: 2rem; font-weight: bold; text-align: center; opacity: 0; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  section.fold > h2 { cursor: pointer; margin: 0; }
+  section.fold > h2::after { content: "\2212"; margin-left: auto; font-size: 2rem; line-height: 1; }
+  section.fold.closed > h2::after { content: "+"; }
+  section.fold:not(.closed) > h2 { margin-bottom: .6rem; }
+  section.fold.closed > :not(h2) { display: none; }
+  #quiz, #upper, #trace, #grownups { background: var(--blue-t); }
+  #games, #lower, #phonics { background: var(--yellow-t); }
+  #books, #rhymes, #badges { background: var(--red-t); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="m-red" viewBox="0 0 100 100">
+    <path d="M22 38 L20 10 L44 26Z M78 38 L80 10 L56 26Z" fill="#d98a80" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="50" cy="58" r="38" fill="#d98a80" stroke="#2b3550" stroke-width="4"/>
+    <circle cx="37" cy="52" r="5" fill="#2b3550"/><circle cx="63" cy="52" r="5" fill="#2b3550"/>
+    <circle cx="50" cy="62" r="3.5" fill="#2b3550"/>
+    <path d="M42 68 Q50 77 58 68" fill="none" stroke="#2b3550" stroke-width="4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="m-blue" viewBox="0 0 100 100">
+    <circle cx="22" cy="26" r="13" fill="#86abd2" stroke="#2b3550" stroke-width="4"/>
+    <circle cx="78" cy="26" r="13" fill="#86abd2" stroke="#2b3550" stroke-width="4"/>
+    <circle cx="50" cy="56" r="38" fill="#86abd2" stroke="#2b3550" stroke-width="4"/>
+    <ellipse cx="50" cy="68" rx="17" ry="13" fill="#dce8f4" stroke="#2b3550" stroke-width="3"/>
+    <circle cx="37" cy="48" r="5" fill="#2b3550"/><circle cx="63" cy="48" r="5" fill="#2b3550"/>
+    <ellipse cx="50" cy="63" rx="5" ry="3.5" fill="#2b3550"/>
+    <path d="M44 72 Q50 78 56 72" fill="none" stroke="#2b3550" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="m-yellow" viewBox="0 0 100 100">
+    <path d="M42 22 Q44 6 50 4 Q56 6 58 22" fill="#ebd07a" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="50" cy="58" r="38" fill="#ebd07a" stroke="#2b3550" stroke-width="4"/>
+    <circle cx="36" cy="50" r="5" fill="#2b3550"/><circle cx="64" cy="50" r="5" fill="#2b3550"/>
+    <path d="M42 60 L58 60 L50 74Z" fill="#d98a80" stroke="#2b3550" stroke-width="3" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-hat" viewBox="0 0 100 100">
+    <path d="M24 72 Q24 22 50 22 Q76 22 76 72Z" fill="#d98a80" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="25" y="55" width="50" height="10" fill="#ebd07a" stroke="#2b3550" stroke-width="3"/>
+    <ellipse cx="50" cy="74" rx="44" ry="11" fill="#d98a80" stroke="#2b3550" stroke-width="4"/>
+  </symbol>
+  <symbol id="p-umb" viewBox="0 0 100 100">
+    <path d="M50 58 V84 Q50 94 40 92" fill="none" stroke="#2b3550" stroke-width="5" stroke-linecap="round"/>
+    <path d="M6 58 Q6 8 50 8 Q94 8 94 58 Q78 48 66 58 Q50 46 34 58 Q22 48 6 58Z" fill="#d98a80" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-rain" viewBox="0 0 100 100">
+    <path d="M20 8 l-6 16 M50 18 l-6 16 M80 6 l-6 16 M35 50 l-6 16 M65 56 l-6 16 M14 80 l-6 16 M86 82 l-6 16" fill="none" stroke="#4f7fb0" stroke-width="5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="p-puddle" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="60" rx="46" ry="14" fill="#86abd2" stroke="#2b3550" stroke-width="4"/>
+    <ellipse cx="50" cy="60" rx="20" ry="5" fill="none" stroke="#dce8f4" stroke-width="3"/>
+  </symbol>
+  <symbol id="p-cloud" viewBox="0 0 100 100">
+    <path d="M24 70 Q6 70 8 54 Q10 40 26 42 Q30 22 52 24 Q70 24 72 40 Q92 40 92 56 Q92 70 76 70Z" fill="#dce8f4" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-sun" viewBox="0 0 100 100">
+    <path d="M50 4 V16 M50 84 V96 M4 50 H16 M84 50 H96 M17 17 l8 8 M75 75 l8 8 M83 17 l-8 8 M25 75 l-8 8" stroke="#2b3550" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="24" fill="#ebd07a" stroke="#2b3550" stroke-width="4"/>
+  </symbol>
+  <symbol id="p-star" viewBox="0 0 100 100">
+    <polygon points="50,6 62,38 95,38 68,58 78,92 50,72 22,92 32,58 5,38 38,38" fill="#ebd07a" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-moon" viewBox="0 0 100 100">
+    <path d="M62 8 A42 42 0 1 0 92 68 A34 34 0 0 1 62 8Z" fill="#ebd07a" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-acacia" viewBox="0 0 100 100">
+    <path d="M50 96 V58 M50 66 L30 48 M50 62 L72 44" fill="none" stroke="#8a7a52" stroke-width="6" stroke-linecap="round"/>
+    <path d="M4 44 Q8 22 50 24 Q92 22 96 44 Q70 52 50 46 Q30 52 4 44Z" fill="#cfc784" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-matatu" viewBox="0 0 100 100">
+    <rect x="4" y="30" width="92" height="46" rx="10" fill="#86abd2" stroke="#2b3550" stroke-width="4"/>
+    <rect x="10" y="38" width="16" height="14" rx="3" fill="#dce8f4" stroke="#2b3550" stroke-width="3"/>
+    <rect x="30" y="38" width="16" height="14" rx="3" fill="#dce8f4" stroke="#2b3550" stroke-width="3"/>
+    <rect x="50" y="38" width="16" height="14" rx="3" fill="#dce8f4" stroke="#2b3550" stroke-width="3"/>
+    <path d="M72 38 H88 Q92 38 92 44 V52 H72Z" fill="#dce8f4" stroke="#2b3550" stroke-width="3" stroke-linejoin="round"/>
+    <rect x="4" y="58" width="92" height="8" fill="#ebd07a" stroke="#2b3550" stroke-width="3"/>
+    <circle cx="28" cy="78" r="10" fill="#2b3550"/><circle cx="28" cy="78" r="4" fill="#dce8f4"/>
+    <circle cx="72" cy="78" r="10" fill="#2b3550"/><circle cx="72" cy="78" r="4" fill="#dce8f4"/>
+  </symbol>
+  <symbol id="p-mandazi" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="72" rx="46" ry="12" fill="#fff" stroke="#2b3550" stroke-width="4"/>
+    <path d="M16 68 L32 40 L48 68Z" fill="#dcb45c" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M42 68 L58 36 L74 68Z" fill="#dcb45c" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M60 68 L76 42 L90 68Z" fill="#dcb45c" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="p-tembo" viewBox="0 0 100 100">
+    <rect x="30" y="68" width="12" height="24" rx="4" fill="#b4c4d8" stroke="#2b3550" stroke-width="4"/>
+    <rect x="66" y="68" width="12" height="24" rx="4" fill="#b4c4d8" stroke="#2b3550" stroke-width="4"/>
+    <ellipse cx="58" cy="58" rx="32" ry="24" fill="#b4c4d8" stroke="#2b3550" stroke-width="4"/>
+    <circle cx="28" cy="42" r="20" fill="#b4c4d8" stroke="#2b3550" stroke-width="4"/>
+    <ellipse cx="42" cy="46" rx="10" ry="14" fill="#d3dfec" stroke="#2b3550" stroke-width="3"/>
+    <path d="M16 50 Q4 62 10 80 Q12 86 18 82" fill="none" stroke="#b4c4d8" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="24" cy="38" r="3" fill="#2b3550"/>
+  </symbol>
+  <symbol id="p-twiga" viewBox="0 0 100 100">
+    <path d="M20 54 Q8 56 9 69" fill="none" stroke="#a88a3a" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="9" cy="71" r="3.5" fill="#c9845a" stroke="#2b3550" stroke-width="2"/>
+    <rect x="27" y="68" width="9" height="26" rx="4" fill="#ebd07a" stroke="#2b3550" stroke-width="3"/>
+    <rect x="39" y="70" width="9" height="24" rx="4" fill="#ebd07a" stroke="#2b3550" stroke-width="3"/>
+    <rect x="58" y="70" width="9" height="24" rx="4" fill="#ebd07a" stroke="#2b3550" stroke-width="3"/>
+    <rect x="70" y="68" width="9" height="26" rx="4" fill="#ebd07a" stroke="#2b3550" stroke-width="3"/>
+    <path d="M20 58 Q20 46 38 46 H66 Q82 46 82 58 Q82 72 66 72 H36 Q20 72 20 58Z" fill="#ebd07a" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M62 52 L70 16 L84 20 L80 54Z" fill="#ebd07a"/>
+    <path d="M62 52 L70 16 M84 20 L80 54" fill="none" stroke="#2b3550" stroke-width="4" stroke-linecap="round"/>
+    <path d="M68 16 Q66 6 80 7 L94 12 Q98 16 93 20 L83 24 Q70 26 68 16Z" fill="#ebd07a" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M76 7 V3 M85 8 V4" stroke="#2b3550" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="76" cy="2.5" r="2.2" fill="#2b3550"/><circle cx="85" cy="3.5" r="2.2" fill="#2b3550"/>
+    <ellipse cx="72" cy="13" rx="3.5" ry="2.5" fill="#d98a80" stroke="#2b3550" stroke-width="2"/>
+    <circle cx="86" cy="13" r="2.2" fill="#2b3550"/><circle cx="95" cy="16" r="1.3" fill="#2b3550"/>
+    <ellipse cx="34" cy="58" rx="5" ry="4" fill="#c9845a"/><ellipse cx="45" cy="64" rx="4" ry="3.5" fill="#c9845a"/><ellipse cx="55" cy="54" rx="5" ry="4" fill="#c9845a"/><ellipse cx="68" cy="62" rx="4" ry="3.5" fill="#c9845a"/>
+    <circle cx="73" cy="31" r="3.5" fill="#c9845a"/><circle cx="75" cy="43" r="3.5" fill="#c9845a"/>
+  </symbol>
+  <symbol id="p-chai" viewBox="0 0 100 100">
+    <path d="M34 34 Q28 26 34 18 M50 36 Q44 28 50 20 M66 34 Q60 26 66 18" fill="none" stroke="#8a93a8" stroke-width="4" stroke-linecap="round"/>
+    <path d="M72 52 Q94 52 92 66 Q90 80 70 78" fill="none" stroke="#2b3550" stroke-width="5" stroke-linecap="round"/>
+    <path d="M20 46 H74 V70 Q74 88 47 88 Q20 88 20 70Z" fill="#fff" stroke="#2b3550" stroke-width="4" stroke-linejoin="round"/>
+    <ellipse cx="47" cy="46" rx="27" ry="6" fill="#d9a066" stroke="#2b3550" stroke-width="3"/>
+  </symbol>
+</svg>
+
+<header><p style="margin:0 0 .5rem;text-align:left"><a href="../" style="color:var(--ink);font-weight:bold">&larr; KenyAI home</a> &nbsp;·&nbsp; <a href="../learn/" style="color:var(--ink);font-weight:bold">Learning path</a></p>
+  <div class="wrap">
+    <h1 aria-label="Jambo Letters"><span>Jambo</span> <span>Letters</span></h1>
+    <p>Karibu! Tracing, sounds, books and games for 5-year-olds.</p>
+    <div class="crew">
+      <figure><svg class="mh" aria-hidden="true"><use href="#m-blue"/></svg><figcaption>Bo</figcaption></figure>
+      <figure><svg class="mh" aria-hidden="true"><use href="#m-yellow"/></svg><figcaption>Pip</figcaption></figure>
+      <figure><svg class="mh" aria-hidden="true"><use href="#m-red"/></svg><figcaption>Rosie</figcaption></figure>
+    </div>
+    <a class="starbar" href="#badges" aria-label="My stars and badges">
+      <span id="starNum">&#9733; 0</span>
+      <span class="bar"><span id="starFill"></span></span>
+      <span class="small" id="starNext"></span>
+    </a>
+    <div class="mission" role="group" aria-label="Star mission">
+      <p class="small" id="mHead"></p>
+      <p id="mText"></p>
+      <div class="mrow"><span class="bar"><span id="mFill"></span></span><a class="btn" id="mGo" href="#quiz">Go!</a></div>
+    </div>
+  </div>
+</header>
+
+<nav aria-label="Sections">
+  <ul>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="#games">Games</a></li>
+    <li><a href="#books">Books</a></li>
+    <li><a href="#upper">ABC</a></li>
+    <li><a href="#lower">abc</a></li>
+    <li><a href="#rhymes">Rhymes</a></li>
+    <li><a href="#trace">Tracing</a></li>
+    <li><a href="#phonics">Phonics</a></li>
+    <li><a href="#badges">Badges</a></li>
+    <li><a href="#grownups">Grown-ups</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+
+  <section id="quiz">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-blue"/></svg>Quick check</h2>
+    <p>Answer 6 quick questions. It is not a grade.</p>
+    <p class="small" id="qProg"></p>
+    <p id="qText"></p>
+    <div class="row" id="qChoices"></div>
+    <div class="row">
+      <button class="btn" id="qHear" type="button">Hear the question</button>
+      <button class="btn" id="qStart" type="button">Start the quick check</button>
+    </div>
+    <div id="qRes" hidden></div>
+  </section>
+
+  <section id="games">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-yellow"/></svg>Literacy games</h2>
+    <ul class="list">
+      <li id="gameBox">
+        <h3>Safari Sound Match</h3>
+        <div class="preview" aria-hidden="true"><p class="pv-label">Preview</p><p class="pv-q">Which word starts with the letter M?</p><div class="row"><span class="btn qc">umbrella</span><span class="btn qc">Nairobi</span><span class="btn qc">matatu</span></div><p class="pv-msg">Safi! M is for matatu.</p></div>
+        <p class="small">See a letter, then tap the word that starts with it.</p>
+        <p id="gQ">Press Start to play.</p>
+        <div class="row" id="gChoices"></div>
+        <p id="gMsg" aria-live="polite"></p>
+        <div class="row"><button class="btn" id="gHear" type="button">Hear the letter</button><button class="btn" id="gNext" type="button">Start</button></div>
+        <p class="small" id="gScore">Stars: 0</p>
+      </li>
+      <li id="gRhyme"><h3>Soko Rhyme Match</h3>
+        <div class="preview" aria-hidden="true"><p class="pv-label">Preview</p><p class="pv-q">Which word rhymes with tea?</p><div class="row"><span class="btn qc">cow</span><span class="btn qc">bee</span><span class="btn qc">sun</span></div><p class="pv-msg">Safi! tea rhymes with bee.</p></div>
+        <p class="small">See a word, then tap the word that rhymes with it.</p><p class="gq">Press Start to play.</p><div class="row gc"></div><p class="gm" aria-live="polite"></p><div class="row"><button class="btn gh" type="button">Hear it</button><button class="btn gn" type="button">Start</button></div><p class="small gs">Stars: 0</p></li>
+      <li id="gPair"><h3>Letter Partners</h3>
+        <div class="preview" aria-hidden="true"><p class="pv-label">Preview</p><p class="pv-q">Find the little letter that goes with A.</p><div class="row"><span class="btn qc">d</span><span class="btn qc">a</span><span class="btn qc">m</span></div><p class="pv-msg">Safi! A and a are partners.</p></div>
+        <p class="small">See a big letter, then tap its little partner.</p><p class="gq">Press Start to play.</p><div class="row gc"></div><p class="gm" aria-live="polite"></p><div class="row"><button class="btn gh" type="button">Hear it</button><button class="btn gn" type="button">Start</button></div><p class="small gs">Stars: 0</p></li>
+    </ul>
+  </section>
+
+  <section id="books">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-red"/></svg>Books</h2>
+    <p>Pick a story to read. Tap Read to me to hear it.</p>
+    <ul class="list" id="bookList"></ul>
+    <div id="reader" hidden>
+      <h3 id="rTitle"></h3>
+      <div id="rArt"></div>
+      <p class="rcard" id="rPage"></p>
+      <p class="small" id="rNum"></p>
+      <div class="row">
+        <button class="btn" id="rBack" type="button">Back</button>
+        <button class="btn" id="rHear" type="button">Read to me</button>
+        <button class="btn" id="rNext" type="button">Next</button>
+      </div>
+      <button class="btn" id="rClose" type="button">Close book</button>
+    </div>
+  </section>
+
+  <section id="upper">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-blue"/></svg>Uppercase letters</h2>
+    <p>Tap a letter to pick it.</p>
+    <div class="grid" id="gridU"></div>
+    <a class="btn" href="#trace">Trace this letter</a>
+  </section>
+
+  <section id="lower">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-yellow"/></svg>Lowercase letters</h2>
+    <p>Tap a letter to pick it.</p>
+    <div class="grid" id="gridL"></div>
+    <a class="btn" href="#trace">Trace this letter</a>
+  </section>
+
+  <section id="rhymes">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-red"/></svg>Rhymes</h2>
+    <p>Tap Hear it to listen to each rhyme.</p>
+    <ul class="list">
+      <li><h3>Twiga, Twiga</h3><p class="rhyme">Twiga, twiga, tall, tall, tall,<br>You can see us one and all.<br>Munch on leaves up in the tree,<br>What a view for you to see!</p><button class="btn rh" type="button">Hear it</button></li>
+      <li><h3>Beep, Beep, Matatu</h3><p class="rhyme">Painted red and gold and blue,<br>Here comes the matatu, beep, beep, beep!<br>Hop on board, there is room for you,<br>Rolling past the hills so steep!</p><button class="btn rh" type="button">Hear it</button></li>
+      <li><h3>At the Soko</h3><p class="rhyme">One, two, a mango for you,<br>Three, four, bananas galore,<br>Five, six, a pawpaw to pick,<br>Seven, eight, mandazi on a plate,<br>Nine, ten, let us shop again!</p><button class="btn rh" type="button">Hear it</button></li>
+      <li><h3>Lala Salama, Tembo</h3><p class="rhyme">Lala salama, little tembo,<br>The sun has gone to bed.<br>The stars are shining softly,<br>Rest your big, sleepy head.<br>Lala salama, little twiga,<br>The moon is bright and high.<br>The savanna is so quiet,<br>Close your eyes. Good night.</p><button class="btn rh" type="button">Hear it</button></li>
+    </ul>
+  </section>
+
+  <section id="trace">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-blue"/></svg>Tracing center</h2>
+    <p id="now">Trace the letter: A</p>
+    <div class="stage">
+      <canvas id="guide" aria-hidden="true"></canvas>
+      <canvas id="draw" role="img" aria-label="Tracing area. Draw with your finger."></canvas>
+    </div>
+    <p id="tMsg" class="gm" aria-live="polite"></p>
+    <div class="row"><button class="btn" id="check" type="button">Check my tracing</button><button class="btn" id="clear" type="button">Start over</button></div>
+    <div id="nextBox" class="big" hidden>
+      <strong id="nextLetter"></strong>
+      <div>
+        <p id="nextTxt"></p>
+        <div class="row"><button class="btn" id="nextHear" type="button">Hear it</button><button class="btn" id="nextBtn" type="button">Trace it</button></div>
+      </div>
+    </div>
+    <label for="nameIn">Trace a name (up to 10 letters)</label>
+    <div class="row">
+      <input id="nameIn" type="text" maxlength="10" autocomplete="off" autocapitalize="words" spellcheck="false">
+      <button class="btn" id="nameBtn" type="button">Trace name</button>
+    </div>
+    <p>Grown-ups: pick a letter, then let your child trace it with a finger, starting at the red dot and following the dotted outline. Tap &ldquo;Check my tracing&rdquo; or wait a moment to see feedback. Great tracing unlocks the next letter. Names you type stay on this page and are not saved.</p>
+  </section>
+
+  <section id="phonics">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-yellow"/></svg>Phonics</h2>
+    <p>Pick a letter to learn its sound.</p>
+    <div class="grid" id="gridP"></div>
+    <div class="big">
+      <strong id="phLetter">Aa</strong>
+      <div>
+        <p id="phNote">[Write the sound for A and an example word.]</p>
+        <div class="row"><button class="btn" id="hear" type="button">Hear the letter</button><button class="btn" id="hearW" type="button">Hear the word</button></div>
+      </div>
+    </div>
+
+  </section>
+
+  <section id="badges">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-red"/></svg>My badges</h2>
+    <p>Finish star missions to win bonus stars and badges.</p>
+    <ul class="list badges" id="badgeGrid"></ul>
+  </section>
+
+  <section id="grownups">
+    <h2><svg class="mm" aria-hidden="true"><use href="#m-blue"/></svg>For grown-ups</h2>
+    <h3>Start with these letters</h3>
+    <div class="tiles" role="img" aria-label="Letters to start with: s, a, t, i, p, n"><span class="tile c0">s</span><span class="tile c1">a</span><span class="tile c2">t</span><span class="tile c0">i</span><span class="tile c1">p</span><span class="tile c2">n</span></div>
+    <p>The tracing center teaches letters in this order, starting with s, a, t, i, p, n. These letters make easy words, so your child can read real words quickly: sat, sit, tap, tip, pin, pan, nap, nip, sip. Then add c, k, e, h, r, m, d, and carry on from there.</p>
+    <p><a class="btn" id="tipStart" href="#trace">Start tracing s</a></p>
+    <h3>For each new letter</h3>
+    <ol>
+      <li><strong>Listen.</strong> In Phonics, pick the letter. Tap Hear the letter and Hear the word, and say the sound together.</li>
+      <li><strong>Trace.</strong> In the tracing center, follow the red dots and arrows. Say the steps out loud, like "a round circle, then a line down."</li>
+      <li><strong>Find it.</strong> Look for the letter in a book or around the house, and say its sound.</li>
+      <li><strong>Play.</strong> Try Safari Sound Match, and take the quick check every few days to see what to practice.</li>
+    </ol>
+    <h3>Good habits</h3>
+    <ul>
+      <li>Keep it short. Five to ten minutes a day is plenty, so stop while it is still fun.</li>
+      <li>Teach the sound first, then the letter's name. Say sounds short and clear.</li>
+      <li>Begin with lowercase letters, because most words in books use them. Add capitals when your child is ready, starting with the first letter of their name.</li>
+      <li>Praise effort, not perfect tracing. If it is tricky, tap Start over and try again together.</li>
+      <li>Read aloud together every day. Use Read to me, then read the page again and point to the words. Ask which words rhyme.</li>
+      <li>Use your home language too. Talk about sounds and words in Swahili, English or your mother tongue.</li>
+      <li>After tracing on the screen, try writing the letter in the air, in sand or on paper.</li>
+    </ul>
+    <h3>Settings (PIN needed)</h3>
+    <div id="gaLock">
+      <p id="gaMsg"></p>
+      <div class="row"><input id="gaPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="4-digit PIN"><button class="btn" id="gaGo" type="button">Unlock</button></div>
+      <p class="small" id="gaErr"></p>
+      <p class="small">Forgot your PIN? Clear this site's data in your browser settings. This also resets stars and missions.</p>
+    </div>
+    <div id="gaBody" hidden>
+    <p>Voice: the page reads aloud in English. It looks for a Kenyan English voice first, then the closest one on this device. You can pick a different voice here.</p>
+    <select id="voiceSel" aria-label="Voice"></select>
+    <div class="row" style="margin-top:.75rem"><button class="btn" id="voiceTest" type="button">Test voice</button></div>
+    <p class="small" id="voiceNote"></p>
+    <p class="small">Stars and missions are saved on this device only.</p>
+    <button class="btn" id="resetStars" type="button">Reset my stars</button>
+    <p class="small" style="margin-top:.75rem">Change PIN (4 numbers):</p>
+    <div class="row"><input id="gaNew" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="New 4-digit PIN"><button class="btn" id="gaSave" type="button">Save new PIN</button></div>
+    <button class="btn" id="gaLockBtn" type="button">Lock</button>
+    </div>
+  </section>
+
+</main>
+
+<button class="btn" id="helpBtn" type="button" aria-label="Help"><svg aria-hidden="true"><use href="#m-blue"/></svg>Help</button>
+<div id="helpPanel" role="dialog" aria-label="Help chat" hidden>
+  <div class="hhead"><strong>Ask Bo</strong><button class="btn" id="helpClose" type="button">Close</button></div>
+  <div id="helpLog" aria-live="polite"></div>
+  <div id="helpQ"></div>
+  <div class="hask"><input id="helpIn" type="text" maxlength="80" placeholder="Type a question" autocomplete="off" aria-label="Type a question"><button class="btn" id="helpAsk" type="button">Ask</button></div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<footer>
+  <div class="wrap">Thank you! Made for STEMnovation.</div>
+</footer>
+
+<script>
+(function () {
+  var ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  var cur = "s", guide = "s";
+  var ORDER = "satipnckehrmdgoulfbjzwvyxq".split(""), nextCh = null;
+  var BADGES = [[5, "Jambo", "Hello!"], [15, "Safi", "Great!"], [30, "Hongera", "Well done!"], [50, "Shujaa", "Hero!"], [80, "Bingwa", "Champion!"]];
+  var MASC = ["m-blue", "m-yellow", "m-red"], myStars = 0, gotTrace = {}, toastT = null;
+  try { myStars = parseInt(localStorage.getItem("jlStars"), 10) || 0; } catch (e) {}
+  var MISSIONS = [
+    ["Take the quick check", "quiz", 1, 5, "#quiz"],
+    ["Win 3 game rounds", "game", 3, 3, "#games"],
+    ["Read 1 book", "book", 1, 3, "#books"],
+    ["Trace 1 letter", "trace", 1, 3, "#trace"],
+    ["Trace 3 more letters", "trace", 3, 5, "#trace"],
+    ["Win 5 game rounds", "game", 5, 5, "#games"]
+  ];
+  var mi = 0, mp = 0;
+  try { var ms = JSON.parse(localStorage.getItem("jlMission") || "{}"); mi = ms.i || 0; mp = ms.p || 0; } catch (e) {}
+  function saveM() { try { localStorage.setItem("jlMission", JSON.stringify({ i: mi, p: mp })); } catch (e) {} }
+  function renderMission() {
+    var m = MISSIONS[mi], go = document.getElementById("mGo");
+    document.getElementById("mHead").textContent = m ? "Star mission " + (mi + 1) + " of " + MISSIONS.length + " \u2013 win " + m[3] + " bonus stars" : "All star missions done!";
+    document.getElementById("mText").textContent = m ? m[0] + " (" + mp + "/" + m[2] + ")" : "Hongera! You are a Bingwa!";
+    document.getElementById("mFill").style.width = m ? Math.round(mp / m[2] * 100) + "%" : "100%";
+    go.hidden = !m;
+    if (m) go.setAttribute("href", m[4]);
+  }
+  function missionEvent(type) {
+    var m = MISSIONS[mi];
+    if (!m || m[1] !== type) return;
+    mp++;
+    if (mp >= m[2]) {
+      mi++;
+      mp = 0;
+      saveM();
+      renderMission();
+      addStars(m[3], "Mission complete! ");
+    } else {
+      saveM();
+      renderMission();
+    }
+  }
+  function toast(t) {
+    var el = document.getElementById("toast");
+    el.textContent = t;
+    el.classList.add("show");
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+  function renderStars() {
+    var next = null, prev = 0, i;
+    for (i = 0; i < BADGES.length; i++) {
+      if (BADGES[i][0] > myStars) { next = BADGES[i]; break; }
+      prev = BADGES[i][0];
+    }
+    document.getElementById("starNum").textContent = "\u2605 " + myStars;
+    document.getElementById("starFill").style.width = (next ? Math.round((myStars - prev) / (next[0] - prev) * 100) : 100) + "%";
+    document.getElementById("starNext").textContent = next ? "Next badge: " + next[1] + " at " + next[0] + " stars" : "All badges won! Hongera!";
+    document.getElementById("badgeGrid").innerHTML = BADGES.map(function (b, n) {
+      var on = myStars >= b[0];
+      return '<li class="badge ' + (on ? "on" : "off") + '"><svg aria-hidden="true"><use href="#' + MASC[n % 3] + '"/></svg><strong>' + b[1] + "</strong><span>" + b[2] + "</span><br><small>" + (on ? "Won!" : "Win at " + b[0] + " stars") + "</small></li>";
+    }).join("");
+  }
+  function addStars(n, pre) {
+    var before = myStars, msg = "\u2605 +" + n + (n > 1 ? " stars!" : " star!");
+    myStars += n;
+    try { localStorage.setItem("jlStars", String(myStars)); } catch (e) {}
+    BADGES.forEach(function (b) { if (before < b[0] && myStars >= b[0]) msg = "New badge: " + b[1] + " (" + b[2] + ")"; });
+    renderStars();
+    toast((pre || "") + msg);
+  }
+  var segs = [], timer = null, gfont = "", gfs = 0, strokes = [];
+  var SND = "a,b,k,d,e,f,g,h,i,j,k,l,m,n,o,p,kw,r,s,t,u,v,w,ks,y,z".split(",");
+  var WORDS = "ant,banana,cow,drum,elephant,fish,goat,hippo,impala,jackal,kite,lion,matatu,Nairobi,ostrich,pawpaw,queen,rhino,sun,tea,umbrella,van,warthog,x-ray,yam,zebra".split(",");
+  var UP = "clrlllrlcollllololrcllllll", LO = "rlrrmorlcclcllolrlrcllllll";
+  var START = { l: [0, 0], c: [.5, 0], r: [.85, .2], o: [.65, .05], m: [0, .5] };
+  var VOICE = null, voices = [], lastU = null, unlocked = false;
+  function say(t) {
+    var ss = window.speechSynthesis;
+    if (!ss || typeof SpeechSynthesisUtterance === "undefined") {
+      toast("Reading aloud is not available in this browser. Try Chrome or Safari.");
+      return;
+    }
+    try {
+      var u = new SpeechSynthesisUtterance(t);
+      u.rate = 0.8;
+      if (VOICE) { u.voice = VOICE; u.lang = VOICE.lang; } else { u.lang = "en"; }
+      lastU = u;
+      var go = function () { try { ss.resume(); ss.speak(u); } catch (e) {} };
+      if (ss.speaking || ss.pending) { ss.cancel(); setTimeout(go, 80); } else { go(); }
+    } catch (err) {}
+  }
+  function unlockSpeech() {
+    if (unlocked) return;
+    unlocked = true;
+    try {
+      var ss = window.speechSynthesis;
+      if (!ss || typeof SpeechSynthesisUtterance === "undefined") return;
+      var u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      ss.speak(u);
+    } catch (e) {}
+  }
+  ["pointerdown", "touchstart", "click", "keydown"].forEach(function (ev) {
+    document.addEventListener(ev, unlockSpeech, { once: true, capture: true });
+  });
+  var gc = document.getElementById("guide"), dc = document.getElementById("draw");
+  var g = gc.getContext("2d"), d = dc.getContext("2d");
+
+  function buildGrid(id, lower, mini) {
+    var box = document.getElementById(id);
+    ALPHA.forEach(function (L, i) {
+      var ch = lower ? L.toLowerCase() : L;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "block c" + (i % 3) + (mini ? " mini" : "");
+      b.textContent = ch;
+      b.setAttribute("aria-label", (lower ? "Lowercase " : "Uppercase ") + L);
+      b.addEventListener("click", function () { pick(ch); });
+      box.appendChild(b);
+    });
+  }
+
+  var GLYPHS = {"a":["A .5 1.5 .5 .5 -70 -430|M 1 1 L 1 2","Stroke 1: draw a round circle, like a magic c. Stroke 2: draw a straight line down on the right side."],"b":["M 0 0 L 0 2|M 0 1.5 A .5 1.5 .5 .5 180 540","Stroke 1: draw a long line down. Stroke 2: start in the middle of the line and draw a circle around to the right."],"c":["A .5 1.5 .5 .5 -45 -315","Draw a magic c: start near the middle line, curve around to the left and finish at the bottom."],"d":["A .5 1.5 .5 .5 -70 -430|M 1 0 L 1 2","Stroke 1: draw a round circle, like a magic c. Stroke 2: draw a tall straight line down on the right side."],"e":["M 0 1.5 L 1 1.5 A .5 1.5 .5 .5 0 -315","Draw a line across the middle, then curve up and around like a magic c."],"f":["M .8 .35 A .55 .35 .25 .35 0 -180 L .3 2|M 0 1 L .7 1","Stroke 1: curve up and over, then go straight down. Stroke 2: draw a short line across the middle."],"g":["A .5 1.5 .5 .5 -70 -430|M 1 1 L 1 2.5 A .6 2.5 .4 .5 0 135","Stroke 1: draw a round circle, like a magic c. Stroke 2: draw a line down on the right side and curve it to the left below the line."],"h":["M 0 0 L 0 2|M 0 1.5 A .5 1.5 .5 .5 180 360 L 1 2","Stroke 1: draw a long line down. Stroke 2: start in the middle, go up over a hill and straight down."],"i":["M .5 1 L .5 2|M .5 .55 L .5 .56","Stroke 1: draw a short line down. Stroke 2: put a dot on top."],"j":["M .5 1 L .5 2.5 A .15 2.5 .35 .5 0 135|M .5 .55 L .5 .56","Stroke 1: draw a line down and curve it to the left. Stroke 2: put a dot on top."],"k":["M 0 0 L 0 2|M .8 1 L 0 1.6|M .2 1.45 L .85 2","Stroke 1: draw a long line down. Stroke 2: draw a slanting line in to the middle. Stroke 3: draw a slanting line out to the bottom."],"l":["M .5 0 L .5 2","Draw a long line straight down."],"m":["M 0 1 L 0 2|M 0 1.35 A .35 1.35 .35 .35 180 360 L .7 2|M .7 1.35 A 1.05 1.35 .35 .35 180 360 L 1.4 2","Stroke 1: draw a short line down. Stroke 2: go up and over a hill, then down. Stroke 3: go up and over another hill, then down."],"n":["M 0 1 L 0 2|M 0 1.45 A .45 1.45 .45 .45 180 360 L .9 2","Stroke 1: draw a short line down. Stroke 2: go up and over a hill, then straight down."],"o":["A .5 1.5 .5 .5 -70 -430","Draw a round circle, like a magic c all the way around."],"p":["M 0 1 L 0 3|M 0 1.5 A .5 1.5 .5 .5 180 540","Stroke 1: draw a line down, past the bottom line. Stroke 2: start in the middle of the line and draw a circle around to the right."],"q":["A .5 1.5 .5 .5 -70 -430|M 1 1 L 1 3","Stroke 1: draw a round circle, like a magic c. Stroke 2: draw a line down on the right side, past the bottom line."],"r":["M 0 1 L 0 2|M 0 1.5 A .4 1.5 .4 .5 180 300","Stroke 1: draw a short line down. Stroke 2: start in the middle and curve up and over to the right."],"s":["A .5 1.25 .45 .25 -30 -270 A .5 1.75 .45 .25 -90 150","Draw a curvy snake: start at the top right, curve to the left, then curve back to the right and finish at the bottom."],"t":["M .5 .35 L .5 2|M .1 1 L .9 1","Stroke 1: draw a line down. Stroke 2: draw a short line across."],"u":["M 0 1 L 0 1.55 A .45 1.55 .45 .45 180 0|M .9 1 L .9 2","Stroke 1: draw down, curve around the bottom and go up. Stroke 2: draw a short line down on the right side."],"v":["M 0 1 L .45 2 L .9 1","Draw a line down to a point, then up again."],"w":["M 0 1 L .35 2 L .7 1 L 1.05 2 L 1.4 1","Draw down, up, down, up, to make two points."],"x":["M 0 1 L .9 2|M .9 1 L 0 2","Stroke 1: draw a slanting line down to the right. Stroke 2: draw a slanting line down to the left."],"y":["M 0 1 L .45 2|M .9 1 L .25 3","Stroke 1: draw a short slanting line down. Stroke 2: draw a long slanting line down, past the bottom line."],"z":["M 0 1 L .9 1 L 0 2 L .9 2","Draw a line across, slant down to the left, then draw a line across the bottom."],"A":["M .6 0 L 0 2|M .6 0 L 1.2 2|M .25 1.3 L .95 1.3","Stroke 1: slant down to the left. Stroke 2: slant down to the right. Stroke 3: draw a line across the middle."],"B":["M 0 0 L 0 2|M 0 0 L .5 0 A .5 .5 .5 .5 -90 90 L 0 1|M 0 1 L .55 1 A .55 1.5 .55 .5 -90 90 L 0 2","Stroke 1: draw a line down. Stroke 2: draw a bump at the top. Stroke 3: draw a bump at the bottom."],"C":["A .6 1 .6 1 -40 -320","Draw a big magic c: start near the top, curve around to the left and down."],"D":["M 0 0 L 0 2|M 0 0 L .4 0 A .4 1 .7 1 -90 90 L 0 2","Stroke 1: draw a line down. Stroke 2: start at the top and curve around to the bottom."],"E":["M 0 0 L 0 2|M 0 0 L 1 0|M 0 1 L .8 1|M 0 2 L 1 2","Stroke 1: draw a line down. Strokes 2, 3 and 4: draw lines across the top, the middle and the bottom."],"F":["M 0 0 L 0 2|M 0 0 L 1 0|M 0 1 L .8 1","Stroke 1: draw a line down. Stroke 2: draw a line across the top. Stroke 3: draw a short line across the middle."],"G":["A .6 1 .6 1 -40 -350|M .65 1.05 L 1.15 1.05","Stroke 1: draw a big magic c. Stroke 2: draw a short line across the middle."],"H":["M 0 0 L 0 2|M 1 0 L 1 2|M 0 1 L 1 1","Stroke 1: draw a line down. Stroke 2: draw another line down. Stroke 3: draw a line across the middle."],"I":["M .3 0 L .3 2","Draw a straight line down."],"J":["M .8 0 L .8 1.5 A .45 1.5 .35 .5 0 150","Draw a line down and curve it to the left at the bottom."],"K":["M 0 0 L 0 2|M 1 0 L 0 1.05|M .3 .8 L 1 2","Stroke 1: draw a line down. Stroke 2: slant in to the middle. Stroke 3: slant out to the bottom."],"L":["M 0 0 L 0 2|M 0 2 L .9 2","Stroke 1: draw a line down. Stroke 2: draw a line across the bottom."],"M":["M 0 0 L 0 2|M 0 0 L .6 1.5 L 1.2 0|M 1.2 0 L 1.2 2","Stroke 1: draw a line down. Stroke 2: slant down to the middle, then up to the top. Stroke 3: draw a line down."],"N":["M 0 0 L 0 2|M 0 0 L 1 2|M 1 2 L 1 0","Stroke 1: draw a line down. Stroke 2: slant down to the bottom right. Stroke 3: draw a line up."],"O":["A .6 1 .6 1 -70 -430","Draw a big circle, like a magic c all the way around."],"P":["M 0 0 L 0 2|M 0 0 L .5 0 A .5 .55 .5 .55 -90 90 L 0 1.1","Stroke 1: draw a line down. Stroke 2: draw a bump at the top."],"Q":["A .6 1 .6 1 -70 -430|M .7 1.5 L 1.1 2.1","Stroke 1: draw a big circle. Stroke 2: draw a little slanting line at the bottom."],"R":["M 0 0 L 0 2|M 0 0 L .5 0 A .5 .55 .5 .55 -90 90 L 0 1.1|M .45 1.1 L 1 2","Stroke 1: draw a line down. Stroke 2: draw a bump at the top. Stroke 3: slant out to the bottom."],"S":["A .5 .5 .5 .5 -30 -270 A .5 1.5 .55 .5 -90 150","Draw a big curvy snake: curve to the left, then curve back to the right."],"T":["M .6 0 L .6 2|M 0 0 L 1.2 0","Stroke 1: draw a line down. Stroke 2: draw a line across the top."],"U":["M 0 0 L 0 1.45 A .55 1.45 .55 .55 180 0 L 1.1 0","Draw down, curve around the bottom, and go back up."],"V":["M 0 0 L .6 2 L 1.2 0","Draw a line down to a point, then up again."],"W":["M 0 0 L .4 2 L .8 0 L 1.2 2 L 1.6 0","Draw down, up, down, up, to make two points."],"X":["M 0 0 L 1.1 2|M 1.1 0 L 0 2","Stroke 1: slant down to the right. Stroke 2: slant down to the left."],"Y":["M 0 0 L .55 1.05|M 1.1 0 L .55 1.05 L .55 2","Stroke 1: slant down to the middle. Stroke 2: slant down to the middle, then straight down."],"Z":["M 0 0 L 1 0 L 0 2 L 1 2","Draw a line across the top, slant down to the left, then draw a line across the bottom."]};
+  function parsePath(str) {
+    var t = str.split(/\s+/), i = 0, pts = [], cmd, k, n, a;
+    while (i < t.length) {
+      cmd = t[i++];
+      if (cmd === "M" || cmd === "L") { pts.push([+t[i], +t[i + 1]]); i += 2; }
+      else if (cmd === "A") {
+        var cx = +t[i], cy = +t[i + 1], rx = +t[i + 2], ry = +t[i + 3], a0 = +t[i + 4], a1 = +t[i + 5];
+        i += 6;
+        n = Math.max(6, Math.ceil(Math.abs(a1 - a0) / 10));
+        for (k = 0; k <= n; k++) { a = (a0 + (a1 - a0) * k / n) * Math.PI / 180; pts.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]); }
+      } else i++;
+    }
+    return pts;
+  }
+  function layoutLine(chars) {
+    var x = 0, polys = [];
+    chars.forEach(function (c, n) {
+      var ps = GLYPHS[c][0].split("|").map(parsePath), mn = 1e9, mx = -1e9;
+      ps.forEach(function (p) { p.forEach(function (q) { mn = Math.min(mn, q[0]); mx = Math.max(mx, q[0]); }); });
+      ps.forEach(function (p) { polys.push(p.map(function (q) { return [q[0] - mn + x, q[1]]; })); });
+      x += mx - mn + 0.45;
+    });
+    return { polys: polys, width: x - 0.45 };
+  }
+  function glyphPolys(str, w, h) {
+    var chars = str.split("");
+    if (!chars.length || chars.some(function (c) { return !GLYPHS[c]; })) return null;
+    var L1 = layoutLine(chars), s = Math.min(h / 3.6, w * 0.9 / L1.width), lines = [L1], rows = 1, pitch = 3.4, k, best = null, m;
+    if (chars.length > 1 && s < 41) {
+      for (k = 1; k < chars.length; k++) {
+        var A = layoutLine(chars.slice(0, k)), B = layoutLine(chars.slice(k));
+        m = Math.max(A.width, B.width);
+        if (!best || m < best.m) best = { a: A, b: B, m: m };
+      }
+      var s2 = Math.min(h / 6.7, w * 0.9 / best.m);
+      if (s2 > s) { lines = [best.a, best.b]; s = s2; rows = 2; }
+    }
+    var oy = (h - (3 + (rows - 1) * pitch) * s) / 2, polys = [];
+    lines.forEach(function (L, r) {
+      var ox = w / 2 - L.width * s / 2, yo = oy + r * pitch * s;
+      L.polys.forEach(function (p) { polys.push(p.map(function (q) { return [ox + q[0] * s, yo + q[1] * s]; })); });
+    });
+    return { s: s, oy: oy, rows: rows, pitch: pitch, polys: polys, band: Math.max(0.3 * s, 12), zone: Math.max(0.55 * s, 28), reach: Math.max(0.55 * s, 36), core: Math.max(0.12 * s, 4) };
+  }
+  function polyLen(p) { var l = 0, i; for (i = 1; i < p.length; i++) l += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return l; }
+  function pointAt(p, f) {
+    var want = polyLen(p) * f, acc = 0, i, d, t;
+    for (i = 1; i < p.length; i++) {
+      d = Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
+      if (acc + d >= want) { t = d ? (want - acc) / d : 0; return [p[i - 1][0] + (p[i][0] - p[i - 1][0]) * t, p[i - 1][1] + (p[i][1] - p[i - 1][1]) * t]; }
+      acc += d;
+    }
+    return p[p.length - 1];
+  }
+  function pathPolys(x, polys) {
+    x.beginPath();
+    polys.forEach(function (p) {
+      x.moveTo(p[0][0], p[0][1]);
+      for (var i = 1; i < p.length; i++) x.lineTo(p[i][0], p[i][1]);
+    });
+  }
+  function drawGlyph(G, w) {
+    var s = G.s, dots = [], rad = Math.max(8, Math.min(11, 0.2 * s + 3));
+    function arrow(p) {
+      if (polyLen(p) < 0.4 * s) return;
+      var m = pointAt(p, 0.5), m2 = pointAt(p, 0.53), ang = Math.atan2(m2[1] - m[1], m2[0] - m[0]);
+      g.save();
+      g.translate(m[0], m[1]);
+      g.rotate(ang);
+      g.beginPath();
+      g.moveTo(10, 0);
+      g.lineTo(-6, -8);
+      g.lineTo(-6, 8);
+      g.closePath();
+      g.fillStyle = "#2b3550";
+      g.fill();
+      g.restore();
+    }
+    g.setLineDash([6, 8]);
+    g.lineWidth = 2;
+    g.strokeStyle = "#b9c6d8";
+    g.beginPath();
+    for (var r = 0; r < G.rows; r++) { [0, 1, 2].forEach(function (i) { var y = G.oy + (r * G.pitch + i) * s; g.moveTo(10, y); g.lineTo(w - 10, y); }); }
+    g.stroke();
+    g.setLineDash([]);
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    pathPolys(g, G.polys);
+    g.lineWidth = G.band;
+    g.strokeStyle = "#f1ece0";
+    g.stroke();
+    g.setLineDash([2, 12]);
+    g.lineWidth = 4;
+    g.strokeStyle = "#7d879e";
+    pathPolys(g, G.polys);
+    g.stroke();
+    g.setLineDash([]);
+    G.polys.forEach(arrow);
+    G.polys.forEach(function (p, i) {
+      var x = p[0][0], y = p[0][1], q = pointAt(p, 0.15), ang = Math.atan2(q[1] - y, q[0] - x), tries = 0;
+      while (tries < 3 && dots.some(function (d) { return Math.hypot(d[0] - x, d[1] - y) < rad * 2 + 2; })) { x += Math.cos(ang) * (rad * 2 + 4); y += Math.sin(ang) * (rad * 2 + 4); tries++; }
+      dots.push([x, y]);
+      g.beginPath();
+      g.arc(x, y, rad, 0, Math.PI * 2);
+      g.fillStyle = "#d98a80";
+      g.fill();
+      g.lineWidth = 2.5;
+      g.strokeStyle = "#2b3550";
+      g.stroke();
+      g.fillStyle = "#2b3550";
+      g.font = "bold " + Math.round(rad + 3) + "px Arial, sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(String(i + 1), x, y + 1);
+    });
+  }
+
+  function drawGuide() {
+    var w = gc.clientWidth, h = gc.clientHeight, fs = h * 0.85;
+    var font = function (s) { return "bold " + s + "px 'Arial Rounded MT Bold', 'Trebuchet MS', Verdana, sans-serif"; };
+    g.clearRect(0, 0, w, h);
+    g.font = font(fs);
+    var m = g.measureText(guide).width;
+    if (m > w * 0.92) { fs = fs * w * 0.92 / m; g.font = font(fs); }
+    gfont = g.font;
+    gfs = fs;
+    var G = glyphPolys(guide, w, h);
+    if (G) { drawGlyph(G, w); return; }
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = "#f1ece0";
+    g.fillText(guide, w / 2, h / 2);
+    g.setLineDash([2, 12]);
+    g.lineWidth = 4;
+    g.lineCap = "round";
+    g.strokeStyle = "#7d879e";
+    g.strokeText(guide, w / 2, h / 2);
+  }
+
+  function size() {
+    segs = [];
+    strokes = [];
+    var r = gc.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    [gc, dc].forEach(function (c) {
+      c.width = Math.round(r.width * dpr);
+      c.height = Math.round(r.height * dpr);
+    });
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    d.lineWidth = 14;
+    d.lineCap = "round";
+    d.lineJoin = "round";
+    d.strokeStyle = "#4f7fb0";
+    drawGuide();
+  }
+
+  function clearDraw() {
+    d.clearRect(0, 0, dc.clientWidth, dc.clientHeight);
+    segs = [];
+    strokes = [];
+    clearTimeout(timer);
+    document.getElementById("tMsg").textContent = "";
+    document.getElementById("nextBox").hidden = true;
+  }
+
+  function soundNote(U) {
+    var i = ALPHA.indexOf(U);
+    return U === "X" ? "X makes the sound /ks/, like at the end of box." : U + " makes the sound /" + SND[i] + "/, like in " + WORDS[i] + ".";
+  }
+
+  function showNext() {
+    if (guide.length !== 1) return;
+    var k = ORDER.indexOf(guide.toLowerCase()), up = guide === guide.toUpperCase();
+    if (k < 0) return;
+    var last = k === ORDER.length - 1;
+    nextCh = last ? null : (up ? ORDER[k + 1].toUpperCase() : ORDER[k + 1]);
+    document.getElementById("nextLetter").textContent = last ? "\u2605" : nextCh;
+    document.getElementById("nextTxt").textContent = last ? "You traced every letter! Amazing!" : "Meet the next letter! " + soundNote(nextCh.toUpperCase());
+    document.getElementById("nextHear").hidden = last;
+    document.getElementById("nextBtn").hidden = last;
+    document.getElementById("nextBox").hidden = false;
+  }
+
+  function traceScore() {
+    var w = gc.clientWidth, h = gc.clientHeight, S = 0.3, G = glyphPolys(guide, w, h);
+    function mk() {
+      var c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w * S));
+      c.height = Math.max(1, Math.round(h * S));
+      var x = c.getContext("2d");
+      x.setTransform(S, 0, 0, S, 0, 0);
+      x.lineCap = "round";
+      x.lineJoin = "round";
+      x.font = gfont;
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+      x.fillStyle = "#000";
+      x.strokeStyle = "#000";
+      return x;
+    }
+    function ink(x, lw) {
+      x.lineWidth = lw;
+      segs.forEach(function (q) { x.beginPath(); x.moveTo(q[0], q[1]); x.lineTo(q[2], q[3]); x.stroke(); });
+    }
+    function px(x) { var c = x.canvas; return x.getImageData(0, 0, c.width, c.height).data; }
+    var L = mk(), K = mk(), Z = mk(), T = mk(), F = mk(), O = mk(), outLen = 0;
+    if (G) {
+      pathPolys(L, G.polys); L.lineWidth = G.band; L.stroke();
+      pathPolys(K, G.polys); K.lineWidth = G.core; K.stroke();
+      pathPolys(Z, G.polys); Z.lineWidth = G.zone; Z.stroke();
+      G.polys.forEach(function (p) { outLen += 2 * polyLen(p); });
+    } else {
+      L.fillText(guide, w / 2, h / 2);
+      K.fillText(guide, w / 2, h / 2);
+      K.globalCompositeOperation = "destination-out";
+      K.lineWidth = gfs * 0.09;
+      K.strokeText(guide, w / 2, h / 2);
+      Z.fillText(guide, w / 2, h / 2);
+      Z.lineWidth = gfs * 0.12;
+      Z.strokeText(guide, w / 2, h / 2);
+      O.lineWidth = 1 / S;
+      O.strokeText(guide, w / 2, h / 2);
+    }
+    ink(T, 6);
+    ink(F, G ? G.reach : gfs * 0.13 + 14);
+    var k = px(K), l = px(L), z = px(Z), t = px(T), f = px(F), core = 0, cov = 0, inkN = 0, inZ = 0, i;
+    for (i = 3; i < k.length; i += 4) if (k[i] > 40) core++;
+    var tgt = core < 20 ? l : k;
+    core = 0;
+    for (i = 3; i < tgt.length; i += 4) {
+      if (tgt[i] > 40) { core++; if (f[i] > 40) cov++; }
+      if (t[i] > 40) { inkN++; if (z[i] > 40) inZ++; }
+    }
+    var o = px(O), oc = 0, len = 0;
+    for (i = 3; i < o.length; i += 4) if (o[i] > 40) oc++;
+    segs.forEach(function (q) { len += Math.hypot(q[2] - q[0], q[3] - q[1]); });
+    return { c: core ? cov / core : 0, acc: inkN ? inZ / inkN : 0, len: len, outLen: G ? outLen : oc / S };
+  }
+
+  function drawnStroke(k) {
+    var a = strokes[k], b = k + 1 < strokes.length ? strokes[k + 1] : segs.length, pts = [[segs[a][0], segs[a][1]]], j;
+    for (j = a; j < b; j++) pts.push([segs[j][2], segs[j][3]]);
+    return pts;
+  }
+
+  function evalTrace() {
+    var msg = document.getElementById("tMsg");
+    if (!segs.length) { msg.textContent = "Use your finger to trace the letter."; return; }
+    var G = glyphPolys(guide, gc.clientWidth, gc.clientHeight);
+    if (G) {
+      var n = G.polys.length, tol = Math.max(40, G.s * 0.5), have = Math.min(strokes.length, n), k, st, dr, a1, e1, e2;
+      for (k = 0; k < have; k++) {
+        st = G.polys[k][0];
+        dr = drawnStroke(k);
+        if (Math.hypot(dr[0][0] - st[0], dr[0][1] - st[1]) > tol) { msg.textContent = "Start stroke " + (k + 1) + " at red dot " + (k + 1) + "!"; return; }
+        if (polyLen(G.polys[k]) > 0.5 * G.s && polyLen(dr) > 0.3 * G.s) {
+          a1 = pointAt(dr, 0.25);
+          e1 = pointAt(G.polys[k], 0.25);
+          e2 = pointAt(G.polys[k], 0.75);
+          if (Math.hypot(a1[0] - e1[0], a1[1] - e1[1]) > Math.hypot(a1[0] - e2[0], a1[1] - e2[1])) { msg.textContent = "Follow the arrow! Go the other way."; return; }
+        }
+      }
+      if (strokes.length < n) { msg.textContent = "Good! Now stroke " + (strokes.length + 1) + ". Start at red dot " + (strokes.length + 1) + "."; return; }
+    }
+    var r = traceScore();
+    if (r.len > (G ? 1.5 : 3) * r.outLen) msg.textContent = "Slow down! Follow the dots.";
+    else if (r.c >= 0.9 && r.acc >= 0.93) { msg.textContent = "\u2605 Great tracing! You did it!"; say("Great job!"); if (!gotTrace[guide]) { gotTrace[guide] = 1; addStars(2); missionEvent("trace"); } showNext(); }
+    else if (r.acc < 0.85) msg.textContent = "Good try! Stay on the dots.";
+    else if (r.c < 0.9) msg.textContent = "Keep going! Follow all the dots.";
+    else msg.textContent = "Nice! Try again, slow and neat.";
+  }
+
+  function pick(ch) {
+    cur = ch;
+    guide = ch;
+    document.querySelectorAll(".block").forEach(function (b) {
+      var on = b.textContent === ch;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    var U = ch.toUpperCase();
+    document.getElementById("phLetter").textContent = U + U.toLowerCase();
+    var i = ALPHA.indexOf(U);
+    document.getElementById("phNote").textContent = U === "X" ? "X makes the sound /ks/, like at the end of box." : U + " makes the sound /" + SND[i] + "/, like in " + WORDS[i] + ".";
+    document.getElementById("now").textContent = "Trace the letter: " + ch + ". " + (GLYPHS[ch] ? GLYPHS[ch][1] + " Start at red dot 1." : "");
+    var st = document.querySelector(".stage");
+    if (st.classList.contains("tall")) { st.classList.remove("tall"); size(); }
+    clearDraw();
+    drawGuide();
+  }
+
+  var down = false, last = null;
+  function pos(e) { var r = dc.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  dc.addEventListener("pointerdown", function (e) {
+    down = true;
+    dc.setPointerCapture(e.pointerId);
+    last = pos(e);
+    d.beginPath();
+    d.moveTo(last[0], last[1]);
+    d.lineTo(last[0] + 0.1, last[1]);
+    d.stroke();
+    strokes.push(segs.length);
+    segs.push([last[0], last[1], last[0] + 0.1, last[1]]);
+    clearTimeout(timer);
+    e.preventDefault();
+  });
+  dc.addEventListener("pointermove", function (e) {
+    if (!down) return;
+    var p = pos(e);
+    d.beginPath();
+    d.moveTo(last[0], last[1]);
+    d.lineTo(p[0], p[1]);
+    d.stroke();
+    segs.push([last[0], last[1], p[0], p[1]]);
+    last = p;
+  });
+  ["pointerup", "pointercancel"].forEach(function (ev) {
+    dc.addEventListener(ev, function () {
+      if (!down) return;
+      down = false;
+      clearTimeout(timer);
+      timer = setTimeout(evalTrace, 900);
+    });
+  });
+
+  document.getElementById("clear").addEventListener("click", clearDraw);
+  document.getElementById("nextBtn").addEventListener("click", function () { if (nextCh) pick(nextCh); });
+  document.getElementById("nextHear").addEventListener("click", function () {
+    if (nextCh) say(nextCh.toUpperCase() + ". " + WORDS[ALPHA.indexOf(nextCh.toUpperCase())]);
+  });
+  document.getElementById("check").addEventListener("click", function () { clearTimeout(timer); evalTrace(); });
+
+  document.getElementById("nameBtn").addEventListener("click", function () {
+    var v = document.getElementById("nameIn").value.replace(/[^A-Za-z]/g, "").slice(0, 10);
+    if (!v) return;
+    v = v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
+    guide = v;
+    document.getElementById("now").textContent = "Trace the name: " + v + ". Start at red dot 1 and follow the dots and arrows, one letter at a time.";
+    document.querySelector(".stage").classList.toggle("tall", v.length > 5);
+    size();
+    clearDraw();
+  });
+
+  document.getElementById("hear").addEventListener("click", function () { say(cur.toUpperCase()); });
+  document.getElementById("hearW").addEventListener("click", function () { say(WORDS[ALPHA.indexOf(cur.toUpperCase())]); });
+
+  var target = 0, score = 0, solved = false;
+  var gQ = document.getElementById("gQ"), gMsg = document.getElementById("gMsg"), gCh = document.getElementById("gChoices"), gNext = document.getElementById("gNext");
+  function round() {
+    target = Math.floor(Math.random() * 26);
+    solved = false;
+    var opts = [target];
+    while (opts.length < 3) {
+      var r = Math.floor(Math.random() * 26);
+      if (opts.indexOf(r) < 0) opts.push(r);
+    }
+    opts.sort(function () { return Math.random() - 0.5; });
+    gCh.innerHTML = "";
+    opts.forEach(function (n) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn qc";
+      b.textContent = WORDS[n];
+      b.addEventListener("click", function () {
+        say(WORDS[n]);
+        if (n === target) {
+          if (!solved) { score++; solved = true; addStars(1); missionEvent("game"); }
+          gMsg.textContent = "Safi! " + ALPHA[target] + " is for " + WORDS[target] + ".";
+          document.getElementById("gScore").textContent = "Stars: " + score;
+        } else {
+          gMsg.textContent = "Try again!";
+        }
+      });
+      gCh.appendChild(b);
+    });
+    document.querySelector("#gameBox .preview").hidden = true;
+    gQ.textContent = "Which word starts with the letter " + ALPHA[target] + "?";
+    gMsg.textContent = "";
+    gNext.textContent = "Next";
+  }
+  gNext.addEventListener("click", round);
+  document.getElementById("gHear").addEventListener("click", function () { say(ALPHA[target]); });
+
+  document.querySelectorAll(".rh").forEach(function (b) {
+    b.addEventListener("click", function () { say(b.previousElementSibling.innerText); });
+  });
+
+  var RH = [["tea","bee","cow","sun"],["goat","boat","hen","drum"],["sun","run","goat","tea"],["hen","ten","cow","moon"],["rain","train","drum","bee"]];
+  var SK = ["Uppercase letters", "Lowercase letters", "Letter sounds", "Rhymes"], SKL = ["#upper", "#lower", "#phonics", "#rhymes"];
+  var qs = [], qi = 0, sc = [0, 0, 0, 0];
+  var qProg = document.getElementById("qProg"), qText = document.getElementById("qText"), qCh = document.getElementById("qChoices"), qRes = document.getElementById("qRes");
+  function rnd(n) { return Math.floor(Math.random() * n); }
+  function shuf(a) { return a.sort(function () { return Math.random() - 0.5; }); }
+  function pickN(n, skip) {
+    var o = [];
+    while (o.length < n) { var r = rnd(26); if (skip.indexOf(r) < 0 && o.indexOf(r) < 0) o.push(r); }
+    return o;
+  }
+  function buildQuiz() {
+    qs = [];
+    [0, 1].forEach(function (k) {
+      pickN(1, []).forEach(function (t) {
+        var ch = function (n) { return k ? ALPHA[n].toLowerCase() : ALPHA[n]; };
+        qs.push({ s: k, text: "Tap the letter " + ch(t) + ".", say: "Tap the letter " + ALPHA[t], opts: shuf([t].concat(pickN(2, [t]))).map(ch), ans: ch(t) });
+      });
+    });
+    pickN(2, [23]).forEach(function (t) {
+      qs.push({ s: 2, text: "Which letter does \"" + WORDS[t] + "\" start with?", say: "Which letter does " + WORDS[t] + " start with?", opts: shuf([t].concat(pickN(2, [t]))).map(function (n) { return ALPHA[n]; }), ans: ALPHA[t] });
+    });
+    shuf(RH.slice()).slice(0, 2).forEach(function (r) {
+      var o = shuf(r.slice(1));
+      qs.push({ s: 3, text: "Which word rhymes with " + r[0] + "?", say: "Which word rhymes with " + r[0] + "? " + o.join(", "), opts: o, ans: r[1] });
+    });
+    shuf(qs);
+  }
+  function showQ() {
+    var q = qs[qi];
+    qProg.textContent = "Question " + (qi + 1) + " of " + qs.length;
+    qText.textContent = q.text;
+    qCh.innerHTML = "";
+    q.opts.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn qc";
+      b.textContent = o;
+      b.addEventListener("click", function () {
+        if (o === q.ans) sc[q.s]++;
+        qi++;
+        if (qi < qs.length) showQ(); else finishQ();
+      });
+      qCh.appendChild(b);
+    });
+  }
+  function finishQ() {
+    qProg.textContent = "All done! Great work.";
+    qText.textContent = "";
+    qCh.innerHTML = "";
+    var h = '<ul class="list" style="margin-top:.75rem">';
+    SK.forEach(function (n, i) {
+      var tot = [1, 1, 2, 2][i], v = sc[i], msg = v === tot ? "Strong. Great job!" : v > 0 ? "Growing. A little more practice." : "Practice this one next.";
+      h += "<li><h3>" + n + ": " + v + " of " + tot + "</h3><p>" + msg + "</p>" + (v < tot ? '<a class="btn" href="' + SKL[i] + '">Practice ' + n.toLowerCase() + "</a>" : "") + "</li>";
+    });
+    h += '</ul><p class="small" style="margin-top:.75rem">This is a quick check, not an official test. Grown-ups: use the Practice buttons to work on any skill that needs it, then try the quick check again in a few days. Only stars and missions are saved on this device.</p>';
+    var got = sc[0] + sc[1] + sc[2] + sc[3];
+    if (got) addStars(got);
+    missionEvent("quiz");
+    qRes.innerHTML = h;
+    qRes.hidden = false;
+  }
+  document.getElementById("qStart").addEventListener("click", function () {
+    buildQuiz();
+    qi = 0;
+    sc = [0, 0, 0, 0];
+    qRes.hidden = true;
+    this.textContent = "Start over";
+    showQ();
+  });
+  document.getElementById("qHear").addEventListener("click", function () { if (qs[qi]) say(qs[qi].say); });
+
+  function game(id, gen) {
+    var box = document.getElementById(id), q = box.querySelector(".gq"), ch = box.querySelector(".gc"), msg = box.querySelector(".gm");
+    var nx = box.querySelector(".gn"), hr = box.querySelector(".gh"), sc = box.querySelector(".gs");
+    var stars = 0, cur = null, done = false;
+    function next() {
+      cur = gen();
+      done = false;
+      ch.innerHTML = "";
+      cur.opts.forEach(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn qc";
+        b.textContent = o;
+        b.addEventListener("click", function () {
+          say(o);
+          if (o === cur.ans) {
+            if (!done) { stars++; done = true; addStars(1); missionEvent("game"); }
+            msg.textContent = cur.ok;
+            sc.textContent = "Stars: " + stars;
+          } else {
+            msg.textContent = "Try again!";
+          }
+        });
+        ch.appendChild(b);
+      });
+      box.querySelector(".preview").hidden = true;
+      q.textContent = cur.text;
+      msg.textContent = "";
+      nx.textContent = "Next";
+    }
+    nx.addEventListener("click", next);
+    hr.addEventListener("click", function () { if (cur) say(cur.say); });
+  }
+  game("gRhyme", function () {
+    var r = RH[rnd(RH.length)], o = shuf(r.slice(1)), t = "Which word rhymes with " + r[0] + "?";
+    return { text: t, say: t + " " + o.join(", "), opts: o, ans: r[1], ok: "Safi! " + r[0] + " rhymes with " + r[1] + "." };
+  });
+  game("gPair", function () {
+    var t = rnd(26), lo = function (n) { return ALPHA[n].toLowerCase(); };
+    return { text: "Find the little letter that goes with " + ALPHA[t] + ".", say: "Find the lowercase letter that goes with " + ALPHA[t], opts: shuf([t].concat(pickN(2, [t]))).map(lo), ans: lo(t), ok: "Safi! " + ALPHA[t] + " and " + lo(t) + " are partners." };
+  });
+
+  document.getElementById("resetStars").addEventListener("click", function () {
+    myStars = 0;
+    mi = 0;
+    mp = 0;
+    try { localStorage.removeItem("jlMission"); } catch (e) {}
+    renderMission();
+    try { localStorage.removeItem("jlStars"); } catch (e) {}
+    renderStars();
+    toast("Stars reset.");
+  });
+  renderStars();
+
+  var BOOKS = [
+    { t: "Pip and the Matatu", d: "Pip rides a bright matatu to the market.", p: [
+      ["Pip is going to the market. Pip waits by the road.", "d|p-acacia,190,32,90;m-yellow,80,52,70"],
+      ["Beep, beep! Here comes a bright matatu.", "d|p-matatu,120,30,130;m-yellow,30,52,62"],
+      ["Rosie waves from the window. \"Jambo, Pip!\"", "d|p-matatu,80,30,130;m-red,130,40,38;m-yellow,15,52,62"],
+      ["Pip hops in. Bo is inside too!", "d|p-matatu,80,30,130;m-yellow,100,40,36;m-blue,150,40,36"],
+      ["Zoom, zoom, zoom! The matatu rolls past the tall acacia trees.", "d|p-acacia,10,41,80;p-matatu,95,30,130;p-acacia,225,46,75"],
+      ["At the market, they share warm mandazi. Yum, yum, yum!", "d|m-yellow,10,52,62;m-red,80,52,62;p-mandazi,145,58,80;m-blue,228,52,62"]] },
+    { t: "Rosie and the Long Rains", d: "Rosie and Bo share an umbrella when the rains come to the shamba.", p: [
+      ["The long rains come to the shamba. Rain, rain, rain!", "r|p-cloud,105,0,90;p-rain,100,30,100;p-acacia,5,51,70;m-red,125,60,72"],
+      ["Rosie has a red umbrella.", "r|p-rain,0,20,110;p-rain,190,20,110;p-umb,100,12,100;m-red,112,60,72"],
+      ["Plip, plop, plip, plop. The rain taps the umbrella.", "r|p-rain,0,10,120;p-rain,180,10,120;p-umb,100,10,100;p-puddle,190,82,80"],
+      ["Bo splashes in a puddle. Splash, splash, splash!", "r|p-rain,10,0,130;p-rain,160,0,130;p-puddle,100,72,100;m-blue,118,55,72"],
+      ["Rosie and Bo share the umbrella. Snug and dry, they sip warm chai.", "r|p-umb,95,0,110;m-red,88,58,66;m-blue,148,58,66;p-rain,0,20,100;p-rain,205,20,100;p-chai,40,83,40;p-chai,225,83,40"],
+      ["Then out comes the sun. The shamba is green and happy.", "d|p-sun,110,0,80;p-acacia,5,46,75;m-red,100,60,62;m-blue,165,60,62"]] },
+    { t: "Bo Counts the Stars", d: "Bo counts stars on the savanna at night.", p: [
+      ["It is night on the savanna. Bo looks up at the sky.", "n|p-moon,220,5,60;p-star,40,15,30;p-acacia,10,46,75;m-blue,130,55,75"],
+      ["One star, two stars, three stars!", "n|p-star,50,10,60;p-star,120,0,60;p-star,190,10,60;m-blue,118,70,70"],
+      ["Four stars, five stars, six stars!", "n|p-star,20,5,40;p-star,100,5,40;p-star,180,5,40;p-star,60,45,40;p-star,140,45,40;p-star,220,45,40;m-blue,230,80,60"],
+      ["Tembo the elephant yawns a big yawn.", "n|p-moon,20,8,50;p-star,240,12,35;p-tembo,85,-11,140;m-blue,235,66,52"],
+      ["Twiga the giraffe hums a soft song.", "n|p-star,40,20,35;p-star,230,20,35;p-twiga,110,15,110;m-blue,30,60,55"],
+      ["Bo counts one more star. Then Bo falls asleep. Lala salama, Bo!", "n|p-moon,40,10,60;p-star,200,15,40;p-star,240,50,30;m-blue,110,60,80"]] }
+  ];
+  function scene(code) {
+    var parts = code.split("|"), bg = { d: "#dce8f4", r: "#b7c5d8", n: "#2b3550" }[parts[0]], gr = { d: "#f1e3a6", r: "#c8d3dc", n: "#3d4a6b" }[parts[0]];
+    var h = '<svg class="scene" viewBox="0 0 300 150" aria-hidden="true"><rect width="300" height="150" fill="' + bg + '"/><rect y="112" width="300" height="38" fill="' + gr + '"/><path d="M0 112 H300" stroke="#2b3550" stroke-width="3"/>';
+    parts[1].split(";").forEach(function (it) {
+      var v = it.split(",");
+      h += '<use href="#' + v[0] + '" x="' + v[1] + '" y="' + v[2] + '" width="' + v[3] + '" height="' + v[3] + '"/>';
+    });
+    return h + "</svg>";
+  }
+  var bi = 0, pg = 0, readDone = {};
+  var bList = document.getElementById("bookList"), reader = document.getElementById("reader");
+  BOOKS.forEach(function (bk, n) {
+    var li = document.createElement("li"), h = document.createElement("h3"), p = document.createElement("p"), b = document.createElement("button");
+    h.textContent = bk.t;
+    p.textContent = bk.d;
+    b.type = "button";
+    b.className = "btn";
+    b.textContent = "Read it";
+    b.addEventListener("click", function () {
+      bi = n;
+      pg = 0;
+      bList.hidden = true;
+      reader.hidden = false;
+      showPage();
+      reader.scrollIntoView();
+    });
+    var cov = document.createElement("div");
+    cov.innerHTML = scene(bk.p[0][1]);
+    li.appendChild(cov);
+    li.appendChild(h);
+    li.appendChild(p);
+    li.appendChild(b);
+    bList.appendChild(li);
+  });
+  function showPage() {
+    var bk = BOOKS[bi], last = pg === bk.p.length - 1;
+    document.getElementById("rTitle").textContent = bk.t;
+    document.getElementById("rPage").textContent = bk.p[pg][0];
+    document.getElementById("rArt").innerHTML = scene(bk.p[pg][1]);
+    document.getElementById("rNum").textContent = "Page " + (pg + 1) + " of " + bk.p.length;
+    document.getElementById("rBack").disabled = pg === 0;
+    document.getElementById("rNext").textContent = last ? "The end" : "Next";
+  }
+  document.getElementById("rBack").addEventListener("click", function () { if (pg > 0) { pg--; showPage(); } });
+  document.getElementById("rNext").addEventListener("click", function () {
+    if (pg < BOOKS[bi].p.length - 1) { pg++; showPage(); return; }
+    if (!readDone[bi]) { readDone[bi] = 1; addStars(3); }
+    missionEvent("book");
+    reader.hidden = true;
+    bList.hidden = false;
+  });
+  document.getElementById("rHear").addEventListener("click", function () { say(BOOKS[bi].p[pg][0]); });
+  document.getElementById("rClose").addEventListener("click", function () { reader.hidden = true; bList.hidden = false; });
+
+  buildGrid("gridU", false, false);
+  buildGrid("gridL", true, false);
+  buildGrid("gridP", false, true);
+  function openSec(sec, open) {
+    if (sec.id === "grownups" && !open) renderLock(false);
+    sec.classList.toggle("closed", !open);
+    sec.firstElementChild.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open && sec.id === "trace") size();
+  }
+  document.querySelectorAll("section").forEach(function (sec) {
+    var h = sec.firstElementChild;
+    sec.classList.add("fold");
+    h.setAttribute("role", "button");
+    h.setAttribute("tabindex", "0");
+    openSec(sec, sec.id === "quiz");
+    function tog() { openSec(sec, sec.classList.contains("closed")); }
+    h.addEventListener("click", tog);
+    h.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tog(); }
+    });
+  });
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if (!a) return;
+    var sec = document.getElementById(a.getAttribute("href").slice(1));
+    if (sec && sec.classList.contains("fold")) openSec(sec, true);
+  });
+  var KB = [
+    { q: "How do I earn stars?", k: ["earn", "reward", "badge", "prize", "get stars"], a: "You earn stars by playing games, tracing letters, reading books and taking the quick check. Finish star missions for bonus stars and win badges!", go: "#badges" },
+    { q: "What is my mission?", k: ["mission", "task", "goal"], a: function () { var m = MISSIONS[mi]; return m ? "Your mission is: " + m[0] + ". You have done " + mp + " of " + m[2] + ". Win " + m[3] + " bonus stars!" : "You finished every mission. Hongera, Bingwa!"; }, go: function () { var m = MISSIONS[mi]; return m ? m[4] : "#badges"; } },
+    { q: "How do I trace a letter?", k: ["trace", "tracing", "draw", "finger"], a: "Pick a letter. Put your finger on the red dot, then follow the dotted line slowly. Tap Check my tracing when you finish.", go: "#trace" },
+    { q: "Tell me about my letter", k: ["letter", "sound", "says", "phonics"], a: function () { return soundNote(cur.toUpperCase()) + " Tap Hear the word to listen."; }, go: "#phonics" },
+    { q: "I cannot hear anything", k: ["hear", "audio", "voice", "quiet", "volume", "speak", "aloud", "no sound"], a: "Turn up the volume and check the phone is not on silent. Ask a grown-up to open For grown-ups at the bottom of the page, then tap Test voice or pick another voice.", go: "#grownups" },
+    { q: "My tracing does not count", k: ["not count", "does not", "did not", "wrong", "not working", "fail"], a: "Start at the red dot and follow the dots slowly all the way around. If it says Start at the red dot, tap Start over and try again.", go: "#trace" },
+    { q: "My stars are gone", k: ["gone", "lost", "disappear", "missing", "reset"], a: "Stars are saved on this device. They can disappear if the browser is cleared or a private window is used. A grown-up can check this.", go: "" },
+    { q: "What can I read?", k: ["book", "read", "story", "stories"], a: "Open Books and pick a story. Tap Read to me and I will read it out loud!", go: "#books" },
+    { q: "How do the games work?", k: ["game", "play", "match"], a: "Open Games. Tap the right answer to win a star. Tap Hear it to listen to the question.", go: "#games" },
+    { q: "Help me with rhymes", k: ["rhyme", "rhymes", "poem", "song"], a: "Open Rhymes and tap Hear it. Listen for words that sound the same at the end, like tree and see.", go: "#rhymes" },
+    { q: "The page looks stuck", k: ["stuck", "freeze", "broken", "slow", "screen", "zoom", "phone", "problem", "bug"], a: "Try refreshing the page and hold the phone upright. If it is still stuck, ask a grown-up to try another browser, like Chrome or Safari.", go: "" },
+    { q: "What are the red dots?", k: ["dot", "dots", "arrow", "arrows"], a: "The red dots show where to start each stroke. Start at dot 1 and follow the arrow. Then go to dot 2, and so on.", go: "#trace" },
+    { q: "How do I trace my name?", k: ["trace my name", "trace name", "my name", "type my name"], a: "In the tracing center, type your name in the box. Use letters only. Tap Trace name, then follow the red dots, letter by letter.", go: "#trace" },
+    { q: "How do I start over?", k: ["start over", "restart", "erase", "clear"], a: "In the tracing center, tap Start over to clear your drawing. Then try again!", go: "#trace" },
+    { q: "What is the quick check?", k: ["quick check", "quiz", "test", "questions"], a: "It is 6 quick questions about letters, sounds and rhymes. It helps your grown-up see what to practice. It is not a grade.", go: "#quiz" },
+    { q: "What are the badges?", k: ["badges", "how many stars"], a: "Badges are prizes you win with stars. Jambo is at 5 stars, Safi at 15, Hongera at 30, Shujaa at 50 and Bingwa at 80.", go: "#badges" },
+    { q: "Which letters do I start with?", k: ["which letters", "which letter", "first letters", "first letter"], a: "Start with s, a, t, i, p and n. They make easy words like sat, tap and pin.", go: "#grownups" },
+    { q: "Which game should I try?", k: ["which game", "best game", "favorite game", "favourite game"], a: "Try Safari Sound Match first. It helps you hear the first sound in a word. Then try Soko Rhyme Match and Letter Partners.", go: "#games" },
+    { q: "How do I hear a letter sound?", k: ["hear the letter", "hear the word", "pronounce", "say the letter", "how does it sound"], a: "Open Phonics and pick a letter. Then tap Hear the letter or Hear the word.", go: "#phonics" },
+    { q: "What do the Swahili words mean?", k: ["swahili", "what does", "meaning", "means", "karibu", "jambo"], a: "Jambo means hello. Karibu means welcome. Safi means great. Hongera means congratulations. Lala salama means sleep well. Pole pole means slowly. Twiga is a giraffe and tembo is an elephant.", go: "" },
+    { q: "Can I change the voice?", k: ["change voice", "change the voice", "different voice", "voice sounds", "funny voice", "robot"], a: "Ask a grown-up to open For grown-ups. They can use the PIN to pick a different voice.", go: "#grownups" },
+    { q: "What is the PIN for?", k: ["pin", "locked", "password", "passcode"], a: "The PIN keeps the grown-ups settings safe. It is a 4-number code made by a grown-up. Ask a grown-up to help.", go: "#grownups" },
+    { q: "Is my name saved?", k: ["private", "privacy", "safe", "personal", "is my name", "name saved", "secret"], a: "No. Names you type stay on this page and are not saved. Only your stars and missions are saved on this device.", go: "" },
+    { q: "I tapped the wrong thing", k: ["wrong thing", "mistake", "oops", "go back", "close"], a: "That is okay! Tap Back or Close, or tap a section title to close it. Then tap the one you want.", go: "" },
+    { q: "The page will not open", k: ["not open", "will not load", "load", "loading", "blank", "white screen", "internet", "offline"], a: "Check the internet, then refresh the page. If it still will not open, ask a grown-up to try Chrome or Safari.", go: "" },
+    { q: "Who is Bo?", k: ["who is bo", "who are you", "your name", "mascot", "rosie", "pip"], a: "I am Bo, a little blue bear! I help you learn. Rosie and Pip are my friends.", go: "" },
+    { q: "How do I teach with this?", k: ["teach", "tip", "tips", "how to use", "my child", "learn to read"], a: "Open For grown-ups to read the tips. Start with the letters s, a, t, i, p and n. For each letter: listen, trace, find it, and play a game. Keep it short and fun!", go: "#grownups" }
+  ];
+  var hPanel = document.getElementById("helpPanel"), hBtn = document.getElementById("helpBtn"), hLog = document.getElementById("helpLog");
+  function val(x) { return typeof x === "function" ? x() : x; }
+  function addMsg(who, text, e) {
+    var d = document.createElement("div");
+    d.className = "msg " + who;
+    d.appendChild(document.createTextNode(text));
+    if (e) {
+      var r = document.createElement("div"), hb = document.createElement("button"), go = val(e.go);
+      r.className = "row";
+      hb.type = "button";
+      hb.className = "btn";
+      hb.textContent = "Hear it";
+      hb.addEventListener("click", function () { say(text); });
+      r.appendChild(hb);
+      if (go) {
+        var a = document.createElement("a");
+        a.className = "btn";
+        a.href = go;
+        a.textContent = "Take me there";
+        a.addEventListener("click", closeHelp);
+        r.appendChild(a);
+      }
+      d.appendChild(r);
+    }
+    hLog.appendChild(d);
+    hLog.scrollTop = hLog.scrollHeight;
+  }
+  function ask(e) { addMsg("me", e.q); addMsg("bot", val(e.a), e); }
+  function matchQ(t) {
+    var best = null, bs = 0;
+    t = t.toLowerCase();
+    KB.forEach(function (e) {
+      var n = 0;
+      e.k.forEach(function (k) { if (t.indexOf(k) >= 0) n += k.length; });
+      if (n > bs) { bs = n; best = e; }
+    });
+    return best;
+  }
+  function sendHelp() {
+    var inp = document.getElementById("helpIn"), t = inp.value.trim();
+    if (!t) return;
+    inp.value = "";
+    addMsg("me", t);
+    var e = matchQ(t);
+    if (e) addMsg("bot", val(e.a), e); else addMsg("bot", "Hmm, I am not sure about that. Tap one of the buttons to get help!");
+  }
+  function openHelp() {
+    hPanel.hidden = false;
+    hBtn.hidden = true;
+    if (!hLog.children.length) addMsg("bot", "Hi! I am Bo. Tap a question below, or type one. Please do not type your name or private things.");
+    document.getElementById("helpClose").focus();
+  }
+  function closeHelp() { hPanel.hidden = true; hBtn.hidden = false; }
+  var hq = document.getElementById("helpQ");
+  KB.forEach(function (e, n) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = e.q;
+    if (n >= 8) b.className = "more";
+    b.addEventListener("click", function () { ask(e); });
+    hq.appendChild(b);
+  });
+  var mb = document.createElement("button");
+  mb.type = "button";
+  mb.textContent = "More questions...";
+  mb.addEventListener("click", function () {
+    var open = hq.classList.toggle("open");
+    mb.textContent = open ? "Fewer questions" : "More questions...";
+  });
+  hq.insertBefore(mb, hq.children[8]);
+  hBtn.addEventListener("click", openHelp);
+  document.getElementById("helpClose").addEventListener("click", function () { closeHelp(); hBtn.focus(); });
+  document.getElementById("helpAsk").addEventListener("click", sendHelp);
+  document.getElementById("helpIn").addEventListener("keydown", function (e) { if (e.key === "Enter") sendHelp(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !hPanel.hidden) { closeHelp(); hBtn.focus(); } });
+
+  function pinHash(v) { var h = 5381, i; for (i = 0; i < v.length; i++) h = ((h << 5) + h + v.charCodeAt(i)) | 0; return String(h); }
+  var pinSaved = "";
+  try { pinSaved = localStorage.getItem("jlPin") || ""; } catch (e) {}
+  function storePin(v) { pinSaved = pinHash(v); try { localStorage.setItem("jlPin", pinSaved); } catch (e) {} }
+  function renderLock(open) {
+    var lock = document.getElementById("gaLock"), body = document.getElementById("gaBody");
+    lock.hidden = open;
+    body.hidden = !open;
+    if (!open) {
+      document.getElementById("gaMsg").textContent = pinSaved ? "Grown-ups only. Enter your 4-digit PIN." : "Grown-ups only. Make a 4-digit PIN to protect these settings.";
+      document.getElementById("gaGo").textContent = pinSaved ? "Unlock" : "Save PIN";
+      document.getElementById("gaPin").value = "";
+      document.getElementById("gaNew").value = "";
+      document.getElementById("gaErr").textContent = "";
+    }
+  }
+  document.getElementById("gaGo").addEventListener("click", function () {
+    var v = document.getElementById("gaPin").value, err = document.getElementById("gaErr");
+    if (!/^\d{4}$/.test(v)) { err.textContent = "Please use exactly 4 numbers."; return; }
+    if (!pinSaved) { storePin(v); renderLock(true); toast("PIN saved."); }
+    else if (pinHash(v) === pinSaved) renderLock(true);
+    else { err.textContent = "That PIN is not right."; document.getElementById("gaPin").value = ""; }
+  });
+  document.getElementById("gaPin").addEventListener("keydown", function (e) { if (e.key === "Enter") document.getElementById("gaGo").click(); });
+  document.getElementById("gaSave").addEventListener("click", function () {
+    var v = document.getElementById("gaNew").value;
+    if (!/^\d{4}$/.test(v)) { toast("Please use exactly 4 numbers."); return; }
+    storePin(v);
+    document.getElementById("gaNew").value = "";
+    toast("New PIN saved.");
+  });
+  document.getElementById("gaLockBtn").addEventListener("click", function () { renderLock(false); });
+  renderLock(false);
+  document.getElementById("tipStart").addEventListener("click", function () { pick("s"); });
+
+  var PREF = ["en-KE", "en-TZ", "en-UG", "en-ZA", "en-NG", "en-GB"];
+  function vl(v) { return v.lang.replace("_", "-"); }
+  function loadVoices() {
+    var note = document.getElementById("voiceNote");
+    if (!window.speechSynthesis) { note.textContent = "This browser cannot read aloud. Try Chrome or Safari."; return; }
+    var sel = document.getElementById("voiceSel"), saved = "", auto = null, i, j;
+    try { saved = localStorage.getItem("jlVoice") || ""; } catch (e) {}
+    voices = speechSynthesis.getVoices().filter(function (v) { var l = vl(v).slice(0, 2); return l === "en" || l === "sw"; });
+    for (i = 0; i < PREF.length && !auto; i++) {
+      for (j = 0; j < voices.length; j++) { if (vl(voices[j]).indexOf(PREF[i]) === 0) { auto = voices[j]; break; } }
+    }
+    if (!auto) {
+      var en = voices.filter(function (v) { return vl(v).slice(0, 2) === "en"; });
+      auto = en.filter(function (v) { return v.default; })[0] || en[0] || null;
+    }
+    sel.innerHTML = "";
+    var o = document.createElement("option");
+    o.value = "";
+    o.textContent = "Auto (closest to Kenyan English)";
+    sel.appendChild(o);
+    VOICE = auto;
+    voices.forEach(function (v, n) {
+      var op = document.createElement("option");
+      op.value = String(n);
+      op.textContent = v.name + " (" + vl(v) + ")";
+      sel.appendChild(op);
+      if (saved && v.name === saved) { sel.value = String(n); VOICE = v; }
+    });
+    note.textContent = voices.length ? "" : "No reading voice found yet. Check the device's text-to-speech settings.";
+  }
+  document.getElementById("voiceSel").addEventListener("change", function () {
+    var v = this.value === "" ? null : voices[parseInt(this.value, 10)];
+    try { localStorage.setItem("jlVoice", v ? v.name : ""); } catch (e) {}
+    loadVoices();
+    say("Hello! Let us read together.");
+  });
+  document.getElementById("voiceTest").addEventListener("click", function () { say("Hello! Let us read together."); });
+  if (window.speechSynthesis) { speechSynthesis.onvoiceschanged = loadVoices; setTimeout(loadVoices, 600); setTimeout(loadVoices, 2000); }
+  loadVoices();
+  renderMission();
+  window.addEventListener("resize", size);
+  size();
+  pick("s");
+})();
+</script>
+
+</body>
+</html>
