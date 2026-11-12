@@ -21,7 +21,12 @@ Phone booths around the city switch heroes mid-run (Tag Team, `F`).
 
 ## Life in the city (career)
 
-- **Police.** In career you're a hero living a normal life: the MRA only come after you if you hurt people or attack them. Smashed property and spectacle don't count. Villains still hunt you.
+- **No wanted level.** Nobody hunts the hero — there is no police heat in any mode. Only villains and the factions you cross come for you.
+- **Online — one shared city.** Everyone playing drops into the same city automatically, the way VECTOR does it: a Supabase Realtime channel lists who is in the world and introduces players, then everyone talks directly over WebRTC (players whose network blocks it are relayed). Up to 16 per world; a full world opens the next. You see other heroes with their models, name tags and threads.
+- **Proximity voice.** `N` turns your mic on; players hear you only when they are near you and in the same place (the street, or the same building), quieter with distance and positioned in 3D. `Y` opens text chat (speech bubbles over your head). Phone → Online: players, waypoints to them, your name, mute everyone, go offline.
+- **Every building opens.** Walk up to any wall at street level and press `T`. What's inside depends on the district and the building: offices and banks (elevator to the roof), flats (stairs to the roof, neighbours with tips and errands), bars (drinks, darts, rumours), noodle bars (eat, or work a kitchen shift), laundromats, pharmacies, tattoo parlours, karaoke boxes, research labs (power calibration for kinesis), plus the diners, shops, gyms, arcades, clubs, clinics, cafés, tailors and warehouses. Some open on a robbery already in progress.
+- **People who need a hand.** Citizens flag you down: catch a kid's balloon before it floats away, bring a cat down from a roof, a rush delivery across town against the clock, carry someone hurt to the nearest hospital. Fans ask for selfies.
+- **Around the city.** 40 Lost Satchels hidden on rooftops (each with a story, kinesis every ten), street-food carts on the corners, and the Skyline — an elevated train up the middle of the city with three stations; stand on its roof to ride.
 - **Day and night.** Days are long and bright (about 16 real minutes) and nights are short (about 3), with a sun, sky, sun shadows and dimmed neon by day.
 - **A bigger city.** The city is 16×10 blocks (about 1.3 km × 0.8 km) across 7 districts: Neon Row, the Financial Core (dense towers), Midtown, Old Town (with a park), the Underworks, the Heights and the Harbour (warehouses and container yards).
 - **52 buildings you can walk into**, each with something to do:
@@ -78,7 +83,7 @@ Phone booths around the city switch heroes mid-run (Tag Team, `F`).
 
 ## Career (free roam)
 
-Pick **CAREER** on the title screen. The run never ends: if the MRA detain you, you wake up at home (or on the street) minus a 15% "fine". Progress is saved in the browser.
+Pick **CAREER** on the title screen. The run never ends: if you are knocked out you wake up at the nearest hospital and pay a fee. Progress is saved in the browser.
 
 - **Mission phone (`M`).** Tabs: Home, Jobs, Teams, Map, Property (keys 1–5).
 - **Jobs.** Clients hire you through the phone: hero teams or ordinary people with a problem. Job types:
@@ -102,7 +107,7 @@ Pick **CAREER** on the title screen. The run never ends: if the MRA detain you, 
   - train for kinesis
   - open the jobs board on the laptop
 
-  You can also fast-travel home from the phone when you have no heat.
+  You can also fast-travel home from the phone.
 
 ## The city
 
