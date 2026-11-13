@@ -1,0 +1,41 @@
+# KINETIC — every feature in the game
+
+Single-file browser superhero sandbox (Three.js + Rapier): `kinetic/index.html`. Source anchors: search `// §NAME`.
+
+## Heroes
+- **KINETIC (telekinetic):** lift/throw anything (cars, buses, people, building chunks), push, catch, shield/barrier, vortex, slam, levitate, overload. Power tree + kinesis.
+- **VELOCITY (speedster):** lock-on blitz chains, slow-mo world, wall-run skyscrapers, run on water, bullet catch/flick, disarm, sonic boom, whirlwind, relay, overdrive, **phasing** (hold Q: run through walls/cars/bullets).
+- **MIMIC (shapeshifter):** learn forms (animals, objects, people), form wheel, six generated heists (bank, museum, casino, lab, penthouse, evidence locker), Ghost/Clean/Loud ratings.
+- **THREADRUNNER (ninja swinger):** Verlet-rope thread swinging, auto-chain, wall climb, zip/perch, zip line, slingshot, tether/spike, snare, tripwire, thread storm, shuriken, smoke, Focus (slow-mo), blade/kick/slam/silent takedowns, hang drop, traversal courses, scarf cloth sim.
+- **Defence powers** (tough skin, quick heal, barrier), fast health regen, knockout → wake at hospital and pay a fee.
+
+## World
+- **Five cities on one 2.4 km coast:** Arc City (Neon Row, Financial Core, Harbour, Underworks, Midtown, Old Town, Heights), Port Sable (Lantern Quarter, Sable Central, Sable Terraces), Ashgrove (Village, Hills), Vantor Works, Lumen Bay; the Greenbelt between. ~1,250 buildings in 300 blocks, chunked rendering.
+- Day/night cycle (long days, short nights), rain, dusk, design kit: PBR facades, 60 neon signs, billboards, decals, interior-mapped windows (rooms visible through glass), pigeons, lens flare.
+- Traffic, pedestrians, subway, elevated railway along the whole coast, **Skyline** train (rideable roof), parks, plazas, docks, cranes, container yards, train yards.
+
+## Buildings & interiors
+- **Every building is enterable** (T at any wall). 20 room types: diner, shop, gym, arcade, club, bank, office, warehouse, clinic, hospital, café, tailor, bar, noodle bar, laundromat, pharmacy, tattoo, karaoke, apartment block, research lab. Mini-games (reps, timing: darts, karaoke, folding, calibration), roof elevators, robberies in progress.
+- Apartments and hideouts to buy (sleep, workbench gear, home perks).
+
+## Career / living city
+- Mission phone (contracts, messages, standing, city map + waypoints, property, hero, online, system).
+- Generated contracts (retake, defend, capture, infiltrate, escort, stop heist, leader, raid, rooftop takedown…).
+- Factions & super-teams (Hollow Lanterns, Dock Rats, Underline Saints, Vantablack, Tower Watch, MRA; teams Brightline/Vanguard/Undertow) with ranks, pay, backup.
+- Faction territory sim, news feed, lieutenants (adapt to you; J/K/L choice), three-phase leader bosses, rivals, incidents (fires, scaffolds, crashes), counters (jammers, lasers, cutters, drones), district reputation.
+- **No police wanted level** — only villains/factions come after you.
+
+## Activities (Spider-Man style)
+- Street crimes: muggings, robberies, gang turf wars.
+- Citizen requests: lost balloon, cat on a roof, rush delivery, injured person to hospital; fan selfies.
+- 14 **signal towers** (sync to reveal a district on the map), 27 **landmark photos**, 5 **Proving Grounds** (3 waves, medals), 60 **Lost Satchels**, 30 street-food carts, bar rumours, neighbour errands.
+
+## Online
+- One shared world for everyone (Supabase Realtime presence + WebRTC mesh, 16 per world, relay fallback).
+- Remote heroes with models, name tags, threads, emotes; **proximity 3D voice chat** (N), text chat with bubbles (Y), Phone → Online tab.
+
+## Animation & feel
+- GLB hero models retargeted from a procedural pose library; walk/run cycle with hip/shoulder counter-rotation, idle breathing/weight shift/look-around; swing poses, landing rolls, perching; 6 emotes (I: wave, dance, point, flex, cheer, sit).
+
+## Platform
+- Desktop + **mobile touch controls** (stick, look, per-hero buttons, mic/chat/emote buttons). Saves in browser. `?debug=1` overlay.
