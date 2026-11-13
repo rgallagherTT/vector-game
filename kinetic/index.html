@@ -372,7 +372,7 @@ const CONFIG = {
   gravity: -17,
   physics: { maxSubsteps: 3, sleepDist: 140, contactThreshold: 4000 },
   city: {
-    cols: 16, rows: 10, block: 64, street: 16, sidewalk: 4, alley: 6,
+    cols: 30, rows: 10, arcCols: 16, block: 64, street: 16, sidewalk: 4, alley: 6,
     quayZ: 10 * 80 + 24, seaDepth: -3, edgePad: 40,
   },
   player: {
@@ -1119,16 +1119,28 @@ function poseRig(rig, st, dt) {
     if (st.slam) { B.thL.rotation.x = -1.4; B.thR.rotation.x = -1.4; B.shL.rotation.x = 2.1; B.shR.rotation.x = 2.1; B.uaL.rotation.x = -2.6; B.uaR.rotation.x = -2.6; B.spine.rotation.x = 0.4; }
   } else {
     const s = Math.sin(ph), c = Math.cos(ph);
-    const amp = 0.25 + 0.55 * Math.min(sp, 1.2);
-    B.thL.rotation.x = s * amp; B.thR.rotation.x = -s * amp;
-    B.shL.rotation.x = Math.max(0, -c) * amp * 1.4 + 0.05; B.shR.rotation.x = Math.max(0, c) * amp * 1.4 + 0.05;
-    B.uaL.rotation.x = -s * amp * 0.8; B.uaR.rotation.x = s * amp * 0.8;
-    B.laL.rotation.x = -0.25 - sp * 0.6; B.laR.rotation.x = -0.25 - sp * 0.6;
-    B.uaL.rotation.z = 0.08; B.uaR.rotation.z = -0.08;
-    B.hips.position.y = 0.95 - Math.abs(s) * 0.04 * sp - (st.crouch || 0) * 0.25;
-    B.spine.rotation.x = sp * 0.18 + (st.crouch || 0) * 0.3;
-    B.spine.rotation.y = s * 0.08 * sp;
-    if (st.speed < 0.3) { B.spine.rotation.x = Math.sin(t * 1.4) * 0.02; B.uaL.rotation.x = 0; B.uaR.rotation.x = 0; }
+    const amp = 0.25 + 0.55 * Math.min(sp, 1.2); const run = smooth(clamp((sp - 0.55) / 0.6, 0, 1));
+    // legs: a passing knee on the swing leg and a push-off from the stance leg
+    B.thL.rotation.x = s * amp - run * 0.08; B.thR.rotation.x = -s * amp - run * 0.08;
+    B.shL.rotation.x = Math.max(0, -c) * amp * (1.4 + run * 0.5) + 0.05; B.shR.rotation.x = Math.max(0, c) * amp * (1.4 + run * 0.5) + 0.05;
+    // arms counter-swing; elbows bend more as the walk becomes a run
+    B.uaL.rotation.x = -s * amp * (0.8 + run * 0.3); B.uaR.rotation.x = s * amp * (0.8 + run * 0.3);
+    B.laL.rotation.x = -0.25 - sp * 0.6 - run * 0.5 - Math.max(0, s) * run * 0.3; B.laR.rotation.x = -0.25 - sp * 0.6 - run * 0.5 - Math.max(0, -s) * run * 0.3;
+    B.uaL.rotation.z = 0.08 + run * 0.06; B.uaR.rotation.z = -0.08 - run * 0.06;
+    // two bounces a stride, lean into speed, hips and shoulders counter-rotate, the head stays level
+    B.hips.position.y = 0.95 - Math.abs(c) * 0.035 * Math.min(sp, 1.4) + run * 0.02 - (st.crouch || 0) * 0.25;
+    B.hips.rotation.y = -s * 0.1 * Math.min(sp, 1.2); B.hips.rotation.z = c * 0.04 * Math.min(sp, 1);
+    B.spine.rotation.x = sp * 0.12 + run * 0.14 + (st.crouch || 0) * 0.3;
+    B.spine.rotation.y = s * 0.16 * Math.min(sp, 1.2);
+    B.head.rotation.y = -B.spine.rotation.y * 0.8 - B.hips.rotation.y; B.head.rotation.x = -B.spine.rotation.x * 0.5;
+    if (st.speed < 0.3) { // idle: breathing, a slow weight shift, the odd look around
+      const br = Math.sin(t * 1.6), sh = Math.sin(t * 0.35 + (rig.id || 0)), look = Math.sin(t * 0.23 + 1.7) * Math.sin(t * 0.61);
+      B.spine.rotation.x = 0.02 + br * 0.025; B.hips.position.y = 0.95 + br * 0.006 - (st.crouch || 0) * 0.25;
+      B.hips.rotation.z = sh * 0.035; B.spine.rotation.z = -sh * 0.03; B.hips.rotation.y = 0; B.spine.rotation.y = 0;
+      B.thL.rotation.z = 0.04 + Math.max(0, sh) * 0.04; B.thR.rotation.z = -0.04 + Math.min(0, sh) * 0.04; B.shL.rotation.x = 0.05 + Math.max(0, -sh) * 0.12; B.shR.rotation.x = 0.05 + Math.max(0, sh) * 0.12;
+      B.uaL.rotation.set(0.04, 0, 0.12 + br * 0.02); B.uaR.rotation.set(0.04, 0, -0.12 - br * 0.02); B.laL.rotation.x = -0.18; B.laR.rotation.x = -0.18;
+      B.head.rotation.set(-0.02 + br * 0.015, look > 0.55 ? (look - 0.55) * 1.6 : look < -0.55 ? (look + 0.55) * 1.6 : 0, 0);
+    }
     if (st.crouch) { B.thL.rotation.x -= 0.8 * st.crouch; B.thR.rotation.x -= 0.8 * st.crouch; B.shL.rotation.x += 1.2 * st.crouch; B.shR.rotation.x += 1.2 * st.crouch; }
   }
   // actions (upper body overrides)
@@ -1147,6 +1159,19 @@ function poseRig(rig, st, dt) {
   else if (a === 'swing') { const k = clamp(st.at / 0.35, 0, 1); B.uaR.rotation.set(-2.6 + k * 2.8, 0, -0.2); B.laR.rotation.x = -0.4; B.spine.rotation.y = -0.4 + k * 0.8; }
   else if (a === 'hold') { B.uaR.rotation.set(-0.7, 0, 0); B.uaL.rotation.set(-0.7, 0, 0); B.laR.rotation.x = -1; B.laL.rotation.x = -1; }
   if (st.headPitch) B.head.rotation.x = st.headPitch;
+  if (rig.emote && st.speed < 1 && !st.air && !a) emotePose(B, rig.emote, t);
+}
+// emotes (I cycles them; they ride the network with the rest of the pose)
+const EMOTES = ['wave', 'dance', 'point', 'flex', 'cheer', 'sit'];
+function emotePose(B, e, t) {
+  const k = clamp(e.t / 0.25, 0, 1);
+  const mix = (b, x, y, z) => { b.rotation.x = lerp(b.rotation.x, x, k); b.rotation.y = lerp(b.rotation.y, y, k); b.rotation.z = lerp(b.rotation.z, z, k); };
+  if (e.k === 'wave') { mix(B.uaR, -0.3, 0, -2.5 - Math.sin(t * 9) * 0.05); mix(B.laR, 0, 0, Math.sin(t * 9) * 0.6); mix(B.head, 0, -0.1, 0.08); }
+  else if (e.k === 'dance') { const b = Math.sin(t * 7); B.hips.position.y = 0.95 - Math.abs(b) * 0.08; mix(B.hips, 0, b * 0.3, 0); mix(B.spine, 0.1, -b * 0.3, b * 0.12); mix(B.uaL, -1.2 + b * 0.8, 0, 0.6); mix(B.uaR, -1.2 - b * 0.8, 0, -0.6); mix(B.laL, -1.2, 0, 0); mix(B.laR, -1.2, 0, 0); mix(B.thL, Math.max(0, b) * -0.6, 0, 0.1); mix(B.thR, Math.max(0, -b) * -0.6, 0, -0.1); mix(B.shL, Math.max(0, b) * 0.9, 0, 0); mix(B.shR, Math.max(0, -b) * 0.9, 0, 0); mix(B.head, 0, 0, b * 0.15); }
+  else if (e.k === 'point') { mix(B.uaR, -1.55, 0, -0.1); mix(B.laR, 0, 0, 0); mix(B.uaL, 0, 0, 0.25); mix(B.laL, -1.6, 0, 0); mix(B.spine, -0.05, -0.2, 0); }
+  else if (e.k === 'flex') { const p = 1 + Math.sin(t * 3) * 0.05; mix(B.uaL, 0, 0, 1.5 * p); mix(B.uaR, 0, 0, -1.5 * p); mix(B.laL, 0, 0, 1.7); mix(B.laR, 0, 0, -1.7); mix(B.spine, -0.12, 0, 0); mix(B.thL, 0, 0, 0.18); mix(B.thR, 0, 0, -0.18); }
+  else if (e.k === 'cheer') { const j = Math.abs(Math.sin(t * 6)); B.hips.position.y = 0.95 + j * 0.12; mix(B.uaL, -2.9, 0, 0.35); mix(B.uaR, -2.9, 0, -0.35); mix(B.laL, -0.2, 0, 0); mix(B.laR, -0.2, 0, 0); mix(B.head, -0.25, 0, 0); mix(B.shL, j * 0.6, 0, 0); mix(B.shR, j * 0.6, 0, 0); }
+  else if (e.k === 'sit') { B.hips.position.y = lerp(B.hips.position.y, 0.42, k); mix(B.thL, -1.55, 0, 0.12); mix(B.thR, -1.55, 0, -0.12); mix(B.shL, 1.5, 0, 0); mix(B.shR, 1.5, 0, 0); mix(B.spine, -0.1, 0, 0); mix(B.uaL, 0.3, 0, 0.3); mix(B.uaR, 0.3, 0, -0.3); mix(B.laL, -0.6, 0, 0); mix(B.laR, -0.6, 0, 0); }
 }
 
 // §DISTRICTS ---------------------------------------------------------------------------
@@ -1159,10 +1184,22 @@ const DISTRICTS = [
   { id: 4, key: 'midtown', name: 'MIDTOWN', fog: 0.006, fogColor: 0x222a3a, styles: [1, 2, 4, 0], hmin: 24, hmax: 70, neon: 0.7, heatMul: 1.1, security: 0, lamp: 0xffd0a0, hiding: 'shopping arcades and plaza crowds' },
   { id: 5, key: 'oldtown', name: 'OLD TOWN', fog: 0.007, fogColor: 0x2a2626, styles: [0, 3, 0], hmin: 9, hmax: 20, neon: 0.35, heatMul: 0.9, security: 0, lamp: 0xffb070, hiding: 'brick alleys and the park' },
   { id: 6, key: 'heights', name: 'THE HEIGHTS', fog: 0.0065, fogColor: 0x262c34, styles: [0, 1, 3], hmin: 14, hmax: 36, neon: 0.3, heatMul: 1.0, security: 0, lamp: 0xffd8b0, hiding: 'rooftop gardens and courtyards' },
+  // past the Greenbelt to the east: three more cities on the same coast
+  { id: 7, key: 'heights', zone: 'belt', city: 'THE GREENBELT', name: 'THE GREENBELT', fog: 0.005, fogColor: 0x26343a, styles: [0, 1], hmin: 8, hmax: 14, neon: 0.1, heatMul: 1, security: 0, lamp: 0xffe0b0, hiding: 'the trees' },
+  { id: 8, key: 'neon', zone: 'sable_neon', city: 'PORT SABLE', name: 'LANTERN QUARTER', fog: 0.006, fogColor: 0x30203a, styles: [4, 0, 4], hmin: 12, hmax: 38, neon: 1.0, heatMul: 1, security: 0, lamp: 0xff8a6a, hiding: 'night markets and back stairs' },
+  { id: 9, key: 'core', zone: 'sable_core', city: 'PORT SABLE', name: 'SABLE CENTRAL', fog: 0.005, fogColor: 0x1c2a44, styles: [2, 2, 1, 2], hmin: 50, hmax: 140, neon: 0.3, heatMul: 1, security: 1, lamp: 0xd8ecff, hiding: 'the sky bridges' },
+  { id: 10, key: 'midtown', zone: 'sable_mid', city: 'PORT SABLE', name: 'SABLE TERRACES', fog: 0.006, fogColor: 0x222a3a, styles: [1, 4, 0], hmin: 20, hmax: 60, neon: 0.6, heatMul: 1, security: 0, lamp: 0xffd0a0, hiding: 'terrace gardens' },
+  { id: 11, key: 'oldtown', zone: 'ash_village', city: 'ASHGROVE', name: 'ASHGROVE VILLAGE', fog: 0.006, fogColor: 0x2a2a26, styles: [0, 3, 0], hmin: 7, hmax: 16, neon: 0.2, heatMul: 1, security: 0, lamp: 0xffc080, hiding: 'back gardens and the church yard' },
+  { id: 12, key: 'heights', zone: 'ash_hills', city: 'ASHGROVE', name: 'ASHGROVE HILLS', fog: 0.0055, fogColor: 0x263238, styles: [0, 1, 3], hmin: 10, hmax: 28, neon: 0.2, heatMul: 1, security: 0, lamp: 0xffd8b0, hiding: 'the reservoir woods' },
+  { id: 13, key: 'under', zone: 'vantor', city: 'VANTOR', name: 'VANTOR WORKS', fog: 0.009, fogColor: 0x2e2820, styles: [3, 0, 3], hmin: 10, hmax: 30, neon: 0.4, heatMul: 1, security: 0, lamp: 0xffa040, hiding: 'the foundry halls' },
+  { id: 14, key: 'harbour', zone: 'lumen', city: 'LUMEN BAY', name: 'LUMEN BAY', fog: 0.01, fogColor: 0x24343e, styles: [3, 0, 3], hmin: 8, hmax: 18, neon: 0.3, heatMul: 1, security: 0, lamp: 0xffc070, hiding: 'the boardwalk and the boat sheds' },
 ];
+for (const d of DISTRICTS) { d.zone = d.zone || d.key; d.city = d.city || 'ARC CITY'; }
 // the city's districts laid out over the block grid
 function districtKeyAt(i, j) {
-  const C = CONFIG.city.cols, R = CONFIG.city.rows;
+  const C = CONFIG.city.cols, R = CONFIG.city.rows; const A = CONFIG.city.arcCols;
+  if (i === A) return j >= R - 2 ? 'lumen' : 'belt';
+  if (i > A) { if (j >= R - 2) return 'lumen'; if (j <= 3) return i <= A + 4 ? 'sable_neon' : i <= A + 9 ? 'sable_core' : 'sable_mid'; return i <= A + 4 ? 'ash_village' : i <= A + 7 ? 'ash_hills' : 'vantor'; }
   if (j >= R - 2) return 'harbour';
   if (j <= 3) return i <= 4 ? 'neon' : i <= 10 ? 'core' : 'midtown';
   if (i <= 4) return 'oldtown';
@@ -1170,9 +1207,9 @@ function districtKeyAt(i, j) {
   return 'heights';
 }
 // city extents derived from the grid (the districts are its four quadrants)
-const CITY_W = CONFIG.city.cols * 80, CITY_H = CONFIG.city.rows * 80, MIDX = Math.round(CONFIG.city.cols / 2) * 80, MIDZ = Math.round(CONFIG.city.rows / 2) * 80;
+const CITY_W = CONFIG.city.cols * 80, CITY_H = CONFIG.city.rows * 80, MIDX = Math.round(CONFIG.city.arcCols / 2) * 80, MIDZ = Math.round(CONFIG.city.rows / 2) * 80;
 const _dCache = {};
-function districtAt(x, z) { const i = clamp(Math.floor(x / PITCH_D), 0, CONFIG.city.cols - 1), j = clamp(Math.floor(z / PITCH_D), 0, CONFIG.city.rows - 1); const k = i * 64 + j; return _dCache[k] || (_dCache[k] = DISTRICTS.find(d => d.key === districtKeyAt(i, j))); }
+function districtAt(x, z) { const i = clamp(Math.floor(x / PITCH_D), 0, CONFIG.city.cols - 1), j = clamp(Math.floor(z / PITCH_D), 0, CONFIG.city.rows - 1); const k = i * 64 + j; return _dCache[k] || (_dCache[k] = DISTRICTS.find(d => d.zone === districtKeyAt(i, j))); }
 const PITCH_D = CONFIG.city.block + CONFIG.city.street;
 
 // §CITY --------------------------------------------------------------------------------
@@ -1329,7 +1366,7 @@ City.generate = function () {
     if (d.key === 'neon' && i === 0 && j === 1) type = 'garage';
     if (d.key === 'neon' && i === 3 && j === 2) type = 'plaza';
     if (d.key === 'core' && i === 7 && j === 2) type = 'plaza';
-    if (d.key === 'core' && i === 9 && j === 0) type = 'mirror';
+    if (d.zone === 'core' && i === 9 && j === 0) type = 'mirror';
     if (d.key === 'midtown' && i === 13 && j === 2) type = 'plaza';
     if (d.key === 'oldtown' && i === 2 && j === 5) type = 'park';
     if (d.key === 'heights' && i === 13 && j === 6) type = 'park';
@@ -1337,6 +1374,14 @@ City.generate = function () {
     if (d.key === 'harbour' && (j === rows - 2 || (j === rows - 1 && i % 3 === 1))) type = 'warehouse';
     if (d.key === 'under' && i === 9 && j === 7) type = 'trainyard';
     if (d.key === 'under' && i === 6 && j === 6) type = 'garage';
+    // the new cities' landmarks: parks, plazas, a yard
+    if (d.zone === 'belt') type = 'park';
+    if (d.zone === 'sable_core' && ((i === 23 && j === 2) || (i === 25 && j === 0))) type = 'plaza';
+    if (d.zone === 'sable_core' && i === 24 && j === 1) type = 'mirror';
+    if (d.zone === 'ash_village' && ((i === 18 && j === 5) || (i === 20 && j === 7))) type = 'park';
+    if (d.zone === 'ash_hills' && i === 22 && j === 5) type = 'park';
+    if (d.zone === 'vantor' && i === 27 && j === 6) type = 'trainyard';
+    if (d.zone === 'vantor' && i === 25 && j === 5) type = 'garage';
     City.blocks.push({ i, j, x0, z0, x1, z1, district: d, type });
   }
   // subway stair pits (one per district), cut into the ground
@@ -1348,7 +1393,10 @@ City.generate = function () {
   ];
   for (const s of stairDefs) City.holes.push({ x0: s.x0, z0: s.z0, x1: s.x1, z1: s.z1 });
   // --- buildings ----------------------------------------------------------------------
+  // buildings go into spatial chunks so the renderer can skip the parts of the coast you can't see
+  const CH = {}; const CHUNK = (bl) => { const k = Math.floor(bl.i / 4) + ':' + Math.floor(bl.j / 5); if (!CH[k]) { const c = { facade: [0, 1, 2, 3, 4].map(() => new GeoBucket()), roof: new GeoBucket(), concrete: new GeoBucket(), metal: new GeoBucket(), paint: new GeoBucket(), awning: new GeoBucket(), interior: new GeoBucket() }; CH[k] = Object.assign({}, buckets, c); CH[k].own = c; } return CH[k]; };
   for (const b of City.blocks) {
+    const buckets = CHUNK(b);
     const d = b.district; const sw = CONFIG.city.sidewalk;
     const lx0 = b.x0 + sw, lz0 = b.z0 + sw, lx1 = b.x1 - sw, lz1 = b.z1 - sw;
     if (b.type === 'plaza') { City.makePlaza(b, buckets); continue; }
@@ -1414,6 +1462,7 @@ City.generate = function () {
   City.meshes.tunnel = mk(buckets.tunnel, MAT.tunnel);
   City.meshes.skyline = mk(buckets.skyline, MAT.skyline);
   City.meshes.strip = mk(buckets.strip, MAT.lightStrip);
+  City.meshes.chunks = Object.values(CH).map(c => { const o = c.own; return [...o.facade.map((bk, i) => mk(bk, MAT.facade[i], { shadow: true })), mk(o.roof, MAT.roof), mk(o.concrete, MAT.concrete, { shadow: true }), mk(o.metal, MAT.metal, { shadow: true }), mk(o.paint, MAT.paint, { shadow: true }), mk(o.awning, MAT.awning), mk(o.interior, MAT.interior)].filter(Boolean); });
   City.buildNav();
   City.buildRoads();
 };
@@ -5925,7 +5974,8 @@ const Hud = (() => {
     $('heatmeter').firstElementChild.style.width = (L >= 5 ? clamp((Heat.points - C[5]) / (C[5] * 0.5), 0, 1) : clamp((Heat.points - lo) / (hi - lo), 0, 1)) * 100 + '%';
     $('heatname').textContent = 'HEAT ' + L + ' · ' + CONFIG.heat.names[L];
     const st = $('status'); st.className = Heat.status === 'seen' ? 'seen' : Heat.status === 'search' ? 'search' : 'clear'; st.textContent = Heat.status === 'seen' ? 'SEEN' : Heat.status === 'search' ? 'SEARCHING' : 'CLEAR';
-    const d = districtAt(Player.pos.x, Player.pos.z); $('district').textContent = (Player.inCover || d.name) + (Player.inCover ? ' · HIDDEN' : '');
+    const d = districtAt(Player.pos.x, Player.pos.z); $('district').textContent = (Player.inCover || (d.city !== d.name ? d.city + ' · ' + d.name : d.name)) + (Player.inCover ? ' · HIDDEN' : '');
+    if (G.mode === 'play' && !Apt.inside && !Interiors.inside) { if (this._city && this._city !== d.city) { Hud.banner('WELCOME TO ' + d.city, d.name); Audio.ui(1.2); } this._city = d.city; }
     $('score').textContent = fmt(Score.total); $('mult').textContent = 'x' + (Heat.mult * (1 + Math.min(Score.combo, 20) * 0.05)).toFixed(1);
     $('combo').textContent = Score.combo > 2 ? 'COMBO ×' + Score.combo : '';
     for (const s of (HERO_SLOTS[G.hero] || SLOT_DEFS)) {
@@ -9986,8 +10036,8 @@ const CitySim = (() => {
 
 // §REPUTATION: per-district public reputation — rescues and protection raise it, collateral sinks it
 const Reputation = {
-  add(p, n, why) { if (!G.career) return; const st = Career.state; const d = districtAt(p.x, p.z).key; st.drep[d] = clamp((st.drep[d] || 0) + n, -100, 100); if (why && Math.abs(n) >= 2) Toast.show(`${districtAt(p.x, p.z).name} ${n > 0 ? '▲' : '▼'} ${why}`, n > 0 ? '' : 'heat'); },
-  at(p) { return (Career.state.drep || {})[districtAt(p.x, p.z).key] || 0; },
+  add(p, n, why) { if (!G.career) return; const st = Career.state; const d = districtAt(p.x, p.z).zone; st.drep[d] = clamp((st.drep[d] || 0) + n, -100, 100); if (why && Math.abs(n) >= 2) Toast.show(`${districtAt(p.x, p.z).name} ${n > 0 ? '▲' : '▼'} ${why}`, n > 0 ? '' : 'heat'); },
+  at(p) { return (Career.state.drep || {})[districtAt(p.x, p.z).zone] || 0; },
   label(v) { return v > 60 ? 'BELOVED' : v > 25 ? 'TRUSTED' : v > -10 ? 'UNKNOWN' : v > -40 ? 'FEARED' : 'HATED'; },
   payMul(p) { return 1 + clamp(this.at(p) / 400, -0.15, 0.25); },
 };
@@ -10285,7 +10335,7 @@ const Mobile = (() => {
     stick = document.createElement('div'); stick.className = 'stick'; knob = document.createElement('div'); knob.className = 'knob'; stick.appendChild(knob); root.appendChild(stick);
     btnBox = document.createElement('div'); btnBox.className = 'btns'; root.appendChild(btnBox);
     const top = document.createElement('div'); top.className = 'top'; root.appendChild(top);
-    for (const [l, code] of [['☰', 'Escape'], ['📱', 'KeyM'], ['T', 'KeyT'], ['🎙', 'KeyN'], ['💬', 'KeyY'], ['?', 'KeyH']]) top.appendChild(button(l, code));
+    for (const [l, code] of [['☰', 'Escape'], ['📱', 'KeyM'], ['T', 'KeyT'], ['🎙', 'KeyN'], ['💬', 'KeyY'], ['🙂', 'KeyI'], ['?', 'KeyH']]) top.appendChild(button(l, code));
     // left: a floating stick wherever the thumb lands
     left.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; stickId = t.identifier; sx = t.clientX; sy = t.clientY; stick.style.left = sx + 'px'; stick.style.top = sy + 'px'; stick.style.display = 'block'; knob.style.transform = ''; Audio.unlock(); }, { passive: false });
     left.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === stickId) { let dx = t.clientX - sx, dy = t.clientY - sy; const L = Math.hypot(dx, dy), R = 52; if (L > R) { dx *= R / L; dy *= R / L; } knob.style.transform = `translate(${dx}px,${dy}px)`; Input.touch.x = dx / R; Input.touch.y = -dy / R; if (G.hero !== 'thread') Input.vkey('ShiftLeft', L > 50); } }, { passive: false });
@@ -10744,9 +10794,9 @@ const Phone = (() => {
       body += `<p class="pdim">Faction standing and public reputation. Nobody is hunting you — you're a hero, not a fugitive.</p><div class="psec">FACTIONS</div>`;
       for (const [id, F] of Object.entries(FACTIONS)) { const v = Math.round(st.rep[id] || 0); const blocks = st.blocks ? st.blocks.filter(x => x === id).length : 0; body += `<div class="prow"><div><b style="color:${F.color}">${F.glyph || ''} ${F.name}</b><div class="pdim">${F.kind}${blocks ? ' · holds ' + blocks + ' blocks' : ''}${st.collapsed && st.collapsed[id] ? ' · COLLAPSED' : ''}${F.kind === 'team' && st.team === id ? ' · YOUR TEAM — ' + RANKS[Career.rank(id)].n : ''}</div></div>${bar(clamp(v, -100, 100), F.color)}<span class="pv">${v > 0 ? '+' : ''}${v}</span></div>`; }
       body += '<div class="psec">YOUR NAME ON THE STREET</div>';
-      for (const d of DISTRICTS) { const v = Math.round((st.drep || {})[d.key] || 0); body += `<div class="prow"><div><b>${d.name}</b><div class="pdim">${Reputation.label(v)}</div></div>${bar(v, v >= 0 ? '#6dffb0' : '#ff3b4f')}<span class="pv">${v}</span></div>`; }
+      for (const d of DISTRICTS) { const v = Math.round((st.drep || {})[d.zone] || 0); body += `<div class="prow"><div><b>${d.name}</b><span class="pdim"> · ${d.city}</span><div class="pdim">${Reputation.label(v)}</div></div>${bar(v, v >= 0 ? '#6dffb0' : '#ff3b4f')}<span class="pv">${v}</span></div>`; }
     } else if (tab === 'city') {
-      body += `<canvas id="phmap" width="900" height="560"></canvas><div class="pdim">Click the map to set a waypoint. ⚠ crime · ✚ incident · ◆ job · ⌂ home · ● shops & buildings you can enter · ■ jammer · red outline: block under threat</div><div class="pdim">${st.blocks ? HOLDERS.map(f => `<b style="color:${FACTIONS[f].color}">■</b> ${FACTIONS[f].short} ${st.blocks.filter(x => x === f).length}`).join(' · ') : ''}</div>`;
+      body += `<canvas id="phmap" width="900" height="560"></canvas>${WorldPlus.html()}<div class="pdim">Click the map to set a waypoint. 📡 signal tower · 📷 landmark · ⚔ proving ground · ⚠ crime · ✚ incident · ◆ job · ⌂ home · ● shops & buildings you can enter · ■ jammer · red outline: block under threat</div><div class="pdim">${st.blocks ? HOLDERS.map(f => `<b style="color:${FACTIONS[f].color}">■</b> ${FACTIONS[f].short} ${st.blocks.filter(x => x === f).length}`).join(' · ') : ''}</div>`;
     } else if (tab === 'property') {
       for (const D of APTS) { const own = st.owned.includes(D.id); body += card(`<div class="pm">${D.kind === 'hideout' ? 'HIDEOUT' : 'APARTMENT'} · ${DISTRICTS.find(d => d.key === D.district).name}</div><h5>${D.name} <span class="pv">${own ? (st.home === D.id ? 'HOME' : 'OWNED') : fmtCash(D.price)}</span></h5><p>${D.perk}</p><div class="pact"><button data-buy="${D.id}">${own ? (st.home === D.id ? 'YOUR HOME' : 'SET AS HOME') : 'BUY'}</button></div>`, own ? '#6dffb0' : null); }
       const hide = APTS.some(a => a.kind === 'hideout' && st.owned.includes(a.id)); st.gear = st.gear || {};
@@ -10776,6 +10826,7 @@ const Phone = (() => {
     el.querySelectorAll('[data-def]').forEach(b => b.onclick = () => { Defence.set(b.dataset.def); render(); });
     el.querySelectorAll('[data-course]').forEach(b => b.onclick = () => { close(); Courses.start(b.dataset.course); });
     if (tab === 'online') Net.bind(el, render);
+    if (tab === 'city') WorldPlus.bind(el);
     const sens = $('ph-sens'); if (sens) sens.oninput = e => { settings.sens = +e.target.value; Store.set('settings', settings); };
     el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
       const a = b.dataset.a;
@@ -10802,6 +10853,7 @@ const Phone = (() => {
     for (const j of Counters.jammers) if (j.hp > 0) { g.fillStyle = '#b06aff'; g.fillRect(X(j.pos.x) - 3, Z(j.pos.z) - 3, 6, 6); }
     for (const d of Interiors.doors) { g.fillStyle = d.T.sign; g.beginPath(); g.arc(X(d.pos.x), Z(d.pos.z), 3, 0, TAU); g.fill(); }
     for (const m of Career.mapMarkers()) { g.fillStyle = m.c; g.font = (m.main ? 'bold 20px' : 'bold 14px') + ' sans-serif'; g.fillText(m.icon, X(m.x), Z(m.z) + 6); }
+    WorldPlus.drawMap(g, X, Z, sx, sz);
     for (const m of Net.markers()) { g.fillStyle = m.c; g.beginPath(); g.arc(X(m.x), Z(m.z), 6, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px monospace'; g.fillText(m.name, X(m.x), Z(m.z) - 10); }
     const p = Player.pos; g.save(); g.translate(X(p.x), Z(p.z)); g.rotate(-Player.yaw + Math.PI); g.fillStyle = '#46f0ff'; g.beginPath(); g.moveTo(0, -9); g.lineTo(-6, 7); g.lineTo(6, 7); g.closePath(); g.fill(); g.restore();
   }
@@ -11321,7 +11373,8 @@ const Net = (() => {
     if (chatOpen || !S.subscribed) return; chatOpen = true; Input.releaseLock(); chatEl.style.display = 'block'; const inp = chatEl.querySelector('input'); inp.value = ''; setTimeout(() => inp.focus(), 0);
   }
   function sendChat(text) {
-    text = String(text || '').trim().slice(0, 120); if (!text) return; bsend({ t: 'chat', from: S.id, text }); Toast.show('💬 <b>YOU:</b> ' + esc(text));
+    text = String(text || '').trim().slice(0, 120); if (!text) return;
+    if (text[0] === '/' && EMOTES.includes(text.slice(1).toLowerCase())) { Emote.play(text.slice(1).toLowerCase()); return; } bsend({ t: 'chat', from: S.id, text }); Toast.show('💬 <b>YOU:</b> ' + esc(text));
   }
   // ---------- frame ----------
   function update(rdt) {
@@ -11489,7 +11542,7 @@ const Activities = (() => {
     if (c && Reputation.at(Player.pos) > -10) { fan = c; c.fan = true; c.escortTo = Player.pos; Toast.show('📸 "HEY! HEY! IS THAT YOU?! CAN I GET A SELFIE?"'); }
   }
   // ---------- Lost Satchels ----------
-  const SAT_N = 40;
+  const SAT_N = 60;
   function buildSats() {
     const r = mulberry32(CONFIG.seed * 13 + 77); const bs = City.buildings.filter(b => !b.mirror && b.h > 9);
     for (let i = 0; i < SAT_N && bs.length; i++) {
@@ -11519,7 +11572,7 @@ const Activities = (() => {
   const FOOD = [['HOT DOG', 5, 35], ['PRETZEL', 4, 25], ['TACOS', 7, 50], ['NOODLE CUP', 6, 40], ['SMOOTHIE', 5, 30]];
   function buildCarts() {
     const r = mulberry32(CONFIG.seed * 5 + 11); let tries = 0;
-    while (carts.length < 18 && tries++ < 400) {
+    while (carts.length < 30 && tries++ < 600) {
       const i = Math.floor(r() * CONFIG.city.cols), j = Math.floor(r() * CONFIG.city.rows); const side = Math.floor(r() * 4);
       const x = i * 80 + [10, 70, 40, 40][side], z = j * 80 + [40, 40, 10, 70][side]; if (!Nav.free(x, z) || carts.some(c => c.p.distanceTo(V3(x, 0, z)) < 120)) continue;
       const F = FOOD[Math.floor(r() * FOOD.length)]; const col = [0xd83a2a, 0x2a8ad8, 0xe8b02a, 0x2aa85a][Math.floor(r() * 4)];
@@ -11607,6 +11660,144 @@ const Activities = (() => {
   function reset() { if (req) finish(req, false); fan = null; }
   return { init, update, reset, rumour, neighbour, Train, offer, begin, sats, carts, get req() { return req; }, get satchels() { return G.career ? (Career.state.satchels || []).length : 0; }, SAT_N };
 })();
+
+// §WORLDPLUS -------------------------------------------------------------------------------
+// The coast beyond Arc City — Port Sable, Ashgrove, Vantor and Lumen Bay — and the things a hero does
+// across all of it: a signal tower on the tallest roof of every district (sync it to put the district on
+// the map), landmarks to photograph, a Proving Ground in each city (three waves against the clock),
+// cab rides between cities from the phone, and emotes.
+const Emote = {
+  i: -1,
+  play(k) { const r = Player.rig; if (!r) return; r.emote = { k, t: 0 }; this.i = EMOTES.indexOf(k); },
+  stop() { if (Player.rig) Player.rig.emote = null; },
+  update(rdt) {
+    const r = Player.rig; if (!r) return;
+    if (G.mode === 'play' && Input.pressedKey('KeyI')) { this.i = (this.i + 1) % EMOTES.length; this.play(EMOTES[this.i]); Toast.show('EMOTE · ' + EMOTES[this.i].toUpperCase() + ' <span style="opacity:.6">(I for the next one)</span>'); }
+    const e = r.emote; if (!e) return; e.t += rdt;
+    const hv = Math.hypot(Player.vel.x, Player.vel.z); if (hv > 1.5 || !Player.grounded || Input.tap('jump') || (e.k !== 'sit' && e.k !== 'dance' && e.t > 4)) r.emote = null;
+  },
+};
+const WorldPlus = (() => {
+  const towers = [], marks = [], grounds = []; let built = false, sync = null, trial = null;
+  const st = () => (G.career ? Career.state : (WorldPlus._free = WorldPlus._free || {}));
+  const revealed = zone => !G.career || !!(st().towers || {})[zone];
+  const TOWER_NAMES = ['THE HALVERN SPIRE', 'MERCER TOWER', 'THE GLASS NEEDLE', 'ORCHID BUILDING', 'THE CROWN', 'ATLAS TOWER', 'NORTHLIGHT', 'THE BEACON', 'KESTREL TOWER', 'THE LONG WATCH', 'SABLE SPIRE', 'ASHGROVE CLOCKHOUSE', 'THE VANTOR STACK', 'HARBOURMASTER\'S TOWER', 'THE PEARL'];
+  const PARK_NAMES = ['COMMONS', 'GARDENS', 'SQUARE', 'GREEN', 'PLAZA', 'FIELDS'];
+  function build() {
+    if (built) return; built = true; const r = mulberry32(CONFIG.seed * 17 + 5);
+    // a signal tower on the tallest roof of every district
+    DISTRICTS.forEach((D, k) => {
+      const bs = City.buildings.filter(b => b.d === D && !b.mirror && (b.x1 - b.x0) > 8 && (b.z1 - b.z0) > 8).sort((a, b) => b.h - a.h); const b = bs[0]; if (!b) return;
+      const top = V3((b.x0 + b.x1) / 2, b.h, (b.z0 + b.z1) / 2); const g = new THREE.Group();
+      const steel = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.4, metalness: 0.8 });
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, 14, 6), steel); mast.position.y = 7; g.add(mast);
+      for (let i = 0; i < 3; i++) { const a = i / 3 * TAU; const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 6.5, 4), steel); leg.position.set(Math.cos(a) * 1.4, 2.8, Math.sin(a) * 1.4); leg.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4); g.add(leg); }
+      const dish = new THREE.Mesh(new THREE.SphereGeometry(1.0, 12, 8, 0, TAU, 0, Math.PI / 2.4), new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.5, side: THREE.DoubleSide })); dish.position.set(0.6, 10, 0); dish.rotation.z = -1.2; g.add(dish);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.3, 0.3), toneMapped: false })); lamp.position.y = 14.2; g.add(lamp);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 2.2), new THREE.MeshStandardMaterial({ color: 0x3a3e46, roughness: 0.6 })); base.position.y = 0.6; g.add(base);
+      g.position.copy(top); scene.add(g); addStaticBox(top.x, top.y + 0.6, top.z, 1.1, 0.6, 1.1);
+      towers.push({ D, b, top, g, lamp });
+      // the district's landmark: its tallest tower, named
+      marks.push({ name: TOWER_NAMES[k % TOWER_NAMES.length], D, pos: V3(top.x, b.h * 0.65, top.z), kind: 'tower' });
+    });
+    // parks and plazas are landmarks too
+    let pk = 0; for (const bl of City.blocks) if ((bl.type === 'park' || bl.type === 'plaza') && r() < 0.6) { const D = bl.district; const c = V3((bl.x0 + bl.x1) / 2, 2, (bl.z0 + bl.z1) / 2); marks.push({ name: (D.city === 'ARC CITY' ? D.name.replace('THE ', '') : D.city) + ' ' + PARK_NAMES[pk++ % PARK_NAMES.length], D, pos: c, kind: 'park' }); }
+    marks.forEach((m, i) => { m.i = i; });
+    // a Proving Ground in each city
+    const cities = [...new Set(DISTRICTS.map(d => d.city))].filter(c => c !== 'THE GREENBELT');
+    for (const city of cities) {
+      const cand = City.blocks.filter(bl => bl.district.city === city && (bl.type === 'plaza' || bl.type === 'park')); const pool = cand.length ? cand : City.blocks.filter(bl => bl.district.city === city);
+      const bl = pool[Math.floor(r() * pool.length)]; if (!bl) continue; let p = V3((bl.x0 + bl.x1) / 2, 0, (bl.z0 + bl.z1) / 2);
+      if (!Nav.free(p.x, p.z)) p = V3(bl.x0 - 4, 0, (bl.z0 + bl.z1) / 2);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(6.6, 7.2, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.9, 0.3), transparent: true, opacity: 0.6, side: THREE.DoubleSide, toneMapped: false, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, 0.06, p.z); scene.add(ring);
+      grounds.push({ city, p, ring });
+    }
+  }
+  // ---------- signal towers ----------
+  function updateTowers(rdt) {
+    const blink = (Math.sin(G.time * 4) > 0.3) ? 1 : 0.15;
+    for (const T of towers) { T.lamp.material.color.setRGB(3 * blink, 0.3 * blink, 0.3 * blink); T.g.visible = !Apt.inside && !Interiors.inside; }
+    if (!G.career || Apt.inside || Interiors.inside) { sync = null; return; }
+    const P = Player.pos;
+    if (sync) {
+      const T = sync.T; if (Math.hypot(P.x - T.top.x, P.z - T.top.z) > 8 || P.y < T.top.y - 1) { sync = null; Toast.show('SYNC INTERRUPTED', 'heat'); return; }
+      sync.t += rdt; G.tClaim = G.time; Hud.hint(`📡 SYNCING ${T.D.name} · ${Math.round(sync.t / 3 * 100)}%`, 'ok');
+      if (sync.t >= 3) { const s = st(); s.towers = s.towers || {}; s.towers[T.D.zone] = 1; sync = null; Hud.banner(T.D.name + ' SYNCED', 'THE DISTRICT IS ON YOUR MAP — LANDMARKS, SATCHELS AND MORE'); Prog.earn(200, G.hero); Career.pay(100, 'SIGNAL TOWER'); FX.ring(T.top.clone().add(V3(0, 14, 0)), 30, new THREE.Color(0.4, 2, 2.4), 80); Audio.heatUp(2); Career.save(); }
+      return;
+    }
+    for (const T of towers) {
+      if (revealed(T.D.zone)) continue; if (Math.hypot(P.x - T.top.x, P.z - T.top.z) > 6 || P.y < T.top.y - 0.6 || P.y > T.top.y + 4) continue;
+      G.tClaim = G.time; Hud.hint('T — SYNC THE SIGNAL TOWER 📡', 'ok'); if (Input.pressedKey('KeyT')) sync = { T, t: 0 }; break;
+    }
+  }
+  // ---------- landmark photos ----------
+  const _f = V3(), _d = V3();
+  function updatePhotos() {
+    if (!G.career || Apt.inside || Interiors.inside || G.tClaim === G.time) return; const s = st(); s.photos = s.photos || [];
+    camera.getWorldDirection(_f);
+    for (const m of marks) {
+      if (s.photos.includes(m.i)) continue; _d.subVectors(m.pos, camera.position); const L = _d.length(); if (L < 18 || L > 220) continue; _d.divideScalar(L);
+      if (_f.dot(_d) < 0.965) continue;
+      G.tClaim = G.time; Hud.hint(`T — PHOTOGRAPH ${m.name} 📷`, 'ok');
+      if (Input.pressedKey('KeyT')) { s.photos.push(m.i); const fl = $('photoflash'); if (fl) { fl.style.opacity = 1; setTimeout(() => fl.style.opacity = 0, 90); } Audio.ui(2.6); Career.pay(40, 'PHOTO · ' + m.name); Phone.message('📷 PHOTO ' + s.photos.length + '/' + marks.length, m.name + ' — ' + m.D.name + ', ' + m.D.city, '#bfe0ff'); if (s.photos.length % 5 === 0) { Prog.earn(300, G.hero); Hud.banner('PHOTOGRAPHER', s.photos.length + ' LANDMARKS · +300 KINESIS'); } Career.save(); }
+      return;
+    }
+  }
+  // ---------- Proving Grounds ----------
+  function startTrial(Gd) {
+    const own = CitySim.ownerAt(Gd.p); const g = own && GANG_IDS.includes(own) ? own : fpick(GANG_IDS);
+    trial = { Gd, g, wave: 0, t: 0, units: [] }; Hud.banner('PROVING GROUND · ' + Gd.city, 'THREE WAVES — GOLD UNDER 75 s'); nextWave(); Audio.heatUp(3);
+  }
+  function nextWave() {
+    const T = trial; T.wave++; const n = 2 + T.wave * 2;
+    for (let k = 0; k < n; k++) { const a = k / n * TAU; const p = T.Gd.p.clone().add(V3(Math.cos(a) * 10, 0, Math.sin(a) * 10)); const u = spawnGang(T.g, k === 0 && T.wave > 1 ? 'brute' : k % 3 === 1 ? 'gunner' : 'thug', p, { angry: true, spread: 1, aggroR: 40 }); if (u) T.units.push(u); }
+    Toast.show(`WAVE ${T.wave}/3 — ${FACTIONS[T.g].name}`, 'big');
+  }
+  function endTrial(ok) {
+    const T = trial; trial = null; for (const u of T.units) if (u.alive && !u.ko) { u.state = 'leave'; }
+    if (!ok) { Hud.banner('PROVING GROUND', 'FAILED — YOU LEFT THE RING'); return; }
+    const medal = T.t < 75 ? 'GOLD' : T.t < 120 ? 'SILVER' : 'BRONZE'; const pay = { GOLD: 700, SILVER: 400, BRONZE: 200 }[medal];
+    const s = st(); s.medals = s.medals || {}; const rank = { GOLD: 3, SILVER: 2, BRONZE: 1 }; if ((rank[s.medals[T.Gd.city]] || 0) < rank[medal]) s.medals[T.Gd.city] = medal;
+    Hud.banner(medal + ' MEDAL', T.Gd.city + ' · ' + T.t.toFixed(1) + ' s'); if (G.career) { Career.pay(pay, 'PROVING GROUND ' + medal); Career.save(); } Prog.earn(medal === 'GOLD' ? 400 : 200, G.hero);
+  }
+  function updateGrounds(rdt) {
+    for (const Gd of grounds) { Gd.ring.visible = !Apt.inside && !Interiors.inside; Gd.ring.material.opacity = 0.4 + Math.sin(G.time * 3) * 0.2; }
+    if (trial) {
+      const T = trial; T.t += rdt; if (Player.pos.distanceTo(T.Gd.p) > 60) { endTrial(false); return; }
+      Hud.hint(`⚔ PROVING GROUND · WAVE ${T.wave}/3 · ${T.t.toFixed(1)} s`, T.t > 75 ? 'bad' : 'ok');
+      if (T.units.every(u => !u.alive || u.ko)) { if (T.wave >= 3) endTrial(true); else nextWave(); }
+      return;
+    }
+    if (!G.career || Apt.inside || Interiors.inside) return;
+    for (const Gd of grounds) if (Math.hypot(Player.pos.x - Gd.p.x, Player.pos.z - Gd.p.z) < 7 && Player.pos.y < 3) { const m = (st().medals || {})[Gd.city]; G.tClaim = G.time; Hud.hint(`T — START THE ${Gd.city} PROVING GROUND ⚔${m ? ' · BEST: ' + m : ''}`, 'ok'); if (Input.pressedKey('KeyT')) startTrial(Gd); break; }
+  }
+  // ---------- travel ----------
+  function cities() { return [...new Set(DISTRICTS.map(d => d.city))].filter(c => c !== 'THE GREENBELT'); }
+  function cityCenter(city) { let x = 0, z = 0, n = 0; for (const bl of City.blocks) if (bl.district.city === city) { x += (bl.x0 + bl.x1) / 2; z += (bl.z0 + bl.z1) / 2; n++; } return n ? V3(Math.round(x / n / PITCH) * PITCH, 0.1, z / n) : null; }
+  function travel(city) { const p = cityCenter(city); if (!p) return; if (G.career && !Career.spend(20)) return; Phone.close(); Apt.teleport(p, 0); Hud.banner('WELCOME TO ' + city, 'THE CAB DROPS YOU DOWNTOWN'); }
+  // ---------- phone + map ----------
+  function html() {
+    const s = st(); const tw = towers.filter(T => revealed(T.D.zone)).length; const ph = (s.photos || []).length; const md = s.medals || {};
+    return `<div class="psec">TRAVEL — A CAB TO ANOTHER CITY · $20</div><div class="pact">${cities().map(c => `<button data-travel="${c}">${c}</button>`).join('')}</div>
+<div class="pdim">📡 ${tw}/${towers.length} signal towers synced · 📷 ${ph}/${marks.length} landmarks photographed · ⚔ ${cities().map(c => c + ' ' + (md[c] || '—')).join(' · ')}</div>`;
+  }
+  function bind(el) { el.querySelectorAll('[data-travel]').forEach(b => b.onclick = () => travel(b.dataset.travel)); }
+  function drawMap(g, X, Z, sx, sz) {
+    // districts you haven't synced stay dark; their towers show where to go
+    if (G.career) for (const bl of City.blocks) if (!revealed(bl.district.zone)) { g.fillStyle = 'rgba(2,4,8,.62)'; g.fillRect(X(bl.x0 - 8), Z(bl.z0 - 8), (bl.x1 - bl.x0 + 16) * sx, (bl.z1 - bl.z0 + 16) * sz); }
+    g.textAlign = 'center';
+    for (const T of towers) { g.font = 'bold 13px sans-serif'; g.fillStyle = revealed(T.D.zone) ? '#6dffb0' : '#ff5a5a'; g.fillText('📡', X(T.top.x), Z(T.top.z) + 5); }
+    const s = st();
+    for (const m of marks) if (revealed(m.D.zone) && !(s.photos || []).includes(m.i)) { g.font = '11px sans-serif'; g.fillStyle = '#bfe0ff'; g.fillText('📷', X(m.pos.x), Z(m.pos.z) + 4); }
+    for (const Gd of grounds) { g.font = 'bold 13px sans-serif'; g.fillStyle = '#ffb060'; g.fillText('⚔', X(Gd.p.x), Z(Gd.p.z) + 5); }
+    if (G.career) for (const sat of Activities.sats) if (revealed(districtAt(sat.p.x, sat.p.z).zone) && !(Career.state.satchels || []).includes(sat.i)) { g.fillStyle = '#ffd36a'; g.fillRect(X(sat.p.x) - 2, Z(sat.p.z) - 2, 4, 4); }
+    g.font = 'bold 15px monospace'; g.fillStyle = 'rgba(255,255,255,.7)'; for (const c of cities()) { const p = cityCenter(c); if (p && c !== 'ARC CITY') g.fillText(c, X(p.x), Z(Math.max(30, p.z - 260))); }
+  }
+  function dom() { const f = document.createElement('div'); f.id = 'photoflash'; f.style.cssText = 'position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:40;transition:opacity .25s'; document.body.appendChild(f); }
+  function update(dt, rdt) { if (!built) return; Emote.update(rdt); if (G.mode !== 'play') return; updateTowers(rdt); updateGrounds(rdt); updatePhotos(); }
+  function reset() { if (trial) trial = null; sync = null; }
+  return { build, update, dom, html, bind, drawMap, travel, cities, reset, towers, marks, grounds, get trial() { return trial; } };
+})();
 // game state + run flow ------------------------------------------------------------------
 const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
 function disposeGroup(g) { if (!g) return; g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.geometry && o.geometry !== Lamps.geo) { if (o.material === VEH_MAT || o.material === MAT.neon || o.material === MAT.metal || Object.values(City.meshes || {}).includes(o)) o.geometry.dispose(); } }); }
@@ -11647,7 +11838,7 @@ const Game = {
         Music.setLevel(0); Music.warden(false); Hud.show(true); Hud.boss(null);
         CamRig.pos.set(118, 4, 70);
         if (G.career) { Career.start(); const st = Career.state; const home = Apt.markers.find(m => m.id === st.home); if (home) Apt.enter(home, true); Hud.banner('CAREER · DAY ' + st.day, home ? 'YOU WAKE UP AT HOME · PRESS M FOR YOUR PHONE' : 'PRESS M — YOUR PHONE HAS JOBS WAITING'); Timers.after(4, () => Toast.show('<b>M</b> PHONE · <b>T</b> USE DOORS & FURNITURE · ⚠ RED BEAMS ARE CRIMES', 'big')); }
-        Design.dress(); Activities.init();
+        Design.dress(); Activities.init(); WorldPlus.build();
         if (!G.career) { if (daily) Hud.banner('DAILY RUN', daily.name + ' — ' + daily.desc); else Hud.banner(GAME_TITLE, 'THE CITY IS YOURS.'); }
         setLoadVisible(false);
         try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch { }
@@ -11680,7 +11871,7 @@ const Game = {
     Music.setLevel(0); Hud.banner('YOU WAKE UP AT ' + H.name, 'HOSPITAL BILL ' + fmtCash(H.fine + fine) + ' · BANKED CASH IS SAFE');
     try { renderer.domElement.requestPointerLock(); } catch { }
   },
-  quitCareer() { Career.save(); Phone.close(); Apt.reset(); Activities.reset(); Interiors.reset(); G.career = false; Input.releaseLock(); Hud.show(false); Hud.boss(null); this.toTitle(); },
+  quitCareer() { Career.save(); Phone.close(); Apt.reset(); Activities.reset(); WorldPlus.reset(); Interiors.reset(); G.career = false; Input.releaseLock(); Hud.show(false); Hud.boss(null); this.toTitle(); },
   end() {
     $('detainedflash').classList.add('hidden');
     const score = Score.total;
@@ -11779,7 +11970,7 @@ function frame(now) {
       Player.update(pdt, rdt);
       LockOn.show(null);
       if (M === 'play') { if (G.hero === 'kinetic') { TK.update(pdt, rdt); Push.update(pdt); Slam.update(pdt); Shield.update(pdt); Catch.update(pdt, rdt); Levitate.update(pdt); Vortex.update(pdt); Overload.update(dt, rdt); } else HeroUpdate(rdt, dt); Booths.update(rdt); }
-      Rescue.update(dt, rdt); Hazards.update(dt, rdt); Pacer.update(rdt, dt); Career.update(dt, rdt); Apt.update(rdt); Activities.update(dt, rdt); Interiors.update(rdt);
+      Rescue.update(dt, rdt); Hazards.update(dt, rdt); Pacer.update(rdt, dt); Career.update(dt, rdt); Apt.update(rdt); Activities.update(dt, rdt); WorldPlus.update(dt, rdt); Interiors.update(rdt);
       Units.update(dt, G.time); Squads.update(dt); Heat.update(dt); Air.update(dt, G.time); Dampen.update(rdt); Walker.update(dt, G.time); Cranes.update(dt); Ship.update(dt);
       Projectiles.update(dt); Flyers.update(dt); Score.update(dt); Snare.update && 0;
     }
@@ -11823,12 +12014,12 @@ async function boot() {
   await new Promise(r => setTimeout(r, 20));
   buildWorld(CONFIG.seed);
   Player.spawn(118, 0.1, 62, 0); Player.rig.mesh.visible = false;
-  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
+  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
   setLoad(1, 'READY');
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
