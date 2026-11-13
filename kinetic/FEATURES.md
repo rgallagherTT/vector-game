@@ -5,7 +5,8 @@ Single-file browser superhero sandbox (Three.js + Rapier): `kinetic/index.html`.
 ## Heroes
 - **KINETIC (telekinetic):** lift/throw anything (cars, buses, people, building chunks), push, catch, shield/barrier, vortex, slam, levitate, overload. Power tree + kinesis.
 - **VELOCITY (speedster):** lock-on blitz chains, slow-mo world, wall-run skyscrapers, run on water, bullet catch/flick, disarm, sonic boom, whirlwind, relay, overdrive, **phasing** (hold Q: run through walls/cars/bullets).
-- **MIMIC (shapeshifter):** learn forms (animals, objects, people), form wheel, six generated heists (bank, museum, casino, lab, penthouse, evidence locker), Ghost/Clean/Loud ratings.
+- **CORTEX (telepath, reworked Mimic):** psychic projections (cameras/drones see the real you), six heists + projection wheel + Ghost/Clean/Loud ratings, Mind Read (F: thoughts, vault codes, routes, rumours, deep reads), Mind Lance (LMB), Dominate (RMB: play as an NPC, guard badges open doors, mind duels with lieutenants/leaders), Chain Mind (3 bodies, Z swap), Astral Form (V), Memory Wipe (X), Suggestion (G), Overmind (U); counters: psi helmets, null minds.
+- **SOVEREIGN (nanotech):** GPU nanite swarm, black/gold dissolve suit, harvest cars into Nanomass (E), construct wheel (blade, hammer, tower shield, chain whip, cannon), guard that breaks bullets, Presence → surrender/filming crowds/halo → Ascendant, swarm, assimilate drones/jammers, wings, rebuild, decoys, Colossus mech ultimate.
 - **THREADRUNNER (ninja swinger):** Verlet-rope thread swinging, auto-chain, wall climb, zip/perch, zip line, slingshot, tether/spike, snare, tripwire, thread storm, shuriken, smoke, Focus (slow-mo), blade/kick/slam/silent takedowns, hang drop, traversal courses, scarf cloth sim.
 - **Defence powers** (tough skin, quick heal, barrier), fast health regen, knockout → wake at hospital and pay a fee.
 

@@ -363,6 +363,7 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
 const GAME_TITLE = "KINETIC";
 
@@ -522,23 +523,24 @@ composer.addPass(bloomPass);
 const FinalShader = {
   uniforms: {
     tDiffuse: { value: null }, uTime: { value: 0 }, uCA: { value: 0 }, uBlur: { value: 0 }, uBlurC: { value: new THREE.Vector2(0.5, 0.5) },
-    uGrain: { value: 0.045 }, uVig: { value: 0.32 }, uDamp: { value: 0 }, uSlow: { value: 0 }, uHurt: { value: 0 }, uCool: { value: 0 }, uKeep: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) },
+    uGrain: { value: 0.045 }, uVig: { value: 0.32 }, uDamp: { value: 0 }, uSlow: { value: 0 }, uHurt: { value: 0 }, uCool: { value: 0 }, uKeep: { value: 0 }, uPsi: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float uTime,uCA,uBlur,uGrain,uVig,uDamp,uSlow,uHurt,uCool,uKeep; uniform vec2 uBlurC,uRes; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float uTime,uCA,uBlur,uGrain,uVig,uDamp,uSlow,uHurt,uCool,uKeep,uPsi; uniform vec2 uBlurC,uRes; varying vec2 vUv;
     float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
     void main(){
       vec2 uv=vUv; vec2 dc=uv-0.5;
       vec3 col=vec3(0.0);
       if(uBlur>0.002){ vec2 dir=(uv-uBlurC)*uBlur; for(int i=0;i<8;i++){ float t=float(i)/7.0; col+=texture2D(tDiffuse,uv-dir*t).rgb; } col/=8.0; }
       else col=texture2D(tDiffuse,uv).rgb;
-      float ca=uCA+0.0012;
+      float ca=uCA+0.0012+uPsi*0.006*(0.6+0.4*sin(uTime*3.0+uv.y*14.0));
       vec2 o=dc*ca*(0.6+length(dc));
       col.r=mix(col.r,texture2D(tDiffuse,uv+o).r,0.85);
       col.b=mix(col.b,texture2D(tDiffuse,uv-o).b,0.85);
       float l=dot(col,vec3(0.299,0.587,0.114));
       vec3 orig=col; col=mix(col,vec3(l)*vec3(0.85,0.95,1.1),uSlow*(0.55+uKeep*0.35)); col=mix(col,orig,uKeep*smoothstep(0.7,1.15,max(orig.r,max(orig.g,orig.b))));
+      { float mx=max(orig.r,max(orig.g,orig.b)); col=mix(col,vec3(l)*vec3(0.74,0.76,1.06)+vec3(0.02,0.0,0.05),uPsi*0.85*(1.0-smoothstep(0.85,1.3,mx))); }
       col=mix(col,col*vec3(0.85,0.6,1.25)+vec3(0.03,0.0,0.06),uDamp);
       col=mix(col,col*vec3(0.74,0.9,1.22)+vec3(0.0,0.012,0.035),uCool);
       col+=vec3(0.35,0.0,0.03)*uHurt*smoothstep(0.25,0.75,length(dc));
@@ -3418,6 +3420,7 @@ const Player = {
   costMul() { return Dampen.costMul() * (1 - Prog.level('cooldown') * 0.08); },
   spend(n) { n *= this.costMul(); if (this.mind < n) { Hud.flashMind(); return false; } this.mind -= n; return true; },
   hurt(d, from, cause) {
+    if (typeof Sovereign !== 'undefined' && Sovereign.onHurt(d, from)) return;
     if (this.detained || G.mode !== 'play' || G.god) return;
     if (this.iframes > 0 || (this.dodgeT > 0)) return;
     if (G.hero === 'speed' && Speed.phasing) return;
@@ -3561,7 +3564,7 @@ const CamRig = {
     let fovT = aiming ? C.aimFov : C.fov; if (TK.charging) fovT -= TK.charge * 6; if (Player.dodgeT > 0) fovT += 8; if (Math.sqrt(Player.speed2) > 11) fovT += 4; if (G.hero === 'speed') fovT += Speed.v * 20 - (Speed.v > 0.3 ? 4 : 0);
     this.fov = damp(this.fov, fovT, 6, dt);
     if (Math.abs(camera.fov - this.fov) > 0.01) { camera.fov = this.fov; camera.updateProjectionMatrix(); }
-    const p = Player.pos; const yaw = Player.yaw, pitch = Player.pitch;
+    const p = this.follow || Player.pos; const yaw = Player.yaw, pitch = Player.pitch;
     const pivot = V3(p.x, p.y + (this.hOv != null ? this.hOv : C.height), p.z);
     const back = V3(Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
     const right = V3(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -4445,7 +4448,7 @@ const Units = (() => {
   function grabbed(u, noFlail) { ragdoll(u, null); u.flailing = !noFlail; u.stunT = Math.max(u.stunT, 3); if (!u.ko && Math.random() < 0.6) Audio.yelp(u.pos); Peds.scare(u.pos, 10); }
   function released(u) { u.flying = true; u.flailing = false; }
   function hit(u, dmg, kv, cause, stun) {
-    if (!u.alive) return;
+    if (!u.alive) return; if (u.isDecoy) { u.hp -= dmg; return; }
     if (u.nullField && cause !== 'slam' && cause !== 'overload' && cause !== 'explosion' && cause !== 'returned' && kv && !u.ko) {
       const fwd = V3(Math.sin(u.yaw), 0, Math.cos(u.yaw)); if (kv.clone().setY(0).normalize().dot(fwd) < -0.2) { nullBounce(u); dmg *= 0.15; kv = null; }
     }
@@ -4579,7 +4582,8 @@ const Units = (() => {
         if (u.sees) { anySee = true; u.lastSeenT = t; Heat.seenBy(u); }
         const dist = Math.hypot(pp.x - u.pos.x, pp.z - u.pos.z);
         let speed = 0; const def = u.def;
-        if (u.stunT > 0) { /* dazed */ }
+        if (u.thrall && typeof Cortex !== 'undefined') speed = Cortex.drive(u, dt);
+        else if (u.stunT > 0) { /* dazed */ }
         else if (u.type === 'civilian') { if (dist > 48 && !u.trapped && !u.saved && !u.job) { removeObj(u); continue; } speed = civAI(u, dt, dist); }
         else if (u.gang || u.ally) { const r = GangAI.update(u, dt, t, dist); if (r === -1) { removeObj(u); continue; } speed = r; }
         else if (u.type === 'sniper') SniperAI.update(u, dt, t, dist);
@@ -4699,7 +4703,7 @@ const Units = (() => {
       if (u.stunT > 0 && Math.random() < 0.2) FX.add.emit(u.pos.x + frnd(-0.3, 0.3), u.pos.y + 2.0, u.pos.z + frnd(-0.3, 0.3), 0, 0.3, 0, 0.5, 0.1, 0.05, 0.6, 1.2, 3, 1, 0.3, 0.6, 2, 0, 0, 0, 0, 0);
     }
   }
-  return { list, spawn, update, hit, impact, grabbed, released, reset, ragdoll, knockOut, shoot, canSee, moveTo };
+  return { list, spawn, update, hit, impact, grabbed, released, reset, ragdoll, knockOut, shoot, canSee, moveTo, step };
 })();
 
 // §HEAT --------------------------------------------------------------------------------
@@ -6368,7 +6372,7 @@ const Hero = {
   load(h) {
     if (this.loading[h]) return; this.loading[h] = true;
     HeroModels.load(HEROES[h].model).then(g => {
-      if (!g) return; const m = HeroModels.build(g); m.root.visible = false; scene.add(m.root); this.models[h] = m;
+      if (!g) return; const m = HeroModels.build(g); if (HEROES[h].onModel) HEROES[h].onModel(m); m.root.visible = false; scene.add(m.root); this.models[h] = m;
       if (h === 'speed') Speed.collectGlow(m);
       if (G.hero === h && Player.rig) { Player.rig.model = m; Player.rig.mesh.material = INVISIBLE_MAT; }
     });
@@ -6378,7 +6382,7 @@ const Hero = {
     G.hero = h; Store.set('hero', h);
     // leave the previous hero's powers in a clean state
     TK.release(); if (Shield.active) Shield.drop(); if (Catch.active) Catch.release(); if (Vortex.active) Vortex.release(); Player.levitating = false; Outline.show(null); Tether.hide();
-    Speed.reset(); if (typeof Shift !== 'undefined') Shift.reset(); if (typeof Thread !== 'undefined') { Thread.reset(); Courses.stop(); }
+    Speed.reset(); if (typeof Shift !== 'undefined') Shift.reset(); if (typeof Thread !== 'undefined') { Thread.reset(); Courses.stop(); } if (typeof Cortex !== 'undefined') Cortex.reset();
     const speedy = h === 'speed' || h === 'thread';
     if (Player.collider) Player.collider.setCollisionGroups(speedy ? ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER) : GROUPS.player);
     if (Player.ctl) Player.ctl.setApplyImpulsesToDynamicBodies(!speedy);
@@ -6388,13 +6392,13 @@ const Hero = {
     Player.maxMind = h === 'speed' ? 100 + Prog.level('stamina') * 20 : h === 'shift' ? 100 + Prog.level('energy') * 25 : CONFIG.mind.max + Prog.level('mind') * 20; Player.mind = Player.maxMind;
     for (const k in this.models) this.models[k].root.visible = false;
     if (Player.rig) { Player.rig.model = this.models[h] || null; Player.rig.mesh.material = Player.rig.model ? INVISIBLE_MAT : CHAR_MAT; }
-    this.load(h);
+    this.load(h); if (typeof Sovereign !== 'undefined') Sovereign.reset();
     Hud.build(); HeroHud.keys(); Tut.render();
     if (midRun) { FX.ring(Player.pos.clone(), 3, new THREE.Color(HEROES[h].color), 80); Hud.banner('TAG TEAM', HEROES[h].name + ' — ' + HEROES[h].title.toUpperCase()); Audio.heatUp(3); }
   },
 };
-function HeroUpdate(rdt, dt) { if (G.hero === 'speed') Speed.update(rdt, dt); else if (G.hero === 'shift') Shift.update(rdt, dt); else if (G.hero === 'thread') Thread.update(rdt, dt); }
-function HeroMove(dt, rdt) { if (G.hero === 'speed') Speed.updatePlayer(rdt); else if (G.hero === 'shift') Shift.updatePlayer(rdt); else if (G.hero === 'thread') Thread.updatePlayer(rdt); }
+function HeroUpdate(rdt, dt) { if (G.hero === 'nano') Sovereign.update(rdt, dt); else if (G.hero === 'speed') Speed.update(rdt, dt); else if (G.hero === 'shift') { Shift.update(rdt, dt); Cortex.update(rdt, dt); } else if (G.hero === 'thread') Thread.update(rdt, dt); }
+function HeroMove(dt, rdt) { if (G.hero === 'nano') Sovereign.updatePlayer(rdt); else if (G.hero === 'speed') Speed.updatePlayer(rdt); else if (G.hero === 'shift') Shift.updatePlayer(rdt); else if (G.hero === 'thread') Thread.updatePlayer(rdt); }
 function HeroCamera(rdt) { if (G.mode !== 'play') return; if (G.hero === 'speed') Speed.cinematic(rdt); else if (G.hero === 'shift') Shift.camera(rdt); else if (G.hero === 'thread') Thread.camera(rdt); }
 const HeroSelect = {
   open(daily, career) {
@@ -6428,11 +6432,13 @@ const HeroHud = {
     const k = $('keys'); if (!k) return; k.style.display = '';
     if (G.hero === 'speed') k.innerHTML = '<b>W</b> run — keep going to build <b>VELOCITY</b><br>run into a wall to <b>run up it</b> · <b>SPACE</b> jump / leap off<br><b>LMB</b> blitz the locked target · <b>HOLD LMB</b> chain through a crowd<br>pluck bullets · pick up people<br><b>RMB</b> flick bullets back · <b>E</b> disarm · <b>2 3 4 R</b> powers<br><b>HOLD Q</b> phasing — run through walls, cars and bullets<br><b>F</b> phone booth: tag team · <b>H</b> help';
     else if (G.hero === 'shift') k.innerHTML = Shift.keysHtml();
+    else if (G.hero === 'nano') k.innerHTML = Sovereign.keysHtml();
     else if (G.hero === 'thread') { k.innerHTML = ''; k.style.display = 'none'; return; }
     else k.innerHTML = '<b>HOLD LMB</b> lift · <b>RELEASE</b> throw · <b>RMB</b> drop<br><b>Q</b> push · <b>CTRL</b> dodge / slam in air<br><b>SPACE ×2</b> telekinetic jump · <b>SHIFT</b> sprint<br><b>E</b> catch · <b>1–4</b> powers · <b>F</b> booth · <b>H</b> help';
   },
   slot(s) {
     if (G.hero === 'shift') return Shift.slot(s);
+    if (G.hero === 'nano') return Sovereign.slot(s);
     if (G.hero === 'thread') return Thread.slot(s);
     const S = Speed; const locked = s.lock && !Prog.has(s.lock);
     if (s.id === 'overdrive') return { locked, active: S.od, cd: 1 - clamp(S.v / 0.95, 0, 1) };
@@ -6448,6 +6454,7 @@ const HeroHud = {
   vitals() {
     if (G.hero === 'kinetic') { $('lbl-mind').textContent = 'MIND'; $('lbl-ovl').textContent = 'OVERLOAD'; $('hoperow').classList.add('hidden'); return; }
     if (G.hero === 'shift') { Shift.vitals(); return; }
+    if (G.hero === 'nano') { Sovereign.vitals(); return; }
     if (G.hero === 'thread') { Thread.vitals(); return; }
     const S = Speed; $('lbl-mind').textContent = 'STAMINA'; $('lbl-ovl').textContent = S.od ? 'OVERDRIVE' : 'VELOCITY';
     $('ovlbar').style.width = clamp(S.v / 1.0, 0, 1) * 100 + '%'; $('ovlv').textContent = Math.round(S.s) + ' m/s · ×' + (1 / Math.max(0.02, S.ws)).toFixed(S.ws < 0.1 ? 0 : 1) + ' TIME';
@@ -7200,10 +7207,11 @@ const Pacer = {
 const HeroCos = {
   html() {
     if (G.hero === 'shift') return Shift.cosHtml();
+    if (G.hero === 'nano') return Sovereign.cosHtml();
     if (G.hero === 'thread') return Thread.cosHtml();
     return '<h2>COSMETICS · VELOCITY</h2><div class="sect">SUIT GLOW — brightens the faster you run</div><div class="grid">' + SPEED_GLOWS.map(g => { const u = Cosmetics.unlocked(g); const hex = '#' + g.color.toString(16).padStart(6, '0'); return `<div class="card ${(Cosmetics.sel.speedGlow || 'amber') === g.id ? 'owned' : ''}"><h3><span class="swatch" style="background:${hex};color:${hex}"></span>${g.name}</h3><p>${u ? 'Unlocked' : 'Locked — ' + g.req[2]}</p><button data-sg="${g.id}" ${u ? '' : 'disabled'}>USE</button></div>`; }).join('') + '</div>';
   },
-  wire(panel, again) { panel.querySelectorAll('[data-sg]').forEach(b => b.onclick = () => { Cosmetics.set('speedGlow', b.dataset.sg); Speed.reset(); again(); }); if (G.hero === 'shift') Shift.cosWire(panel, again); if (G.hero === 'thread') Thread.cosWire(panel, again); },
+  wire(panel, again) { if (G.hero === 'nano') { Sovereign.cosWire(panel, again); return; } panel.querySelectorAll('[data-sg]').forEach(b => b.onclick = () => { Cosmetics.set('speedGlow', b.dataset.sg); Speed.reset(); again(); }); if (G.hero === 'shift') Shift.cosWire(panel, again); if (G.hero === 'thread') Thread.cosWire(panel, again); },
 };
 // Tag Team: phone booths around the city switch heroes mid-run
 const Booths = {
@@ -7597,6 +7605,8 @@ const Guards = {
     const pp = Player.pos; const form = Shift.form; const F = FORMS[form]; const zone = Heists.zoneAt(pp); const moving = Math.sqrt(Player.speed2) > 0.25;
     let maxS = 0, watched = 0, watchers = [];
     for (const g of C.guards) {
+      if (g.thrall) { Cortex.driveGuard(g, dt); continue; }
+      if (g.dazed > 0) { g.dazed -= dt; g.susp = Math.max(0, g.susp - 20 * dt); Guards.pose(g, 0, dt, 'hold'); continue; }
       const vis = Guards.sees(g, pp, g.dog ? 10 : 14);
       let gain = 0;
       if (vis > 0 && !Player.detained) {
@@ -7642,7 +7652,7 @@ const Guards = {
       c.t += dt; c.yaw = c.base + Math.sin(c.t * 0.5) * 0.9; c.mesh.rotation.y = c.yaw;
       const dx = pp.x - c.pos.x, dz = pp.z - c.pos.z; const d = Math.hypot(dx, dz); let see = 0;
       if (d < 16) { const f = (Math.sin(c.yaw) * dx + Math.cos(c.yaw) * dz) / d; if (f > 0.82 && losClear(c.pos, V3(pp.x, pp.y + 0.6, pp.z), 0.3)) see = 1; }
-      let gain = 0; if (see && !Player.detained) { if (Shift.shifting) gain = 200; else if (F.kind === 'human' && ZONE_CLEAR[zone] > 0) gain = 70; else if (F.kind === 'object' && moving) gain = 80; else if (F.kind === 'disguise' && (F.clearance < (ZONE_CLEAR[zone] || 0))) gain = 25; else if (F.kind === 'animal' && !(F.belongs || []).includes(zone) && form !== 'moth') gain = 10; watched = Math.max(watched, 0.6); }
+      let gain = 0; if (see && !Player.detained) { if (Shift.shifting) gain = 200; else if (F.kind !== 'object' && ZONE_CLEAR[zone] > 0) gain = 70; /* projections fool minds, not lenses */ else if (F.kind === 'object' && moving) gain = 80; else if (F.kind === 'disguise' && (F.clearance < (ZONE_CLEAR[zone] || 0))) gain = 25; else if (F.kind === 'animal' && !(F.belongs || []).includes(zone) && form !== 'moth') gain = 10; watched = Math.max(watched, 0.6); }
       c.susp = clamp(c.susp + gain * dt - (gain ? 0 : 8 * dt), 0, 120); c.cone.material.opacity = 0.04 + c.susp / 120 * 0.25;
       if (c.susp > 50) { C.seen = true; const near = C.guards.filter(g => !g.dog).sort((a, b) => a.pos.distanceTo(pp) - b.pos.distanceTo(pp))[0]; if (near && near.state === 'patrol') { near.state = 'investigate'; near.look = pp.clone(); near.path = null; Guards.say(near, 'Camera picked something up. Checking it.'); } }
       if (c.susp >= 110 && !C.alarm) Alert.raise('A camera caught you');
@@ -7777,7 +7787,7 @@ const Shift = {
     const nonHuman = this.library.filter(f => f !== 'human');
     if (nonHuman.length >= this.libMax()) { const drop = nonHuman[0]; this.library.splice(this.library.indexOf(drop), 1); Toast.show('FORGOT ' + FORMS[drop].name, 'heat'); }
     this.library.push(id); if (who) this.ids = Object.assign(this.ids || {}, { [id]: who });
-    Toast.show('LEARNED: <b>' + FORMS[id].name + '</b>' + (who ? ' (' + who + ')' : ''), 'big'); Audio.pluck(); Tut.done('touch');
+    Toast.show('IDENTITY COPIED: <b>' + FORMS[id].name + '</b>' + (who ? ' (' + who + ')' : ''), 'big'); Audio.pluck(); Tut.done('touch');
     Stats.forms = (Stats.forms || 0) + 1; Records.bump('forms', this.library.length - 1); if (this.library.length - 1 >= 15) Challenges.flag('learn15');
     if (this.heist) this.heist.notes.add('learned ' + FORMS[id].name.toLowerCase());
   },
@@ -7802,7 +7812,7 @@ const Shift = {
     this.shifting = true; this.shiftT = 0.55 * (1 - Prog.level('speed') * 0.12); this.nextForm = id;
     Ripple.at(V3(Player.pos.x, Player.pos.y + this.height() / 2, Player.pos.z), V3(0.9, Math.max(0.6, this.height() * 0.65), 0.9), this.shiftT + 0.3); Audio.catchOn();
     // shifting in front of the MRA burns this form
-    if (!this.inCell && Units.list.some(u => u.alive && !u.ko && u.type !== 'civilian' && Units.canSee(u, true))) { this.burned = true; Heat.add(160, Player.pos); Heat.lastSeenT = G.time; Heat.lastKnown.copy(Player.pos); Toast.show('THEY SAW YOU SHIFT', 'heat'); }
+    if (!this.inCell && Units.list.some(u => u.alive && !u.ko && u.type !== 'civilian' && Units.canSee(u, true))) { this.burned = true; Heat.add(160, Player.pos); Heat.lastSeenT = G.time; Heat.lastKnown.copy(Player.pos); Toast.show('THEY SAW THE PROJECTION FLICKER', 'heat'); }
   },
   recognizable() { return this.form === 'human' || this.burned; },
   teleport(p) { const P = Player; const t = { x: p.x, y: p.y + 0.95, z: p.z }; P.body.setTranslation(t, true); P.body.setNextKinematicTranslation(t); P.pos.set(p.x, p.y, p.z); P.vel.set(0, 0, 0); CamRig.pos.copy(P.pos).add(V3(0, 2, 4)); },
@@ -7814,7 +7824,7 @@ const Shift = {
     const sens = CONFIG.camera.sens * settings.sens * (this.wheelOpen ? 0 : 1);
     P.yaw -= Input.mouse.dx * sens; P.pitch = clamp(P.pitch - Input.mouse.dy * sens * (settings.invertY ? -1 : 1), -1.35, 1.1);
     P.yaw -= Input.pad.rx * CONFIG.camera.padSens * dt * settings.sens; P.pitch = clamp(P.pitch - Input.pad.ry * CONFIG.camera.padSens * 0.7 * dt, -1.35, 1.1);
-    const [mx, my] = this.wheelOpen || this.leashT > 0 || Question.g || CloseCall.active && false ? [0, 0] : Input.move();
+    const [mx, my] = Cortex.busy || this.wheelOpen || this.leashT > 0 || Question.g || CloseCall.active && false ? [0, 0] : Input.move();
     this.leashT -= dt;
     const camF = V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), camR = V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw));
     const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx);
@@ -7827,7 +7837,7 @@ const Shift = {
     if (F.fly) { let vy = 0; if (Input.down('jump')) vy += 6; if (Input.down('dodge')) vy -= 6; if (this.form === 'moth') { const near = this.nearestLight(); if (near && near.d < 7) { P.vel.x += (near.p.x - P.pos.x) * dt * 1.6; P.vel.z += (near.p.z - P.pos.z) * dt * 1.6; vy += (near.p.y - P.pos.y) * 1.2; } } P.vel.y = damp(P.vel.y, vy, 4, dt); wantY = P.vel.y * dt; }
     else if (F.swim) { P.vel.y = 0; wantY = 0; }
     else {
-      if (P.grounded) { P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump') && F.kind !== 'object') { P.vel.y = F.jump ? F.jump * (this.form === 'cat' ? 1 + Prog.level('cat') * 0.1 : 1) : 7; P.grounded = false; } }
+      if (P.grounded) { P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump') && F.kind !== 'object' && !Cortex.busy) { P.vel.y = F.jump ? F.jump * (this.form === 'cat' ? 1 + Prog.level('cat') * 0.1 : 1) : 7; P.grounded = false; } }
       P.vel.y += -24 * dt; wantY = P.vel.y * dt;
     }
     const want = { x: P.vel.x * dt, y: wantY, z: P.vel.z * dt };
@@ -7887,8 +7897,8 @@ const Shift = {
     const inter = this.interaction();
     const T = inter ? null : this.findTouch(); this.target = T;
     if (inter) Hud.hint(inter.label, inter.bad ? 'bad' : 'ok');
-    else if (T) Hud.hint((Prog.has('swap') && T.kind !== 'person' && Math.hypot(T.pos.x - P.pos.x, T.pos.z - P.pos.z) > 2.4 ? 'E — SWAP INTO ' : 'HOLD E — LEARN ') + FORMS[T.id].name + (this.library.includes(T.id) ? ' (KNOWN)' : ''), 'ok');
-    else Hud.hint(this.form !== 'human' ? FORMS[this.form].name + ' · HOLD Q TO SHIFT · R TO RETURN' : '', 'ok');
+    else if (T) Hud.hint((Prog.has('swap') && T.kind !== 'person' && Math.hypot(T.pos.x - P.pos.x, T.pos.z - P.pos.z) > 2.4 ? 'E — SWAP INTO ' : 'HOLD E — READ & COPY ') + FORMS[T.id].name + (this.library.includes(T.id) ? ' (KNOWN)' : ''), 'ok');
+    else Hud.hint(this.form !== 'human' ? FORMS[this.form].name + ' · HOLD Q TO PROJECT · R TO DROP IT' : '', 'ok');
     if (inter && Input.pressedKey('KeyE')) inter.act();
     else if (T && Input.keys.KeyE && !this.shifting) {
       const far = Math.hypot(T.pos.x - P.pos.x, T.pos.z - P.pos.z) > 2.4;
@@ -7908,7 +7918,7 @@ const Shift = {
     } else this.learnT = 0;
     // form wheel (hold Q) and quick keys
     this.wheel(rdt);
-    if (Input.pressedKey('KeyR') && this.form !== 'human') this.beginShift('human');
+    if (Input.pressedKey('KeyR') && this.form !== 'human' && !Cortex.busy) this.beginShift('human');
     // echo + copy
     this.echoT -= rdt;
     if (Input.pressedKey('KeyG')) { if (!Prog.has('echo')) Toast.show('ECHO — LOCKED (POWER TREE)', 'heat'); else if (this.echoT <= 0) this.echo(); }
@@ -8131,7 +8141,7 @@ function spawnAlly(team, near, life = 110) {
 }
 const GangAI = (() => {
   const eye = V3(), tp = V3();
-  function hostile(a, b) { if (!b.alive || b.ko || !b.body) return false; if (a.ally) return !!b.gang; if (b.ally) return true; return b.gang && b.gang !== a.gang && (a.rival || b.rival); }
+  function hostile(a, b) { if (!b.alive || b.ko || !b.body || a === b) return false; if (b.thrall && a.gang && !a.thrall) return true; if (a.mad && b.gang) return true; if (a.ally) return !!b.gang; if (b.ally) return true; return b.gang && b.gang !== a.gang && (a.rival || b.rival); }
   function anger(u) {
     if (!u.gang) return; u.angry = true;
     for (const m of Units.list) if (m.gang === u.gang && m.alive && !m.ko && m.pos.distanceTo(u.pos) < 26) m.angry = true;
@@ -8139,7 +8149,7 @@ const GangAI = (() => {
   function pick(u, dist) {
     const playerOk = G.mode === 'play' && !Player.detained && !Apt.inside && !(typeof Shift !== 'undefined' && Shift.inCell) && Math.abs(Player.pos.y - u.pos.y) < 12;
     if (u.tgtVip && u.tgtVip.alive && !u.tgtVip.ko && dist > 7) return u.tgtVip;
-    if (u.gang && playerOk) {
+    if (u.gang && playerOk && !u.mad) {
       if (!u.angry && dist < u.aggroR) anger(u);
       if (u.angry && dist < 70) return 'player';
     }
@@ -10221,7 +10231,7 @@ const Incidents = (() => {
   }
   // the Threadrunner rips a crashed car's door off with a thread
   function rip(car) { const I = car.incident; if (!I) return false; Threads.fire('tether', Thread.hand(V3()), bodyPos(car, V3()).add(V3(0, 0.6, 0)), UP, r => { Threads.release(r); Vehicles.crumple(car, bodyPos(car, V3()).add(V3(1, 0.6, 0)), 0.4); for (const v of I.civs) save(v, 'DOOR TORN OFF WITH A THREAD'); }); return true; }
-  return { list, spawn, update, lower, netTarget, rip, reset() { for (const I of list) { Beacons.remove(I.beacon); if (I.light) LightPool.remove(I.light); if (I.mesh) scene.remove(I.mesh); if (I.net) scene.remove(I.net); } list.length = 0; spawnT = 30; } };
+  return { list, spawn, update, lower, netTarget, rip, finish, reset() { for (const I of list) { Beacons.remove(I.beacon); if (I.light) LightPool.remove(I.light); if (I.mesh) scene.remove(I.mesh); if (I.net) scene.remove(I.net); } list.length = 0; spawnT = 30; } };
 })();
 
 // counters to threads: cutters, thread-cutter drones, laser grids, anchor jammers
@@ -10310,7 +10320,8 @@ const Mobile = (() => {
   const SETS = {
     kinetic: [['LIFT', 'm0', 'big'], ['DROP', 'm2'], ['JUMP', 'Space', 'big'], ['PUSH', 'KeyQ'], ['CATCH', 'KeyE'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['1', 'Digit1'], ['2', 'Digit2'], ['3', 'Digit3'], ['4', 'Digit4'], ['FIRE', 'KeyF'], ['BARRIER', 'KeyX']],
     speed: [['BLITZ', 'm0', 'big'], ['FLICK', 'm2'], ['JUMP', 'Space', 'big'], ['DISARM', 'KeyE'], ['PHASE', 'KeyQ'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['WHIRL', 'Digit2'], ['SONIC', 'Digit3'], ['RELAY', 'Digit4'], ['OVERDR', 'KeyR'], ['BOOTH', 'KeyF']],
-    shift: [['ACT', 'm0', 'big'], ['ALT', 'm2'], ['JUMP', 'Space', 'big'], ['TOUCH/USE', 'KeyE'], ['FORMS', 'KeyQ'], ['DODGE', 'ControlLeft'], ['SPRINT', 'ShiftLeft'], ['BOARD', 'KeyB'], ['ECHO', 'KeyG'], ['1', 'Digit1'], ['2', 'Digit2'], ['BOOTH', 'KeyF']],
+    shift: [['LANCE', 'm0', 'big'], ['DOMINATE', 'm2', 'big'], ['JUMP', 'Space', 'big'], ['READ', 'KeyF'], ['COPY ID', 'KeyE'], ['PROJECT', 'KeyQ'], ['LET GO', 'KeyR'], ['SUGGEST', 'KeyG'], ['WIPE', 'KeyX'], ['ASTRAL', 'KeyV'], ['SWAP', 'KeyZ'], ['OVERMIND', 'KeyU'], ['BOARD', 'KeyB']],
+    nano: [['STRIKE', 'm0', 'big'], ['GUARD', 'm2', 'big'], ['JUMP / WINGS', 'Space', 'big'], ['HARVEST', 'KeyE'], ['CONSTRUCT', 'KeyQ'], ['BLADE', 'Digit1'], ['HAMMER', 'Digit2'], ['SHIELD', 'Digit3'], ['WHIP', 'Digit4'], ['CANNON', 'Digit5'], ['SWARM', 'KeyF'], ['ASSIMILATE', 'KeyG'], ['DECOYS', 'KeyC'], ['REBUILD', 'KeyR'], ['COLOSSUS', 'KeyU'], ['STRIDE', 'ShiftLeft']],
     thread: [['SWING', 'm2', 'big'], ['BLADE', 'm0', 'big'], ['JUMP / REEL', 'Space', 'big'], ['ZIP', 'KeyQ'], ['SNARE', 'KeyE'], ['TETHER', 'KeyR'], ['FOCUS', 'KeyF'], ['DODGE', 'ControlLeft'], ['CROUCH', 'KeyC'], ['BARRIER', 'KeyX'], ['SHURIKEN', 'Digit1'], ['SMOKE', 'Digit2'], ['TRIP', 'Digit3'], ['STORM', 'Digit4'], ['LINE', 'KeyZ'], ['SLING', 'KeyG']],
   };
   const press = (inp, down) => { if (inp[0] === 'm' && inp.length === 2) Input.vbtn(+inp[1], down); else Input.vkey(inp, down); };
@@ -10910,7 +10921,7 @@ const Defence = (() => {
       cd -= rdt; if (shieldT > 0) { shieldT -= rdt; if (shieldT <= 0) shield = 0; }
       const delay = sel === 'heal' ? 1.2 : 2.5, rate = sel === 'heal' ? 26 : sel === 'barrier' ? 11 : 14;
       if (G.time - (P.lastHurt || -99) > delay && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + rate * rdt);
-      if (Input.pressedKey('KeyX') && G.hero !== 'thread' || Input.pressedKey('KeyX') && G.hero === 'thread' && !Thread.climb) {
+      if (Input.pressedKey('KeyX') && G.hero !== 'thread' && G.hero !== 'shift' || Input.pressedKey('KeyX') && G.hero === 'thread' && !Thread.climb) {
         if (sel !== 'barrier') Toast.show('X — NEEDS THE KINETIC BARRIER DEFENCE (PHONE · HERO)', 'heat');
         else if (cd > 0) Toast.show('BARRIER RECHARGING · ' + Math.ceil(cd) + ' s', 'heat');
         else { shield = 90; shieldT = 6; cd = 18; Audio.catchOn && Audio.catchOn(); Toast.show('KINETIC BARRIER'); }
@@ -11300,7 +11311,7 @@ const Net = (() => {
     const rig = makeCharacter('player', { torso: '#2a2f3a', legs: '#1a1d24', hood: col, arms: '#2a2f3a', hands: '#1a1d22', boots: '#0d0e10', eyes: col, belt: '#111', skin: '#b98262' }); rig.mesh.castShadow = true; scene.add(rig.mesh);
     const c = canvas(512, 128); const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: texFrom(c), depthTest: false, transparent: true })); tag.scale.set(3.2, 0.8, 1); tag.renderOrder = 999; scene.add(tag);
     const av = { rig, hero, model: null, tag, tagC: c, tagKey: '', line: null };
-    HeroModels.instance(H.model).then(m => { if (!m || !peers.has(P.id) || P.av !== av) return; scene.add(m.root); av.model = m; rig.model = m; rig.mesh.material = INVISIBLE_MAT; });
+    HeroModels.instance(H.model).then(m => { if (!m || !peers.has(P.id) || P.av !== av) return; if (H.onModel) H.onModel(m, true); scene.add(m.root); av.model = m; rig.model = m; rig.mesh.material = INVISIBLE_MAT; });
     return av;
   }
   function drawTag(P) {
@@ -11798,6 +11809,708 @@ const WorldPlus = (() => {
   function reset() { if (trial) trial = null; sync = null; }
   return { build, update, dom, html, bind, drawMap, travel, cities, reset, towers, marks, grounds, get trial() { return trial; } };
 })();
+
+// §CORTEX ---------------------------------------------------------------------------------
+// The telepath. Mimic's shapes become psychic projections: people see whoever you project, but
+// cameras and drones see the real you. Learning a form is reading a mind and copying the identity.
+// On top: read minds (F), lance them (LMB), take them over (RMB) — up to three at once, swapping
+// with Z — leave your body as an astral form (V), wipe memories (X), plant a suggestion (G), and
+// the Overmind (U), which turns a whole gang on itself. Will is the meter that pays for it.
+Object.assign(HEROES.shift, { name: 'CORTEX', title: 'The Telepath', color: '#a98cff', blurb: 'Read minds, take them over and walk through any door as someone else. People see whoever you project — cameras and drones see the real you. Six heists, three ratings, one mind against a city.' });
+{ // the tree: Mimic's powers renamed for a telepath, plus the new ones
+  const P = TREES.shift.powers; const re = (id, o) => Object.assign(P.find(p => p.id === id), o);
+  re('echo', { name: 'SUGGESTION', desc: 'Plant a thought where you aim: guards go and look, crowds calm down, gangs drop their weapons and back off.' });
+  re('mimic', { name: 'PERSUASION', desc: 'In a copied identity, pass a senior guard\'s questioning every time.' });
+  re('copy', { name: 'PROJECTION', desc: 'Leave a projected double of your current identity behind. Guards investigate it.' });
+  re('swap', { name: 'FAR READ', desc: 'Copy an identity or project into an object up to 6 m away — no touch needed.' });
+  P.push(
+    { id: 'chain', name: 'CHAIN MIND', key: 'RMB again · Z swaps', cost: 700, req: [], desc: 'Hold up to three minds at once and swap between them. Clear a room using only the enemy.' },
+    { id: 'astral', name: 'ASTRAL FORM', key: 'V', cost: 500, req: [], desc: 'Leave your body and fly through walls to scout. Your body stays behind — and can be hurt.' },
+    { id: 'wipe', name: 'MEMORY WIPE', key: 'X', cost: 600, req: ['echo'], desc: 'Erase what everyone nearby just saw. Win a Ghost rating back after a mistake.' },
+    { id: 'overmind', name: 'OVERMIND', key: 'U (full Will)', cost: 1600, req: ['chain', 'wipe'], desc: 'A psychic flare: every gang member around you turns on their own crew.' },
+  );
+  TREES.shift.upgrades.push({ id: 'will', name: 'WILL', base: 110, max: 5, desc: '+20 Will and faster recovery.' }, { id: 'lance', name: 'MIND LANCE', base: 100, max: 5, desc: '+20% lance damage.' });
+}
+CHALLENGES_BY.shift.push({ id: 'cxChain3', name: 'Hold three minds at once', reward: 700 }, { id: 'cxTurn', name: 'Make a gang member take down his own crew', reward: 600 }, { id: 'cxOvermind', name: 'Turn six gang members with one Overmind', reward: 1200 }, { id: 'cxWipeGhost', name: 'Wipe a guard\'s memory and still Ghost the heist', reward: 900 });
+HERO_SLOTS.shift = [
+  { id: 'read', key: 'HOLD F', name: 'READ', g: '◉' }, { id: 'lance', key: 'LMB', name: 'LANCE', g: '➶' }, { id: 'dominate', key: 'RMB', name: 'DOMINATE', g: '✺' },
+  { id: 'form', key: 'HOLD Q', name: 'PROJECT', g: '❖' }, { id: 'echo', key: 'G', name: 'SUGGEST', g: '◌', lock: 'echo' }, { id: 'wipe', key: 'X', name: 'WIPE', g: '⌫', lock: 'wipe' },
+  { id: 'astral', key: 'V', name: 'ASTRAL', g: '☄', lock: 'astral' }, { id: 'overmind', key: 'U', name: 'OVERMIND', g: '✹', lock: 'overmind' }, { id: 'board', key: 'B', name: 'BOARD', g: '☰' },
+];
+TUT_BY.shift = [
+  ['read', 'READ MINDS', 'Hold <b>F</b>. Minds glow through walls and thoughts float over heads — vault codes, guard routes, rumours. Keep a mind in the centre to read it deeply'],
+  ['touch', 'COPY AN IDENTITY', 'Get close to a person, animal or object and <b>HOLD E</b> to read and copy it. Then <b>HOLD Q</b> to project it'],
+  ['dominate', 'DOMINATE', 'Aim at a person and press <b>RIGHT CLICK</b> to take them over. Walk them with <b>WASD</b>, fight with <b>LEFT CLICK</b>, <b>R</b> lets go'],
+  ['heist', 'HEISTS', 'Find a <b>◇ diamond</b> by a building — a heist. Press <b>B</b> for the heist board, then get in'],
+];
+const CX_THOUGHTS = {
+  civilian: ['Did I leave the oven on?', 'Rent is due Friday…', 'Is that…? No way.', 'I should call my mum.', 'Those shoes were a mistake.', 'Three more hours of this shift.', 'What was her name again?', 'Coffee. I need coffee.', 'I hope the train is running.', 'My feet are killing me.'],
+  gang: ['The boss wants the take by midnight.', 'If he double-crosses us again…', 'Keep your head down, they said.', 'I never wanted this.', 'Who\'s the new guy?', 'Don\'t look at the hero. Don\'t look.', 'I owe Marco forty.'],
+  officer: ['Patrol loop: two blocks north, back by the hour.', 'Overtime again.', 'Radio\'s been quiet. Too quiet.', 'Unregistered powers… paperwork.'],
+  guard: ['Twelve more minutes till break.', 'Who keeps leaving the side door open?', 'Same route, same faces.', 'The vault cycles every minute. Thank god.'],
+};
+const Cortex = (() => {
+  const S = { will: 100, thralls: [], cur: null, astral: null, readT: 0, readTgt: null, psi: 0, lanceCd: 0, wipeCd: 0, omCd: 0, om: 0, duel: null };
+  const maxWill = () => 100 + Prog.level('will') * 20;
+  const on = () => G.hero === 'shift' && G.mode === 'play';
+  const isNull = u => !!(u.nullField || u.type === 'containment' || u.walker || (u.gang === 'vantablack' && (u.uid % 4 === 0)));
+  // ---------- aiming at a mind ----------
+  const _f = V3(), _d = V3();
+  function minds() {
+    const out = []; for (const u of Units.list) if (u.alive && !u.ko && !isDyn(u)) out.push({ kind: 'unit', u, pos: u.pos });
+    const C = Heists.cell; if (C) for (const g of C.guards) if (!g.dog && !g.dazed) out.push({ kind: 'guard', g, pos: g.pos });
+    return out;
+  }
+  function aimed(range = 34, cone = 0.975) {
+    camera.getWorldDirection(_f); let best = null, bs = cone;
+    for (const m of minds()) { _d.set(m.pos.x - camera.position.x, m.pos.y + 1.4 - camera.position.y, m.pos.z - camera.position.z); const L = _d.length(); if (L > range || L < 0.5) continue; _d.divideScalar(L); const s = _f.dot(_d); if (s > bs && losClear(camera.position, V3(m.pos.x, m.pos.y + 1.4, m.pos.z), 0.2)) { bs = s; best = m; } }
+    return best;
+  }
+  // ---------- mind orbs + thought bubbles ----------
+  let orbs = null, bubbles = [], orbTex = null;
+  function orbPool() {
+    if (orbs) return orbs; orbs = []; const c = canvas(64, 64), g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); orbTex = texFrom(c);
+    for (let i = 0; i < 48; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: orbTex, blending: THREE.AdditiveBlending, depthTest: false, transparent: true, toneMapped: false })); s.renderOrder = 998; s.visible = false; scene.add(s); orbs.push(s); }
+    for (let i = 0; i < 8; i++) { const el = document.createElement('div'); el.className = 'cxthought'; el.style.display = 'none'; document.body.appendChild(el); bubbles.push(el); }
+    return orbs;
+  }
+  function thought(m) {
+    const o = m.kind === 'guard' ? m.g : m.u; if (o._th && G.time - o._thT < 7) return o._th;
+    let t; const C = Heists.cell;
+    if (m.kind === 'guard') { const H = C.H; const code = (H.code = H.code || String(1000 + Math.floor(mulberry32(H.type.length * 77 + 5)() * 9000))); t = fpick(['Vault code… ' + code.split('').join('-') + '. Don\'t forget it.', 'Route: ' + (o.route.length) + ' stops, then back. Same as always.', C.keycard && !C.keycard.taken ? 'Who left the keycard in the office again?' : fpick(CX_THOUGHTS.guard), fpick(CX_THOUGHTS.guard)]); }
+    else if (m.u.type === 'civilian') t = fpick(CX_THOUGHTS.civilian);
+    else if (m.u.gang) t = fpick(CX_THOUGHTS.gang); else t = fpick(CX_THOUGHTS.officer);
+    if (m.kind === 'unit' && isNull(m.u)) t = '…';
+    o._th = t; o._thT = G.time; return t;
+  }
+  function deepRead(m) {
+    const o = m.kind === 'guard' ? m.g : m.u; if (o._deep) return; o._deep = true; Audio.ui(2.2); Tut.done('read');
+    if (m.kind === 'guard') {
+      const C = Heists.cell; const H = C.H; H.notes.add('vault code ' + (H.code || '????')); H.notes.add(o.name + '\'s patrol route');
+      if (C.keycard && !C.keycard.taken) { FX.ring(C.keycard.pos.clone(), 1.5, new THREE.Color(2, 1.6, 0.4), 30); Toast.show('READ: <b>THE KEYCARD</b> IS RIGHT THERE — IT GLOWS IN YOUR MIND', 'big'); }
+      else Toast.show('READ: ' + o.name.toUpperCase() + '\'S ROUTE IS ON THE HEIST BOARD', 'big');
+      for (const g of C.guards) g.routeSeen = true; return;
+    }
+    const u = m.u; if (isNull(u)) { Toast.show('NOTHING THERE. A NULL MIND.', 'heat'); return; }
+    if (!G.career) { Toast.show('READ: "' + thought(m) + '"', 'big'); return; }
+    if (u.gang) {
+      const st = Career.state; const ws = Interiors.doors.filter(d => d.t === 'warehouse' && (st.stash || {})[d.id] !== st.day);
+      const lt = Lieutenants.live.find(l => l.alive && !l.ko);
+      if (lt && Math.random() < 0.5) { Phone.setWaypoint(lt.pos.clone(), 'LIEUTENANT'); Toast.show('READ: THE LIEUTENANT IS HIDING HERE — WAYPOINT SET', 'big'); }
+      else if (ws.length) { const w = fpick(ws); Phone.setWaypoint(w.pos, 'STASH'); Toast.show('READ: "THE STASH IS IN ' + w.T.name + '." — WAYPOINT SET', 'big'); }
+      else Toast.show('READ: "' + thought(m) + '"', 'big');
+    } else if (u.type === 'civilian' && Math.random() < 0.4) { const sat = Activities.sats.find(s => !(Career.state.satchels || []).includes(s.i)); if (sat) { Phone.setWaypoint(sat.p, 'LOST SATCHEL'); Toast.show('READ: "I SAW A RUNNER LEAVE A BAG UP ON THAT ROOF."', 'big'); } }
+    else Toast.show('READ: "' + thought(m) + '"', 'big');
+  }
+  function updateRead(rdt) {
+    orbPool(); const reading = on() && Input.keys.KeyF && !S.duel; const show = reading || S.astral || S.om > 0;
+    let k = 0;
+    if (show) {
+      const list = minds().filter(m => m.pos.distanceTo(S.astral ? S.astral.pos : Player.pos) < 45).sort((a, b) => a.pos.distanceTo(Player.pos) - b.pos.distanceTo(Player.pos));
+      for (const m of list) { if (k >= orbs.length) break; const o = orbs[k++]; o.visible = true; o.position.set(m.pos.x, m.pos.y + 1.75, m.pos.z); const u = m.u; const col = m.kind === 'guard' ? [2, 1.6, 0.5] : isNull(u) ? [0.25, 0.25, 0.28] : u.thrall ? [1.6, 0.8, 2.6] : u.mad ? [2.6, 0.4, 0.6] : u.type === 'civilian' ? [0.8, 1.6, 2] : u.gang ? [2.4, 0.7, 0.4] : [2, 1.6, 0.5]; o.material.color.setRGB(...col); const s = 0.55 + Math.sin(G.time * 3 + k) * 0.08; o.scale.set(s, s, 1); }
+      // thoughts over the nearest heads in view
+      let b = 0;
+      if (reading) for (const m of list) {
+        if (b >= bubbles.length) break; const v = V3(m.pos.x, m.pos.y + 2.2, m.pos.z).project(camera); if (v.z > 1 || Math.abs(v.x) > 0.95 || Math.abs(v.y) > 0.95) continue; if (m.pos.distanceTo(Player.pos) > 30) continue;
+        const el = bubbles[b++]; el.style.display = 'block'; el.textContent = thought(m); el.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - v.y) / 2 * innerHeight) + 'px';
+      }
+      for (; b < bubbles.length; b++) bubbles[b].style.display = 'none';
+      // a mind held in the centre of view is read deeply
+      if (reading) { const m = aimed(30, 0.99); if (m && m === S.readTgt || (m && S.readTgt && (m.u || m.g) === (S.readTgt.u || S.readTgt.g))) { S.readT += rdt; Hud.hint('READING… ' + Math.round(Math.min(1, S.readT / 1.2) * 100) + '%', 'ok'); if (S.readT > 1.2) { deepRead(m); S.readT = -99; } } else { S.readT = 0; S.readTgt = m; } }
+    } else for (const el of bubbles) el.style.display = 'none';
+    for (; k < orbs.length; k++) orbs[k].visible = false;
+    const want = Math.max(reading ? 0.85 : 0, S.astral ? 0.7 : 0, S.om > 0 ? 1 : 0); S.psi = damp(S.psi, want, 6, rdt);
+    if (finalPass.uniforms.uPsi) finalPass.uniforms.uPsi.value = G.hero === 'shift' ? S.psi : 0;
+  }
+  // ---------- mind lance ----------
+  function lance() {
+    if (S.lanceCd > 0 || S.will < 10) return; const m = aimed(32, 0.985); S.lanceCd = 0.45;
+    const from = Player.pos.clone().add(V3(0, 1.6, 0)); if (!m) { Toast.show('NO MIND IN SIGHT'); return; }
+    S.will -= 10; const to = V3(m.pos.x, m.pos.y + 1.6, m.pos.z); tracer(from, to, '#c8a8ff'); FX.glow(to.clone(), 1.4, 1.6, 1.0, 2.6, 0.12); Audio.ui(0.7);
+    if (m.kind === 'guard') { m.g.dazed = 8; m.g.susp = Math.max(0, m.g.susp - 40); Guards.say(m.g, 'Ugh… my head…'); return; }
+    const u = m.u; if (isNull(u)) { Toast.show('A NULL MIND — THE LANCE PASSES THROUGH', 'heat'); return; }
+    if (u.psiHelm) { u.psiHelm--; FX.sparks(to.clone(), 16, 0.8, new THREE.Color(1.6, 1.2, 2.4)); Toast.show(u.psiHelm > 0 ? 'PSI-DAMPENER HELMET — CRACKING' : 'THE HELMET SHATTERS', 'heat'); return; }
+    // ignores armour, but crowds dilute it
+    const crowd = Units.list.filter(o => o.alive && !o.ko && o.gang && o.pos.distanceTo(u.pos) < 9).length; const dmg = 34 * (1 + Prog.level('lance') * 0.2) / Math.sqrt(Math.max(1, crowd));
+    u.stunT = Math.max(u.stunT, 1.4); Units.hit(u, dmg, V3(0, 1.5, 0), 'psi', 0.2); if (u.gang && !u.angry) GangAI.anger(u);
+  }
+  // ---------- dominate + chain ----------
+  function dominate() {
+    const m = aimed(30, 0.985); if (!m) { Toast.show('NO MIND IN SIGHT'); return; }
+    const max = Prog.has('chain') ? 3 : 1; if (S.thralls.length >= max) { Toast.show(max === 1 ? 'ONE MIND AT A TIME — CHAIN MIND (POWER TREE) HOLDS THREE' : 'THREE MINDS IS YOUR LIMIT', 'heat'); return; }
+    if (S.will < 25) { Toast.show('NOT ENOUGH WILL', 'heat'); return; }
+    const t = m.kind === 'guard' ? m.g : m.u; if (t.thrall) return;
+    if (m.kind === 'unit' && isNull(t)) { Toast.show('A NULL MIND — THERE IS NOTHING TO TAKE', 'heat'); return; }
+    if (m.kind === 'unit' && (t.psiHelm || t.ltId || t.leader)) { duel(t); return; }
+    take(t, m.kind);
+  }
+  function take(t, kind) {
+    S.will -= 20; t.thrall = true; t.thrallKind = kind; t.angry = false; if (kind === 'unit') { t.state = 'thrall'; t.job = t.job || null; }
+    S.thralls.push(t); S.cur = t; CamRig.follow = t.pos; Tut.done('dominate'); Audio.heatUp(1); FX.glow(t.pos.clone().add(V3(0, 1.7, 0)), 1.6, 1.6, 0.9, 2.6, 0.2);
+    Toast.show('<b>DOMINATED</b> · WASD walk · LMB fight · ' + (Prog.has('chain') ? 'RMB another · Z swap · ' : '') + 'R let go', 'big');
+    if (S.thralls.length >= 3) Challenges.flag('cxChain3');
+  }
+  function release(t, quiet) {
+    const i = S.thralls.indexOf(t); if (i >= 0) S.thralls.splice(i, 1); t.thrall = false;
+    if (t.thrallKind === 'unit' && t.alive && !t.ko) { t.state = t.gang ? 'gang' : 'civ'; t.stunT = 1.5; if (t.gang) t.angry = true; }
+    if (t.thrallKind === 'guard') { t.state = 'patrol'; t.susp = 30; Guards.say(t, 'What… where am I?'); }
+    if (S.cur === t) S.cur = S.thralls[0] || null; CamRig.follow = S.cur ? S.cur.pos : (S.astral ? S.astral.pos : null);
+    if (!quiet && !S.thralls.length) Toast.show('BACK IN YOUR OWN HEAD');
+  }
+  function releaseAll() { for (const t of [...S.thralls]) release(t, true); CamRig.follow = S.astral ? S.astral.pos : null; }
+  // a strong mind fights back: a tug-of-war
+  function duel(t) { S.duel = { t, k: 0.35, time: 0 }; Toast.show('<b>MIND DUEL</b> — HAMMER RIGHT CLICK', 'big'); Audio.heatUp(2); }
+  function updateDuel(rdt) {
+    const D = S.duel; if (!D) return; D.time += rdt; const t = D.t; if (!t.alive || t.ko) { S.duel = null; return; }
+    if (Input.tap('throw') || Input.pressedKey('KeyE')) D.k += 0.075; D.k -= rdt * (t.leader ? 0.2 : 0.13); S.will -= rdt * 6;
+    Hud.hint(`MIND DUEL · ${'█'.repeat(Math.round(clamp(D.k, 0, 1) * 20))}${'░'.repeat(20 - Math.round(clamp(D.k, 0, 1) * 20))} · HAMMER RMB`, D.k < 0.25 ? 'bad' : 'ok');
+    if (D.k >= 1) { S.duel = null; if (t.psiHelm) t.psiHelm = 0; if (t.leader) { t.stunT = 6; Units.hit(t, 120, V3(0, 2, 0), 'psi', 0.5); Toast.show('YOU BROKE THROUGH — THE BOSS REELS', 'big'); } else take(t, 'unit'); }
+    else if (D.k <= 0 || D.time > 8 || S.will <= 0) { S.duel = null; S.will = Math.max(0, S.will - 25); Player.hurt(12, t.pos, 'psi'); Toast.show('THEIR WILL WAS STRONGER', 'heat'); }
+  }
+  const _w = V3();
+  function wish() { const [mx, my] = Input.move(); const P = Player; return _w.set(-Math.sin(P.yaw) * my + Math.cos(P.yaw) * mx, 0, -Math.cos(P.yaw) * my - Math.sin(P.yaw) * mx); }
+  // driven from Units.update for every dominated unit
+  function drive(u, dt) {
+    u.action = null;
+    if (u === S.cur && !S.astral) {
+      const w = wish(); const sp = (Input.down('sprint') ? 6.2 : 3.6) * (u.def.speed > 4 ? 1.1 : 1);
+      if (w.lengthSq() > 0.01) { Units.step(u, w.x * sp * dt, w.z * sp * dt, dt); u.faceYaw = Math.atan2(w.x, w.z); } else { Units.step(u, 0, 0, dt); u.faceYaw = Player.yaw + Math.PI; }
+      if (Input.tap('grab')) attack(u);
+      return w.lengthSq() > 0.01 ? sp : 0;
+    }
+    // the others in the chain fight for you on their own
+    const foe = Units.list.filter(o => o.alive && !o.ko && !o.thrall && o.gang && o.pos.distanceTo(u.pos) < 18).sort((a, b) => a.pos.distanceTo(u.pos) - b.pos.distanceTo(u.pos))[0];
+    if (!foe) { Units.step(u, 0, 0, dt); return 0; }
+    const d = foe.pos.distanceTo(u.pos); u.faceYaw = Math.atan2(foe.pos.x - u.pos.x, foe.pos.z - u.pos.z);
+    if (d > 2) return Units.moveTo(u, foe.pos, u.def.speed, dt);
+    u.meleeT = (u.meleeT || 0) - dt; if (u.meleeT <= 0) { u.meleeT = 1; u.action = 'swing'; u.actionT = 0; Units.hit(foe, 14, V3(Math.sin(u.yaw) * 5, 3, Math.cos(u.yaw) * 5), 'melee', 1); Audio.punch(1); if (foe.ko && foe.gang === u.gang) Challenges.flag('cxTurn'); }
+    Units.step(u, 0, 0, dt); return 0;
+  }
+  function attack(u) {
+    u.actionT = 0;
+    if (u.type === 'gunner' || u.type === 'officer' || u.type === 'rifle') {
+      u.action = 'rifle'; const eye = V3(u.pos.x, u.pos.y + 1.5, u.pos.z); const m = aimed(40, 0.97); const tgt = m && m.u && m.u !== u ? m.u : null; const to = tgt ? V3(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z) : CamRig.aimPoint.clone();
+      tracer(eye, to, '#ffd080'); Audio.gun('bullet', eye); if (tgt) { Units.hit(tgt, 20, null, 'shot', 0.6); if (tgt.gang && !tgt.angry) GangAI.anger(tgt); if (tgt.ko && tgt.gang === u.gang) Challenges.flag('cxTurn'); }
+      return;
+    }
+    u.action = 'swing'; const f = V3(Math.sin(u.yaw), 0, Math.cos(u.yaw));
+    const tgt = Units.list.filter(o => o !== u && o.alive && !o.ko && o.pos.distanceTo(u.pos) < 2.6 && V3().subVectors(o.pos, u.pos).normalize().dot(f) > 0.3)[0];
+    Audio.punch(1); if (tgt) { Units.hit(tgt, u.type === 'brute' ? 30 : 18, f.multiplyScalar(6).add(V3(0, 3, 0)), 'melee', 1.2); if (tgt.gang && !tgt.angry) GangAI.anger(tgt); if (tgt.ko && tgt.gang === u.gang) Challenges.flag('cxTurn'); }
+  }
+  // heist guards under control: walk them, use their clearance
+  function driveGuard(g, dt) {
+    const C = Heists.cell; if (g !== S.cur || S.astral) { Guards.pose(g, 0, dt, null); return; }
+    const w = wish(); const sp = 2.6; let speed = 0;
+    if (w.lengthSq() > 0.01) { const nx = g.pos.x + w.x * sp * dt, nz = g.pos.z + w.z * sp * dt; if (losClear(V3(g.pos.x, 1, g.pos.z), V3(nx + w.x * 0.4, 1, nz + w.z * 0.4), 0)) { g.pos.x = nx; g.pos.z = nz; speed = sp; } g.yaw = Math.atan2(w.x, w.z); }
+    Guards.pose(g, speed, dt, null);
+    // a guard's badge opens doors; he can pocket the keycard for you
+    for (const d of C.doors) if (d.locked && d.pos.distanceTo(g.pos) < 2.2) { Hud.hint('E — ' + g.name.toUpperCase() + ' SWIPES HIS BADGE', 'ok'); if (Input.pressedKey('KeyE')) { d.setLocked(false); Audio.ui(2); Toast.show(g.name.toUpperCase() + ' OPENS THE DOOR', 'big'); } return; }
+    if (C.keycard && !C.keycard.taken && C.keycard.pos.distanceTo(g.pos) < 1.8) { Hud.hint('E — ' + g.name.toUpperCase() + ' TAKES THE KEYCARD (FOR YOU)', 'ok'); if (Input.pressedKey('KeyE')) { C.keycard.taken = true; Shift.keycard = true; if (C.keycard.mesh) C.keycard.mesh.visible = false; Toast.show('THE KEYCARD IS YOURS', 'big'); } }
+  }
+  // ---------- astral form ----------
+  function astralToggle() {
+    if (S.astral) { endAstral(); return; }
+    if (!Prog.has('astral')) { Toast.show('ASTRAL FORM — LOCKED (POWER TREE)', 'heat'); return; } if (S.will < 20) { Toast.show('NOT ENOUGH WILL', 'heat'); return; }
+    const rig = makeCharacter('player', Player.palette()); rig.mesh.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 0.6, 2.2), transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }); scene.add(rig.mesh);
+    S.astral = { pos: Player.pos.clone().add(V3(0, 0.6, 0)), rig, hp0: Player.hp }; CamRig.follow = S.astral.pos; Audio.heatUp(1); Toast.show('<b>ASTRAL FORM</b> — fly through walls · SPACE up · CTRL down · V return. Your body is undefended.', 'big');
+  }
+  function endAstral(hurt) { const A = S.astral; if (!A) return; scene.remove(A.rig.mesh); S.astral = null; CamRig.follow = S.cur ? S.cur.pos : null; if (hurt) { Toast.show('YOUR BODY WAS HIT — SNAPPED BACK', 'heat'); Shake.add(0.3); } }
+  function updateAstral(rdt) {
+    const A = S.astral; if (!A) return; S.will -= rdt * 5; if (S.will <= 0) { endAstral(); return; }
+    const w = wish(); let vy = 0; if (Input.keys.Space) vy += 1; if (Input.keys.ControlLeft) vy -= 1;
+    A.pos.addScaledVector(w, 14 * rdt); A.pos.y = clamp(A.pos.y + vy * 10 * rdt, -6, 200);
+    if (A.pos.distanceTo(Player.pos) > 140) { A.pos.sub(Player.pos).setLength(140).add(Player.pos); Hud.hint('THE CORD WON\'T STRETCH FURTHER', 'bad'); }
+    A.rig.mesh.position.copy(A.pos); A.rig.mesh.rotation.y = w.lengthSq() > 0.01 ? Math.atan2(w.x, w.z) : A.rig.mesh.rotation.y; poseRig(A.rig, { t: G.time, speed: 0, air: true, levitate: true }, rdt);
+    if (Player.hp < A.hp0 - 0.5) endAstral(true); A.hp0 = Math.min(A.hp0, Player.hp);
+  }
+  // ---------- memory wipe, suggestion, overmind ----------
+  function wipe() {
+    if (!Prog.has('wipe')) { Toast.show('MEMORY WIPE — LOCKED (POWER TREE)', 'heat'); return; } if (S.wipeCd > 0) { Toast.show('WIPE RECHARGING · ' + Math.ceil(S.wipeCd) + ' s', 'heat'); return; } if (S.will < 35) { Toast.show('NOT ENOUGH WILL', 'heat'); return; }
+    S.will -= 35; S.wipeCd = 14; const p = Player.pos; Rings.spawn(p.clone(), 18, '#c8a8ff', 0.6); Audio.heatUp(1);
+    const C = Heists.cell; let n = 0;
+    if (C) { for (const g of C.guards) if (g.pos.distanceTo(p) < 22) { g.susp = 0; g.knows.clear(); g.memory = null; g.look = null; g.sawMissing = false; if (g.state !== 'alarmed') g.state = 'patrol'; n++; } if (!C.alarm && n) { C.seen = false; C.wiped = true; Toast.show('THEY NEVER SAW YOU — ' + n + ' MEMORIES ERASED · CAMERAS REMEMBER WHAT THEY RECORDED', 'big'); } else if (C.alarm) Toast.show('TOO LATE — THE ALARM IS ALREADY RINGING', 'heat'); return; }
+    for (const u of Units.list) if (u.alive && !u.ko && u.pos.distanceTo(p) < 22 && !isNull(u)) { u.angry = false; u.lastSeenT = -99; u.tgt = null; u.sees = false; if (u.type === 'civilian') u.scaredT = 0; n++; }
+    Toast.show(n + ' MINDS WIPED — NOBODY HERE REMEMBERS A THING', 'big');
+  }
+  function suggestion() {
+    const p = CamRig.aimPoint.clone(); if (p.distanceTo(Player.pos) > 26) p.copy(Player.pos).addScaledVector(CamRig.fwd, 22); p.y = 0;
+    let gangs = 0, civs = 0;
+    for (const u of Units.list) {
+      if (!u.alive || u.ko || u.thrall || u.pos.distanceTo(p) > 14 || isNull(u)) continue;
+      if (u.gang) { gangs++; u.disarmed = true; u.angry = false; u.tgt = null; if (u.type === 'gunner') u.type = 'thug'; if (Math.random() < 0.5) { u.state = 'flee'; u.fleePt = freeSpot(V3(u.pos.x + frnd(-40, 40), 0, u.pos.z + frnd(-40, 40)), 0, 8); } u.stunT = 1; FX.glow(u.pos.clone().add(V3(0, 1.7, 0)), 0.8, 1.4, 0.9, 2.2, 0.1); }
+      else if (u.type === 'civilian') { civs++; u.scaredT = 0; }
+    }
+    if (gangs) Toast.show('"PUT IT DOWN. WALK AWAY." — ' + gangs + ' OBEY', 'big'); else if (civs) Toast.show('THE CROWD CALMS', 'big');
+  }
+  const Hum = { o: null, g: null, start() { try { const A = Hum.ctx = Hum.ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = A.createOscillator(), o2 = A.createOscillator(), g = A.createGain(); o.frequency.value = 55; o2.frequency.value = 82.5; o.type = o2.type = 'sine'; g.gain.value = 0; o.connect(g); o2.connect(g); g.connect(A.destination); o.start(); o2.start(); g.gain.linearRampToValueAtTime(0.12, A.currentTime + 1.2); Hum.o = [o, o2]; Hum.g = g; } catch (e) { } }, stop() { if (!Hum.g) return; const A = Hum.ctx; Hum.g.gain.linearRampToValueAtTime(0, A.currentTime + 1.2); const os = Hum.o; setTimeout(() => os.forEach(o => o.stop()), 1400); Hum.g = null; } };
+  function overmind() {
+    if (!Prog.has('overmind')) { Toast.show('OVERMIND — LOCKED (POWER TREE)', 'heat'); return; } if (S.omCd > 0) { Toast.show('OVERMIND RECHARGING · ' + Math.ceil(S.omCd) + ' s', 'heat'); return; } if (S.will < maxWill() - 1) { Toast.show('OVERMIND NEEDS FULL WILL', 'heat'); return; }
+    S.will = 0; S.omCd = 60; S.om = 14; let n = 0;
+    for (const u of Units.list) if (u.alive && !u.ko && u.gang && !u.thrall && !isNull(u) && u.pos.distanceTo(Player.pos) < 45) { u.mad = true; u.angry = true; u.tgt = null; n++; }
+    Hud.banner('OVERMIND', n + ' MINDS TURNED ON EACH OTHER'); Rings.spawn(Player.pos.clone(), 45, '#c8a8ff', 1.2); Shake.add(0.5); Hum.start(); if (n >= 6) Challenges.flag('cxOvermind');
+  }
+  // ---------- frame ----------
+  function update(rdt, dt) {
+    S.lanceCd -= rdt; S.wipeCd -= rdt; S.omCd -= rdt;
+    if (S.om > 0) { S.om -= rdt; if (S.om <= 0) { for (const u of Units.list) u.mad = false; Hum.stop(); } }
+    // thralls cost Will; lose the Will, lose the minds
+    S.thralls = S.thralls.filter(t => { const ok = t.thrallKind === 'guard' ? !!Heists.cell && Heists.cell.guards.includes(t) : (t.alive && !t.ko && t.body); if (!ok) { t.thrall = false; if (S.cur === t) S.cur = null; } return ok; });
+    if (S.thralls.length && !S.cur) { S.cur = S.thralls[0]; } CamRig.follow = S.astral ? S.astral.pos : S.cur ? S.cur.pos : null;
+    const drain = S.thralls.reduce((a, t) => a + (t.leader ? 10 : 4), 0);
+    if (drain) { S.will -= drain * rdt; if (S.will <= 0) { S.will = 0; releaseAll(); Toast.show('YOUR WILL GAVE OUT — THEY\'RE FREE', 'heat'); } }
+    else if (!S.astral && !S.duel) S.will = Math.min(maxWill(), S.will + (9 + Prog.level('will') * 2) * rdt);
+    updateRead(rdt); updateAstral(rdt); updateDuel(rdt);
+    if (!on() || Shift.wheelOpen) return;
+    // drones and cameras see the real you
+    if (Shift.form !== 'human' && !Shift.inCell) for (const d of [...Air.drones, ...Counters.drones]) if (!d.dead && d.alive !== false && d.pos && d.pos.distanceTo(Player.pos) < 22 && !Shift.burned) { Shift.burned = true; Toast.show('A DRONE SEES THROUGH YOUR PROJECTION', 'heat'); }
+    if (S.duel) return;
+    if (Input.tap('grab') && !S.cur) lance();
+    if (Input.tap('throw')) { if (!S.cur || Prog.has('chain')) dominate(); }
+    if (Input.pressedKey('KeyZ') && S.thralls.length > 1) { const i = S.thralls.indexOf(S.cur); S.cur = S.thralls[(i + 1) % S.thralls.length]; Toast.show('SWAPPED MINDS'); }
+    if (Input.pressedKey('KeyR') && (S.thralls.length || S.astral)) { releaseAll(); endAstral(); Input.keys.KeyR = false; }
+    if (Input.pressedKey('KeyV')) astralToggle();
+    if (Input.pressedKey('KeyX')) wipe();
+    if (Input.pressedKey('KeyU')) overmind();
+  }
+  function reset() { releaseAll(); endAstral(); S.duel = null; S.will = maxWill(); if (S.om > 0) { S.om = 0; for (const u of Units.list) u.mad = false; Hum.stop(); } if (finalPass.uniforms.uPsi) finalPass.uniforms.uPsi.value = 0; S.psi = 0; CamRig.follow = null; if (orbs) orbs.forEach(o => o.visible = false); bubbles.forEach(b => b.style.display = 'none'); }
+  function dom() { const css = document.createElement('style'); css.textContent = `.cxthought{position:fixed;transform:translate(-50%,-100%);z-index:14;max-width:240px;padding:6px 10px;border-radius:14px;background:rgba(30,20,60,.78);border:1px solid rgba(200,168,255,.55);color:#efe6ff;font:italic 600 12px var(--sans,sans-serif);pointer-events:none;text-align:center;box-shadow:0 0 18px rgba(169,140,255,.35)}`; document.head.appendChild(css); }
+  return { S, update, drive, driveGuard, suggestion, reset, dom, isNull, get busy() { return !!(S.cur || S.astral || S.duel); }, get will() { return S.will; }, maxWill };
+})();
+// Mimic's echo becomes Suggestion; the slots, keys and vitals read the telepath's state
+Shift.echo = function () { const p = CamRig.aimPoint.clone(); this.echoT = 4; Rings.spawn(p.clone().setY(0), 5, '#c8a8ff', 0.5); const C = Heists.cell; if (C) for (const g of C.guards) if (g.pos.distanceTo(p) < 14 && !C.alarm && !g.thrall) { g.state = 'investigate'; g.look = p.clone(); g.susp = Math.max(g.susp, 10); Guards.say(g, fpick(['I should check over there…', 'Something over there?', 'Better take a look.'])); } Cortex.suggestion(); };
+Shift.keysHtml = function () { return '<b>HOLD F</b> read minds · <b>LMB</b> mind lance · <b>RMB</b> dominate (<b>Z</b> swap · <b>R</b> let go)<br><b>HOLD E</b> read &amp; copy an identity · <b>HOLD Q</b> projection wheel<br><b>G</b> suggestion · <b>X</b> memory wipe · <b>V</b> astral form · <b>U</b> overmind<br><b>E</b> enter heists / take the prize · <b>B</b> heist board · cameras see the real you'; };
+{ const slot0 = Shift.slot.bind(Shift); Shift.slot = function (s) { const C = Cortex.S; const L = id => !Prog.has(id);
+  if (s.id === 'read') return { active: !!Input.keys.KeyF, cd: 0 }; if (s.id === 'lance') return { active: false, cd: clamp(C.lanceCd / 0.45, 0, 1) }; if (s.id === 'dominate') return { active: C.thralls.length > 0, cd: Cortex.will < 25 ? 1 : 0 };
+  if (s.id === 'wipe') return { locked: L('wipe'), cd: clamp(C.wipeCd / 14, 0, 1) }; if (s.id === 'astral') return { locked: L('astral'), active: !!C.astral }; if (s.id === 'overmind') return { locked: L('overmind'), active: C.om > 0, cd: C.omCd > 0 ? clamp(C.omCd / 60, 0, 1) : 1 - Cortex.will / Cortex.maxWill() };
+  return slot0(s); }; }
+{ const vit0 = Shift.vitals.bind(Shift); Shift.vitals = function () { vit0(); const F = FORMS[this.form]; $('lbl-mind').textContent = 'PROJECTION'; if (F.kind !== 'object') { $('lbl-ovl').textContent = Cortex.S.thralls.length ? 'WILL · ' + Cortex.S.thralls.length + ' MIND' + (Cortex.S.thralls.length > 1 ? 'S' : '') + ' HELD' : Cortex.S.astral ? 'WILL · ASTRAL' : 'WILL'; $('ovlbar').style.width = clamp(Cortex.will / Cortex.maxWill(), 0, 1) * 100 + '%'; $('ovlv').textContent = Math.round(Cortex.will) + (this.form !== 'human' ? ' · as ' + F.name : ''); } }; }
+// counters: lieutenants wear psi-dampener helmets when the telepath is on the street
+{ const sp0 = Lieutenants.spawn; Lieutenants.spawn = function (...a) { const u = sp0.apply(this, a); if (u && G.hero === 'shift') u.psiHelm = 2; return u; }; }
+Shift.cosHtml = (f => function () { return f.call(this).replace('COSMETICS · MIMIC', 'COSMETICS · CORTEX').replace('SHIFT RIPPLE', 'PROJECTION SHIMMER'); })(Shift.cosHtml);
+
+// §SOVEREIGN --------------------------------------------------------------------------------
+// Master of nanotechnology. Everything he does should look expensive: he walks, the world reacts.
+// Nanites are one GPU-animated InstancedMesh per cloud: every particle eases from where it was to a
+// point sampled on the target construct's surface (MeshSurfaceSampler), arcing with a little noise.
+// The suit is a dissolve shader — black, gold, a hint of white. Nanomass comes from the city's metal.
+HEROES.nano = { id: 'nano', name: 'SOVEREIGN', title: 'Master of Nanotech', model: 'hero_sovereign.glb', color: '#e8c26a', blurb: 'He doesn\'t run. Every car is ammunition, every construct assembles from a living swarm, and the city stops to watch. Build Presence until even the gangs give up.' };
+HERO_IDS.push('nano');
+TREES.nano = {
+  powers: [
+    { id: 'swarm', name: 'SWARM', key: 'F', cost: 400, req: [], desc: 'Send the cloud where you aim: it strips weapons and armour and eats cover.' },
+    { id: 'assimilate', name: 'ASSIMILATE', key: 'G', cost: 500, req: [], desc: 'Take over drones and jammers. Their counters become your weapons.' },
+    { id: 'wings', name: 'WINGS', key: 'SPACE (hold, in the air)', cost: 450, req: [], desc: 'Grand gliding wings and slow flight. Costs Nanomass.' },
+    { id: 'rebuild', name: 'REBUILD', key: 'R', cost: 350, req: [], desc: 'Repair wrecks and stabilise incidents. The district remembers.' },
+    { id: 'decoys', name: 'DECOYS', key: 'C', cost: 600, req: ['swarm'], desc: 'Two nanite copies draw fire, then burst into blades.' },
+    { id: 'colossus', name: 'COLOSSUS', key: 'U (full Presence)', cost: 1800, req: ['assimilate', 'decoys'], desc: 'Pull in every car within 80 m and pilot a giant for 30 seconds.' },
+  ],
+  upgrades: [
+    { id: 'mass', name: 'NANOMASS', base: 100, max: 5, desc: '+30 Nanomass capacity.' },
+    { id: 'forge', name: 'CONSTRUCT POWER', base: 120, max: 5, desc: '+15% construct damage.' },
+    { id: 'presence', name: 'PRESENCE', base: 110, max: 5, desc: 'Presence builds faster and fades slower.' },
+    { id: 'harvest', name: 'HARVEST', base: 90, max: 5, desc: 'Harvest metal faster and from further away.' },
+    { id: 'health', name: 'HEALTH', base: 120, max: 5, desc: '+20 health.' },
+  ],
+};
+CHALLENGES_BY.nano = [
+  { id: 'nvAscend', name: 'Reach Ascendant', reward: 600 }, { id: 'nvSurrender', name: 'Make three gang members surrender without a fight', reward: 700 },
+  { id: 'nvBullets', name: 'Stand still while twenty bullets break on your shield', reward: 800 }, { id: 'nvHarvest10', name: 'Harvest ten cars in one run', reward: 500 },
+  { id: 'nvAll', name: 'KO an enemy with every construct', reward: 900 }, { id: 'nvColossus', name: 'Pilot the Colossus', reward: 1200 },
+];
+RECORD_DEFS_BY.nano = [['bestScore', 'Best score', v => fmt(v)], ['presencePeak', 'Ascendant states (one run)', v => v || 0], ['harvested', 'Cars harvested (one run)', v => v || 0], ['blocked', 'Bullets blocked (one run)', v => v || 0], ['highestHeat', 'Highest heat', v => v || 0]];
+HERO_SLOTS.nano = [
+  { id: 'con', key: 'HOLD Q', name: 'CONSTRUCT', g: '⬢' }, { id: 'harvest', key: 'HOLD E', name: 'HARVEST', g: '⇲' }, { id: 'block', key: 'RMB', name: 'GUARD', g: '⛉' },
+  { id: 'swarm', key: 'F', name: 'SWARM', g: '⁂', lock: 'swarm' }, { id: 'assimilate', key: 'G', name: 'ASSIMILATE', g: '⌬', lock: 'assimilate' }, { id: 'decoys', key: 'C', name: 'DECOYS', g: '⧉', lock: 'decoys' },
+  { id: 'rebuild', key: 'R', name: 'REBUILD', g: '⟲', lock: 'rebuild' }, { id: 'wings', key: 'SPACE', name: 'WINGS', g: '⋀', lock: 'wings' }, { id: 'colossus', key: 'U', name: 'COLOSSUS', g: '♜', lock: 'colossus' },
+];
+TUT_BY.nano = [
+  ['harvest', 'HARVEST', 'Aim at a car and <b>HOLD E</b>. It comes apart into a stream of nanites that flows into your suit — <b>Nanomass</b>'],
+  ['con', 'CONSTRUCTS', '<b>HOLD Q</b> for the construct wheel — blade, hammer, tower shield, chain whip, cannon. <b>1–5</b> pick one directly. <b>LEFT CLICK</b> uses it'],
+  ['presence', 'PRESENCE', 'Fight without taking hits, vary your constructs, stand firm behind your guard (<b>RMB</b>). High Presence: weak thugs give up. Full: <b>Ascendant</b>'],
+];
+const SUIT_COLORS = [{ id: 'gold', name: 'Sovereign gold', c: [1.0, 0.74, 0.32], req: null }, { id: 'platinum', name: 'Platinum', c: [0.86, 0.88, 0.92], req: ['presencePeak', 3, 'Ascend 3 times in a run'] }, { id: 'rose', name: 'Rose gold', c: [1.0, 0.6, 0.5], req: ['harvested', 15, 'Harvest 15 cars in a run'] }];
+// ---------- the suit: black and gold, dissolving from the feet up ----------
+const SUIT_U = { uDis: { value: 1.4 }, uBase: { value: 0 }, uGold: { value: new THREE.Color(1.0, 0.74, 0.32) }, uGlow: { value: 0.2 }, uTime: { value: 0 } };
+const NOISE_GLSL = `float nhash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+float vnoise(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f); return mix(mix(mix(nhash(i),nhash(i+vec3(1,0,0)),f.x),mix(nhash(i+vec3(0,1,0)),nhash(i+vec3(1,1,0)),f.x),f.y),mix(mix(nhash(i+vec3(0,0,1)),nhash(i+vec3(1,0,1)),f.x),mix(nhash(i+vec3(0,1,1)),nhash(i+vec3(1,1,1)),f.x),f.y),f.z); }`;
+function suitMaterial(src, U = SUIT_U) {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: src.map || null, normalMap: src.normalMap || null, metalness: 0.95, roughness: 0.3, envMapIntensity: 1.3 });
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;').replace('#include <project_vertex>', '#include <project_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; uniform float uDis,uBase,uGlow,uTime; uniform vec3 uGold;\n' + NOISE_GLSL)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float lum=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)); float gold=smoothstep(0.3,0.42,lum); float white=smoothstep(0.8,0.92,lum);
+        diffuseColor.rgb=mix(vec3(0.018,0.018,0.022),uGold,gold); diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.95),white*0.6);
+        float dd=(vWP.y-uBase)/1.9+vnoise(vWP*6.0)*0.22; if(dd>uDis) discard; float edge=1.0-smoothstep(0.0,0.07,uDis-dd);`)
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance+=uGold*(gold*uGlow+edge*3.5);');
+  };
+  return m;
+}
+HEROES.nano.onModel = (m, remote) => { const U = remote ? Object.assign({}, SUIT_U, { uDis: { value: 99 }, uBase: { value: 0 }, uGlow: { value: 0.25 } }) : SUIT_U; m.root.traverse(o => { if (o.isMesh && o.material) o.material = suitMaterial(o.material, U); }); };
+// ---------- the nanite cloud ----------
+const NanoShapes = (() => {
+  // procedural target shapes, each in its own anchor's space (a bone, a point in the world, the mech)
+  const box = (w, h, d, x = 0, y = 0, z = 0, rx = 0, rz = 0) => { const g = new THREE.BoxGeometry(w, h, d); if (rx) g.rotateX(rx); if (rz) g.rotateZ(rz); g.translate(x, y, z); return g; };
+  const cyl = (r, h, x = 0, y = 0, z = 0) => { const g = new THREE.CylinderGeometry(r, r, h, 16); g.translate(x, y, z); return g; };
+  const merge = gs => mergeGeometries(gs.map(g => g.index ? g.toNonIndexed() : g), false);
+  const S = {};
+  S.dormant = () => merge([box(0.34, 0.5, 0.22, 0, 0.25, 0)]);                                           // spine space: absorbed into the chest
+  S.blade = () => merge([box(0.05, 1.5, 0.16, 0, -1.15, 0.02), box(0.32, 0.06, 0.1, 0, -0.42, 0), box(0.06, 0.18, 0.06, 0, -0.33, 0)]); // right forearm
+  S.hammer = () => merge([cyl(0.05, 1.1, 0, -0.85, 0), box(0.62, 0.34, 0.34, 0, -1.45, 0)]);
+  S.shield = () => merge([box(0.95, 1.7, 0.08, 0.12, -0.25, 0.22), box(0.85, 0.08, 0.12, 0.12, 0.5, 0.24), box(0.85, 0.08, 0.12, 0.12, -1.0, 0.24)]); // left forearm
+  S.whip = () => { const gs = []; for (let i = 0; i < 26; i++) gs.push(box(0.07, 0.14, 0.07, 0, -0.45 - i * 0.17, 0)); return merge(gs); };
+  S.cannon = () => merge([cyl(0.17, 0.9, 0, -0.35, 0), cyl(0.11, 0.5, 0, -0.95, 0), box(0.38, 0.12, 0.3, 0, -0.1, 0)]);
+  S.wings = () => { const gs = []; for (const s of [-1, 1]) for (let i = 0; i < 6; i++) { const g = box(1.9 - i * 0.14, 0.035, 0.32, s * (0.95 + i * 0.08), 0.35 + i * 0.13, -0.2); g.rotateZ(s * (0.18 + i * 0.1)); g.translate(s * i * 0.06, 0, 0); gs.push(g); } return merge(gs); }; // spine
+  S.swarm = () => new THREE.SphereGeometry(2.0, 24, 16);
+  S.halo = () => new THREE.TorusGeometry(0.3, 0.022, 8, 64);
+  S.mech = () => merge([box(2.6, 3.0, 1.6, 0, 6.2, 0), box(1.4, 1.0, 1.2, 0, 8.3, 0.1), box(2.0, 1.0, 1.4, 0, 4.4, 0), box(0.9, 4.2, 0.9, -0.8, 2.1, 0), box(0.9, 4.2, 0.9, 0.8, 2.1, 0), box(0.8, 3.6, 0.8, -2.0, 5.6, 0), box(1.1, 0.6, 1.8, -2.0, 0.3, 0.3), box(0.6, 0.2, 0.25, 0, 8.4, 0.72)]);
+  S.mechArm = () => merge([box(0.85, 3.4, 0.85, 0, -1.5, 0), box(1.1, 1.0, 1.1, 0, -3.4, 0)]);
+  const cache = {};
+  function points(id, n) {
+    const k = id + n; if (cache[k]) return cache[k];
+    const geo = S[id](); const mesh = new THREE.Mesh(geo); const smp = new MeshSurfaceSampler(mesh).build(); const out = new Float32Array(n * 3); const v = V3();
+    for (let i = 0; i < n; i++) { smp.sample(v); out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
+    geo.dispose(); return cache[k] = out;
+  }
+  return { points };
+})();
+class NanoCloud {
+  constructor(n, size) {
+    this.n = n; const geo = new THREE.InstancedBufferGeometry(); const base = new THREE.TetrahedronGeometry(1, 0);
+    geo.index = base.index; geo.setAttribute('position', base.attributes.position); geo.setAttribute('normal', base.attributes.normal);
+    this.src = new Float32Array(n * 3); this.dst = new Float32Array(n * 3); this.grp = new Float32Array(n); const seed = new Float32Array(n); for (let i = 0; i < n; i++) seed[i] = Math.random();
+    this.seed = seed; geo.setAttribute('aSrc', new THREE.InstancedBufferAttribute(this.src, 3)); geo.setAttribute('aDst', new THREE.InstancedBufferAttribute(this.dst, 3)); geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seed, 1)); geo.setAttribute('aGrp', new THREE.InstancedBufferAttribute(this.grp, 1));
+    geo.instanceCount = n; this.geo = geo;
+    this.U = { uK: { value: 1 }, uM: { value: new THREE.Matrix4() }, uM2: { value: new THREE.Matrix4() }, uSize: { value: size }, uSizeEnd: { value: size }, uSwirl: { value: 0 }, uWhip: { value: 0 }, uTime: { value: 0 }, uGold: SUIT_U.uGold, uArc: { value: 0.7 } };
+    const m = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, metalness: 1, roughness: 0.22, envMapIntensity: 1.6 });
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, this.U);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
+        attribute vec3 aSrc; attribute vec3 aDst; attribute float aSeed; attribute float aGrp; uniform float uK,uSize,uSizeEnd,uSwirl,uWhip,uTime,uArc; uniform mat4 uM,uM2; varying float vGlow; varying float vGoldMix;
+        mat3 rotS(float s){ float a=s*31.0+uTime*(0.5+s), b=s*17.0; float ca=cos(a),sa=sin(a),cb=cos(b),sb=sin(b); return mat3(ca,sa*cb,sa*sb, -sa,ca*cb,ca*sb, 0.0,-sb,cb); }`)
+        .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nobjectNormal=rotS(aSeed)*objectNormal;')
+        .replace('#include <begin_vertex>', `
+          float k=clamp((uK-aSeed*0.35)/0.65,0.0,1.0); k=k*k*(3.0-2.0*k);
+          vec3 d=aDst; if(uWhip!=0.0){ float t=-d.y; d.x+=sin(t*1.6-uTime*9.0)*uWhip*t*0.12; d.z+=cos(t*1.3-uTime*7.0)*uWhip*t*0.08; }
+          vec3 b=((aGrp>0.5?uM2:uM)*vec4(d,1.0)).xyz;
+          if(uSwirl>0.0) b+=vec3(sin(uTime*2.1+aSeed*40.0),cos(uTime*1.7+aSeed*31.0),sin(uTime*2.6+aSeed*17.0))*uSwirl*(0.4+aSeed);
+          vec3 p=mix(aSrc,b,k)+vec3(sin(aSeed*91.0+uTime*3.0),cos(aSeed*57.0+uTime*2.0)+0.6,sin(aSeed*23.0-uTime*2.5))*sin(k*3.14159)*uArc;
+          vGlow=sin(k*3.14159)*1.6+0.08; vGoldMix=step(0.72,aSeed);
+          vec3 transformed=rotS(aSeed)*position*mix(uSize,uSizeEnd,k)*(0.6+aSeed*0.8)+p;`)
+        .replace('#include <project_vertex>', 'vec4 mvPosition=viewMatrix*vec4(transformed,1.0); gl_Position=projectionMatrix*mvPosition;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlow; varying float vGoldMix; uniform vec3 uGold;').replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb=mix(diffuseColor.rgb,uGold*0.95,vGoldMix);').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance+=uGold*(vGlow+vGoldMix*0.12);');
+    };
+    this.mat = m; this.mesh = new THREE.Mesh(geo, m); this.mesh.frustumCulled = false; this.mesh.castShadow = false; scene.add(this.mesh);
+    this.dur = 1; this.anchor = () => this.U.uM.value; this.anchor2 = null; this.id = null;
+  }
+  // where every particle is drawn right now (mirrors the shader, without the arc), into src: the next move starts from here
+  snapshot() {
+    const K = this.U.uK.value, M = this.U.uM.value.elements, M2 = this.U.uM2.value.elements; const s = this.src, d = this.dst;
+    for (let i = 0; i < this.n; i++) {
+      let k = clamp((K - this.seed[i] * 0.35) / 0.65, 0, 1); k = k * k * (3 - 2 * k); const e = this.grp[i] > 0.5 ? M2 : M; const x = d[i * 3], y = d[i * 3 + 1], z = d[i * 3 + 2];
+      const bx = e[0] * x + e[4] * y + e[8] * z + e[12], by = e[1] * x + e[5] * y + e[9] * z + e[13], bz = e[2] * x + e[6] * y + e[10] * z + e[14];
+      s[i * 3] = s[i * 3] + (bx - s[i * 3]) * k; s[i * 3 + 1] = s[i * 3 + 1] + (by - s[i * 3 + 1]) * k; s[i * 3 + 2] = s[i * 3 + 2] + (bz - s[i * 3 + 2]) * k;
+    }
+    this.geo.attributes.aSrc.needsUpdate = true;
+  }
+  // assemble into a shape: pts in the anchor's space; pts2 (optional) on the second anchor
+  form(id, pts, anchor, opts = {}) {
+    this.snapshot(); const n = this.n; const split = opts.pts2 ? Math.floor(n * (opts.split || 0.8)) : n;
+    for (let i = 0; i < n; i++) { const P = i < split ? pts : opts.pts2; const j = (i < split ? i : i - split) % (P.length / 3); this.dst[i * 3] = P[j * 3]; this.dst[i * 3 + 1] = P[j * 3 + 1]; this.dst[i * 3 + 2] = P[j * 3 + 2]; this.grp[i] = i < split ? 0 : 1; }
+    this.geo.attributes.aDst.needsUpdate = true; this.geo.attributes.aGrp.needsUpdate = true;
+    this.id = id; this.anchor = anchor; this.anchor2 = opts.anchor2 || null; this.dur = opts.dur || 0.9; this.U.uK.value = 0;
+    this.U.uSize.value = opts.from != null ? opts.from : this.U.uSize.value; this.U.uSizeEnd.value = opts.size != null ? opts.size : 0.035; this.U.uSwirl.value = opts.swirl || 0; this.U.uWhip.value = opts.whip || 0; this.U.uArc.value = opts.arc != null ? opts.arc : 0.7;
+  }
+  // streams from points already in world space (a harvested car) to a shape
+  stream(worldPts, offset, count, id, pts, anchor, opts = {}) {
+    for (let i = 0; i < count; i++) { const k = (offset + i) % this.n; const j = i % (worldPts.length / 3); this.src[k * 3] = worldPts[j * 3]; this.src[k * 3 + 1] = worldPts[j * 3 + 1]; this.src[k * 3 + 2] = worldPts[j * 3 + 2]; const q = k % (pts.length / 3); this.dst[k * 3] = pts[q * 3]; this.dst[k * 3 + 1] = pts[q * 3 + 1]; this.dst[k * 3 + 2] = pts[q * 3 + 2]; this.grp[k] = 0; }
+    this.geo.attributes.aSrc.needsUpdate = true; this.geo.attributes.aDst.needsUpdate = true; this.geo.attributes.aGrp.needsUpdate = true;
+    this.id = id; this.anchor = anchor; this.anchor2 = null; this.dur = opts.dur || 1.4; this.U.uK.value = 0; this.U.uSize.value = opts.from != null ? opts.from : 0.05; this.U.uSizeEnd.value = opts.size != null ? opts.size : 0; this.U.uSwirl.value = 0; this.U.uWhip.value = 0; this.U.uArc.value = opts.arc != null ? opts.arc : 1.4;
+  }
+  update(rdt) {
+    this.U.uTime.value += rdt; this.U.uK.value = Math.min(1.0, this.U.uK.value + rdt / this.dur);
+    const a = this.anchor(); if (a) this.U.uM.value.copy(a); if (this.anchor2) { const b = this.anchor2(); if (b) this.U.uM2.value.copy(b); }
+  }
+}
+// ---------- the hero ----------
+const Sovereign = (() => {
+  const S = { mass: 60, presence: 0, ascend: 0, con: null, lastKoCon: null, used: new Set(), blocking: false, blocked: 0, harvest: null, swarm: null, decoys: [], mech: null, cd: {}, idleT: 0, combo: 0, heading: 0, suitT: 0, glide: false, surr: 0, minions: [] };
+  let main = null, aux = null, halo = null, built = false;
+  const CON = ['blade', 'hammer', 'shield', 'whip', 'cannon'];
+  const CON_NAME = { blade: 'BLADE', hammer: 'HAMMER', shield: 'TOWER SHIELD', whip: 'CHAIN WHIP', cannon: 'CANNON' };
+  const N_MAIN = 22000, N_AUX = 7000, N_HALO = 1400;
+  const maxMass = () => 100 + Prog.level('mass') * 30;
+  const asc = () => S.ascend > 0;
+  const bone = n => Player.rig && Player.rig.bones[n];
+  const _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _s = new THREE.Matrix4();
+  const boneM = (n, sc = 1) => () => { const b = bone(n); if (!b) return null; b.updateWorldMatrix(true, false); _m.copy(b.matrixWorld); if (sc !== 1 || asc()) { const k = sc * (asc() ? 1.35 : 1); _s.makeScale(k, k, k); _m.multiply(_s); } return _m; };
+  const worldM = p => () => _m.makeTranslation(p.x, p.y, p.z);
+  function build() {
+    if (built) return; built = true;
+    main = new NanoCloud(N_MAIN, 0.035); aux = new NanoCloud(N_AUX, 0.05); halo = new NanoCloud(N_HALO, 0.0);
+    main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, from: 0, dur: 0.1 });
+    aux.form('dormant', NanoShapes.points('dormant', N_AUX), boneM('spine'), { size: 0, from: 0, dur: 0.1 });
+    halo.form('halo', NanoShapes.points('halo', N_HALO), haloM, { size: 0, from: 0, dur: 0.1 });
+  }
+  function haloM() { const b = bone('head'); if (!b) return null; b.updateWorldMatrix(true, false); const p = V3().setFromMatrixPosition(b.matrixWorld); const q = Player.rig.mesh.quaternion; _m2.compose(p.add(V3(0, 0.12, 0).applyQuaternion(q)).add(V3(0, 0, -0.32).applyQuaternion(q)), q, V3(1, 1, 1)); return _m2; }
+  function visible(v) { if (!main) return; main.mesh.visible = aux.mesh.visible = halo.mesh.visible = v; }
+  // ---------- suit-up ----------
+  function suitUp(fast) {
+    S.suitT = fast ? 0.7 : 1.5; SUIT_U.uDis.value = -0.35;
+    // the swarm rises from the ground into the body as the suit flows over it
+    if (main) { const pts = new Float32Array(N_MAIN * 3); for (let i = 0; i < N_MAIN; i++) { const a = Math.random() * TAU, r = 0.6 + Math.random() * 2.2; pts[i * 3] = Player.pos.x + Math.cos(a) * r; pts[i * 3 + 1] = Player.pos.y + Math.random() * 0.2; pts[i * 3 + 2] = Player.pos.z + Math.sin(a) * r; } main.src.set(pts); main.geo.attributes.aSrc.needsUpdate = true; main.U.uK.value = 0; main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { from: 0.05, size: 0, dur: S.suitT, arc: 1.2 }); main.src.set(pts); S.con = null; }
+    Audio.heatUp && Audio.heatUp(1);
+  }
+  // ---------- constructs ----------
+  function construct(id) {
+    if (S.mech) return; if (id === S.con) return; if (id && S.mass < 8) { Toast.show('NOT ENOUGH NANOMASS — HARVEST METAL (HOLD E ON A CAR)', 'heat'); return; }
+    if (id) S.mass -= 8; S.con = id; Tut.done('con');
+    if (!id) { main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.6 }); return; }
+    const arm = id === 'shield' ? 'laL' : 'laR';
+    main.form(id, NanoShapes.points(id, N_MAIN), boneM(arm), { size: id === 'whip' ? 0.03 : 0.028, dur: 0.75, whip: id === 'whip' ? 1 : 0 });
+    Audio.ui(0.9);
+  }
+  // ---------- harvesting metal ----------
+  function harvestTarget() {
+    const range = 18 + Prog.level('harvest') * 4; camera.getWorldDirection(_f); let best = null, bs = 0.95;
+    for (const v of Vehicles.list) { if (!v.alive || !v.body || v.harvested) continue; const t = v.body.translation(); _d.set(t.x - camera.position.x, t.y - camera.position.y, t.z - camera.position.z); const L = _d.length(); if (L > range + 8 || Math.hypot(t.x - Player.pos.x, t.z - Player.pos.z) > range) continue; _d.divideScalar(L); const s = _f.dot(_d); if (s > bs) { bs = s; best = v; } }
+    return best;
+  }
+  const _f = V3(), _d = V3();
+  function carPoints(v, n) {
+    const t = v.body.translation(); const q = v.body.rotation(); const Q = new THREE.Quaternion(q.x, q.y, q.z, q.w); const hx = v.hx || 1, hy = v.hy || 0.7, hz = v.hz || 2.2; const out = new Float32Array(n * 3); const p = V3();
+    for (let i = 0; i < n; i++) { p.set(frnd(-hx, hx), frnd(-hy, hy), frnd(-hz, hz)); const ax = Math.floor(Math.random() * 3); if (ax === 0) p.x = Math.sign(p.x || 1) * hx; else if (ax === 1) p.y = Math.sign(p.y || 1) * hy; else p.z = Math.sign(p.z || 1) * hz; p.applyQuaternion(Q); out[i * 3] = t.x + p.x; out[i * 3 + 1] = t.y + p.y; out[i * 3 + 2] = t.z + p.z; }
+    return out;
+  }
+  let auxOff = 0;
+  function consume(v, toMech) {
+    if (!v.alive || v.harvested) return 0; v.harvested = true; const n = Math.min(N_AUX, toMech ? 500 : 2600); const pts = carPoints(v, n);
+    if (toMech) aux.stream(pts, auxOff, n, 'mech', NanoShapes.points('mech', N_AUX), () => S.mech ? S.mech.rootM : null, { size: 0.08, from: 0.06, dur: 1.6 });
+    else aux.stream(pts, auxOff, n, 'absorb', NanoShapes.points('dormant', N_AUX), boneM('spine'), { size: 0, from: 0.06, dur: 1.3 });
+    auxOff = (auxOff + n) % N_AUX;
+    const big = (v.mass || 1500) > 5000; const gain = big ? 55 : 32; if (!toMech) { S.mass = Math.min(maxMass(), S.mass + gain); Toast.show(`+${gain} NANOMASS`); }
+    const mesh = v.mesh; const t0 = performance.now(); const shrink = () => { const k = (performance.now() - t0) / 900; if (k >= 1 || !mesh) { removeObj(v); return; } mesh.scale.set(1 - k * 0.9, 1 - k, 1 - k * 0.9); requestAnimationFrame(shrink); }; shrink();
+    if (v.mra && v.crew) { } Stats.harvested = (Stats.harvested || 0) + 1; Records.bump('harvested', Stats.harvested); if (Stats.harvested >= 10) Challenges.flag('nvHarvest10'); Tut.done('harvest');
+    FX.sparks(V3(v.body ? v.body.translation().x : Player.pos.x, 1, v.body ? v.body.translation().z : Player.pos.z), 20, 0.8, new THREE.Color(2, 1.5, 0.6));
+    return gain;
+  }
+  // ---------- presence ----------
+  function presence(n, why) {
+    const was = S.presence; S.presence = clamp(S.presence + n * (n > 0 ? 1 + Prog.level('presence') * 0.12 : 1), 0, 100); S.idleT = 0;
+    if (was < 100 && S.presence >= 100 && !asc()) ascend();
+  }
+  function ascend() {
+    S.ascend = 20; Hud.banner('ASCENDANT', 'THE CITY STOPS TO WATCH'); Challenges.flag('nvAscend'); Stats.ascends = (Stats.ascends || 0) + 1; Records.bump('presencePeak', Stats.ascends);
+    suitUp(true); Shake.add(0.35); Music.setLevel(2); FX.ring(Player.pos.clone(), 12, new THREE.Color(2, 1.5, 0.6), 90);
+    if (S.con) { const c = S.con; S.con = null; construct(c); S.mass += 8; }
+  }
+  function aura(rdt) {
+    S.surrT = (S.surrT || 0) - rdt; if (S.surrT > 0) return; S.surrT = 1;
+    const P = Player.pos;
+    for (const u of Units.list) {
+      if (!u.alive || u.ko || isDyn(u)) continue; const d = u.pos.distanceTo(P);
+      // pedestrians stop and film
+      if (u.type === 'civilian' && d < 26 && S.presence > 45 && !u.job && !u.held) { u.filming = G.time + 4; u.idleNPC = true; u.faceYaw = Math.atan2(P.x - u.pos.x, P.z - u.pos.z); u.action = 'hold'; }
+      else if (u.type === 'civilian' && u.filming && G.time > u.filming) { u.filming = 0; u.idleNPC = false; }
+      // weak gang members surrender or run
+      if (u.gang && !u.surrendered && u.type === 'thug' && !u.ltId && !u.leader && d < 16 && S.presence > 55 && Math.random() < (asc() ? 0.5 : 0.25)) {
+        u.surrendered = true; u.disarmed = true; u.angry = false; u.tgt = null;
+        if (Math.random() < 0.5) { u.state = 'flee'; u.fleePt = freeSpot(V3(u.pos.x + (u.pos.x - P.x) * 3, 0, u.pos.z + (u.pos.z - P.z) * 3), 0, 8); Speech.show && 0; } else { u.stunT = 30; u.action = 'hold'; }
+        S.surr++; FX.glow(u.pos.clone().add(V3(0, 2, 0)), 0.6, 2, 1.6, 0.6, 0.1); if (S.surr === 1) Toast.show('THEY DROP THEIR WEAPONS'); if (S.surr >= 3) Challenges.flag('nvSurrender');
+      }
+    }
+  }
+  // ---------- combat ----------
+  function dmgMul() { return (1 + Prog.level('forge') * 0.15) * (asc() ? 1.4 : 1); }
+  function front(r, cone = 0.2) { const f = V3(Math.sin(S.heading), 0, Math.cos(S.heading)); return Units.list.filter(u => u.alive && !u.ko && u.type !== 'civilian' && !u.thrall && u.pos.distanceTo(Player.pos) < r && V3().subVectors(u.pos, Player.pos).setY(0).normalize().dot(f) > cone); }
+  function ko(u, con) { if (u.ko) { presence(con === 'hammer' || con === 'cannon' ? 7 : 5); if (con && con !== S.lastKoCon) presence(3, 'variety'); S.lastKoCon = con; S.used.add(con || 'fist'); if (CON.every(c => S.used.has(c))) Challenges.flag('nvAll'); Score.add && Score.add(300, u.pos.clone(), null); } }
+  function hitU(u, dmg, kv, con, stun) { Units.hit(u, dmg * dmgMul(), kv, 'melee', stun); if (u.gang && !u.angry) GangAI.anger(u); ko(u, con); }
+  function attack() {
+    const c = S.con; S.cd.atk = (asc() ? 0.6 : 1) * ({ blade: 0.32, hammer: 0.8, shield: 0.55, whip: 0.6, cannon: 0.35 }[c] || 0.42); S.act = { k: c || 'fist', t: 0 };
+    const f = V3(Math.sin(S.heading), 0, Math.cos(S.heading));
+    if (c === 'cannon') {
+      if (S.mass < 3) { Toast.show('NO NANOMASS', 'heat'); return; } S.mass -= 3;
+      const from = Player.pos.clone().add(V3(0, 1.4, 0)); const m = aimUnit(60); const to = m ? m.pos.clone().add(V3(0, 1.2, 0)) : CamRig.aimPoint.clone();
+      tracer(from, to, '#ffd27a'); FX.glow(to.clone(), 1.6, 2.2, 1.6, 0.6, 0.16); FX.sparks(to.clone(), 18, 1, new THREE.Color(2, 1.5, 0.6)); Audio.gun('pulse', from);
+      for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(to) < 2.6) hitU(u, 26, V3().subVectors(u.pos, to).setY(0).normalize().multiplyScalar(8).add(V3(0, 4, 0)), 'cannon');
+      Counters.hitAt(to, 2, 2); return;
+    }
+    if (c === 'hammer') { Timers.after(0.25, () => { const p = Player.pos.clone().addScaledVector(f, 1.8); Shake.add(0.3); FX.ring(p.clone(), 5, new THREE.Color(2, 1.5, 0.6), 50); Audio.thud(p, 0.9); for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(p) < 4.2) hitU(u, 34, V3().subVectors(u.pos, p).setY(0).normalize().multiplyScalar(9).add(V3(0, 7, 0)), 'hammer', 2); }); return; }
+    if (c === 'whip') { for (const u of front(7.5, 0.1).slice(0, 4)) { const pull = V3().subVectors(Player.pos, u.pos).setY(0).normalize().multiplyScalar(7).add(V3(0, 3, 0)); hitU(u, 16, pull, 'whip', 1.5); } Audio.whoosh && Audio.whoosh(); return; }
+    const targets = front(c === 'blade' ? 3 : 2.4, 0.3).slice(0, c === 'blade' ? 3 : 1);
+    for (const u of targets) hitU(u, c === 'blade' ? 26 : c === 'shield' ? 18 : 12, f.clone().multiplyScalar(c === 'shield' ? 9 : 4).add(V3(0, 2.5, 0)), c, c === 'shield' ? 2 : 1);
+    if (targets.length) Audio.punch(1); else Audio.whoosh && Audio.whoosh();
+  }
+  function aimUnit(range) { camera.getWorldDirection(_f); let best = null, bs = 0.97; for (const u of Units.list) { if (!u.alive || u.ko || u.type === 'civilian') continue; _d.set(u.pos.x - camera.position.x, u.pos.y + 1.2 - camera.position.y, u.pos.z - camera.position.z); const L = _d.length(); if (L > range) continue; _d.divideScalar(L); const s = _f.dot(_d); if (s > bs) { bs = s; best = u; } } return best; }
+  // bullets break apart on the guard
+  function guard(dmg, from) {
+    if (!S.blocking || !from) return false; const f = V3(Math.sin(S.heading), 0, Math.cos(S.heading)); const to = V3().subVectors(from, Player.pos).setY(0).normalize(); if (to.dot(f) < 0.1) return false;
+    const p = Player.pos.clone().add(V3(0, 1.3, 0)).addScaledVector(f, 0.8); FX.sparks(p, 10, 0.6, new THREE.Color(2, 1.5, 0.6)); Audio.metal && Audio.metal(p, 0.3);
+    S.blocked++; Records.bump('blocked', S.blocked); if (S.blocked >= 20) Challenges.flag('nvBullets'); if (Math.sqrt(Player.speed2) < 0.3) presence(2.2, 'unmoved'); return true;
+  }
+  // ---------- swarm, assimilate, decoys, rebuild ----------
+  function swarm() {
+    if (!Prog.has('swarm')) { Toast.show('SWARM — LOCKED (POWER TREE)', 'heat'); return; } if ((S.cd.swarm || 0) > 0 || S.mass < 15) { Toast.show(S.mass < 15 ? 'NOT ENOUGH NANOMASS' : 'SWARM RECHARGING', 'heat'); return; }
+    S.mass -= 15; S.cd.swarm = 10; const p = CamRig.aimPoint.clone(); if (p.distanceTo(Player.pos) > 40) p.copy(Player.pos).addScaledVector(CamRig.fwd, 30); p.y = Math.max(1.4, p.y);
+    S.swarm = { pos: p, t: 6 }; S.con = 'swarm'; main.form('swarm', NanoShapes.points('swarm', N_MAIN), worldM(S.swarm.pos), { size: 0.03, dur: 0.8, swirl: 1.2, arc: 1.5 }); Toast.show('THE SWARM');
+  }
+  function updateSwarm(rdt) {
+    const W = S.swarm; if (!W) return; W.t -= rdt; W.tick = (W.tick || 0) - rdt;
+    if (W.tick <= 0) { W.tick = 0.5; for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(W.pos) < 4.5) { u.disarmed = true; if (u.armored) { u.armored = false; u.dmgMul = 1; } if (u.shield) { u.shield = false; if (u.shieldMesh) { u.shieldMesh.parent && u.shieldMesh.parent.remove(u.shieldMesh); u.shieldMesh = null; } } if (u.type === 'gunner') u.type = 'thug'; hitU(u, 5, null, 'swarm', 0.6); }
+      for (const v of Vehicles.list) if (v.alive && v.body && !v.harvested) { const t = v.body.translation(); if (Math.hypot(t.x - W.pos.x, t.z - W.pos.z) < 4.5) Vehicles.damage(v, 12, W.pos.clone(), 'swarm'); } }
+    if (W.t <= 0) { S.swarm = null; S.con = null; construct(null); }
+  }
+  function assimilate() {
+    if (!Prog.has('assimilate')) { Toast.show('ASSIMILATE — LOCKED (POWER TREE)', 'heat'); return; }
+    const P = Player.pos; let n = 0;
+    for (const j of Counters.jammers) if (j.hp > 0 && j.pos.distanceTo(P) < 30 && !j.mine) { j.mine = 30; j.head.material.color.setRGB(2.2, 1.6, 0.6); n++; aux.stream(new Float32Array([P.x, P.y + 1.4, P.z]), auxOff, 600, 'to', NanoShapes.points('dormant', 600), worldM(j.pos), { size: 0.04, dur: 0.8 }); auxOff = (auxOff + 600) % N_AUX; }
+    for (const d of [...Counters.drones, ...Air.drones]) if ((d.alive !== false && !d.dead) && d.pos && d.pos.distanceTo(P) < 35 && !d.mine) { d.mine = 30; n++; S.minions.push(d); }
+    if (n) { Toast.show(n + ' COUNTER' + (n > 1 ? 'S' : '') + ' ASSIMILATED — THEY FIGHT FOR YOU NOW', 'big'); presence(4); } else Toast.show('NO DRONES OR JAMMERS IN RANGE', 'heat');
+  }
+  function updateMinions(rdt) {
+    for (const j of Counters.jammers) if (j.mine > 0 && j.hp > 0) { j.mine -= rdt; j.fire = (j.fire || 0) - rdt; if (j.fire <= 0) { j.fire = 1.1; const u = Units.list.find(o => o.alive && !o.ko && o.gang && o.pos.distanceTo(j.pos) < 22); if (u) { tracer(j.pos.clone().add(V3(0, 0.5, 0)), u.pos.clone().add(V3(0, 1.2, 0)), '#ffd27a'); hitU(u, 14, null, 'turret', 0.8); } } if (j.mine <= 0) { j.hp = 0; scene.remove(j.mesh); } }
+    S.minions = S.minions.filter(d => { if (!d.mine || d.dead || d.alive === false) return false; d.mine -= rdt; const a = G.time * 1.4 + (d.pos.x % 7); const tgt = Player.pos.clone().add(V3(Math.cos(a) * 3, 3.5, Math.sin(a) * 3)); d.pos.lerp(tgt, Math.min(1, rdt * 2)); if (d.mesh) d.mesh.position.copy(d.pos); d.fire = (d.fire || 0) - rdt; if (d.fire <= 0) { d.fire = 0.9; const u = Units.list.find(o => o.alive && !o.ko && o.gang && o.pos.distanceTo(d.pos) < 20); if (u) { tracer(d.pos.clone(), u.pos.clone().add(V3(0, 1.2, 0)), '#ffd27a'); hitU(u, 9, null, 'drone', 0.5); } } if (d.mine <= 0) { d.dead = true; d.alive = false; if (d.mesh) scene.remove(d.mesh); FX.sparks(d.pos.clone(), 14, 0.6, new THREE.Color(2, 1.5, 0.6)); return false; } return true; });
+  }
+  function decoys() {
+    if (!Prog.has('decoys')) { Toast.show('DECOYS — LOCKED (POWER TREE)', 'heat'); return; } if ((S.cd.decoy || 0) > 0 || S.mass < 20) { Toast.show(S.mass < 20 ? 'NOT ENOUGH NANOMASS' : 'DECOYS RECHARGING', 'heat'); return; }
+    S.mass -= 20; S.cd.decoy = 14;
+    for (const s of [-1, 1]) {
+      const rig = makeCharacter('player', Player.palette()); rig.mesh.material = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, metalness: 1, roughness: 0.25, emissive: new THREE.Color(0.5, 0.36, 0.12) }); scene.add(rig.mesh);
+      const side = V3(Math.cos(S.heading), 0, -Math.sin(S.heading)).multiplyScalar(s * 2.2); const D = { rig, pos: Player.pos.clone().add(side), t: 5, hp: 60, isDecoy: true, alive: true, ko: false, dir: V3(Math.sin(S.heading), 0, Math.cos(S.heading)).add(side.clone().multiplyScalar(0.2)).normalize() };
+      S.decoys.push(D);
+      for (const u of Units.list) if (u.alive && !u.ko && u.gang && u.pos.distanceTo(D.pos) < 26 && Math.random() < 0.6) { u.tgt = D; u.thinkT = 4; }
+    }
+    Toast.show('DECOYS — THEY\'LL BURST WHEN THEY\'RE HIT ENOUGH');
+  }
+  function updateDecoys(rdt) {
+    for (let i = S.decoys.length - 1; i >= 0; i--) {
+      const D = S.decoys[i]; D.t -= rdt; D.pos.addScaledVector(D.dir, 2.2 * rdt); D.rig.mesh.position.copy(D.pos); D.rig.mesh.rotation.y = Math.atan2(D.dir.x, D.dir.z); poseRig(D.rig, { t: G.time, speed: 2.2 }, rdt);
+      if (D.t <= 0 || D.hp <= 0) { // burst into blades
+        FX.ring(D.pos.clone().add(V3(0, 1, 0)), 6, new THREE.Color(2, 1.5, 0.6), 60); FX.sparks(D.pos.clone().add(V3(0, 1, 0)), 40, 1.4, new THREE.Color(2, 1.5, 0.6)); Audio.metal && Audio.metal(D.pos, 0.8); Shake.add(0.15);
+        aux.stream(new Float32Array([D.pos.x, D.pos.y + 1, D.pos.z]), auxOff, 1200, 'burst', NanoShapes.points('swarm', 1200), worldM(D.pos.clone().add(V3(0, 1, 0))), { size: 0, from: 0.07, dur: 0.7, arc: 2.2 }); auxOff = (auxOff + 1200) % N_AUX;
+        for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(D.pos) < 5.5) hitU(u, 40, V3().subVectors(u.pos, D.pos).setY(0).normalize().multiplyScalar(9).add(V3(0, 5, 0)), 'decoy', 2);
+        for (const u of Units.list) if (u.tgt === D) u.tgt = null; D.alive = false; scene.remove(D.rig.mesh); S.decoys.splice(i, 1);
+      }
+    }
+  }
+  function rebuild() {
+    if (!Prog.has('rebuild')) { Toast.show('REBUILD — LOCKED (POWER TREE)', 'heat'); return; } if ((S.cd.rebuild || 0) > 0) return; const P = Player.pos;
+    const I = Incidents.list.find(x => !x.done && x.at && x.at.distanceTo(P) < 30);
+    if (I && S.mass >= 25) { S.mass -= 25; S.cd.rebuild = 6; Incidents.finish(I, true, 'REBUILT'); aux.stream(new Float32Array([P.x, P.y + 1.4, P.z]), auxOff, 2000, 'rebuild', NanoShapes.points('swarm', 2000), worldM(I.at.clone().add(V3(0, 2, 0))), { size: 0.03, dur: 1.2, arc: 1 }); auxOff = (auxOff + 2000) % N_AUX; Hud.banner('REBUILT', 'THE DISTRICT REMEMBERS'); if (G.career) Reputation.add(P, 5, 'REBUILT'); presence(6); return; }
+    const w = Vehicles.list.find(v => v.alive && v.burnt && v.body && bodyPos(v, V3()).distanceTo(P) < 20);
+    if (w && S.mass >= 15) { S.mass -= 15; S.cd.rebuild = 3; const t = bodyPos(w, V3()); const yaw = (() => { const q = w.body.rotation(); return 2 * Math.atan2(q.y, q.w); })(); const type = w.type || 'car'; removeObj(w); const nv = Vehicles.create(type, t.x, 1.2, t.z, yaw); FX.ring(t.clone(), 4, new THREE.Color(2, 1.5, 0.6), 50); Toast.show('A WRECK, REBUILT'); if (G.career) Reputation.add(P, 2, 'REBUILT'); presence(3); return; }
+    Toast.show(S.mass < 15 ? 'NOT ENOUGH NANOMASS' : 'NOTHING BROKEN NEARBY TO REBUILD', 'heat');
+  }
+  // ---------- the Colossus ----------
+  function colossus() {
+    if (!Prog.has('colossus')) { Toast.show('COLOSSUS — LOCKED (POWER TREE)', 'heat'); return; } if ((S.cd.col || 0) > 0) { Toast.show('COLOSSUS RECHARGING · ' + Math.ceil(S.cd.col) + ' s', 'heat'); return; } if (S.presence < 99 && !asc()) { Toast.show('COLOSSUS NEEDS FULL PRESENCE', 'heat'); return; }
+    S.cd.col = 90; const M = { t: 30, punch: 0, rootM: new THREE.Matrix4(), armM: new THREE.Matrix4(), yaw: S.heading }; S.mech = M;
+    const cars = Vehicles.list.filter(v => v.alive && v.body && !v.harvested && bodyPos(v, V3()).distanceTo(Player.pos) < 80).slice(0, 14);
+    for (const v of cars) consume(v, true);
+    main.form('mech', NanoShapes.points('mech', N_MAIN), () => M.rootM, { size: 0.09, dur: 1.8, arc: 3, pts2: NanoShapes.points('mechArm', N_MAIN), anchor2: () => M.armM, split: 0.82 });
+    S.con = 'mech'; Hud.banner('COLOSSUS', cars.length + ' CARS · 30 SECONDS'); Challenges.flag('nvColossus'); Shake.add(0.5); Music.setLevel(3);
+    CamRig.dMul = 2.8; CamRig.hOv = 7;
+  }
+  function updateMech(rdt) {
+    const M = S.mech; if (!M) return; M.t -= rdt; M.punch -= rdt; const P = Player.pos;
+    M.yaw += angDiff(M.yaw, S.heading) * Math.min(1, rdt * 3); const bob = Math.abs(Math.sin(G.time * 3)) * Math.min(1, Math.sqrt(Player.speed2) / 3) * 0.25;
+    const q = new THREE.Quaternion().setFromAxisAngle(UP, M.yaw); M.rootM.compose(V3(P.x, P.y + bob, P.z), q, V3(1, 1, 1));
+    const sw = M.punch > 0 ? Math.sin((1 - M.punch / 0.6) * Math.PI) : 0; const aq = new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.4 * sw, 0, 0)); const shoulder = V3(2.0, 7.2, 0).applyQuaternion(q).add(V3(P.x, P.y + bob, P.z)); M.armM.compose(shoulder, q.clone().multiply(aq), V3(1, 1, 1));
+    if (Player.rig) Player.rig.mesh.visible = false; if (Player.rig && Player.rig.model) Player.rig.model.root.visible = false;
+    if (Input.tap('grab') && M.punch <= 0) { M.punch = 0.6; Timers.after(0.3, () => { const f = V3(Math.sin(M.yaw), 0, Math.cos(M.yaw)); const p = Player.pos.clone().addScaledVector(f, 6); Shake.add(0.6); FX.ring(p.clone(), 9, new THREE.Color(2, 1.5, 0.6), 80); Audio.thud(p, 1); for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(p) < 7) hitU(u, 80, V3().subVectors(u.pos, p).setY(0).normalize().multiplyScalar(16).add(V3(0, 12, 0)), 'mech', 3); for (const v of Vehicles.list) if (v.alive && v.body && bodyPos(v, V3()).distanceTo(p) < 7) Vehicles.damage(v, 200, p.clone(), 'mech'); }); }
+    if (M.t <= 0) { S.mech = null; S.con = null; CamRig.dMul = 1; CamRig.hOv = null; main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 1.2, arc: 2 }); Music.setLevel(0); Hud.banner('COLOSSUS', 'BACK TO HUMAN SCALE'); if (Player.rig) Player.rig.mesh.visible = true; }
+  }
+  // ---------- movement: he walks ----------
+  function updatePlayer(dt) {
+    const P = Player; const sens = CONFIG.camera.sens * settings.sens * (S.wheel ? 0 : 1);
+    P.yaw -= Input.mouse.dx * sens; P.pitch = clamp(P.pitch - Input.mouse.dy * sens * (settings.invertY ? -1 : 1), -1.35, 1.1);
+    P.yaw -= Input.pad.rx * CONFIG.camera.padSens * dt * settings.sens; P.pitch = clamp(P.pitch - Input.pad.ry * CONFIG.camera.padSens * 0.7 * dt, -1.35, 1.1);
+    const [mx, my] = S.wheel ? [0, 0] : Input.move(); const camF = V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), camR = V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)); const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx);
+    const speed = S.mech ? 5 : S.glide ? 13 : Input.down('sprint') ? 6.4 : S.blocking ? 2.2 : 3.4;
+    const tgt = wish.multiplyScalar(speed); P.vel.x = damp(P.vel.x, tgt.x, S.glide ? 1.5 : 6, dt); P.vel.z = damp(P.vel.z, tgt.z, S.glide ? 1.5 : 6, dt);
+    // wings: glide and slow, grand flight
+    const wingsOk = Prog.has('wings') && !S.mech;
+    if (P.grounded) { S.glide = false; P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump')) { P.vel.y = S.mech ? 9 : 7.5; P.grounded = false; } }
+    else if (wingsOk && Input.down('jump') && P.vel.y < 1.5 && S.mass > 0) { if (!S.glide) { S.glide = true; S.preCon = S.con; main.form('wings', NanoShapes.points('wings', N_MAIN), boneM('spine'), { size: 0.03, dur: 0.6 }); } }
+    if (S.glide && (!Input.down('jump') || S.mass <= 0)) { S.glide = false; const c = S.preCon; S.con = '__'; construct(c && c !== 'wings' ? c : null); if (!c) S.con = null; }
+    if (S.glide) { const climb = Input.down('sprint') && S.mass > 0; P.vel.y = damp(P.vel.y, climb ? 3 : -2.2, 3, dt); S.mass = Math.max(0, S.mass - (climb ? 7 : 2) * dt); }
+    else P.vel.y += -22 * dt;
+    const want = { x: P.vel.x * dt, y: P.vel.y * dt, z: P.vel.z * dt };
+    P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS.player);
+    const mv = P.ctl.computedMovement(); const t = P.body.translation(); const nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
+    P.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz }); P.pos.set(nx, ny - 0.9, nz);
+    P.grounded = P.ctl.computedGrounded(); if (P.grounded && P.vel.y < 0) P.vel.y = 0;
+    P.speed2 = P.vel.x * P.vel.x + P.vel.z * P.vel.z; P.inCover = City.isCovered(P.pos); if (P.pos.y < -40) P.spawn(MIDX, 2, 40);
+    // he faces where he walks; with a construct up he faces where you aim
+    const aimYaw = P.yaw + Math.PI; const moveYaw = Math.atan2(P.vel.x, P.vel.z);
+    S.heading += angDiff(S.heading, S.con || S.blocking ? aimYaw : P.speed2 > 0.1 ? moveYaw : S.heading) * Math.min(1, dt * (S.con ? 12 : 7));
+    // pose: a deliberate walk, the construct arm up, wings spread
+    const rig = P.rig; if (!rig) return; rig.mesh.position.copy(P.pos); rig.mesh.rotation.set(0, S.heading, 0);
+    const A = S.act; if (A) A.t += dt; const action = S.blocking ? 'shield' : A && A.t < 0.35 ? (A.k === 'cannon' ? 'shoot' : A.k === 'hammer' ? 'swing' : A.k === 'fist' ? 'push' : 'swing') : S.con === 'cannon' ? 'shoot' : null;
+    poseRig(rig, { t: G.time, speed: P.grounded ? Math.sqrt(P.speed2) * 0.85 : 0, air: !P.grounded && !S.glide, levitate: S.glide, action, at: A ? A.t : 0, aimPitch: P.pitch * 0.8 }, dt);
+    if (S.glide) { rig.bones.uaL.rotation.z = 1.2; rig.bones.uaR.rotation.z = -1.2; rig.bones.spine.rotation.x = 0.35; }
+    if (!S.con && P.grounded && P.speed2 < 0.05 && !S.blocking) { rig.bones.spine.rotation.x = -0.06; rig.bones.head.rotation.x = -0.08; } // chin up
+  }
+  // ---------- wheel ----------
+  function wheel() {
+    const el = $('wheel');
+    if (Input.keys.KeyQ && !S.wheel) { S.wheel = true; S.wv = { x: 0, y: 0 }; el.classList.remove('hidden'); }
+    for (let i = 1; i <= 5; i++) if (Input.pressedKey('Digit' + i)) construct(S.con === CON[i - 1] ? null : CON[i - 1]);
+    if (!S.wheel) return;
+    S.wv.x += Input.mouse.dx; S.wv.y += Input.mouse.dy; const L = Math.hypot(S.wv.x, S.wv.y); if (L > 120) { S.wv.x *= 120 / L; S.wv.y *= 120 / L; }
+    const opts = [...CON, null]; const n = opts.length; const ang = Math.atan2(S.wv.x, -S.wv.y); const sel = L > 25 ? ((Math.round(ang / TAU * n) % n) + n) % n : -1;
+    el.innerHTML = opts.map((c, i) => { const a = i / n * TAU; return `<div class="wf ${i === sel ? 'sel' : ''} ${c === S.con ? 'cur' : ''}" style="transform:translate(${Math.sin(a) * 150}px,${-Math.cos(a) * 150}px)"><b>${i < 5 ? i + 1 : '·'}</b>${c ? CON_NAME[c] : 'ABSORB'}<small>${c ? '8 NANOMASS' : 'hands free'}</small></div>`; }).join('');
+    if (!Input.keys.KeyQ) { S.wheel = false; el.classList.add('hidden'); if (sel >= 0) construct(opts[sel]); }
+  }
+  // ---------- frame ----------
+  function update(rdt, dt) {
+    build(); const P = Player; for (const k in S.cd) S.cd[k] -= rdt; S.cd.atk = S.cd.atk || 0;
+    SUIT_U.uBase.value = P.pos.y; SUIT_U.uTime.value += rdt; if (S.suitT > 0) { S.suitT -= rdt; SUIT_U.uDis.value = Math.min(1.4, SUIT_U.uDis.value + rdt * 1.75 / (asc() ? 0.7 : 1.5)); } else SUIT_U.uDis.value = 1.4;
+    SUIT_U.uGlow.value = 0.12 + S.presence / 100 * 0.35 + (asc() ? 0.4 : 0);
+    const col = (SUIT_COLORS.find(c => c.id === (Cosmetics.sel.suit || 'gold')) || SUIT_COLORS[0]).c; SUIT_U.uGold.value.setRGB(col[0], col[1], col[2]);
+    visible(true); main.update(rdt); aux.update(rdt); halo.update(rdt);
+    // the halo forms at high Presence
+    const wantHalo = S.presence > 50 || asc(); if (wantHalo && halo.id !== 'haloOn') { halo.form('haloOn', NanoShapes.points('halo', N_HALO), haloM, { size: asc() ? 0.03 : 0.022, dur: 1.2, from: 0, arc: 0.5 }); } else if (!wantHalo && halo.id === 'haloOn') halo.form('halo', NanoShapes.points('halo', N_HALO), haloM, { size: 0, dur: 0.8 });
+    if (asc()) { S.ascend -= rdt; if (S.ascend <= 0) { S.ascend = 0; S.presence = 55; Music.setLevel(0); CamRig.hOv = S.mech ? 7 : null; CamRig.dMul = S.mech ? 2.8 : 1; } else if (!S.mech) { CamRig.hOv = 1.0; CamRig.dMul = 1.2; } }
+    // presence fades out of combat; a hit costs you
+    S.idleT += rdt; if (S.idleT > 6 && !asc()) S.presence = Math.max(0, S.presence - rdt * (1.6 - Prog.level('presence') * 0.2));
+    P.maxMind = maxMass(); P.mind = S.mass;
+    updateSwarm(rdt); updateMinions(rdt); updateDecoys(rdt); updateMech(rdt); aura(rdt);
+    if (G.mode !== 'play') return;
+    wheel(); if (S.wheel) return;
+    // harvest (hold E)
+    if (Input.keys.KeyE && !S.mech) { const v = S.harvest && S.harvest.v.alive && !S.harvest.v.harvested ? S.harvest.v : harvestTarget(); if (v) { if (!S.harvest || S.harvest.v !== v) S.harvest = { v, t: 0 }; S.harvest.t += rdt * (1 + Prog.level('harvest') * 0.25); Hud.hint('HARVESTING… ' + Math.round(Math.min(1, S.harvest.t / 0.7) * 100) + '%', 'ok'); if (S.harvest.t > 0.7) { consume(v); S.harvest = null; } } else Hud.hint('AIM AT A CAR TO HARVEST IT', 'bad'); }
+    else { S.harvest = null; const v = !S.mech && S.mass < maxMass() * 0.5 ? harvestTarget() : null; if (v && !S.con) Hud.hint('HOLD E — HARVEST THE ' + (v.type || 'CAR').toUpperCase(), 'ok'); }
+    S.blocking = Input.down('throw') && !S.mech && !S.glide;
+    if (Input.tap('grab') && S.cd.atk <= 0 && !S.mech) attack();
+    if (Input.pressedKey('KeyF')) swarm(); if (Input.pressedKey('KeyG')) assimilate(); if (Input.pressedKey('KeyC')) decoys(); if (Input.pressedKey('KeyR')) rebuild(); if (Input.pressedKey('KeyU')) colossus();
+    if (S.presence >= 50) Tut.done('presence');
+  }
+  function onHurt(dmg, from) { if (G.hero !== 'nano') return false; if (S.mech) return true; if (guard(dmg, from)) return true; presence(-15); S.lastKoCon = null; return false; }
+  function reset() {
+    S.presence = 0; S.ascend = 0; S.con = null; S.swarm = null; S.glide = false; S.blocking = false; S.blocked = 0; S.surr = 0; S.used.clear(); for (const D of S.decoys) scene.remove(D.rig.mesh); S.decoys = []; S.minions = []; S.wheel = false;
+    if (S.mech) { S.mech = null; CamRig.dMul = 1; CamRig.hOv = null; } S.mass = Math.min(maxMass(), 60);
+    if (built) { main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.1 }); halo.form('halo', NanoShapes.points('halo', N_HALO), haloM, { size: 0, dur: 0.1 }); }
+    visible(G.hero === 'nano'); if (G.hero === 'nano') suitUp(false);
+  }
+  function hide() { visible(false); }
+  const keysHtml = () => '<b>WASD</b> walk · <b>SHIFT</b> stride · <b>SPACE</b> jump, hold in the air for <b>wings</b><br><b>HOLD E</b> harvest a car into Nanomass · <b>HOLD Q</b> / <b>1–5</b> constructs<br><b>LMB</b> strike · <b>RMB</b> guard (bullets break on it)<br><b>F</b> swarm · <b>G</b> assimilate · <b>C</b> decoys · <b>R</b> rebuild · <b>U</b> colossus';
+  function slot(s) {
+    const L = id => !Prog.has(id);
+    if (s.id === 'con') return { active: !!S.con && S.con !== 'swarm', cd: 0 }; if (s.id === 'harvest') return { active: !!S.harvest, cd: 0 }; if (s.id === 'block') return { active: S.blocking, cd: 0 };
+    if (s.id === 'swarm') return { locked: L('swarm'), active: !!S.swarm, cd: clamp((S.cd.swarm || 0) / 10, 0, 1) }; if (s.id === 'assimilate') return { locked: L('assimilate'), active: S.minions.length > 0 }; if (s.id === 'decoys') return { locked: L('decoys'), active: S.decoys.length > 0, cd: clamp((S.cd.decoy || 0) / 14, 0, 1) };
+    if (s.id === 'rebuild') return { locked: L('rebuild'), cd: clamp((S.cd.rebuild || 0) / 6, 0, 1) }; if (s.id === 'wings') return { locked: L('wings'), active: S.glide }; if (s.id === 'colossus') return { locked: L('colossus'), active: !!S.mech, cd: (S.cd.col || 0) > 0 ? clamp(S.cd.col / 90, 0, 1) : 1 - S.presence / 100 };
+    return { cd: 0 };
+  }
+  function vitals() {
+    $('lbl-mind').textContent = 'NANOMASS'; $('lbl-ovl').textContent = asc() ? 'ASCENDANT · ' + Math.ceil(S.ascend) + ' s' : S.mech ? 'COLOSSUS · ' + Math.ceil(S.mech.t) + ' s' : 'PRESENCE' + (S.con ? ' · ' + (CON_NAME[S.con] || S.con.toUpperCase()) : '');
+    $('ovlbar').style.width = (asc() ? S.ascend / 20 * 100 : S.presence) + '%'; $('ovlv').textContent = Math.round(S.presence) + (S.presence > 55 ? ' · THEY KNOW WHO YOU ARE' : ''); $('ovlwrap').classList.toggle('full', asc()); $('hoperow').classList.add('hidden');
+  }
+  function cosHtml() { return '<h2>COSMETICS · SOVEREIGN</h2><div class="sect">SUIT TRIM</div><div class="grid">' + SUIT_COLORS.map(c => { const u = Cosmetics.unlocked(c); const hex = '#' + new THREE.Color(c.c[0], c.c[1], c.c[2]).getHexString(); return `<div class="card ${(Cosmetics.sel.suit || 'gold') === c.id ? 'owned' : ''}"><h3 style="color:${hex}">${c.name}</h3><p>${c.req ? c.req[2] : 'Default'}</p><button data-suit="${c.id}" ${u ? '' : 'disabled'}>${u ? 'WEAR' : 'LOCKED'}</button></div>`; }).join('') + '</div>'; }
+  function cosWire(panel, again) { panel.querySelectorAll('[data-suit]').forEach(b => b.onclick = () => { Cosmetics.set('suit', b.dataset.suit); again(); }); }
+  return { get clouds() { return [main, aux, halo]; }, S, update, updatePlayer, reset, hide, onHurt, keysHtml, slot, vitals, cosHtml, cosWire, camera() { }, construct, consume, suitUp, get mass() { return S.mass; } };
+})();
 // game state + run flow ------------------------------------------------------------------
 const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
 function disposeGroup(g) { if (!g) return; g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.geometry && o.geometry !== Lamps.geo) { if (o.material === VEH_MAT || o.material === MAT.neon || o.material === MAT.metal || Object.values(City.meshes || {}).includes(o)) o.geometry.dispose(); } }); }
@@ -12014,12 +12727,12 @@ async function boot() {
   await new Promise(r => setTimeout(r, 20));
   buildWorld(CONFIG.seed);
   Player.spawn(118, 0.1, 62, 0); Player.rig.mesh.visible = false;
-  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
+  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Cortex.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
   setLoad(1, 'READY');
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Cortex, Sovereign, CamRig, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
