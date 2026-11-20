@@ -6769,11 +6769,211 @@ function buildRiggedCharacter(asset, colors, num) {
   const armOut = Math.max(0, Math.atan2(R.bellyHalf - R.shoulderX + 0.04 * R.H, Math.max(0.1, R.elbowX - R.shoulderX) * 2));
   return { group, bones, H: R.H, legLen: R.hipY, torsoH: R.armY - R.hipY, armLen: (R.tipX - R.shoulderX), headR: (R.H - R.neckY) / 2, pose: {}, runPhase: Math.random() * 6, procedural: true, rigged: true, armOut, chains };
 }
-/* Superstar models: sculpted in a natural pose, so they are not auto-rigged — the whole figure is scaled to the
-   species height (capped by body length), grounded, and animated as one piece: bounding run, lean, hop, squash,
-   spins, a tumble when knocked down and a pulse on every power. */
+/* Superstar models: sculpted in a natural pose, so they don't go through the T-pose auto-rig. Each is skinned onto
+   its own hand-placed skeleton (NATURAL_RIGS below), scaled to the species height (capped by body length) and
+   grounded; the whole figure adds a bounding run, lean, squash, spins, a tumble when knocked down and a pulse on
+   every power on top of the skeleton's gaits. */
+/* Superstar skeletons. The models are posed sculpts (no rig, not T-pose), so each one carries a hand-placed joint
+   table in its own model space: [bone, parent, joint, end]. Skin weights come from the distance of every vertex to
+   every bone segment (nearest bone wins, a soft falloff blends neighbours); an optional number caps a bone's reach
+   (arms, so raising them does not drag the chest or belly). An entry flagged 'm' is mirrored to the other side
+   (…L → …R, x negated). Plans: hopper (kangaroo legs + tail), quad (four legs, neck, tail), knuckle (gorilla arms as
+   front legs, crocodile jaw). */
+const NATURAL_RIGS = {
+  chiparoo: { plan: 'hopper', bones: [
+    ['pelvis', null, [0, -0.1, 0.3], [0, 0.15, 0.45]],
+    ['spine', 'pelvis', [0, 0.15, 0.45], [0, 0.33, 0.58]],
+    ['neck', 'spine', [0, 0.33, 0.58], [0, 0.45, 0.68]],
+    ['head', 'neck', [0, 0.45, 0.68], [0, 0.45, 0.93]],
+    ['tail1', 'pelvis', [0, -0.05, 0.08], [0, -0.18, -0.35]], ['tail2', 'tail1', [0, -0.18, -0.35], [0, -0.13, -0.7]], ['tail3', 'tail2', [0, -0.13, -0.7], [0, 0.15, -0.95]],
+    ['armL1', 'spine', [0.1, 0.2, 0.6], [0.12, 0.08, 0.68], 'm', 0.06], ['armL2', 'armL1', [0.12, 0.08, 0.68], [0.13, -0.06, 0.69], 'm', 0.045],
+    ['legL1', 'pelvis', [0.15, -0.08, 0.35], [0.19, -0.32, 0.52], 'm'], ['legL2', 'legL1', [0.19, -0.32, 0.52], [0.21, -0.57, 0.25], 'm'], ['legL3', 'legL2', [0.21, -0.57, 0.25], [0.23, -0.66, 0.78], 'm']
+  ] },
+  kangabear: { plan: 'hopper', bones: [
+    ['pelvis', null, [0, -0.3, 0.05], [0, 0.05, 0.3]],
+    ['spine', 'pelvis', [0, 0.05, 0.3], [0, 0.4, 0.5]],
+    ['neck', 'spine', [0, 0.4, 0.5], [0, 0.58, 0.6]],
+    ['head', 'neck', [0, 0.58, 0.6], [0, 0.6, 0.92]],
+    ['tail1', 'pelvis', [0, -0.42, -0.12], [0, -0.6, -0.45]], ['tail2', 'tail1', [0, -0.6, -0.45], [0, -0.75, -0.7]], ['tail3', 'tail2', [0, -0.75, -0.7], [0, -0.83, -0.95]],
+    ['armL1', 'spine', [0.15, 0.28, 0.55], [0.13, 0.0, 0.62], 'm', 0.065], ['armL2', 'armL1', [0.13, 0.0, 0.62], [0.08, -0.27, 0.7], 'm', 0.07],
+    ['legL1', 'pelvis', [0.16, -0.28, 0.22], [0.18, -0.5, 0.42], 'm'], ['legL2', 'legL1', [0.18, -0.5, 0.42], [0.18, -0.8, 0.25], 'm'], ['legL3', 'legL2', [0.18, -0.8, 0.25], [0.2, -0.86, 0.8], 'm']
+  ] },
+  crocodog: { plan: 'quad', bones: [
+    ['pelvis', null, [0.02, 0.05, -0.4], [0.2, 0.12, -0.15]],
+    ['spine', 'pelvis', [0.2, 0.12, -0.15], [0.33, 0.12, 0.2]],
+    ['neck', 'spine', [0.33, 0.12, 0.2], [0.42, 0.25, 0.45]],
+    ['head', 'neck', [0.42, 0.25, 0.45], [0.47, 0.36, 0.93]],
+    ['tail1', 'pelvis', [0.0, 0.05, -0.45], [-0.35, 0.0, -0.85]], ['tail2', 'tail1', [-0.35, 0.0, -0.85], [-0.82, -0.12, -0.58]], ['tail3', 'tail2', [-0.82, -0.12, -0.58], [-0.5, -0.38, -0.05]],
+    ['legFL1', 'spine', [0.5, 0.08, 0.15], [0.62, -0.2, 0.12]], ['legFL2', 'legFL1', [0.62, -0.2, 0.12], [0.72, -0.47, 0.27]],
+    ['legFR1', 'spine', [0.22, 0.08, 0.3], [0.18, -0.2, 0.38]], ['legFR2', 'legFR1', [0.18, -0.2, 0.38], [0.28, -0.47, 0.53]],
+    ['legHL1', 'pelvis', [0.15, 0.05, -0.55], [0.15, -0.2, -0.75]], ['legHL2', 'legHL1', [0.15, -0.2, -0.75], [0.19, -0.47, -0.8]],
+    ['legHR1', 'pelvis', [-0.1, 0.05, -0.32], [-0.22, -0.25, -0.4]], ['legHR2', 'legHR1', [-0.22, -0.25, -0.4], [-0.25, -0.47, -0.31]]
+  ] },
+  giraffcoon: { plan: 'quad', bones: [
+    ['pelvis', null, [0.0, -0.2, -0.4], [0.05, -0.18, -0.05]],
+    ['spine', 'pelvis', [0.05, -0.18, -0.05], [0.1, -0.12, 0.25]],
+    ['neck', 'spine', [0.11, -0.02, 0.33], [0.1, 0.3, 0.45]], ['neck2', 'neck', [0.1, 0.3, 0.45], [0.08, 0.62, 0.6]],
+    ['head', 'neck2', [0.08, 0.62, 0.6], [0.02, 0.58, 0.92]],
+    ['tail1', 'pelvis', [-0.1, -0.3, -0.55], [-0.18, -0.4, -0.72]], ['tail2', 'tail1', [-0.18, -0.4, -0.72], [-0.22, -0.58, -0.85]], ['tail3', 'tail2', [-0.22, -0.58, -0.85], [-0.24, -0.78, -0.93]],
+    ['legFL1', 'spine', [0.22, -0.3, 0.12], [0.23, -0.6, 0.11]], ['legFL2', 'legFL1', [0.23, -0.6, 0.11], [0.27, -0.92, 0.16]],
+    ['legFR1', 'spine', [0.06, -0.3, 0.25], [0.03, -0.6, 0.21]], ['legFR2', 'legFR1', [0.03, -0.6, 0.21], [0.06, -0.92, 0.26]],
+    ['legHL1', 'pelvis', [0.12, -0.3, -0.3], [0.14, -0.6, -0.29]], ['legHL2', 'legHL1', [0.14, -0.6, -0.29], [0.18, -0.92, -0.25]],
+    ['legHR1', 'pelvis', [-0.08, -0.3, -0.3], [-0.15, -0.6, -0.24]], ['legHR2', 'legHR1', [-0.15, -0.6, -0.24], [-0.16, -0.92, -0.18]]
+  ] },
+  crocogorilla: { plan: 'knuckle', bones: [
+    ['pelvis', null, [0, 0.15, -0.5], [0, 0.35, -0.2]],
+    ['spine', 'pelvis', [0, 0.35, -0.2], [0, 0.45, 0.1]],
+    ['neck', 'spine', [0, 0.45, 0.1], [0, 0.35, 0.4]],
+    ['head', 'neck', [0, 0.35, 0.4], [0, 0.28, 0.92]],
+    ['jaw', 'head', [0, 0.14, 0.42], [0, -0.02, 0.78]],
+    ['legFL1', 'spine', [0.4, 0.35, 0.22], [0.52, -0.1, 0.42], 'm'], ['legFL2', 'legFL1', [0.52, -0.1, 0.42], [0.53, -0.63, 0.52], 'm'],
+    ['legHL1', 'pelvis', [0.3, 0.05, -0.55], [0.62, -0.3, -0.52], 'm'], ['legHL2', 'legHL1', [0.62, -0.3, -0.52], [0.6, -0.64, -0.5], 'm']
+  ] }
+};
+function rigBoneList(R) {
+  const out = [];
+  for (const b of R.bones) {
+    const ex = b.slice(4), rad = ex.find(e => typeof e === 'number') || 0;
+    out.push([b[0], b[1], b[2], b[3], rad]);
+    if (ex.includes('m')) out.push([b[0].replace(/L(\d)$/, 'R$1'), b[1] && b[1].replace(/L(\d)$/, 'R$1'), [-b[2][0], b[2][1], b[2][2]], [-b[3][0], b[3][1], b[3][2]], rad]);
+  }
+  return out;
+}
+/* skin a posed mesh onto its joint table; returns the bones keyed by name and the skinned mesh */
+function skinNatural(srcMesh, R, cache) {
+  const list = rigBoneList(R), bones = {}, arr = [];
+  for (const [name, parent, h] of list) {
+    const b = new THREE.Bone(); b.name = name; bones[name] = b; arr.push(b);
+    if (parent) { const ph = list.find(e => e[0] === parent)[2]; bones[parent].add(b); b.position.set(h[0] - ph[0], h[1] - ph[1], h[2] - ph[2]); }
+    else b.position.set(h[0], h[1], h[2]);
+  }
+  const geo = cache && cache.natGeo ? cache.natGeo : skinWeights(srcMesh, list);
+  if (cache) cache.natGeo = geo;
+  const holder = new THREE.Group(); holder.add(arr[0]);
+  const mesh = new THREE.SkinnedMesh(geo, srcMesh.material); mesh.castShadow = true; mesh.frustumCulled = false;
+  holder.add(mesh); holder.updateMatrixWorld(true);
+  mesh.bind(new THREE.Skeleton(arr));
+  return { holder, bones, mesh };
+}
+/* weights: distance to each bone segment, soft-min blend of the nearest few (computed once per model) */
+function skinWeights(srcMesh, list) {
+  srcMesh.updateMatrixWorld(true);
+  const geo = srcMesh.geometry.clone(); geo.applyMatrix4(srcMesh.matrixWorld);
+  const P = geo.attributes.position, n = P.count, segs = list.map(e => [e[2], e[3]]), rads = list.map(e => e[4] || 1e9), K = segs.length;
+  const tip = list.map(e => !list.some(c => c[1] === e[0])); // end-of-chain bones (paws) keep their whole end
+  const side = list.map(e => (e[0].match(/([LR])\d$/) || [])[1] || ''); // a left limb never blends with a right one
+  const idx = new Uint16Array(n * 4), wts = new Float32Array(n * 4), d = new Float32Array(K);
+  const box = new THREE.Box3().setFromBufferAttribute(P), sz = box.getSize(new THREE.Vector3()), sigma = 0.018 * Math.max(sz.x, sz.y, sz.z);
+  for (let i = 0; i < n; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+    let dmin = 1e9;
+    for (let k = 0; k < K; k++) {
+      const [a, b] = segs[k], vx = b[0] - a[0], vy = b[1] - a[1], vz = b[2] - a[2], L2 = vx * vx + vy * vy + vz * vz || 1;
+      const u = Math.max(0, Math.min(1, ((x - a[0]) * vx + (y - a[1]) * vy + (z - a[2]) * vz) / L2));
+      const qx = a[0] + vx * u - x, qy = a[1] + vy * u - y, qz = a[2] + vz * u - z;
+      d[k] = Math.sqrt(qx * qx + qy * qy + qz * qz); if (d[k] > rads[k] && !(tip[k] && u > 0.8)) d[k] = 1e9; if (d[k] < dmin) dmin = d[k]; // a cap trims flesh along the limb, never the paw at its end
+    }
+    if (dmin > 1e8) { idx[i * 4] = 0; wts[i * 4] = 1; continue; }
+    const top = [];
+    for (let k = 0; k < K; k++) { const w = Math.exp(-(d[k] - dmin) / sigma); if (w > 0.02) top.push([k, w]); }
+    top.sort((p, q) => q[1] - p[1]);
+    const s0 = side[top[0][0]]; for (let j = top.length - 1; j > 0; j--) if (s0 && side[top[j][0]] && side[top[j][0]] !== s0) top.splice(j, 1);
+    top.length = Math.min(4, top.length);
+    const tot = top.reduce((s, e) => s + e[1], 0);
+    top.forEach(([k, w], j) => { idx[i * 4 + j] = k; wts[i * 4 + j] = w / tot; });
+  }
+  cleanIslands(geo, idx, wts);
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(idx, 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(wts, 4));
+  return geo;
+}
+/* Small islands of vertices whose main bone differs from everything around them (a claw resting on a thigh) take
+   the weights of the region that surrounds them, so nothing tears off when a limb moves. Seams are welded by position. */
+function cleanIslands(geo, idx, wts) {
+  const P = geo.attributes.position, n = P.count, key = new Map(), canon = new Int32Array(n);
+  for (let i = 0; i < n; i++) { const k = Math.round(P.getX(i) * 1e4) + ',' + Math.round(P.getY(i) * 1e4) + ',' + Math.round(P.getZ(i) * 1e4); if (!key.has(k)) key.set(k, i); canon[i] = key.get(k); }
+  const nb = Array.from({ length: n }, () => []), I = geo.index ? geo.index.array : null, T = I ? I.length : n;
+  for (let t = 0; t < T; t += 3) { const a = canon[I ? I[t] : t], b = canon[I ? I[t + 1] : t + 1], c = canon[I ? I[t + 2] : t + 2]; nb[a].push(b, c); nb[b].push(a, c); nb[c].push(a, b); }
+  const dom = i => idx[canon[i] * 4];
+  const comp = new Int32Array(n).fill(-1), comps = [];
+  for (let i = 0; i < n; i++) {
+    if (canon[i] !== i || comp[i] >= 0) continue;
+    const id = comps.length, st = [i], mem = []; comp[i] = id;
+    while (st.length) { const v = st.pop(); mem.push(v); for (const w of nb[v]) if (comp[w] < 0 && idx[w * 4] === idx[i * 4]) { comp[w] = id; st.push(w); } }
+    comps.push(mem);
+  }
+  const biggest = {}; comps.forEach(m => { const b = idx[m[0] * 4]; biggest[b] = Math.max(biggest[b] || 0, m.length); });
+  for (const m of comps) {
+    const b = idx[m[0] * 4]; if (m.length >= 80 || m.length * 4 >= biggest[b]) continue;
+    const around = {}; for (const v of m) for (const w of nb[v]) if (idx[w * 4] !== b) around[w] = 1;
+    const cnt = {}; for (const w in around) cnt[idx[w * 4]] = (cnt[idx[w * 4]] || 0) + 1;
+    const best = Object.keys(cnt).sort((p, q) => cnt[q] - cnt[p])[0]; if (best == null) continue;
+    const donor = +Object.keys(around).find(w => idx[w * 4] === +best);
+    for (const v of m) for (let j = 0; j < 4; j++) { idx[v * 4 + j] = idx[donor * 4 + j]; wts[v * 4 + j] = wts[donor * 4 + j]; }
+  }
+  for (let i = 0; i < n; i++) if (canon[i] !== i) for (let j = 0; j < 4; j++) { idx[i * 4 + j] = idx[canon[i] * 4 + j]; wts[i * 4 + j] = wts[canon[i] * 4 + j]; }
+}
+/* body-plan animation on top of the whole-body motion (lean, squash, tumble): gaits, hops, rearing shots, wagging tails */
+function animateNatural(v, r, dt) {
+  const B = v.bones, sp = r.speed || 0, air = (r.y || 0) - (r.gy || 0) > 0.05, t = r.t || 0;
+  const S = (k, rx, ry, rz) => { const b = B[k]; if (!b) return; const a = Math.min(1, dt * 14); b.rotation.x += ((rx || 0) - b.rotation.x) * a; b.rotation.y += ((ry || 0) - b.rotation.y) * a; b.rotation.z += ((rz || 0) - b.rotation.z) * a; };
+  const shooting = r.st === 'shoot' || r.st === 'finish' || r.st === 'jump' || (r.st === 'recover' && air);
+  const airOnly = air && r.st !== 'shoot' && r.st !== 'finish' && r.st !== 'jump';
+  const lunging = r.st === 'steal' || r.st === 'check' || r.st === 'bulldoze';
+  const down = r.st === 'down' || r.st === 'getup';
+  const celebrate = r.st === 'celebrate';
+  const cast = v.pulse > 0.05 || !!r.pcast;
+  v.gph = (v.gph || 0) + dt * (sp > 0.6 ? 3 + sp * 0.9 : 0);
+  const ph = v.gph, g = Math.min(1, sp / 6);
+  if (v.plan === 'hopper') {
+    // both legs together: crouch, spring, tuck; the tail swings as a counterweight
+    const hop = sp > 0.6 && !air ? Math.sin(ph) : 0;
+    const tuck = air ? 1 : 0;
+    for (const s of ['L', 'R']) {
+      S('leg' + s + '1', shooting ? 0.25 : -0.35 * hop * g + tuck * -0.5);
+      S('leg' + s + '2', shooting ? -0.2 : 0.45 * hop * g + tuck * 0.6);
+      S('leg' + s + '3', shooting ? 0.5 : -0.3 * hop * g + tuck * 0.4);
+      const raise = shooting ? -1.25 : lunging ? -0.8 : celebrate ? -1.3 + Math.sin(t * 12) * 0.3 : cast ? -1.1 : r.hasBall ? -0.6 + Math.sin(ph * 2) * 0.25 : -0.15 * Math.sin(t * 2);
+      S('arm' + s + '1', raise, 0, (s === 'L' ? 1 : -1) * (shooting || celebrate ? 0.25 : 0.05));
+      S('arm' + s + '2', shooting ? 0.2 : -0.5);
+    }
+    S('pelvis', down ? 0 : shooting ? -0.12 : 0.1 * hop * g);
+    S('spine', shooting ? -0.15 : lunging ? 0.25 : 0.05 * Math.sin(t * 1.6));
+    S('neck', shooting ? -0.2 : 0.06 * Math.sin(t * 1.3));
+    S('head', 0, 0.25 * Math.sin(t * 0.7) * (sp < 0.6 ? 1 : 0.2));
+    const tw = air ? 0.35 : 0.3 * hop * g;
+    S('tail1', tw - 0.05, 0.2 * Math.sin(t * 2.3) * (1 - g)); S('tail2', tw * 0.8, 0.25 * Math.sin(t * 2.3 - 0.7) * (1 - g)); S('tail3', tw * 0.6 + 0.1 * Math.sin(t * 3), 0.3 * Math.sin(t * 2.3 - 1.4));
+  } else {
+    // quadrupeds: trot (diagonal pairs) → gallop (pairs) with speed; rear up to shoot or block
+    const gallop = sp > 7;
+    const off = gallop ? { FL: 0, FR: 0.5, HL: Math.PI, HR: Math.PI + 0.5 } : { FL: 0, HR: 0, FR: Math.PI, HL: Math.PI };
+    const amp = (v.plan === 'knuckle' ? 0.55 : 0.6) * g;
+    for (const leg of ['FL', 'FR', 'HL', 'HR']) {
+      const front = leg[0] === 'F', s = sp > 0.6 && !air ? Math.sin(ph + off[leg]) : 0, lift = sp > 0.6 && !air ? Math.max(0, Math.cos(ph + off[leg])) : 0;
+      let up = -amp * s, low = (front ? 0.7 : -0.7) * amp * lift;
+      if (air) { up = front ? -0.55 : 0.55; low = front ? 0.9 : -0.9; }
+      if (shooting && !airOnly && front) { up = v.plan === 'knuckle' ? -2.6 : -0.7; low = v.plan === 'knuckle' ? 0.2 : 0.6; }
+      if (shooting && !airOnly && !front) { up = 0.45; low = -0.3; }
+      if (v.plan === 'knuckle' && front && cast && !shooting) { const k = Math.sin(t * 16 + (leg === 'FL' ? 0 : Math.PI)); up = -1.9 + 0.5 * k; low = 1.2; } // chest pound
+      if (lunging && front) { up = -0.7; low = 0.2; }
+      S('leg' + leg + '1', up); S('leg' + leg + '2', low);
+    }
+    S('pelvis', down ? 0 : shooting && !airOnly ? (v.plan === 'knuckle' ? -0.6 : -0.35) : lunging ? 0.15 : (gallop ? 0.08 * Math.sin(ph * 2) : 0));
+    S('spine', shooting ? -0.2 : 0.04 * Math.sin(ph * 2) * g);
+    const lookUp = shooting ? -0.5 : celebrate ? -0.4 : 0;
+    S('neck', lookUp * 0.5 + 0.06 * Math.sin(ph * 2) * g + 0.04 * Math.sin(t * 1.4), 0.15 * Math.sin(t * 0.6) * (1 - g));
+    S('neck2', lookUp * 0.4 + 0.05 * Math.sin(ph * 2 + 0.5) * g);
+    S('head', lookUp * 0.3, 0.2 * Math.sin(t * 0.8) * (1 - g));
+    S('jaw', (lunging || cast || celebrate) ? 0.35 + 0.2 * Math.sin(t * 18) : 0.05 + 0.04 * Math.sin(t * 2));
+    const wag = celebrate ? 0.7 * Math.sin(t * 20) : r.hasBall ? 0.3 * Math.sin(t * 12) : 0.2 * Math.sin(t * 2.5 + ph);
+    S('tail1', 0.05 * Math.sin(ph) * g, wag); S('tail2', 0, wag * 1.2 * Math.cos(t * 0.5) + 0.1 * Math.sin(t * 2.5 - 0.8)); S('tail3', 0, wag * 0.8 + 0.15 * Math.sin(t * 2.5 - 1.6));
+  }
+}
 function buildRigidCharacter(asset, spec) {
-  const model = asset.root.clone(true);
+  const R = NATURAL_RIGS[spec.key];
+  let model, rig = null;
+  if (R) { let src = null; asset.root.traverse(o => { if (o.isMesh && !src) src = o; }); rig = skinNatural(src, R, asset); model = rig.holder; }
+  else model = asset.root.clone(true);
   model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material && o.material.map) o.material.map.anisotropy = 4; } });
   const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3());
   const H = spec.height, k = Math.min(H / Math.max(1e-3, size.y), (asset.def.len || H * 1.4) / Math.max(1e-3, size.x, size.z));
@@ -6782,16 +6982,18 @@ function buildRigidCharacter(asset, spec) {
   model.position.set(-c.x * k, -box.min.y * k, -c.z * k);
   const body = new THREE.Group(); body.add(model);   // lean / squash / tumble pivot at the feet
   const group = new THREE.Group(); group.add(body);
-  return { group, body, H: size.y * k, rigid: true, ph: 0, lean: 0, roll: 0, spin: 0, sq: 1, wasAir: false, pulse: 0 };
+  return { group, body, H: size.y * k, rigid: true, ph: 0, lean: 0, roll: 0, spin: 0, sq: 1, wasAir: false, pulse: 0, bones: rig && rig.bones, plan: R && R.plan, gph: 0 };
 }
 function animateRigid(v, r, dt) {
   const sp = r.speed || 0, air = Math.max(0, (r.y || 0) - (r.gy || 0)) > 0.05;
   v.ph += dt * (5 + sp * 1.5);
   const run = sp > 0.6 && !air;
-  const bob = run ? Math.abs(Math.sin(v.ph)) * Math.min(0.22, 0.04 + sp * 0.02) * Math.min(1.5, v.H * 0.45) : Math.sin((r.t || 0) * 2.2) * 0.012 * v.H;
+  const legs = v.plan === 'quad' || v.plan === 'knuckle', hopper = v.plan === 'hopper';
+  const stride = hopper ? Math.max(0, Math.sin(v.gph)) * 1.8 : legs ? Math.abs(Math.sin(v.gph * 2)) * 0.45 : Math.abs(Math.sin(v.ph)); // skeletons set the rhythm
+  const bob = run ? stride * Math.min(0.22, 0.04 + sp * 0.02) * Math.min(1.5, v.H * 0.45) : Math.sin((r.t || 0) * 2.2) * 0.012 * v.H;
   const down = r.st === 'down', getup = r.st === 'getup';
   const tLean = down ? 0 : air ? -0.12 : r.stance ? 0.18 : Math.min(0.3, sp * 0.03) + (r.st === 'check' || r.st === 'bulldoze' ? 0.3 : 0);
-  v.lean += (tLean - v.lean) * Math.min(1, dt * 10);
+  v.lean += (tLean * (legs ? 0.35 : 1) - v.lean) * Math.min(1, dt * 10);
   const tRoll = down ? Math.PI / 2 * 0.92 : getup ? 0.5 : 0;
   v.roll += (tRoll - v.roll) * Math.min(1, dt * (down ? 12 : 6));
   if (r.st === 'move' && r.kind === 'spin') v.spin += dt * 16; else if (r.st === 'celebrate') v.spin += dt * 7; else if (r.pmode === 'roll' || r.pmode === 'spin') v.spin += dt * 20;
@@ -6804,6 +7006,7 @@ function animateRigid(v, r, dt) {
   v.body.position.y = bob + hop;
   v.body.rotation.set(v.lean, v.spin, v.roll);
   v.body.scale.set(pk / Math.sqrt(v.sq), pk * v.sq, pk / Math.sqrt(v.sq));
+  if (v.bones) animateNatural(v, r, dt);
 }
 const CLIP_FOR_STATE = r => {
   if (r.pcast || r.pmode) return 'power_' + ({ mob: 'mobility', sig: 'signature', ult: 'ultimate' }[r.pcast] || 'mobility');
