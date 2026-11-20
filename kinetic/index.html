@@ -13070,8 +13070,9 @@ const Coop = (() => {
       look: (K.Period ? 1 : 0) - (K.Comma ? 1 : 0) + (g ? dz(g.axes[2]) : 0), zoom: (K.NumpadAdd || K.Equal ? 1 : 0) - (K.NumpadSubtract || K.Minus ? 1 : 0) + (g ? (g.buttons[7] ? g.buttons[7].value : 0) - (g.buttons[6] ? g.buttons[6].value : 0) : 0),
       jump: K.Numpad0 || K.ControlRight || b(0), atk: K.Enter || K.NumpadEnter || b(2), power: K.Slash || K.NumpadDecimal || b(3), sprint: K.ShiftRight || b(10),
       a1: K.Numpad1 || K.Insert || b(0), a2: K.Numpad2 || K.Home || b(2), a3: K.Numpad3 || K.PageUp || b(1), a4: K.Numpad4 || K.Delete || b(3), a5: K.Numpad5 || K.End || b(4), a6: K.Numpad6 || K.PageDown || b(5),
+      cam: K.Numpad7 || K.BracketLeft || b(14), dcam: K.Numpad8 || K.BracketRight || b(15), dnext: K.Numpad9 || K.Backslash || b(12), center: K.Semicolon || K.NumpadMultiply || b(13),
     };
-    const out = Object.assign({}, c); for (const k of ['jump', 'atk', 'power', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6']) out[k + 'T'] = c[k] && !S.prev[k]; for (const k in c) S.prev[k] = c[k];
+    const out = Object.assign({}, c); for (const k of ['jump', 'atk', 'power', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'cam', 'dcam', 'dnext', 'center']) out[k + 'T'] = c[k] && !S.prev[k]; for (const k in c) S.prev[k] = c[k];
     return out;
   }
   // ---------- partner hero ----------
@@ -13131,20 +13132,14 @@ const Coop = (() => {
   function target(u) { const p = S.p; if (!S.on || S.role !== 'partner' || !p || p.ko) return null; const dp = u.pos.distanceTo(p.pos), d1 = u.pos.distanceTo(Player.pos); return dp < d1 && dp < 40 ? p : null; }
   // ---------- in the chair ----------
   function updateChair(dt, c) {
-    S.camYaw += c.look * dt * 2; S.zoom = clamp(S.zoom - c.zoom * dt * 0.8, 0.4, 2.2);
-    const fwd = V3(-Math.sin(S.camYaw), 0, -Math.cos(S.camYaw)), right = V3(Math.cos(S.camYaw), 0, -Math.sin(S.camYaw));
-    S.cur.addScaledVector(fwd, c.my * dt * 40 * S.zoom).addScaledVector(right, c.mx * dt * 40 * S.zoom); if (S.cur.distanceTo(Player.pos) > 220) S.cur.sub(Player.pos).setLength(220).add(Player.pos);
-    const b = City.buildingAt(S.cur.x, S.cur.z); S.cur.y = b ? b.h : 0;
     if (!S.ring) { S.ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.0, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.2, 2.6), transparent: true, opacity: 0.8, side: THREE.DoubleSide, toneMapped: false, depthTest: false })); S.ring.rotation.x = -Math.PI / 2; S.ring.renderOrder = 999; scene.add(S.ring); }
-    S.ring.visible = true; S.ring.position.set(S.cur.x, S.cur.y + 0.15, S.cur.z); S.ring.scale.setScalar(1 + Math.sin(G.time * 4) * 0.08);
-    const at = S.cur.clone();
-    if (c.a1T) Chair.scan(at); if (c.a2T) Chair.drone(at); if (c.a3T) Chair.jam(at); if (c.a4T) Chair.route(at); if (c.a5T) Chair.med(); if (c.a6T) { if (Heists.cell) Chair.cams(); else Chair.intel(); }
+    ChairOps.control(dt, c);
   }
   // ---------- cameras + rendering ----------
   function camUpdate(dt) {
-    const cam = S.cam; const W = innerWidth, H = innerHeight; cam.aspect = (W / 2) / H; cam.updateProjectionMatrix();
+    const cam = S.cam; const W = innerWidth, H = innerHeight; cam.aspect = (W / 2) / H; cam.updateProjectionMatrix(); cam.layers.enable(LAYER_NOREFLECT);
     if (S.role === 'partner' && S.p) { const p = S.p.pos; const want = V3(p.x + Math.sin(S.camYaw) * 6.5, p.y + 3.2, p.z + Math.cos(S.camYaw) * 6.5); const hit = castRay(p.x, p.y + 1.6, p.z, want.x - p.x, want.y - p.y - 1.6, want.z - p.z, 6.5, GROUPS.losStatic, S.p.body); if (hit && hit.toi < 6.5) want.copy(V3(p.x, p.y + 1.6, p.z).lerp(want, Math.max(0.1, (hit.toi - 0.4) / 6.5))); cam.position.lerp(want, 1 - Math.exp(-10 * dt)); cam.lookAt(p.x, p.y + 1.5, p.z); }
-    else { const c = S.cur; const dist = 26 * S.zoom; const want = V3(c.x + Math.sin(S.camYaw) * dist, c.y + 30 * S.zoom, c.z + Math.cos(S.camYaw) * dist); cam.position.lerp(want, 1 - Math.exp(-6 * dt)); cam.lookAt(c.x, c.y, c.z); }
+    else ChairOps.camera(dt, cam);
   }
   function render(rdt) {
     const W = innerWidth, H = innerHeight; const a = camera.aspect;
@@ -13156,11 +13151,11 @@ const Coop = (() => {
   }
   // ---------- on / off ----------
   function set(mode) {
-    if (mode === 'off') { S.on = false; freePartner(); if (S.ring) S.ring.visible = false; document.body.classList.remove('coop'); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); Input.arrowsP1 = true; Toast.show('SPLIT-SCREEN OFF', 'big'); return; }
+    if (mode === 'off') { S.on = false; freePartner(); ChairOps.reset(); if (S.ring) S.ring.visible = false; document.body.classList.remove('coop'); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); Input.arrowsP1 = true; Toast.show('SPLIT-SCREEN OFF', 'big'); return; }
     if (!S.cam) S.cam = new THREE.PerspectiveCamera(62, 1, 0.1, 1800);
-    S.on = true; S.role = mode; Input.arrowsP1 = false; document.body.classList.add('coop'); freePartner();
+    S.on = true; S.role = mode; Input.arrowsP1 = false; document.body.classList.add('coop'); freePartner(); ChairOps.reset();
     if (mode === 'partner') { S.hero = S.hero && HEROES[S.hero] ? S.hero : 'speed'; spawnPartner(); Toast.show('SPLIT-SCREEN · PLAYER TWO: ' + HEROES[S.hero].name + ' — ARROWS move · R-CTRL / NUM 0 jump · ENTER punch · / power · R-SHIFT sprint · , . look', 'big'); }
-    else { S.cur.copy(Player.pos); S.camYaw = Player.yaw; Toast.show('SPLIT-SCREEN · PLAYER TWO IS IN THE CHAIR — ARROWS move the cursor · NUM 1–6 (or INS HOME PGUP DEL END PGDN) Dex\'s tools · , . turn · + − zoom', 'big'); Chair.say('hello', null, 3); }
+    else { S.cur.copy(Player.pos); S.camYaw = Player.yaw; Toast.show('SPLIT-SCREEN · PLAYER TWO IS IN THE CHAIR — [ or NUM7 switches view (TACTICAL · HOVER · WATCH · DRONE CAMS) · ] or NUM8 throws a camera drone · NUM 1–6 tools', 'big'); Chair.say('hello', null, 3); }
     S.cam.position.copy(Player.pos).add(V3(0, 8, 8));
   }
   function cycle() { set(!S.on ? 'partner' : S.role === 'partner' ? 'chair' : 'off'); }
@@ -13175,7 +13170,8 @@ const Coop = (() => {
   function hud() {
     if (!S.hud) return; S.hud.style.display = 'block'; const cd = k => (Chair.S.cd[k] || 0) > 0 ? Math.ceil(Chair.S.cd[k]) + ' s' : 'READY';
     if (S.role === 'partner' && S.p) { const p = S.p; S.hud.innerHTML = `<div class="p2t">PLAYER 2 · <b style="color:${HEROES[p.hero].color}">${HEROES[p.hero].name}</b></div><div class="p2bar"><i style="width:${clamp(p.hp / p.maxHp, 0, 1) * 100}%"></i></div><div class="p2k">${p.ko ? 'DOWN — BACK IN ' + Math.ceil(p.downT) + ' s' : 'ARROWS move · R-CTRL jump (+ direction = flips) · ENTER punch · / ' + POWERS[p.hero] + (p.powT > 0 ? ' (' + Math.ceil(p.powT) + ')' : '') + ' · , . look'}</div>`; }
-    else S.hud.innerHTML = `<div class="p2t">PLAYER 2 · <b style="color:#46f0ff">🎧 IN THE CHAIR</b> · ${districtAt(S.cur.x, S.cur.z).name}</div><div class="p2k">1 SCAN ${cd('scan')} · 2 DRONE ${cd('drone')} · 3 JAM ${cd('jam')} · 4 MARK FOR P1 · 5 MED-KIT ${cd('med')} · 6 ${Heists.cell ? 'LOOP CAMERAS ' + cd('cams') : 'INTEL ' + cd('intel')}</div><div class="p2k">P1 HEALTH ${Math.round(Player.hp)} / ${Player.maxHp} · ${Math.round(S.cur.distanceTo(Player.pos))} m from P1</div>`;
+    else { S.hud.style.display = 'none'; return; }
+    S.hud.innerHTML = `<div class="p2t">PLAYER 2 · <b style="color:#46f0ff">🎧 IN THE CHAIR</b> · ${districtAt(S.cur.x, S.cur.z).name}</div><div class="p2k">1 SCAN ${cd('scan')} · 2 DRONE ${cd('drone')} · 3 JAM ${cd('jam')} · 4 MARK FOR P1 · 5 MED-KIT ${cd('med')} · 6 ${Heists.cell ? 'LOOP CAMERAS ' + cd('cams') : 'INTEL ' + cd('intel')}</div><div class="p2k">P1 HEALTH ${Math.round(Player.hp)} / ${Player.maxHp} · ${Math.round(S.cur.distanceTo(Player.pos))} m from P1</div>`;
   }
   function dom() {
     const css = document.createElement('style'); css.textContent = `body.coop #hud{right:50%!important}body.coop #hud #minimap{transform:scale(.72);transform-origin:top right}body.coop #netbadge{left:25%;top:auto!important;bottom:6px}
@@ -13215,6 +13211,173 @@ ${S.pick === 'partner' ? '<h3 style="margin-top:14px">PLAYER TWO\'S HERO</h3><di
   return { S, update, render, set, cycle, target, dom, html, bind, reset, picker, started, get on() { return S.on; }, get chairIsP2() { return S.on && S.role === 'chair'; }, get partner() { return S.p; } };
 })();
 
+// §GPS --------------------------------------------------------------------------------------
+// Whenever there's a waypoint, a glowing route runs along the streets from the hero to it —
+// both players see it. Long routes follow the street grid corner to corner; short ones path round
+// buildings.
+const GPS = (() => {
+  let mesh = null, pts = null, t = 0, tex = null, target = null;
+  const snap = v => Math.round(v / PITCH) * PITCH;
+  function route(from, to) {
+    if (from.distanceTo(to) < 140) { const p = Nav.find(from.x, from.z, to.x, to.z, 4000); if (p) return [from.clone().setY(0), ...p]; }
+    const A = V3(clamp(snap(from.x), 0, CITY_W), 0, clamp(snap(from.z), 0, CITY_H)), B = V3(clamp(snap(to.x), 0, CITY_W), 0, clamp(snap(to.z), 0, CITY_H));
+    const onCol = v => Math.abs(v.x - snap(v.x)) < HALF_ST + 1; const out = [from.clone().setY(0)];
+    out.push(onCol(from) ? V3(A.x, 0, from.z) : V3(from.x, 0, A.z)); out.push(A); out.push(V3(B.x, 0, A.z)); out.push(B); out.push(onCol(to) ? V3(B.x, 0, to.z) : V3(to.x, 0, B.z)); out.push(to.clone().setY(0));
+    return out.filter((p, i, a) => i === 0 || p.distanceTo(a[i - 1]) > 0.5);
+  }
+  function strip(points) {
+    const W = 0.8, pos = [], uv = [], idx = []; let L = 0;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i], a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)]; const d = V3().subVectors(b, a).setY(0).normalize(); const n = V3(-d.z, 0, d.x).multiplyScalar(W);
+      if (i) L += p.distanceTo(points[i - 1]); pos.push(p.x + n.x, 0.22, p.z + n.z, p.x - n.x, 0.22, p.z - n.z); uv.push(0, L / 3, 1, L / 3);
+      if (i) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); return g;
+  }
+  function texture() { if (tex) return tex; const c = canvas(64, 64), g = c.getContext('2d'); g.fillStyle = 'rgba(70,240,255,.18)'; g.fillRect(0, 0, 64, 64); g.strokeStyle = 'rgba(160,250,255,1)'; g.lineWidth = 9; g.beginPath(); g.moveTo(8, 44); g.lineTo(32, 18); g.lineTo(56, 44); g.stroke(); g.fillStyle = 'rgba(160,250,255,.9)'; g.fillRect(0, 0, 4, 64); g.fillRect(60, 0, 4, 64); tex = texFrom(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex; }
+  function update(rdt) {
+    const B = Beacons.list.find(b => b.main); const show = !!B && G.mode !== 'title' && !Apt.inside && !Interiors.inside;
+    if (!show) { if (mesh) mesh.visible = false; target = null; pts = null; return; }
+    t -= rdt; if (t <= 0 || target !== B) { t = 1.2; target = B; pts = route(Player.pos, B.pos);
+      if (!mesh) { mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ map: texture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, color: new THREE.Color(0.35, 1.5, 2.0), side: THREE.DoubleSide })); mesh.renderOrder = 3; mesh.frustumCulled = false; mesh.layers.set(LAYER_NOREFLECT); scene.add(mesh); }
+      mesh.geometry.dispose(); mesh.geometry = strip(pts); }
+    mesh.visible = true; tex.offset.y -= rdt * 1.6;
+  }
+  const length = () => { if (!pts) return 0; let L = 0; for (let i = 1; i < pts.length; i++) L += pts[i].distanceTo(pts[i - 1]); return L; };
+  return { update, route, get points() { return pts; }, get target() { return target; }, length };
+})();
+// §CHAIROPS ------------------------------------------------------------------------------------
+// Mission control for player two in the chair. Four views: TACTICAL (a free cursor over the city),
+// HOVER (always above player one), WATCH (riding behind player one) and CAMS (camera drones player two
+// throws onto player one — side, front, orbit, top-down — flicked between). Over all of it, a big
+// HUD: player one tracked on screen and off it, their heading, health and what they're doing,
+// threats, the route, a live mini-map, Dex's tools with cooldowns and a comms log.
+const ChairOps = (() => {
+  const S = { mode: 'hover', drones: [], cam: 0, off: V3(), log: [], cv: null, g: null, beam: null, arrow: null, lastHp: 100 };
+  const MODES = ['tactical', 'hover', 'watch', 'cams'];
+  const MODE_NAME = { tactical: 'TACTICAL', hover: 'HOVER', watch: 'WATCH', cams: 'DRONE CAMS' };
+  const CAM_TYPES = [{ id: 'side', name: 'SIDE', off: V3(5.5, 1.6, 0) }, { id: 'front', name: 'FRONT', off: V3(0, 1.8, 6) }, { id: 'orbit', name: 'ORBIT', off: null }, { id: 'top', name: 'TOP', off: V3(0, 26, 0.1) }];
+  const LAYER_P2 = 7; const col = () => HEROES[G.hero].color; const hp = () => clamp(Player.hp / Player.maxHp, 0, 1);
+  function log(msg, c) { msg = String(msg).replace(/<[^>]+>/g, ''); if (!msg.trim()) return; if (S.log[0] && S.log[0].m === msg) return; S.log.unshift({ m: msg, c: c || '#bfe8ff', t: G.time }); S.log.length = Math.min(S.log.length, 6); }
+  function dom() {
+    S.cv = document.createElement('canvas'); S.cv.style.cssText = 'position:fixed;left:50%;top:0;width:50%;height:100%;pointer-events:none;z-index:13;display:none'; document.body.appendChild(S.cv); S.g = S.cv.getContext('2d');
+    // everything the city says, into player two's comms log
+    const t0 = Toast.show.bind(Toast); Toast.show = (m, k) => { t0(m, k); if (Coop.chairIsP2) log(m, k === 'heat' ? '#ff9a8a' : '#bfe8ff'); };
+    const el = document.querySelector('#chair span'); if (el) new MutationObserver(() => { if (Coop.chairIsP2) log('DEX: ' + el.textContent, '#46f0ff'); }).observe(el, { childList: true, characterData: true, subtree: true });
+  }
+  // ---------- 3D marks only player two sees ----------
+  function marks() {
+    if (!S.beam) {
+      S.beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 60, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide })); S.beam.layers.set(LAYER_P2); scene.add(S.beam);
+      const a = new THREE.Shape(); a.moveTo(0, 2.4); a.lineTo(1.1, 0.6); a.lineTo(0.4, 0.6); a.lineTo(0.4, -1.2); a.lineTo(-0.4, -1.2); a.lineTo(-0.4, 0.6); a.lineTo(-1.1, 0.6); a.closePath();
+      S.arrow = new THREE.Mesh(new THREE.ShapeGeometry(a), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, toneMapped: false, depthTest: false, side: THREE.DoubleSide })); S.arrow.rotation.x = -Math.PI / 2; S.arrow.renderOrder = 998; S.arrow.layers.set(LAYER_P2); scene.add(S.arrow);
+    }
+    const c = new THREE.Color(col()).multiplyScalar(1.8); S.beam.material.color.copy(c); S.arrow.material.color.copy(c);
+    const P = Player.pos; S.beam.visible = S.arrow.visible = true; S.beam.position.set(P.x, P.y + 30, P.z);
+    const hv = Math.hypot(Player.vel.x, Player.vel.z); const yaw = hv > 0.5 ? Math.atan2(Player.vel.x, Player.vel.z) : Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw));
+    S.arrow.position.set(P.x + Math.sin(yaw) * 2.6, P.y + 0.3, P.z + Math.cos(yaw) * 2.6); S.arrow.rotation.set(-Math.PI / 2, 0, -yaw + Math.PI, 'XYZ'); S.arrow.scale.setScalar(1 + Math.min(1.5, hv / 15));
+  }
+  function hideMarks() { if (S.beam) S.beam.visible = S.arrow.visible = false; for (const d of S.drones) d.mesh.visible = false; }
+  // ---------- camera drones ----------
+  function droneMesh() { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.42), new THREE.MeshStandardMaterial({ color: 0x1c2028, metalness: 0.7, roughness: 0.3 })); g.add(b); for (const [x, z] of [[-0.32, -0.32], [0.32, -0.32], [-0.32, 0.32], [0.32, 0.32]]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 10), new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.45 })); r.position.set(x, 0.09, z); g.add(r); } const lens = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.3, 0.3), toneMapped: false })); lens.position.set(0, -0.06, 0.2); g.add(lens); scene.add(g); return g; }
+  function deploy() {
+    if (S.drones.length >= 3) { const d = S.drones.shift(); scene.remove(d.mesh); }
+    const T = CAM_TYPES[(S.drones.length + (S.typeIdx || 0)) % CAM_TYPES.length]; S.typeIdx = ((S.typeIdx || 0) + 1);
+    const d = { T, mesh: droneMesh(), pos: Player.pos.clone().add(V3(0, 4, 0)), a: Math.random() * TAU }; S.drones.push(d); S.cam = S.drones.length - 1; S.mode = 'cams'; log('CAMERA DRONE ' + S.drones.length + ' DEPLOYED — ' + T.name + ' VIEW', '#46f0ff'); Audio.ui(1.8);
+  }
+  function droneUpdate(dt) {
+    const P = Player.pos; const yaw = Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw)); const q = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
+    for (const d of S.drones) { let want; if (!d.T.off) { d.a += dt * 0.35; want = V3(P.x + Math.cos(d.a) * 13, P.y + 7, P.z + Math.sin(d.a) * 13); } else want = d.T.off.clone().applyQuaternion(q).add(P);
+      if (!d.placed) { d.placed = true; d.pos.copy(want); } d.pos.lerp(want, 1 - Math.exp(-4 * dt)); d.mesh.position.copy(d.pos); d.mesh.lookAt(P.x, P.y + 1.2, P.z); d.mesh.visible = true; }
+  }
+  // ---------- control ----------
+  function control(dt, c) {
+    const Co = Coop.S;
+    if (c.camT) { S.mode = MODES[(MODES.indexOf(S.mode) + 1) % MODES.length]; if (S.mode === 'cams' && !S.drones.length) deploy(); log('VIEW · ' + MODE_NAME[S.mode], '#46f0ff'); }
+    if (c.dcamT) deploy(); if (c.dnextT && S.drones.length) { S.cam = (S.cam + 1) % S.drones.length; S.mode = 'cams'; }
+    if (c.centerT) { Co.cur.copy(Player.pos); S.off.set(0, 0, 0); }
+    Co.camYaw += c.look * dt * 2; Co.zoom = clamp(Co.zoom - c.zoom * dt * 0.8, 0.35, 2.4);
+    const fwd = V3(-Math.sin(Co.camYaw), 0, -Math.cos(Co.camYaw)), right = V3(Math.cos(Co.camYaw), 0, -Math.sin(Co.camYaw));
+    if (S.mode === 'tactical') { Co.cur.addScaledVector(fwd, c.my * dt * 45 * Co.zoom).addScaledVector(right, c.mx * dt * 45 * Co.zoom); if (Co.cur.distanceTo(Player.pos) > 300) Co.cur.sub(Player.pos).setLength(300).add(Player.pos); }
+    else if (S.mode === 'hover') { S.off.addScaledVector(fwd, c.my * dt * 30 * Co.zoom).addScaledVector(right, c.mx * dt * 30 * Co.zoom); if (Math.abs(c.mx) + Math.abs(c.my) < 0.1) S.off.multiplyScalar(Math.exp(-dt * 0.6)); S.off.clampLength(0, 120); Co.cur.copy(Player.pos).add(S.off); }
+    else { Co.cur.copy(CamRig.aimPoint || Player.pos); }
+    const b = City.buildingAt(Co.cur.x, Co.cur.z); Co.cur.y = b ? b.h : (S.mode === 'tactical' || S.mode === 'hover' ? 0 : Co.cur.y);
+    const ring = Co.ring; if (ring) { ring.visible = S.mode === 'tactical' || S.mode === 'hover'; ring.layers.set(LAYER_P2); ring.position.set(Co.cur.x, Co.cur.y + 0.15, Co.cur.z); ring.scale.setScalar((1 + Math.sin(G.time * 4) * 0.08) * Co.zoom); }
+    const at = Co.cur.clone();
+    if (c.a1T) Chair.scan(at); if (c.a2T) Chair.drone(at); if (c.a3T) Chair.jam(at); if (c.a4T) Chair.route(at); if (c.a5T) Chair.med(); if (c.a6T) { if (Heists.cell) Chair.cams(); else Chair.intel(); }
+    marks(); droneUpdate(dt);
+    if (Player.hp < S.lastHp - 8) log('P1 TOOK A HIT — ' + Math.round(Player.hp) + ' HP', '#ff9a8a'); S.lastHp = Player.hp;
+  }
+  function camera(dt, cam) {
+    const Co = Coop.S; cam.layers.enable(LAYER_P2); cam.layers.enable(LAYER_NOREFLECT); const P = Player.pos;
+    let want, look;
+    if (S.mode === 'tactical' || S.mode === 'hover') { const c = Co.cur; const dist = 24 * Co.zoom; want = V3(c.x + Math.sin(Co.camYaw) * dist, c.y + 34 * Co.zoom, c.z + Math.cos(Co.camYaw) * dist); look = c.clone(); cam.fov = 60; }
+    else if (S.mode === 'watch') { const y = Player.yaw; want = V3(P.x + Math.sin(y) * 7.5 * Co.zoom, P.y + 3.6 * Co.zoom, P.z + Math.cos(y) * 7.5 * Co.zoom); look = V3(P.x, P.y + 1.6, P.z); cam.fov = 60; }
+    else { const d = S.drones[S.cam]; if (!d) { S.mode = 'hover'; return camera(dt, cam); } look = V3(P.x, P.y + 1.3, P.z); want = d.pos.clone().add(V3().subVectors(look, d.pos).setLength(0.6)); cam.fov = d.T.id === 'top' ? 55 : 48; cam.position.copy(want); cam.lookAt(look); cam.updateProjectionMatrix(); return; }
+    cam.position.lerp(want, 1 - Math.exp(-(S.mode === 'watch' ? 8 : 6) * dt)); cam.lookAt(look); cam.updateProjectionMatrix();
+  }
+  // ---------- the HUD ----------
+  const _v = V3();
+  function proj(p, cam, W, H) { _v.copy(p).project(cam); const behind = _v.z > 1; return { x: (_v.x + 1) / 2 * W, y: (1 - _v.y) / 2 * H, behind, on: !behind && Math.abs(_v.x) < 1 && Math.abs(_v.y) < 1 }; }
+  function panel(g, x, y, w, h, c) { g.fillStyle = 'rgba(4,10,20,.78)'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + w - 12, y); g.lineTo(x + w, y + 12); g.lineTo(x + w, y + h); g.lineTo(x + 12, y + h); g.lineTo(x, y + h - 12); g.closePath(); g.fill(); g.strokeStyle = c || 'rgba(70,240,255,.55)'; g.lineWidth = 1; g.stroke(); }
+  function bar(g, x, y, w, k, c) { g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x, y, w, 6); g.fillStyle = c; g.fillRect(x, y, w * clamp(k, 0, 1), 6); }
+  function state() { if (Freerun.active) return Freerun.S.mode.toUpperCase(); if (G.hero === 'thread' && Thread.swing) return 'SWINGING'; if (Acro.active) return 'FLIPPING'; if (Apt.inside || Interiors.inside) return 'INSIDE'; if (!Player.grounded) return 'AIRBORNE'; if (G.time - (Player.combatT || -99) < 4) return 'IN COMBAT'; return Math.hypot(Player.vel.x, Player.vel.z) > 1 ? 'MOVING' : 'IDLE'; }
+  function draw(rdt) {
+    const cv = S.cv, g = S.g; const W = innerWidth / 2, H = innerHeight; const dpr = Math.min(2, devicePixelRatio || 1);
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); const cam = Coop.S.cam; const hc = col(); const P = Player.pos; const t = G.time;
+    g.font = '600 10px ui-monospace,Menlo,monospace'; g.textBaseline = 'middle';
+    // drone-cam look: grain lines, REC
+    if (S.mode === 'cams') { g.globalAlpha = 0.07; g.fillStyle = '#fff'; for (let y = (t * 60) % 3; y < H; y += 3) g.fillRect(0, y, W, 1); g.globalAlpha = 1; const d = S.drones[S.cam]; g.fillStyle = (t % 1 < 0.5) ? '#ff3b4f' : 'rgba(255,59,79,.3)'; g.beginPath(); g.arc(W - 40, 88, 6, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.textAlign = 'right'; g.font = '800 12px ui-monospace,monospace'; g.fillText('REC', W - 52, 88); g.textAlign = 'left'; g.fillText('CAM ' + (S.cam + 1) + '/' + S.drones.length + ' · ' + (d ? d.T.name : ''), 18, 88); g.strokeStyle = 'rgba(255,255,255,.5)'; for (const [x, y, sx, sy] of [[30, 90, 1, 1], [W - 30, 90, -1, 1], [30, H - 230, 1, -1], [W - 30, H - 230, -1, -1]]) { g.beginPath(); g.moveTo(x, y + sy * 30); g.lineTo(x, y); g.lineTo(x + sx * 30, y); g.stroke(); } }
+    // top bar: views
+    panel(g, 10, 10, W - 20, 40); g.textAlign = 'left'; g.font = '800 11px ui-monospace,monospace'; g.fillStyle = '#46f0ff'; g.fillText('🎧 MISSION CONTROL', 22, 30);
+    let x = 190; for (const m of MODES) { const on = S.mode === m; const w = g.measureText(MODE_NAME[m]).width + 18; g.fillStyle = on ? '#46f0ff' : 'rgba(70,240,255,.12)'; g.fillRect(x, 19, w, 22); g.fillStyle = on ? '#021018' : '#9fdcef'; g.fillText(MODE_NAME[m], x + 9, 30); x += w + 6; }
+    g.fillStyle = 'rgba(200,235,255,.65)'; g.font = '600 9px ui-monospace,monospace'; g.fillText('[ NUM7 view · ] NUM8 camera drone · \\ NUM9 next cam · ; recentre · ARROWS move · , . turn · + − zoom', 18, 60);
+    // threats and points of interest, through the drone's eyes
+    for (const u of Units.list) { if (!u.alive || u.ko || u.thrall || !(u.gang || u.villain) || u.pos.distanceTo(P) > 120) continue; const s = proj(V3(u.pos.x, u.pos.y + 1, u.pos.z), cam, W, H); if (!s.on) continue; const c = u.villain ? '#ff3b4f' : u.angry ? '#ffb347' : '#ffe08a'; g.strokeStyle = c; g.lineWidth = u.villain ? 2.5 : 1.5; const r = u.villain ? 12 : 7; g.strokeRect(s.x - r, s.y - r, r * 2, r * 2); if (u.villain) { g.fillStyle = c; g.textAlign = 'center'; g.font = '800 10px ui-monospace,monospace'; g.fillText('☠ ' + VILLAIN_DEFS[u.villain].name, s.x, s.y - r - 9); } }
+    g.textAlign = 'center';
+    for (const b of Beacons.list) { const s = proj(V3(b.pos.x, (b.pos.y || 0) + 3, b.pos.z), cam, W, H); const d = Math.round(b.pos.distanceTo(P)); if (s.on) { g.fillStyle = b.color; g.font = '700 16px sans-serif'; g.fillText(b.icon || '◆', s.x, s.y); g.font = '700 9px ui-monospace,monospace'; g.fillText((b.label || '').slice(0, 22) + ' · ' + d + 'm', s.x, s.y + 14); } }
+    // player one: always found
+    const p1 = proj(V3(P.x, P.y + 2.6, P.z), cam, W, H);
+    if (p1.on) { g.save(); g.translate(p1.x, p1.y - 14); g.rotate(Math.PI / 4); g.strokeStyle = hc; g.lineWidth = 2.5; g.strokeRect(-9, -9, 18, 18); g.restore(); g.fillStyle = hc; g.font = '800 11px ui-monospace,monospace'; g.fillText('P1 · ' + HEROES[G.hero].name, p1.x, p1.y - 36); bar(g, p1.x - 30, p1.y - 28, 60, hp(), hp() < 0.3 ? '#ff3b4f' : '#ff8fa3');
+      const fut = proj(V3(P.x + Player.vel.x * 0.8, P.y + 1, P.z + Player.vel.z * 0.8), cam, W, H); const base = proj(V3(P.x, P.y + 1, P.z), cam, W, H); if (!fut.behind && Math.hypot(Player.vel.x, Player.vel.z) > 1) { g.strokeStyle = hc; g.lineWidth = 2; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(base.x, base.y); g.lineTo(fut.x, fut.y); g.stroke(); g.setLineDash([]); } }
+    else { let dx = p1.x - W / 2, dy = p1.y - H / 2; if (p1.behind) { dx = -dx; dy = -dy; } const k = Math.min((W / 2 - 40) / Math.abs(dx || 1), (H / 2 - 80) / Math.abs(dy || 1)); const ex = W / 2 + dx * k, ey = H / 2 + dy * k; const a = Math.atan2(dy, dx); g.save(); g.translate(ex, ey); g.rotate(a); g.fillStyle = hc; g.beginPath(); g.moveTo(16, 0); g.lineTo(-8, -10); g.lineTo(-8, 10); g.closePath(); g.fill(); g.restore(); g.fillStyle = hc; g.font = '800 10px ui-monospace,monospace'; g.fillText('P1 · ' + Math.round(cam.position.distanceTo(P)) + 'm', ex - Math.cos(a) * 30, ey - Math.sin(a) * 22); }
+    // cursor readout
+    if (S.mode === 'tactical' || S.mode === 'hover') { const c = Coop.S.cur; const s = proj(c, cam, W, H); if (s.on) { g.strokeStyle = 'rgba(70,240,255,.8)'; g.lineWidth = 1; g.beginPath(); g.moveTo(s.x - 22, s.y); g.lineTo(s.x - 8, s.y); g.moveTo(s.x + 8, s.y); g.lineTo(s.x + 22, s.y); g.moveTo(s.x, s.y - 22); g.lineTo(s.x, s.y - 8); g.moveTo(s.x, s.y + 8); g.lineTo(s.x, s.y + 22); g.stroke(); const n = Units.list.filter(u => u.alive && !u.ko && (u.gang || u.villain) && u.pos.distanceTo(c) < 15).length; g.fillStyle = '#bff8ff'; g.textAlign = 'left'; g.font = '700 9px ui-monospace,monospace'; g.fillText(districtAt(c.x, c.z).name + ' · ' + Math.round(c.distanceTo(P)) + 'm FROM P1' + (n ? ' · ' + n + ' HOSTILE' : ''), s.x + 26, s.y + 4); } }
+    // left: player one's status
+    const py = H - 214; panel(g, 10, py, 250, 112, hc); g.textAlign = 'left'; g.fillStyle = hc; g.font = '800 12px ui-monospace,monospace'; g.fillText('P1 · ' + HEROES[G.hero].name, 22, py + 16); g.fillStyle = '#dff'; g.font = '700 9px ui-monospace,monospace'; g.fillText(state(), 175, py + 16);
+    g.fillText('HEALTH ' + Math.round(Player.hp), 22, py + 34); bar(g, 100, py + 31, 145, hp(), hp() < 0.3 ? '#ff3b4f' : '#ff8fa3'); g.fillStyle = '#dff'; g.fillText('ENERGY', 22, py + 50); bar(g, 100, py + 47, 145, Player.mind / Math.max(1, Player.maxMind), hc);
+    const sp = Math.round(Math.hypot(Player.vel.x, Player.vel.y, Player.vel.z)); const th = Units.list.filter(u => u.alive && !u.ko && (u.gang || u.villain) && u.angry && u.pos.distanceTo(P) < 40).length; g.fillStyle = '#dff'; g.fillText(sp + ' m/s · ALT ' + Math.max(0, Math.round(P.y)) + ' m · ' + districtAt(P.x, P.z).name, 22, py + 68);
+    g.fillStyle = th ? '#ffb347' : '#6dffb0'; g.fillText(th ? '⚠ ' + th + ' HOSTILES ON P1' : '✓ NO THREATS NEAR P1', 22, py + 84);
+    const B = GPS.target; g.fillStyle = '#bff8ff'; g.fillText(B ? '▶ ' + (B.label || 'WAYPOINT').slice(0, 20) + ' · ' + Math.round(GPS.length()) + ' m · ETA ' + Math.round(GPS.length() / Math.max(6, sp || 6)) + ' s' : '▶ NO ROUTE — NUM4 MARKS ONE FOR P1', 22, py + 100);
+    // tools
+    const ty = H - 92; panel(g, 10, ty, W - 236, 80); const tools = [['1', 'SCAN', 'scan'], ['2', 'DRONE', 'drone'], ['3', 'JAM', 'jam'], ['4', 'MARK', 'route'], ['5', 'MED', 'med'], ['6', Heists.cell ? 'CAMS' : 'INTEL', Heists.cell ? 'cams' : 'intel']]; const tw = (W - 256) / 6;
+    tools.forEach(([k, n, id], i) => { const cx = 20 + i * tw + tw / 2, cy = ty + 34; const cd = Chair.S.cd[id] || 0, max = Chair.CD[id] || 1; g.strokeStyle = 'rgba(70,240,255,.25)'; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, 18, 0, TAU); g.stroke(); g.strokeStyle = cd > 0 ? 'rgba(255,180,80,.9)' : '#46f0ff'; g.beginPath(); g.arc(cx, cy, 18, -Math.PI / 2, -Math.PI / 2 + TAU * (cd > 0 ? 1 - cd / max : 1)); g.stroke(); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '800 13px ui-monospace,monospace'; g.fillText(k, cx, cy); g.font = '700 9px ui-monospace,monospace'; g.fillStyle = cd > 0 ? '#ffb347' : '#bff8ff'; g.fillText(cd > 0 ? Math.ceil(cd) + 's' : n, cx, ty + 66); });
+    // comms log
+    panel(g, W - 300, 72, 290, 22 + S.log.length * 16); g.textAlign = 'left'; g.font = '800 9px ui-monospace,monospace'; g.fillStyle = '#46f0ff'; g.fillText('COMMS', W - 290, 84); g.font = '600 9px ui-monospace,monospace';
+    S.log.forEach((l, i) => { g.globalAlpha = clamp(1 - (G.time - l.t) / 40, 0.35, 1); g.fillStyle = l.c; g.fillText(l.m.slice(0, 46), W - 290, 100 + i * 16); }); g.globalAlpha = 1;
+    // mini-map round player one
+    minimap(g, W - 216, H - 216, 206);
+  }
+  function minimap(g, x, y, s) {
+    const P = Player.pos, R = 220, k = s / (R * 2); const X = v => x + s / 2 + (v - P.x) * k, Z = v => y + s / 2 + (v - P.z) * k;
+    panel(g, x - 4, y - 4, s + 8, s + 8); g.save(); g.beginPath(); g.rect(x, y, s, s); g.clip(); g.fillStyle = '#05080e'; g.fillRect(x, y, s, s);
+    g.fillStyle = 'rgba(70,120,160,.35)'; for (const b of City.buildings) { if (b.x1 < P.x - R || b.x0 > P.x + R || b.z1 < P.z - R || b.z0 > P.z + R) continue; g.fillRect(X(b.x0), Z(b.z0), (b.x1 - b.x0) * k, (b.z1 - b.z0) * k); }
+    const pts = GPS.points; if (pts && pts.length > 1) { g.strokeStyle = '#46f0ff'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(X(pts[0].x), Z(pts[0].z)); for (const p of pts) g.lineTo(X(p.x), Z(p.z)); g.stroke(); }
+    for (const u of Units.list) if (u.alive && !u.ko && (u.gang || u.villain) && Math.abs(u.pos.x - P.x) < R && Math.abs(u.pos.z - P.z) < R) { g.fillStyle = u.villain ? '#ff3b4f' : u.angry ? '#ffb347' : 'rgba(255,224,138,.6)'; g.fillRect(X(u.pos.x) - 2, Z(u.pos.z) - 2, u.villain ? 6 : 4, u.villain ? 6 : 4); }
+    for (const b of Beacons.list) { g.fillStyle = b.color; g.font = '700 11px sans-serif'; g.textAlign = 'center'; g.fillText(b.icon || '◆', clamp(X(b.pos.x), x + 6, x + s - 6), clamp(Z(b.pos.z), y + 8, y + s - 4)); }
+    for (const d of S.drones) { g.fillStyle = '#9fe8ff'; g.fillRect(X(d.pos.x) - 2, Z(d.pos.z) - 2, 4, 4); }
+    const c = Coop.S.cur; g.strokeStyle = '#46f0ff'; g.lineWidth = 1; g.strokeRect(X(c.x) - 4, Z(c.z) - 4, 8, 8);
+    const yaw = Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw)); g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-yaw + Math.PI); g.fillStyle = col(); g.beginPath(); g.moveTo(0, -8); g.lineTo(-6, 6); g.lineTo(6, 6); g.closePath(); g.fill(); g.restore();
+    g.restore(); g.fillStyle = 'rgba(200,235,255,.6)'; g.font = '700 9px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText('N ↑ · 440 m', x + 6, y + 10);
+  }
+  function update(rdt) {
+    const on = Coop.chairIsP2 && (G.mode === 'play' || G.mode === 'detained' || G.mode === 'phone');
+    if (!S.cv) return; S.cv.style.display = on ? 'block' : 'none'; if (!on) { hideMarks(); return; } draw(rdt);
+  }
+  function reset() { for (const d of S.drones) scene.remove(d.mesh); S.drones = []; hideMarks(); S.mode = 'hover'; S.off.set(0, 0, 0); }
+  return { S, dom, control, camera, update, reset, deploy, log, get mode() { return S.mode; } };
+})();
 // §FREERUN ------------------------------------------------------------------------------------
 // Movement freedom for every hero who isn't already swinging: fire a TETHER at any wall (middle
 // mouse, or the ` key) and zip to it; keep holding through the pull to SLINGSHOT off the end;
@@ -13570,7 +13733,7 @@ function frame(now) {
   Mirror.update(camera);
   if (Coop.on) Coop.render(rdt); else if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
   Acro.post(); HeroModels.sync(Player.rig); Ghosts.update(rdt); Ripple.update(rdt); if (M === 'play' || M === 'title') Critters.update(dt);
-  DayNight.update(rdt); Defence.update(rdt); Design.update(rdt); Pigeons.update(rdt); LensFlare.update(rdt); Mobile.update(); Beacons.update(); Net.update(rdt); Coop.update(dt, rdt); SuitHUD.update(rdt); if (live) Threads.update(rdt * (G.hero === 'thread' && Thread.focusOn ? 0.5 : 1) * (M === 'play' || M === 'title' || M === 'detained' ? 1 : 0)); Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
+  DayNight.update(rdt); Defence.update(rdt); Design.update(rdt); Pigeons.update(rdt); LensFlare.update(rdt); Mobile.update(); Beacons.update(); Net.update(rdt); Coop.update(dt, rdt); GPS.update(rdt); ChairOps.update(rdt); SuitHUD.update(rdt); if (live) Threads.update(rdt * (G.hero === 'thread' && Thread.focusOn ? 0.5 : 1) * (M === 'play' || M === 'title' || M === 'detained' ? 1 : 0)); Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
   Input.endFrame();
 }
 
@@ -13587,12 +13750,12 @@ async function boot() {
   await new Promise(r => setTimeout(r, 20));
   buildWorld(CONFIG.seed);
   Player.spawn(118, 0.1, 62, 0); Player.rig.mesh.visible = false;
-  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Cortex.dom(); Chair.dom(); Coop.dom(); SuitHUD.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
+  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Cortex.dom(); Chair.dom(); Coop.dom(); SuitHUD.dom(); ChairOps.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
   setLoad(1, 'READY');
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Cortex, Sovereign, CamRig, Acro, Chair, Villains, Forge, Coop, Freerun, SuitHUD, HEROES, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Cortex, Sovereign, CamRig, Acro, Chair, Villains, Forge, Coop, Freerun, SuitHUD, GPS, ChairOps, HEROES, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }
