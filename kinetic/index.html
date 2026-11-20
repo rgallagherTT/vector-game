@@ -265,6 +265,7 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
     <div id="tag">ONE MIND · ONE CITY · NO LIMIT</div>
     <div id="menu">
       <button class="primary" id="b-career">CAREER · FREE ROAM</button>
+      <button class="primary" id="b-coop">2 PLAYERS · SPLIT-SCREEN</button>
       <button id="b-play">ARCADE RUN</button>
       <button id="b-daily">DAILY RUN</button>
       <button id="b-tree">POWER TREE</button>
@@ -6165,6 +6166,7 @@ const Menus = (() => {
   function wire() {
     $('b-play').onclick = () => { Audio.unlock(); HeroSelect.open(false, false); };
     $('b-career').onclick = () => { Audio.unlock(); HeroSelect.open(false, true); };
+    $('b-coop').onclick = () => { Audio.unlock(); Coop.picker(); };
     $('b-daily').onclick = () => { Audio.unlock(); HeroSelect.open(true); };
     $('b-tree').onclick = () => { $('title').classList.add('hidden'); open('tree'); };
     $('b-chal').onclick = () => { $('title').classList.add('hidden'); open('chal'); };
@@ -13176,7 +13178,8 @@ const Coop = (() => {
     else S.hud.innerHTML = `<div class="p2t">PLAYER 2 · <b style="color:#46f0ff">🎧 IN THE CHAIR</b> · ${districtAt(S.cur.x, S.cur.z).name}</div><div class="p2k">1 SCAN ${cd('scan')} · 2 DRONE ${cd('drone')} · 3 JAM ${cd('jam')} · 4 MARK FOR P1 · 5 MED-KIT ${cd('med')} · 6 ${Heists.cell ? 'LOOP CAMERAS ' + cd('cams') : 'INTEL ' + cd('intel')}</div><div class="p2k">P1 HEALTH ${Math.round(Player.hp)} / ${Player.maxHp} · ${Math.round(S.cur.distanceTo(Player.pos))} m from P1</div>`;
   }
   function dom() {
-    const css = document.createElement('style'); css.textContent = `body.coop #hud{right:50%!important}body.coop #hud #minimap{transform:scale(.8);transform-origin:top right}body.coop #netbadge{left:25%}
+    const css = document.createElement('style'); css.textContent = `body.coop #hud{right:50%!important}body.coop #hud #minimap{transform:scale(.72);transform-origin:top right}body.coop #netbadge{left:25%;top:auto!important;bottom:6px}
+body.coop #slots{transform:translateX(-50%) scale(.6)!important;transform-origin:bottom center}body.coop #vitals{transform:scale(.8);transform-origin:bottom left}body.coop #heatbox{transform:scale(.8);transform-origin:top left}body.coop #scorebox{transform:scale(.8);transform-origin:top right}body.coop #keys{display:none}body.coop #chair{transform:scale(.85);transform-origin:left top}
 body.coop:after{content:'';position:fixed;left:50%;top:0;bottom:0;width:3px;margin-left:-1px;background:#05080e;z-index:30;pointer-events:none}
 #p2hud{position:fixed;left:calc(50% + 18px);bottom:16px;z-index:16;display:none;font:600 11px var(--mono,monospace);letter-spacing:.1em;color:#dfe8f4;text-shadow:0 0 6px #000;max-width:46vw;pointer-events:none}
 #p2hud .p2t{font-size:12px;margin-bottom:5px}#p2hud .p2bar{width:240px;height:8px;background:#1a2230;margin-bottom:6px}#p2hud .p2bar i{display:block;height:100%;background:linear-gradient(90deg,#ff5f7a,#ffb0c0)}#p2hud .p2k{opacity:.85;margin-top:3px}`;
@@ -13193,7 +13196,23 @@ body.coop:after{content:'';position:fixed;left:50%;top:0;bottom:0;width:3px;marg
     el.querySelectorAll('[data-coophero]').forEach(b => b.onclick = () => { S.hero = b.dataset.coophero; if (S.on && S.role === 'partner') set('partner'); rerender(); });
   }
   function reset() { if (S.on) set('off'); }
-  return { S, update, render, set, cycle, target, dom, html, bind, reset, get on() { return S.on; }, get chairIsP2() { return S.on && S.role === 'chair'; }, get partner() { return S.p; } };
+  // the title screen's 2 PLAYERS: player two picks a role (and a hero), then player one picks theirs
+  function picker() {
+    $('title').classList.add('hidden'); const p = $('subpanel'); $('sub').classList.remove('hidden'); $('herotabs').innerHTML = '';
+    const draw = () => { p.innerHTML = `<h2>2 PLAYERS · ONE SCREEN</h2><p style="max-width:720px">Player one: mouse + keyboard (WASD) on the left. Player two: the right half, with a <b>gamepad</b> or the <b>arrow keys</b> and the keys on the right — R-CTRL / NUM 0 jump, ENTER punch, / power, R-SHIFT sprint, , . look. F9 switches modes in game.</p>
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))"><div class="card ${S.pick === 'partner' ? 'owned' : ''}"><h3>PLAY TOGETHER</h3><p>Player two is a second hero beside you — run, jump, flip, punch, a signature power. Gangs fight both of you.</p><button class="primary" data-pk="partner">PLAYER TWO: PARTNER</button></div>
+<div class="card ${S.pick === 'chair' ? 'owned' : ''}"><h3>THE GUY IN THE CHAIR</h3><p>Player two runs support from a drone's-eye view: scan, drones, jam guns, med-kits, intel, mark targets for player one.</p><button class="primary" data-pk="chair">PLAYER TWO: IN THE CHAIR</button></div></div>
+${S.pick === 'partner' ? '<h3 style="margin-top:14px">PLAYER TWO\'S HERO</h3><div class="row">' + HERO_IDS.filter(heroReady).map(h => `<button data-ph="${h}" class="${S.hero === h ? 'primary' : ''}" style="${S.hero === h ? 'background:' + HEROES[h].color : ''}">${HEROES[h].name}</button>`).join('') + '</div>' : ''}
+<div class="row" style="margin-top:16px"><button class="primary" id="pk-go" ${S.pick ? '' : 'disabled'}>NEXT — PLAYER ONE PICKS A HERO</button><button id="pk-back">BACK</button></div>`;
+      p.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { S.pick = b.dataset.pk; draw(); });
+      p.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { S.hero = b.dataset.ph; draw(); });
+      $('pk-go').onclick = () => { S.pending = S.pick; HeroSelect.open(false, true); };
+      $('pk-back').onclick = () => { $('sub').classList.add('hidden'); Menus.showTitle(); };
+    };
+    S.pick = S.pick || 'partner'; draw();
+  }
+  function started() { if (S.pending) { const m = S.pending; S.pending = null; set(m); } }
+  return { S, update, render, set, cycle, target, dom, html, bind, reset, picker, started, get on() { return S.on; }, get chairIsP2() { return S.on && S.role === 'chair'; }, get partner() { return S.p; } };
 })();
 
 // §FREERUN ------------------------------------------------------------------------------------
@@ -13320,7 +13339,7 @@ const SuitHUD = (() => {
     for (const [x, y, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) { g.beginPath(); g.moveTo(x, y + sy * L); g.lineTo(x, y); g.lineTo(x + sx * L, y); g.stroke(); for (let k = 0; k < 4; k++) { const o = 20 + ((t * 30 + k * 14) % 56); g.beginPath(); g.moveTo(x + sx * o, y + sy * 5); g.lineTo(x + sx * (o + 6), y + sy * 5); g.stroke(); } }
     g.globalAlpha = 0.06; for (let y = (t * 40) % 4; y < H; y += 4) { g.fillStyle = col; g.fillRect(0, y, W, 1); } g.globalAlpha = 1;
     // compass: heading with markers
-    const yaw = Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw)); const deg = ((yaw * 180 / Math.PI) % 360 + 360) % 360; const CW = Math.min(560, W - 200), cx0 = cx, top = 14;
+    const yaw = Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw)); const deg = ((yaw * 180 / Math.PI) % 360 + 360) % 360; const CW = Math.min(560, W - 200), cx0 = cx, top = Coop.on ? 92 : 14;
     g.fillStyle = 'rgba(4,10,18,.55)'; g.fillRect(cx0 - CW / 2, top, CW, 26); g.strokeStyle = col; g.globalAlpha = 0.6; g.strokeRect(cx0 - CW / 2, top, CW, 26); g.globalAlpha = 1;
     const pxPerDeg = CW / 140; g.save(); g.beginPath(); g.rect(cx0 - CW / 2, top, CW, 26); g.clip();
     for (let a = -90; a <= 90; a += 5) { const d = Math.round(deg / 5) * 5 + a; const x = cx0 + (d - deg) * pxPerDeg; const n = ((d % 360) + 360) % 360; const card = { 0: 'N', 90: 'E', 180: 'S', 270: 'W' }[n]; g.strokeStyle = 'rgba(200,240,255,.6)'; g.beginPath(); g.moveTo(x, top + 26); g.lineTo(x, top + (card ? 12 : n % 15 === 0 ? 18 : 22)); g.stroke(); if (card) { g.fillStyle = '#fff'; g.font = '800 11px ui-monospace,monospace'; g.fillText(card, x, top + 11); } else if (n % 45 === 0) { g.fillStyle = 'rgba(200,240,255,.7)'; g.font = '600 9px ui-monospace,monospace'; g.fillText(n, x, top + 10); } }
@@ -13392,7 +13411,7 @@ const Game = {
         Music.setLevel(0); Music.warden(false); Hud.show(true); Hud.boss(null);
         CamRig.pos.set(118, 4, 70);
         if (G.career) { Career.start(); const st = Career.state; const home = Apt.markers.find(m => m.id === st.home); if (home) Apt.enter(home, true); Hud.banner('CAREER · DAY ' + st.day, home ? 'YOU WAKE UP AT HOME · PRESS M FOR YOUR PHONE' : 'PRESS M — YOUR PHONE HAS JOBS WAITING'); Timers.after(4, () => Toast.show('<b>M</b> PHONE · <b>T</b> USE DOORS & FURNITURE · ⚠ RED BEAMS ARE CRIMES', 'big')); }
-        Design.dress(); Activities.init(); WorldPlus.build();
+        Design.dress(); Activities.init(); WorldPlus.build(); Coop.started();
         if (!G.career) { if (daily) Hud.banner('DAILY RUN', daily.name + ' — ' + daily.desc); else Hud.banner(GAME_TITLE, 'THE CITY IS YOURS.'); }
         setLoadVisible(false);
         try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch { }
