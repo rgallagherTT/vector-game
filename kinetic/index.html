@@ -3356,7 +3356,7 @@ const Input = (() => {
   addEventListener('wheel', e => { mouse.wheel += Math.sign(e.deltaY); }, { passive: true });
   document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === cv; });
   function pollPad() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : []; let p = null; for (const g of pads) if (g && g.connected) { p = g; break; }
+    const pads = navigator.getGamepads ? navigator.getGamepads() : []; let p = null; const live = [...pads].filter(g => g && g.connected); p = (typeof Coop !== 'undefined' && Coop.on) ? (live.length > 1 ? live[0] : null) : (live[0] || null);
     pad.connected = !!p; if (!p) { pad.lx = pad.ly = pad.rx = pad.ry = 0; return; }
     const dz = v => Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85;
     pad.lx = dz(p.axes[0] || 0); pad.ly = dz(p.axes[1] || 0); pad.rx = dz(p.axes[2] || 0); pad.ry = dz(p.axes[3] || 0);
@@ -3378,7 +3378,7 @@ const Input = (() => {
     vkey(code, down) { if (down) { if (!keys[code]) pressed[code] = true; keys[code] = true; } else { if (keys[code]) released[code] = true; keys[code] = false; } },
     vbtn(b, down) { if (down) { if (!mouse.b[b]) mouse.pb[b] = true; mouse.b[b] = true; } else { if (mouse.b[b]) mouse.rb[b] = true; mouse.b[b] = false; } },
     look(dx, dy) { mouse.dx += dx; mouse.dy += dy; },
-    move() { let x = 0, y = 0; x += this.touch.x; y += this.touch.y; if (keys.KeyW || keys.ArrowUp) y += 1; if (keys.KeyS || keys.ArrowDown) y -= 1; if (keys.KeyD || keys.ArrowRight) x += 1; if (keys.KeyA || keys.ArrowLeft) x -= 1; x += pad.lx; y -= pad.ly; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } return [x, y]; },
+    move() { let x = 0, y = 0; x += this.touch.x; y += this.touch.y; const ar = this.arrowsP1 !== false; if (keys.KeyW || (ar && keys.ArrowUp)) y += 1; if (keys.KeyS || (ar && keys.ArrowDown)) y -= 1; if (keys.KeyD || (ar && keys.ArrowRight)) x += 1; if (keys.KeyA || (ar && keys.ArrowLeft)) x -= 1; x += pad.lx; y -= pad.ly; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } return [x, y]; },
     endFrame() { for (const k in pressed) delete pressed[k]; for (const k in released) delete released[k]; mouse.pb = {}; mouse.rb = {}; mouse.dx = 0; mouse.dy = 0; mouse.wheel = 0; },
     pressedKey(code) { return !!pressed[code]; },
     releaseLock() { if (document.pointerLockElement) document.exitPointerLock(); },
@@ -3440,6 +3440,7 @@ const Player = {
   update(dt, rdt) {
     const C = CONFIG.player;
     if (this.detained) { this.rig.mesh.visible = true; this.animate(dt); return; }
+    if (typeof Freerun !== 'undefined' && Freerun.override(rdt || dt)) return;
     if (G.hero !== 'kinetic') { HeroMove(dt, rdt); return; }
     // look
     const sens = CONFIG.camera.sens * settings.sens * (TK.holding && TK.charging ? 0.75 : 1);
@@ -6385,7 +6386,7 @@ const Hero = {
     Speed.reset(); if (typeof Shift !== 'undefined') Shift.reset(); if (typeof Thread !== 'undefined') { Thread.reset(); Courses.stop(); } if (typeof Cortex !== 'undefined') Cortex.reset();
     const speedy = h === 'speed' || h === 'thread';
     if (Player.collider) Player.collider.setCollisionGroups(speedy ? ig(GRP.PLAYER, GRP.STATIC | GRP.WALKER) : GROUPS.player);
-    if (Player.ctl) Player.ctl.setApplyImpulsesToDynamicBodies(!speedy);
+    if (Player.ctl) Player.ctl.setApplyImpulsesToDynamicBodies(!speedy && h !== 'nano');
     if (City.quayWall) City.quayWall.setCollisionGroups(speedy ? ig(GRP.STATIC, GRP.UNIT) : ig(GRP.STATIC, GRP.PLAYER | GRP.UNIT));
     const hpFrac = midRun ? Player.hp / Player.maxHp : 1;
     Player.maxHp = CONFIG.player.hp + Prog.level('health') * 20; Player.hp = Player.maxHp * hpFrac;
@@ -7649,6 +7650,7 @@ const Guards = {
     }
     // cameras sweep and report
     for (const c of C.cams) {
+      if (c.offT > G.time) { c.susp = 0; c.cone.material.opacity = 0.01; continue; }
       c.t += dt; c.yaw = c.base + Math.sin(c.t * 0.5) * 0.9; c.mesh.rotation.y = c.yaw;
       const dx = pp.x - c.pos.x, dz = pp.z - c.pos.z; const d = Math.hypot(dx, dz); let see = 0;
       if (d < 16) { const f = (Math.sin(c.yaw) * dx + Math.cos(c.yaw) * dz) / d; if (f > 0.82 && losClear(c.pos, V3(pp.x, pp.y + 0.6, pp.z), 0.3)) see = 1; }
@@ -8149,6 +8151,7 @@ const GangAI = (() => {
   function pick(u, dist) {
     const playerOk = G.mode === 'play' && !Player.detained && !Apt.inside && !(typeof Shift !== 'undefined' && Shift.inCell) && Math.abs(Player.pos.y - u.pos.y) < 12;
     if (u.tgtVip && u.tgtVip.alive && !u.tgtVip.ko && dist > 7) return u.tgtVip;
+    if (u.gang && !u.mad && u.angry && typeof Coop !== 'undefined') { const p2 = Coop.target(u); if (p2) return p2; }
     if (u.gang && playerOk && !u.mad) {
       if (!u.angry && dist < u.aggroR) anger(u);
       if (u.angry && dist < 70) return 'player';
@@ -10346,7 +10349,7 @@ const Mobile = (() => {
     stick = document.createElement('div'); stick.className = 'stick'; knob = document.createElement('div'); knob.className = 'knob'; stick.appendChild(knob); root.appendChild(stick);
     btnBox = document.createElement('div'); btnBox.className = 'btns'; root.appendChild(btnBox);
     const top = document.createElement('div'); top.className = 'top'; root.appendChild(top);
-    for (const [l, code] of [['☰', 'Escape'], ['📱', 'KeyM'], ['T', 'KeyT'], ['🎙', 'KeyN'], ['💬', 'KeyY'], ['🙂', 'KeyI'], ['?', 'KeyH']]) top.appendChild(button(l, code));
+    for (const [l, code] of [['☰', 'Escape'], ['📱', 'KeyM'], ['T', 'KeyT'], ['🎙', 'KeyN'], ['💬', 'KeyY'], ['🙂', 'KeyI'], ['🎧', 'KeyJ'], ['⚓', 'm1'], ['?', 'KeyH']]) top.appendChild(button(l, code));
     // left: a floating stick wherever the thumb lands
     left.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; stickId = t.identifier; sx = t.clientX; sy = t.clientY; stick.style.left = sx + 'px'; stick.style.top = sy + 'px'; stick.style.display = 'block'; knob.style.transform = ''; Audio.unlock(); }, { passive: false });
     left.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === stickId) { let dx = t.clientX - sx, dy = t.clientY - sy; const L = Math.hypot(dx, dy), R = 52; if (L > R) { dx *= R / L; dy *= R / L; } knob.style.transform = `translate(${dx}px,${dy}px)`; Input.touch.x = dx / R; Input.touch.y = -dy / R; if (G.hero !== 'thread') Input.vkey('ShiftLeft', L > 50); } }, { passive: false });
@@ -10774,7 +10777,8 @@ const Interiors = (() => {
 // property, the hero and the system menu.
 const Phone = (() => {
   let tab = 'contracts', isOpen = false, waypoint = null;
-  const TABS = [['contracts', 'CONTRACTS'], ['messages', 'MESSAGES'], ['standing', 'STANDING'], ['city', 'CITY MAP'], ['property', 'PROPERTY'], ['hero', 'HERO'], ['online', '🌐 ONLINE'], ['system', 'SYSTEM']];
+  const TABS = [['contracts', 'CONTRACTS'], ['messages', 'MESSAGES'], ['standing', 'STANDING'], ['city', 'CITY MAP'], ['property', 'PROPERTY'], ['hero', 'HERO'], ['online', '🌐 ONLINE'], ['chair', '🎧 CHAIR'], ['forge', '⬢ FORGE'], ['system', 'SYSTEM']];
+  const tabs = () => TABS.filter(([k]) => k !== 'forge' || G.hero === 'nano');
   const ALIAS = { jobs: 'contracts', map: 'city', prop: 'property', home: 'contracts' };
   const card = (inner, col) => `<div class="pc" style="border-left-color:${col || 'var(--line)'}">${inner}</div>`;
   const stars = n => '★'.repeat(n) + '<span style="opacity:.25">' + '★'.repeat(Math.max(0, 5 - n)) + '</span>';
@@ -10822,13 +10826,18 @@ const Phone = (() => {
       if (G.hero === 'thread') { const best = Courses.best(); body += card('<h5>Traversal courses</h5><div class="pact">' + Courses.DEFS.map(d => `<button data-course="${d.id}">${d.name}${best[d.id] ? ' · ' + best[d.id].rate + ' ' + best[d.id].t.toFixed(1) + 's' : ''}</button>`).join('') + '</div>'); }
     } else if (tab === 'online') {
       body += Net.html();
+    } else if (tab === 'chair') {
+      body += Chair.html();
+    } else if (tab === 'forge') {
+      body += Forge.html();
     } else if (tab === 'system') {
       body += card(`<h5>${DayNight.label()} · day ${st.day}</h5><p class="pdim">Days are long and bright; nights are short. Sleep at home to skip to morning.</p><div class="pact"><button data-a="morning">SKIP TO MORNING (AT HOME)</button></div>`);
       body += card(`<h5>Controls</h5><label class="pdim">Look sensitivity <input type="range" id="ph-sens" min="0.3" max="2.5" step="0.05" value="${settings.sens}"></label>`);
+      body += Coop.html();
       body += card(`<div class="pact"><button data-a="home">FAST TRAVEL HOME</button><button data-a="save">SAVE</button><button data-a="quit">SAVE & QUIT TO TITLE</button></div>`);
     }
     const unread = Career.state.unread || 0;
-    el.innerHTML = `<div class="ph-top"><span class="pt">📱 BURNER · ${HEROES[G.hero].name}</span>${TABS.map(([k, n]) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${n}${k === 'messages' && unread ? ' <b class="pun">' + unread + '</b>' : ''}</button>`).join('')}<span class="pt">${DayNight.label()} · ${fmtCash(st.cash)}</span><button class="px" data-a="close">✕</button></div><div class="ph-body">${body}</div>`;
+    el.innerHTML = `<div class="ph-top"><span class="pt">📱 BURNER · ${HEROES[G.hero].name}</span>${tabs().map(([k, n]) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${n}${k === 'messages' && unread ? ' <b class="pun">' + unread + '</b>' : ''}</button>`).join('')}<span class="pt">${DayNight.label()} · ${fmtCash(st.cash)}</span><button class="px" data-a="close">✕</button></div><div class="ph-body">${body}</div>`;
     el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; Audio.ui(1.2); render(); });
     el.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => { const c = Career.offers[+b.dataset.acc]; if (c) { Career.accept(c); close(); } });
     el.querySelectorAll('[data-way]').forEach(b => b.onclick = () => { const c = Career.offers[+b.dataset.way]; if (c) setWaypoint(c.pos, c.title); render(); });
@@ -10837,6 +10846,9 @@ const Phone = (() => {
     el.querySelectorAll('[data-def]').forEach(b => b.onclick = () => { Defence.set(b.dataset.def); render(); });
     el.querySelectorAll('[data-course]').forEach(b => b.onclick = () => { close(); Courses.start(b.dataset.course); });
     if (tab === 'online') Net.bind(el, render);
+    if (tab === 'chair') Chair.bind(el, render);
+    if (tab === 'forge') Forge.bind(el, render);
+    if (tab === 'system') Coop.bind(el, render);
     if (tab === 'city') WorldPlus.bind(el);
     const sens = $('ph-sens'); if (sens) sens.oninput = e => { settings.sens = +e.target.value; Store.set('settings', settings); };
     el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
@@ -10876,7 +10888,7 @@ const Phone = (() => {
   function update() {
     if (!isOpen) return;
     if (Input.pressedKey('KeyM') || Input.tap('pause')) { close(); return; }
-    for (let k = 0; k < TABS.length; k++) if (Input.pressedKey('Digit' + (k + 1))) { tab = TABS[k][0]; render(); }
+    const T2 = tabs(); for (let k = 0; k < T2.length; k++) if (Input.pressedKey('Digit' + (k + 1))) { tab = T2[k][0]; render(); }
   }
   function dom() {
     const css = document.createElement('style'); css.textContent = `
@@ -11941,7 +11953,7 @@ const Cortex = (() => {
     if (S.will < 25) { Toast.show('NOT ENOUGH WILL', 'heat'); return; }
     const t = m.kind === 'guard' ? m.g : m.u; if (t.thrall) return;
     if (m.kind === 'unit' && isNull(t)) { Toast.show('A NULL MIND — THERE IS NOTHING TO TAKE', 'heat'); return; }
-    if (m.kind === 'unit' && (t.psiHelm || t.ltId || t.leader)) { duel(t); return; }
+    if (m.kind === 'unit' && (t.psiHelm || t.ltId || t.leader || t.villain)) { duel(t); return; }
     take(t, m.kind);
   }
   function take(t, kind) {
@@ -12166,6 +12178,11 @@ const NanoShapes = (() => {
   S.halo = () => new THREE.TorusGeometry(0.3, 0.022, 8, 64);
   S.mech = () => merge([box(2.6, 3.0, 1.6, 0, 6.2, 0), box(1.4, 1.0, 1.2, 0, 8.3, 0.1), box(2.0, 1.0, 1.4, 0, 4.4, 0), box(0.9, 4.2, 0.9, -0.8, 2.1, 0), box(0.9, 4.2, 0.9, 0.8, 2.1, 0), box(0.8, 3.6, 0.8, -2.0, 5.6, 0), box(1.1, 0.6, 1.8, -2.0, 0.3, 0.3), box(0.6, 0.2, 0.25, 0, 8.4, 0.72)]);
   S.mechArm = () => merge([box(0.85, 3.4, 0.85, 0, -1.5, 0), box(1.1, 1.0, 1.1, 0, -3.4, 0)]);
+  // any blueprint: a list of primitives [type, a, b, c, x, y, z, rx, ry, rz]
+  // b box(w,h,d) · c cylinder(r,h) · s sphere(r) · t torus(R,r) · k cone(r,h)
+  function prim(p) { const [t, a, b, c, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0] = p; let g = t === 'c' ? new THREE.CylinderGeometry(a, a, b, 14) : t === 's' ? new THREE.SphereGeometry(a, 14, 10) : t === 't' ? new THREE.TorusGeometry(a, b, 8, 32) : t === 'k' ? new THREE.ConeGeometry(a, b, 14) : new THREE.BoxGeometry(a, b, c); g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); if (rx || ry || rz) g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx, ry, rz))); g.translate(x, y, z); return g; }
+  function fromPrims(prims) { return mergeGeometries(prims.map(prim), false); }
+  function define(id, prims) { S[id] = () => fromPrims(prims); for (const k in cache) if (k.startsWith(id) && /^\d+$/.test(k.slice(id.length))) delete cache[k]; }
   const cache = {};
   function points(id, n) {
     const k = id + n; if (cache[k]) return cache[k];
@@ -12173,7 +12190,7 @@ const NanoShapes = (() => {
     for (let i = 0; i < n; i++) { smp.sample(v); out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
     geo.dispose(); return cache[k] = out;
   }
-  return { points };
+  return { points, define, fromPrims, prim, has: id => !!S[id], geo: id => S[id] ? S[id]() : null };
 })();
 class NanoCloud {
   constructor(n, size) {
@@ -12264,13 +12281,23 @@ const Sovereign = (() => {
   }
   // ---------- constructs ----------
   function construct(id) {
-    if (S.mech) return; if (id === S.con) return; if (id && S.mass < 8) { Toast.show('NOT ENOUGH NANOMASS — HARVEST METAL (HOLD E ON A CAR)', 'heat'); return; }
-    if (id) S.mass -= 8; S.con = id; Tut.done('con');
-    if (!id) { main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.6 }); return; }
-    const arm = id === 'shield' ? 'laL' : 'laR';
-    main.form(id, NanoShapes.points(id, N_MAIN), boneM(arm), { size: id === 'whip' ? 0.03 : 0.028, dur: 0.75, whip: id === 'whip' ? 1 : 0 });
+    if (S.mech) return; if (id === S.con && !(id && Forge.bp(id) && Forge.bp(id).kind === 'ride')) return;
+    const bp = id ? Forge.bp(id) : null; if (id && !bp) return;
+    if (bp && bp.kind === 'pet') { Forge.summon(bp); return; }
+    if (bp && bp.kind === 'ride') { if (S.ride === bp) { dismount(); return; } if (S.mass < bp.cost) { Toast.show('NOT ENOUGH NANOMASS — HARVEST METAL (HOLD E ON A CAR)', 'heat'); return; } S.mass -= bp.cost; S.ride = bp; S.con = id; Forge.ghost(null); main.form(id, NanoShapes.points(id, N_MAIN), rideM, { size: bp.size || 0.03, dur: 0.4 }); Toast.show(bp.name + ' — SELECT IT AGAIN TO STEP OFF'); Audio.ui(1.2); return; }
+    if (S.ride) S.ride = null;
+    if (bp && bp.kind === 'structure') { S.con = id; Forge.ghost(bp); main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.3 }); Toast.show(bp.name + ' — LEFT CLICK TO BUILD · ' + bp.cost + ' NANOMASS'); return; }
+    Forge.ghost(null);
+    if (id && S.mass < (bp.cost || 8)) { Toast.show('NOT ENOUGH NANOMASS — HARVEST METAL (HOLD E ON A CAR)', 'heat'); return; }
+    if (id) S.mass -= bp.cost || 8; S.con = id; Tut.done('con');
+    if (!id) { main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.45 }); return; }
+    const arm = bp.anchor === 'arm' ? 'laL' : bp.anchor === 'back' ? 'spine' : 'laR';
+    main.form(id, NanoShapes.points(id, N_MAIN), boneM(arm), { size: bp.size || 0.028, dur: 0.42, whip: bp.whip ? 1 : 0 });
     Audio.ui(0.9);
   }
+  function dismount() { S.ride = null; S.con = null; main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.5, arc: 1 }); }
+  const _rq = new THREE.Quaternion(), _re = new THREE.Euler();
+  function rideM() { const R = S.ride; if (!R) return null; _re.set(R.ride.fly ? -0.15 : 0, S.heading, 0, 'YXZ'); _rq.setFromEuler(_re); const k = asc() ? 1.2 : 1; _m.compose(V3(Player.pos.x, Player.pos.y + (R.ride.hover || 0) + Math.sin(G.time * 3) * (R.ride.hover ? 0.05 : 0), Player.pos.z), _rq, V3(k, k, k)); return _m; }
   // ---------- harvesting metal ----------
   function harvestTarget() {
     const range = 18 + Prog.level('harvest') * 4; camera.getWorldDirection(_f); let best = null, bs = 0.95;
@@ -12327,21 +12354,35 @@ const Sovereign = (() => {
   function ko(u, con) { if (u.ko) { presence(con === 'hammer' || con === 'cannon' ? 7 : 5); if (con && con !== S.lastKoCon) presence(3, 'variety'); S.lastKoCon = con; S.used.add(con || 'fist'); if (CON.every(c => S.used.has(c))) Challenges.flag('nvAll'); Score.add && Score.add(300, u.pos.clone(), null); } }
   function hitU(u, dmg, kv, con, stun) { Units.hit(u, dmg * dmgMul(), kv, 'melee', stun); if (u.gang && !u.angry) GangAI.anger(u); ko(u, con); }
   function attack() {
-    const c = S.con; S.cd.atk = (asc() ? 0.6 : 1) * ({ blade: 0.32, hammer: 0.8, shield: 0.55, whip: 0.6, cannon: 0.35 }[c] || 0.42); S.act = { k: c || 'fist', t: 0 };
-    const f = V3(Math.sin(S.heading), 0, Math.cos(S.heading));
-    if (c === 'cannon') {
-      if (S.mass < 3) { Toast.show('NO NANOMASS', 'heat'); return; } S.mass -= 3;
-      const from = Player.pos.clone().add(V3(0, 1.4, 0)); const m = aimUnit(60); const to = m ? m.pos.clone().add(V3(0, 1.2, 0)) : CamRig.aimPoint.clone();
-      tracer(from, to, '#ffd27a'); FX.glow(to.clone(), 1.6, 2.2, 1.6, 0.6, 0.16); FX.sparks(to.clone(), 18, 1, new THREE.Color(2, 1.5, 0.6)); Audio.gun('pulse', from);
-      for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(to) < 2.6) hitU(u, 26, V3().subVectors(u.pos, to).setY(0).normalize().multiplyScalar(8).add(V3(0, 4, 0)), 'cannon');
-      Counters.hitAt(to, 2, 2); return;
+    const c = S.con; const bp = c ? Forge.bp(c) : null;
+    if (bp && bp.kind === 'structure') { S.cd.atk = 0.45; Forge.place(bp); return; }
+    if (bp && bp.kind === 'tool') { S.cd.atk = bp.beh.rate || 0.6; Forge.tool(bp); return; }
+    if (bp && bp.kind === 'ride') return;
+    const B = (bp && bp.beh) || { k: 'melee', dmg: 12, reach: 2.4, n: 1, cone: 0.3, rate: 0.36 };
+    S.cd.atk = (asc() ? 0.6 : 1) * (B.rate || 0.4); S.act = { k: B.k === 'ranged' ? 'cannon' : B.slam ? 'hammer' : c ? 'blade' : 'fist', t: 0 };
+    const f = V3(Math.sin(S.heading), 0, Math.cos(S.heading)); const con = c || 'fist';
+    if (B.k === 'ranged') {
+      const cost = B.cost != null ? B.cost : 2; if (S.mass < cost) { Toast.show('NO NANOMASS — HARVEST A CAR', 'heat'); return; } S.mass -= cost;
+      const from = Player.pos.clone().add(V3(0, 1.4, 0)).addScaledVector(f, 0.6); const m = aimUnit(B.range || 60); const aim = m ? m.pos.clone().add(V3(0, 1.2, 0)) : CamRig.aimPoint.clone();
+      for (let s = 0; s < (B.n || 1); s++) {
+        const dir = V3().subVectors(aim, from).normalize(); if (B.spread) { dir.x += frnd(-B.spread, B.spread); dir.y += frnd(-B.spread, B.spread) * 0.5; dir.z += frnd(-B.spread, B.spread); dir.normalize(); }
+        const range = B.range || 60; const hitList = rayUnits(from, dir, range, B.width || 1.0); const first = hitList[0]; const to = B.pierce || !first ? from.clone().addScaledVector(dir, first && !B.pierce ? first.t : range) : first.p;
+        if (!B.cone) tracer(from, to, B.color || '#ffd27a');
+        for (const h of (B.pierce ? hitList : hitList.slice(0, 1))) hitU(h.u, B.dmg, dir.clone().multiplyScalar(B.knock || 4).add(V3(0, 2, 0)), con, 0.8);
+        if (B.splash) { FX.ring(to.clone(), B.splash, new THREE.Color(2, 1.5, 0.6), 40); FX.glow(to.clone(), 1.6, 2.2, 1.6, 0.6, 0.16); for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(to) < B.splash) hitU(u, B.dmg * 0.7, V3().subVectors(u.pos, to).setY(0).normalize().multiplyScalar(8).add(V3(0, 4, 0)), con); Counters.hitAt(to, B.splash, 2); }
+        else FX.sparks(to.clone(), 8, 0.6, new THREE.Color(2, 1.5, 0.6));
+      }
+      if (B.cone) { for (const u of front(B.range || 9, 0.55)) hitU(u, B.dmg, null, con, 0.4); FX.alpha && 0; for (let k = 0; k < 6; k++) FX.sparks(from.clone().addScaledVector(f, 1 + k * 1.3), 4, 0.8, new THREE.Color(2.4, 1.2, 0.4)); }
+      Audio.gun('pulse', from); return;
     }
-    if (c === 'hammer') { Timers.after(0.25, () => { const p = Player.pos.clone().addScaledVector(f, 1.8); Shake.add(0.3); FX.ring(p.clone(), 5, new THREE.Color(2, 1.5, 0.6), 50); Audio.thud(p, 0.9); for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(p) < 4.2) hitU(u, 34, V3().subVectors(u.pos, p).setY(0).normalize().multiplyScalar(9).add(V3(0, 7, 0)), 'hammer', 2); }); return; }
-    if (c === 'whip') { for (const u of front(7.5, 0.1).slice(0, 4)) { const pull = V3().subVectors(Player.pos, u.pos).setY(0).normalize().multiplyScalar(7).add(V3(0, 3, 0)); hitU(u, 16, pull, 'whip', 1.5); } Audio.whoosh && Audio.whoosh(); return; }
-    const targets = front(c === 'blade' ? 3 : 2.4, 0.3).slice(0, c === 'blade' ? 3 : 1);
-    for (const u of targets) hitU(u, c === 'blade' ? 26 : c === 'shield' ? 18 : 12, f.clone().multiplyScalar(c === 'shield' ? 9 : 4).add(V3(0, 2.5, 0)), c, c === 'shield' ? 2 : 1);
+    if (B.slam) { Timers.after(0.22, () => { const p = Player.pos.clone().addScaledVector(f, B.reach * 0.6); Shake.add(0.3); FX.ring(p.clone(), B.radius || 5, new THREE.Color(2, 1.5, 0.6), 50); Audio.thud(p, 0.9); for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && u.pos.distanceTo(p) < (B.radius || 4.2)) hitU(u, B.dmg, V3().subVectors(u.pos, p).setY(0).normalize().multiplyScalar(9).add(V3(0, 7, 0)), con, 2); }); return; }
+    if (B.pull) { for (const u of front(B.reach, 0.1).slice(0, B.n || 4)) { const pull = V3().subVectors(Player.pos, u.pos).setY(0).normalize().multiplyScalar(7).add(V3(0, 3, 0)); hitU(u, B.dmg, pull, con, 1.5); } Audio.whoosh && Audio.whoosh(); return; }
+    const targets = front(B.reach, B.cone != null ? B.cone : 0.3).slice(0, B.n || 1);
+    for (const u of targets) hitU(u, B.dmg, f.clone().multiplyScalar(B.knock || 4).add(V3(0, 2.5, 0)), con, B.stun || 1);
+    if (B.spin) FX.ring(Player.pos.clone().add(V3(0, 1, 0)), B.reach, new THREE.Color(2, 1.5, 0.6), 30);
     if (targets.length) Audio.punch(1); else Audio.whoosh && Audio.whoosh();
   }
+  function rayUnits(from, dir, range, w) { const out = []; for (const u of Units.list) { if (!u.alive || u.ko || u.type === 'civilian' || u.thrall) continue; const c = V3(u.pos.x, u.pos.y + 1.1, u.pos.z).sub(from); const t = c.dot(dir); if (t < 0 || t > range) continue; const d2 = c.lengthSq() - t * t; if (d2 < w * w) out.push({ u, t, p: from.clone().addScaledVector(dir, t) }); } return out.sort((a, b) => a.t - b.t); }
   function aimUnit(range) { camera.getWorldDirection(_f); let best = null, bs = 0.97; for (const u of Units.list) { if (!u.alive || u.ko || u.type === 'civilian') continue; _d.set(u.pos.x - camera.position.x, u.pos.y + 1.2 - camera.position.y, u.pos.z - camera.position.z); const L = _d.length(); if (L > range) continue; _d.divideScalar(L); const s = _f.dot(_d); if (s > bs) { bs = s; best = u; } } return best; }
   // bullets break apart on the guard
   function guard(dmg, from) {
@@ -12427,16 +12468,21 @@ const Sovereign = (() => {
     P.yaw -= Input.mouse.dx * sens; P.pitch = clamp(P.pitch - Input.mouse.dy * sens * (settings.invertY ? -1 : 1), -1.35, 1.1);
     P.yaw -= Input.pad.rx * CONFIG.camera.padSens * dt * settings.sens; P.pitch = clamp(P.pitch - Input.pad.ry * CONFIG.camera.padSens * 0.7 * dt, -1.35, 1.1);
     const [mx, my] = S.wheel ? [0, 0] : Input.move(); const camF = V3(-Math.sin(P.yaw), 0, -Math.cos(P.yaw)), camR = V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)); const wish = V3().addScaledVector(camF, my).addScaledVector(camR, mx);
-    const speed = S.mech ? 5 : S.glide ? 13 : Input.down('sprint') ? 6.4 : S.blocking ? 2.2 : 3.4;
-    const tgt = wish.multiplyScalar(speed); P.vel.x = damp(P.vel.x, tgt.x, S.glide ? 1.5 : 6, dt); P.vel.z = damp(P.vel.z, tgt.z, S.glide ? 1.5 : 6, dt);
+    const R = S.ride && S.ride.ride; S.dashCd = (S.dashCd || 0) - dt; S.dashT = (S.dashT || 0) - dt;
+    if (Input.tap('dodge') && S.dashCd <= 0 && !S.mech) { S.dashCd = 0.8; S.dashT = 0.22; S.dashDir = wish.lengthSq() > 0.01 ? wish.clone().normalize() : V3(Math.sin(S.heading), 0, Math.cos(S.heading)); Audio.whoosh && Audio.whoosh(); FX.sparks(P.pos.clone().add(V3(0, 1, 0)), 14, 0.8, new THREE.Color(2, 1.5, 0.6)); }
+    if (R) S.mass = Math.max(0, S.mass - (R.fly ? 2 : 0.8) * dt); if (R && S.mass <= 0) dismount();
+    const speed = S.mech ? 6 : R ? R.speed * (Input.down('sprint') ? 1.3 : 1) : S.glide ? 15 : Input.down('sprint') ? 9.5 : S.blocking ? 3 : 5.2;
+    const tgt = S.dashT > 0 ? S.dashDir.clone().multiplyScalar(24) : wish.multiplyScalar(speed); const acc = S.dashT > 0 ? 40 : R ? (R.fly ? 2.5 : 3.5) : S.glide ? 1.5 : 8; P.vel.x = damp(P.vel.x, tgt.x, acc, dt); P.vel.z = damp(P.vel.z, tgt.z, acc, dt);
     // wings: glide and slow, grand flight
     const wingsOk = Prog.has('wings') && !S.mech;
     if (P.grounded) { S.glide = false; P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump')) { P.vel.y = S.mech ? 9 : 7.5; P.grounded = false; } }
     else if (wingsOk && Input.down('jump') && P.vel.y < 1.5 && S.mass > 0) { if (!S.glide) { S.glide = true; S.preCon = S.con; main.form('wings', NanoShapes.points('wings', N_MAIN), boneM('spine'), { size: 0.03, dur: 0.6 }); } }
     if (S.glide && (!Input.down('jump') || S.mass <= 0)) { S.glide = false; const c = S.preCon; S.con = '__'; construct(c && c !== 'wings' ? c : null); if (!c) S.con = null; }
-    if (S.glide) { const climb = Input.down('sprint') && S.mass > 0; P.vel.y = damp(P.vel.y, climb ? 3 : -2.2, 3, dt); S.mass = Math.max(0, S.mass - (climb ? 7 : 2) * dt); }
+    if (R && R.fly) { const up = (Input.keys.Space ? 1 : 0) - (Input.keys.ControlLeft ? 1 : 0); P.vel.y = damp(P.vel.y, up * 12, 4, dt); P.grounded = false; }
+    else if (S.glide) { const climb = Input.down('sprint') && S.mass > 0; P.vel.y = damp(P.vel.y, climb ? 3 : -2.2, 3, dt); S.mass = Math.max(0, S.mass - (climb ? 7 : 2) * dt); }
     else P.vel.y += -22 * dt;
     const want = { x: P.vel.x * dt, y: P.vel.y * dt, z: P.vel.z * dt };
+    if (!S.noPush) { P.ctl.setApplyImpulsesToDynamicBodies(false); S.noPush = P.ctl; } else if (S.noPush !== P.ctl) S.noPush = null;
     P.ctl.computeColliderMovement(P.collider, want, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS.player);
     const mv = P.ctl.computedMovement(); const t = P.body.translation(); const nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
     P.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz }); P.pos.set(nx, ny - 0.9, nz);
@@ -12451,16 +12497,20 @@ const Sovereign = (() => {
     poseRig(rig, { t: G.time, speed: P.grounded ? Math.sqrt(P.speed2) * 0.85 : 0, air: !P.grounded && !S.glide, levitate: S.glide, action, at: A ? A.t : 0, aimPitch: P.pitch * 0.8 }, dt);
     if (S.glide) { rig.bones.uaL.rotation.z = 1.2; rig.bones.uaR.rotation.z = -1.2; rig.bones.spine.rotation.x = 0.35; }
     if (!S.con && P.grounded && P.speed2 < 0.05 && !S.blocking) { rig.bones.spine.rotation.x = -0.06; rig.bones.head.rotation.x = -0.08; } // chin up
+    if (R) { const B = rig.bones; // ride stances: a surfer's crouch, a rider's seat, a jet pilot laid flat
+      if (R.pose === 'board') { B.thL.rotation.set(-0.5, 0, 0.25); B.thR.rotation.set(-0.2, 0, -0.25); B.shL.rotation.x = 0.9; B.shR.rotation.x = 0.6; B.hips.position.y = 0.78 + (R.hover || 0); B.spine.rotation.set(0.25, 0.6, 0); B.uaL.rotation.set(-0.3, 0, 0.9); B.uaR.rotation.set(0.2, 0, -0.9); rig.mesh.rotation.y = S.heading - 0.6; }
+      else if (R.pose === 'seat') { B.hips.position.y = 0.95 + (R.hover || 0) * 0.5; B.thL.rotation.set(-1.4, 0, 0.15); B.thR.rotation.set(-1.4, 0, -0.15); B.shL.rotation.x = 1.6; B.shR.rotation.x = 1.6; B.spine.rotation.x = 0.55; B.uaL.rotation.set(-1.3, 0, 0.25); B.uaR.rotation.set(-1.3, 0, -0.25); B.laL.rotation.x = -0.3; B.laR.rotation.x = -0.3; }
+      else if (R.pose === 'fly') { rig.mesh.rotation.set(-1.25, S.heading, 0, 'YXZ'); rig.mesh.position.y += 1.0; B.uaL.rotation.set(0.2, 0, 0.5); B.uaR.rotation.set(0.2, 0, -0.5); B.thL.rotation.x = 0.1; B.thR.rotation.x = 0.2; B.shL.rotation.x = 0.2; B.shR.rotation.x = 0.4; } }
   }
   // ---------- wheel ----------
   function wheel() {
     const el = $('wheel');
     if (Input.keys.KeyQ && !S.wheel) { S.wheel = true; S.wv = { x: 0, y: 0 }; el.classList.remove('hidden'); }
-    for (let i = 1; i <= 5; i++) if (Input.pressedKey('Digit' + i)) construct(S.con === CON[i - 1] ? null : CON[i - 1]);
+    const SL = Forge.slots(); for (let i = 1; i <= 8; i++) if (Input.pressedKey('Digit' + i) && SL[i - 1]) construct(S.con === SL[i - 1] && Forge.bp(SL[i - 1]).kind !== 'ride' ? null : SL[i - 1]);
     if (!S.wheel) return;
     S.wv.x += Input.mouse.dx; S.wv.y += Input.mouse.dy; const L = Math.hypot(S.wv.x, S.wv.y); if (L > 120) { S.wv.x *= 120 / L; S.wv.y *= 120 / L; }
-    const opts = [...CON, null]; const n = opts.length; const ang = Math.atan2(S.wv.x, -S.wv.y); const sel = L > 25 ? ((Math.round(ang / TAU * n) % n) + n) % n : -1;
-    el.innerHTML = opts.map((c, i) => { const a = i / n * TAU; return `<div class="wf ${i === sel ? 'sel' : ''} ${c === S.con ? 'cur' : ''}" style="transform:translate(${Math.sin(a) * 150}px,${-Math.cos(a) * 150}px)"><b>${i < 5 ? i + 1 : '·'}</b>${c ? CON_NAME[c] : 'ABSORB'}<small>${c ? '8 NANOMASS' : 'hands free'}</small></div>`; }).join('');
+    const opts = [...Forge.slots(), null]; const n = opts.length; const ang = Math.atan2(S.wv.x, -S.wv.y); const sel = L > 25 ? ((Math.round(ang / TAU * n) % n) + n) % n : -1;
+    el.innerHTML = opts.map((c, i) => { const a = i / n * TAU; return `<div class="wf ${i === sel ? 'sel' : ''} ${c === S.con ? 'cur' : ''}" style="transform:translate(${Math.sin(a) * 150}px,${-Math.cos(a) * 150}px)"><b>${c ? i + 1 : '·'}</b>${c ? Forge.bp(c).name : 'ABSORB'}<small>${c ? Forge.bp(c).kind.toUpperCase() + ' · ' + Forge.bp(c).cost : 'hands free'}</small></div>`; }).join('');
     if (!Input.keys.KeyQ) { S.wheel = false; el.classList.add('hidden'); if (sel >= 0) construct(opts[sel]); }
   }
   // ---------- frame ----------
@@ -12476,21 +12526,22 @@ const Sovereign = (() => {
     // presence fades out of combat; a hit costs you
     S.idleT += rdt; if (S.idleT > 6 && !asc()) S.presence = Math.max(0, S.presence - rdt * (1.6 - Prog.level('presence') * 0.2));
     P.maxMind = maxMass(); P.mind = S.mass;
-    updateSwarm(rdt); updateMinions(rdt); updateDecoys(rdt); updateMech(rdt); aura(rdt);
+    updateSwarm(rdt); updateMinions(rdt); updateDecoys(rdt); updateMech(rdt); aura(rdt); Forge.update(rdt);
     if (G.mode !== 'play') return;
     wheel(); if (S.wheel) return;
     // harvest (hold E)
     if (Input.keys.KeyE && !S.mech) { const v = S.harvest && S.harvest.v.alive && !S.harvest.v.harvested ? S.harvest.v : harvestTarget(); if (v) { if (!S.harvest || S.harvest.v !== v) S.harvest = { v, t: 0 }; S.harvest.t += rdt * (1 + Prog.level('harvest') * 0.25); Hud.hint('HARVESTING… ' + Math.round(Math.min(1, S.harvest.t / 0.7) * 100) + '%', 'ok'); if (S.harvest.t > 0.7) { consume(v); S.harvest = null; } } else Hud.hint('AIM AT A CAR TO HARVEST IT', 'bad'); }
     else { S.harvest = null; const v = !S.mech && S.mass < maxMass() * 0.5 ? harvestTarget() : null; if (v && !S.con) Hud.hint('HOLD E — HARVEST THE ' + (v.type || 'CAR').toUpperCase(), 'ok'); }
-    S.blocking = Input.down('throw') && !S.mech && !S.glide;
+    S.blocking = Input.down('throw') && !S.mech && !S.glide && !S.ride;
     if (Input.tap('grab') && S.cd.atk <= 0 && !S.mech) attack();
+    if (Input.pressedKey('Tab')) Phone.open('forge');
     if (Input.pressedKey('KeyF')) swarm(); if (Input.pressedKey('KeyG')) assimilate(); if (Input.pressedKey('KeyC')) decoys(); if (Input.pressedKey('KeyR')) rebuild(); if (Input.pressedKey('KeyU')) colossus();
     if (S.presence >= 50) Tut.done('presence');
   }
   function onHurt(dmg, from) { if (G.hero !== 'nano') return false; if (S.mech) return true; if (guard(dmg, from)) return true; presence(-15); S.lastKoCon = null; return false; }
   function reset() {
     S.presence = 0; S.ascend = 0; S.con = null; S.swarm = null; S.glide = false; S.blocking = false; S.blocked = 0; S.surr = 0; S.used.clear(); for (const D of S.decoys) scene.remove(D.rig.mesh); S.decoys = []; S.minions = []; S.wheel = false;
-    if (S.mech) { S.mech = null; CamRig.dMul = 1; CamRig.hOv = null; } S.mass = Math.min(maxMass(), 60);
+    if (S.mech) { S.mech = null; CamRig.dMul = 1; CamRig.hOv = null; } S.mass = Math.min(maxMass(), 60); S.ride = null; Forge.reset();
     if (built) { main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.1 }); halo.form('halo', NanoShapes.points('halo', N_HALO), haloM, { size: 0, dur: 0.1 }); }
     visible(G.hero === 'nano'); if (G.hero === 'nano') suitUp(false);
   }
@@ -12504,12 +12555,802 @@ const Sovereign = (() => {
     return { cd: 0 };
   }
   function vitals() {
-    $('lbl-mind').textContent = 'NANOMASS'; $('lbl-ovl').textContent = asc() ? 'ASCENDANT · ' + Math.ceil(S.ascend) + ' s' : S.mech ? 'COLOSSUS · ' + Math.ceil(S.mech.t) + ' s' : 'PRESENCE' + (S.con ? ' · ' + (CON_NAME[S.con] || S.con.toUpperCase()) : '');
+    $('lbl-mind').textContent = 'NANOMASS'; $('lbl-ovl').textContent = asc() ? 'ASCENDANT · ' + Math.ceil(S.ascend) + ' s' : S.mech ? 'COLOSSUS · ' + Math.ceil(S.mech.t) + ' s' : 'PRESENCE' + (S.con && Forge.bp(S.con) ? ' · ' + Forge.bp(S.con).name : '');
     $('ovlbar').style.width = (asc() ? S.ascend / 20 * 100 : S.presence) + '%'; $('ovlv').textContent = Math.round(S.presence) + (S.presence > 55 ? ' · THEY KNOW WHO YOU ARE' : ''); $('ovlwrap').classList.toggle('full', asc()); $('hoperow').classList.add('hidden');
   }
   function cosHtml() { return '<h2>COSMETICS · SOVEREIGN</h2><div class="sect">SUIT TRIM</div><div class="grid">' + SUIT_COLORS.map(c => { const u = Cosmetics.unlocked(c); const hex = '#' + new THREE.Color(c.c[0], c.c[1], c.c[2]).getHexString(); return `<div class="card ${(Cosmetics.sel.suit || 'gold') === c.id ? 'owned' : ''}"><h3 style="color:${hex}">${c.name}</h3><p>${c.req ? c.req[2] : 'Default'}</p><button data-suit="${c.id}" ${u ? '' : 'disabled'}>${u ? 'WEAR' : 'LOCKED'}</button></div>`; }).join('') + '</div>'; }
   function cosWire(panel, again) { panel.querySelectorAll('[data-suit]').forEach(b => b.onclick = () => { Cosmetics.set('suit', b.dataset.suit); again(); }); }
-  return { get clouds() { return [main, aux, halo]; }, S, update, updatePlayer, reset, hide, onHurt, keysHtml, slot, vitals, cosHtml, cosWire, camera() { }, construct, consume, suitUp, get mass() { return S.mass; } };
+  return { get main() { return main; }, get aux() { return aux; }, N_MAIN, boneM, worldM, hitU, front, rayUnits, presence, presenceGain: n => presence(n), maxMass, dismount, get clouds() { return [main, aux, halo]; }, S, update, updatePlayer, reset, hide, onHurt, keysHtml, slot, vitals, cosHtml, cosWire, camera() { }, construct, consume, suitUp, get mass() { return S.mass; } };
+})();
+
+// §ACRO ------------------------------------------------------------------------------------
+// Acrobatics for every hero, layered over each hero's own controller. A jump with a direction
+// becomes a trick: back = backflip, side = side flip, forward at a sprint = front flip, back +
+// side = corkscrew, into a wall = wall flip. Hard landings roll. The body is turned about the
+// hips and tucked, after the hero's own pose and before the model is synced, so it also rides
+// the network to other players. Tricks chain into combos while you stay in the air.
+const Acro = (() => {
+  const S = { flip: null, prevG: true, combo: 0, comboT: 0, landVy: 0, lastTrick: '' };
+  const TRICKS = {
+    backflip: { axis: 'x', turns: -1, dur: 0.72, vy: 3.5, back: 4, name: 'BACKFLIP' },
+    frontflip: { axis: 'x', turns: 1, dur: 0.7, vy: 2.5, fwd: 3, name: 'FRONT FLIP' },
+    sideL: { axis: 'z', turns: 1, dur: 0.62, vy: 2.5, side: -4, name: 'SIDE FLIP' },
+    sideR: { axis: 'z', turns: -1, dur: 0.62, vy: 2.5, side: 4, name: 'SIDE FLIP' },
+    cork: { axis: 'xy', turns: -1, dur: 0.85, vy: 4, back: 3, name: 'CORKSCREW' },
+    wall: { axis: 'x', turns: -1, dur: 0.75, vy: 0, name: 'WALL FLIP' },
+    double: { axis: 'x', turns: -2, dur: 1.0, vy: 5.5, back: 3, name: 'DOUBLE BACKFLIP' },
+    roll: { axis: 'x', turns: 1, dur: 0.55, vy: 0, roll: true, name: 'ROLL' },
+    spin: { axis: 'y', turns: 1, dur: 0.5, vy: 1.5, name: '360' },
+  };
+  const able = () => G.mode === 'play' && !Player.detained && G.hero !== 'thread' && !(G.hero === 'shift' && (FORMS[Shift.form].kind === 'object' || FORMS[Shift.form].kind === 'animal' || (typeof Cortex !== 'undefined' && Cortex.busy))) && !(G.hero === 'nano' && Sovereign.S.mech) && !(G.hero === 'speed' && Speed.s > 18) && !Apt.inside;
+  const fwd = () => V3(-Math.sin(Player.yaw), 0, -Math.cos(Player.yaw)), right = () => V3(Math.cos(Player.yaw), 0, -Math.sin(Player.yaw));
+  function start(id) {
+    const T = TRICKS[id]; const P = Player; S.flip = { id, T, t: 0 };
+    if (T.vy) P.vel.y = Math.max(P.vel.y, 0) + T.vy + (id === 'double' ? 0 : 0);
+    if (T.back) P.vel.addScaledVector(fwd(), -T.back); if (T.fwd) P.vel.addScaledVector(fwd(), T.fwd); if (T.side) P.vel.addScaledVector(right(), T.side);
+    if (!T.roll) { S.combo++; S.comboT = 2.5; const name = (S.combo > 1 ? S.combo + '× ' : '') + T.name; Toast.show('<b>' + name + '</b>'); if (Score.add) Score.add(80 * S.combo, P.pos.clone(), null); if (typeof Chair !== 'undefined') Chair.event('trick', { name: T.name, combo: S.combo }); if (G.hero === 'nano') Sovereign.presenceGain && Sovereign.presenceGain(1.5); }
+    S.lastTrick = id; Audio.whoosh && Audio.whoosh();
+  }
+  // a jump this frame: read the stick and pick a trick
+  function onJump() {
+    const [mx, my] = Input.move(); const P = Player;
+    // into a wall: kick off it
+    if (my > 0.4) { const f = fwd(); const hit = castRay(P.pos.x, P.pos.y + 1.1, P.pos.z, f.x, 0, f.z, 1.2, GROUPS.losStatic, P.body); if (hit) { P.vel.set(-f.x * 7, 10.5, -f.z * 7); start('wall'); return; } }
+    if (my < -0.5 && Math.abs(mx) > 0.5) start('cork');
+    else if (my < -0.5) start(Input.down('sprint') ? 'double' : 'backflip');
+    else if (Math.abs(mx) > 0.6 && Math.abs(my) < 0.5) start(mx > 0 ? 'sideR' : 'sideL');
+    else if (my > 0.5 && Input.down('sprint')) start('frontflip');
+  }
+  function update(rdt) {
+    const P = Player; S.comboT -= rdt; if (S.comboT <= 0 && P.grounded) S.combo = 0;
+    if (!able()) { S.prevG = P.grounded; return; }
+    // the hero's controller already turned this frame's jump press into a jump: dress it up
+    if (Input.tap('jump') && S.prevG && P.vel.y > 1 && !S.flip) onJump();
+    // in the air: jump again (if the hero has nothing else for it) spins, sprint + jump double-flips
+    else if (Input.tap('jump') && !P.grounded && !S.prevG && !S.flip && (G.hero === 'shift' || G.hero === 'speed')) start('spin');
+    // hard landings roll
+    if (!S.prevG && P.grounded && S.landVy < -13 && Math.sqrt(P.speed2) > 2 && !S.flip) start('roll');
+    S.landVy = P.vel.y; S.prevG = P.grounded;
+    if (S.flip) { S.flip.t += rdt; if (S.flip.t >= S.flip.T.dur || (P.grounded && S.flip.t > 0.2 && !S.flip.T.roll)) S.flip = null; }
+  }
+  // turn the posed body about the hips and tuck it (after the hero's own pose)
+  const _q0 = new THREE.Quaternion(), _ql = new THREE.Quaternion(), _qw = new THREE.Quaternion(), _off = V3(), AX = { x: V3(1, 0, 0), z: V3(0, 0, 1), y: V3(0, 1, 0) };
+  function apply(rig, F) {
+    if (!rig || !F) return; const T = F.T; const k = clamp(F.t / T.dur, 0, 1); const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; const ang = e * T.turns * TAU;
+    const m = rig.mesh; _q0.copy(m.quaternion);
+    if (T.axis === 'xy') { _ql.setFromAxisAngle(AX.x, ang).premultiply(new THREE.Quaternion().setFromAxisAngle(AX.y, e * TAU)); } else _ql.setFromAxisAngle(AX[T.axis], ang);
+    m.quaternion.copy(_q0).multiply(_ql);
+    // rotate about the hips, not the feet
+    const pivot = T.roll ? 0.45 : 0.95; _qw.copy(_q0).multiply(_ql).multiply(_q0.clone().invert()); _off.set(0, -pivot, 0).applyQuaternion(_qw); m.position.y += pivot; m.position.add(_off);
+    // the tuck: knees to chest, arms wrapped
+    const tk = Math.sin(k * Math.PI); const B = rig.bones;
+    if (T.axis !== 'y') { B.thL.rotation.x = lerp(B.thL.rotation.x, -1.7, tk); B.thR.rotation.x = lerp(B.thR.rotation.x, -1.6, tk); B.shL.rotation.x = lerp(B.shL.rotation.x, 2.2, tk); B.shR.rotation.x = lerp(B.shR.rotation.x, 2.2, tk);
+      B.uaL.rotation.x = lerp(B.uaL.rotation.x, -0.9, tk); B.uaR.rotation.x = lerp(B.uaR.rotation.x, -0.9, tk); B.laL.rotation.x = lerp(B.laL.rotation.x, -1.5, tk); B.laR.rotation.x = lerp(B.laR.rotation.x, -1.5, tk); B.spine.rotation.x = lerp(B.spine.rotation.x, 0.5, tk); B.head.rotation.x = lerp(B.head.rotation.x, 0.35, tk); }
+    else { B.uaL.rotation.z = lerp(B.uaL.rotation.z, 1.3, tk); B.uaR.rotation.z = lerp(B.uaR.rotation.z, -1.3, tk); }
+  }
+  function post() { if (S.flip) apply(Player.rig, S.flip); }
+  return { S, update, post, apply, start, TRICKS, get active() { return !!S.flip; } };
+})();
+
+// §CHAIR ------------------------------------------------------------------------------------
+// The guy in the chair: DEX, on comms from a cluttered apartment full of monitors. He talks (the
+// comms panel — text, no voice), watches the city for you, calls out threats by
+// clock position, reacts to your tricks, and runs support: scan, a support drone, jam their guns,
+// route you to trouble, drop a med-kit, dig up villain weaknesses and loop heist cameras.
+// J asks him for whatever helps most right now; Phone → CHAIR has every option; in split-screen
+// co-op player two can sit in the chair and aim all of it from a drone view.
+const CHAIR_LINES = {
+  hello: ['Comms check. You hear me? Good. I\'m in the chair.', 'Dex here. I\'ve got eyes on the whole city. Well, most of it.', 'Okay, headset on, snacks ready. Let\'s do this.'],
+  trick: ['Did you just {name}? I\'m clipping that.', 'Okay, show-off.', '{name}! The crowd went wild. I went wild.', 'That was clean. Ten out of ten.', 'Stick the landing… and you did. Nice.'],
+  combo: ['{n} tricks without touching the ground. Are you even human?', 'Combo times {n}! Somebody get this on camera.'],
+  hurt: ['You\'re hurt bad. Say the word and I\'ll drop a med-kit.', 'Your vitals are spiking. Maybe don\'t get punched for a bit?', 'Health is low — back off and breathe.'],
+  crime: ['Police scanner: {what} in {where}, {d} metres out. Want a route?', 'Heads up — {what}, {where}. You\'re closest.', 'I\'ve got a {what} on the scanner, {where}.'],
+  request: ['Someone in {where} needs a hand. I\'ll put it on your map.', 'There\'s a civilian waving for help — {where}.'],
+  villain: ['Oh no. Oh no no no. {name} just showed up in {where}.', 'Big signature on the sensors — that\'s {name}. Be careful.'],
+  villainDown: ['You beat {name}! I\'m literally standing on my chair right now.', '{name} is DOWN. That\'s going in the scrapbook.'],
+  city: ['Welcome to {city}. New city, new problems.', '{city}. I\'ve been dying to see what you\'d do here.'],
+  idle: ['Quiet night. Want me to find you something to do? Hit J.', 'Fun fact: there are sixty Lost Satchels out there. I counted.', 'Have you tried jumping backwards? Backflip. Trust me.', 'Signal towers put whole districts on your map. Just saying.', 'You know you can walk into literally any building, right?'],
+  scan: ['Scanning… {n} hostiles. Nearest at your {clock} o\'clock, {d} metres.', 'Got them — {n} bad guys, closest {clock} o\'clock.'],
+  scanNone: ['Scanner\'s clean. Nobody hostile nearby.'],
+  drone: ['Drone\'s in the air. It\'ll cover you.', 'Sending my baby — the drone. Don\'t let it get shot.'],
+  jam: ['Jammed their weapons. They\'re basically holding paperweights now.'],
+  med: ['Med-kit incoming. Heads up!', 'Patched you up. Try to keep the blood on the inside.'],
+  route: ['Route\'s on your map: {what}.', 'Follow the marker — {what}.'],
+  routeNone: ['Honestly? Nothing on the scanner. Go explore.'],
+  intel: ['Found it — {name}\'s weak point. Your hits will hurt more for thirty seconds.', 'Pulled their specs: {name} has a flaw. Hit them now!'],
+  cams: ['Cameras are looping old footage. You\'ve got fifteen seconds.'],
+  cooldown: ['Still recharging, give me a sec.', 'Chair systems cooling down.'],
+  heist: ['You\'re in. Cameras don\'t buy the disguise — remember that.'],
+  ascend: ['Your Presence is off the charts. People are filming.'],
+  colossus: ['You built a GIANT ROBOT out of CARS. I need a minute.'],
+  dominate: ['You\'re in someone else\'s head now. Creepy. Effective.'],
+};
+const Chair = (() => {
+  const S = { cd: {}, last: {}, sayT: 0, idleT: 30, auto: Store.get('chairAuto', true), voice: Store.get('chairVoice', true), crimes: 0, req: null, villain: null, marks: [], drone: null, weakT: 0 };
+  const CD = { scan: 18, drone: 45, jam: 30, med: 60, intel: 30, cams: 40, route: 4 };
+  let el = null, txt = null, voice = null;
+  const fill = (s, d) => s.replace(/\{(\w+)\}/g, (_, k) => d && d[k] != null ? d[k] : '');
+  function pickVoice() { try { const vs = speechSynthesis.getVoices(); voice = vs.find(v => /en[-_](US|GB)/i.test(v.lang) && /male|daniel|alex|fred|guy/i.test(v.name)) || vs.find(v => /^en/i.test(v.lang)) || null; } catch (e) { } }
+  function say(key, d, prio = 1) {
+    const now = G.time; if (prio < 2 && now - S.sayT < 5) return; if (now - (S.last[key] || -99) < (prio >= 2 ? 3 : 20)) return; S.last[key] = now; S.sayT = now;
+    const pool = CHAIR_LINES[key]; const line = fill(typeof pool === 'string' ? pool : fpick(pool), d);
+    if (el) { txt.textContent = line; el.classList.add('on'); clearTimeout(S.hideT); S.hideT = setTimeout(() => el.classList.remove('on'), 6500); }
+    if (el) { el.classList.remove('ping'); void el.offsetWidth; el.classList.add('ping'); } Audio.ui && Audio.ui(2.4);
+  }
+  function event(type, d = {}) {
+    if (type === 'trick') { if (d.combo >= 3) say('combo', { n: d.combo }); else if (Math.random() < 0.35) say('trick', { name: d.name.toLowerCase() }); }
+    else say(type, d, d.prio || 1);
+  }
+  // ---------- abilities ----------
+  const clockOf = p => { const a = Math.atan2(p.x - Player.pos.x, p.z - Player.pos.z); const cy = Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw)); let r = (a - cy) / TAU * 12; r = ((Math.round(r) % 12) + 12) % 12; return r === 0 ? 12 : r; };
+  function ready(k) { if ((S.cd[k] || 0) > 0) { say('cooldown', null, 2); return false; } S.cd[k] = CD[k]; return true; }
+  function hostiles(c, r) { return Units.list.filter(u => u.alive && !u.ko && !u.thrall && (u.gang || u.villain || (u.type !== 'civilian' && !u.ally)) && u.pos.distanceTo(c) < r); }
+  let diamond = null;
+  function scan(c = Player.pos) {
+    if (!ready('scan')) return; const list = hostiles(c, 90).sort((a, b) => a.pos.distanceTo(Player.pos) - b.pos.distanceTo(Player.pos));
+    if (!diamond) { const cv = canvas(64, 64), g = cv.getContext('2d'); g.fillStyle = '#ff3b4f'; g.beginPath(); g.moveTo(32, 4); g.lineTo(58, 32); g.lineTo(32, 60); g.lineTo(6, 32); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.fillText('!', 32, 43); diamond = texFrom(cv); }
+    for (const u of list.slice(0, 30)) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: diamond, depthTest: false, transparent: true, toneMapped: false })); s.scale.set(0.9, 0.9, 1); s.renderOrder = 997; scene.add(s); S.marks.push({ s, u, t: 12 }); }
+    Rings.spawn(c.clone(), 90, '#46f0ff', 1.2);
+    if (list.length) say('scan', { n: list.length, clock: clockOf(list[0].pos), d: Math.round(list[0].pos.distanceTo(Player.pos)) }, 2); else say('scanNone', null, 2);
+  }
+  function drone(c = Player.pos) {
+    if (!ready('drone')) return; const g = new THREE.Group(); const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.5), new THREE.MeshStandardMaterial({ color: 0x20242c, metalness: 0.7, roughness: 0.3 })); g.add(body);
+    for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 12), new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.5 })); r.position.set(x, 0.1, z); g.add(r); }
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.07), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 2.4, 3), toneMapped: false })); l.position.y = -0.1; g.add(l);
+    g.position.copy(c).add(V3(0, 12, 0)); scene.add(g); if (S.drone) scene.remove(S.drone.g); S.drone = { g, t: 25, fire: 1, home: c.clone() }; say('drone', null, 2);
+  }
+  function jam(c = Player.pos) { if (!ready('jam')) return; let n = 0; for (const u of hostiles(c, 40)) { u.disarmed = true; u.stunT = Math.max(u.stunT, 1.5); if (u.type === 'gunner') u.type = 'thug'; n++; } Rings.spawn(c.clone(), 40, '#ffd36a', 0.8); say('jam', null, 2); }
+  function med() { if (!ready('med')) return; const P = Player; P.hp = Math.min(P.maxHp, P.hp + 60); FX.ring(P.pos.clone(), 3, new THREE.Color(0.6, 2.4, 1.2), 40); Audio.ui(2); say('med', null, 2); }
+  function intel() {
+    if (!ready('intel')) return; const V = Villains.active;
+    if (V && V.u.alive && !V.u.ko) { S.weakT = 30; V.weak = 30; say('intel', { name: V.D.name }, 2); return; }
+    const lt = (typeof Lieutenants !== 'undefined') && Lieutenants.live.find(l => l.alive && !l.ko);
+    if (lt) { Phone.setWaypoint(lt.pos.clone(), 'LIEUTENANT'); say('route', { what: 'a lieutenant I tracked down' }, 2); return; }
+    S.cd.intel = 2; say('routeNone', null, 2);
+  }
+  function cams() { const C = Heists.cell; if (!C) { S.cd.cams = 0; say('routeNone', null, 2); return; } if (!ready('cams')) return; for (const c of C.cams) { c.offT = G.time + 15; c.susp = 0; } say('cams', null, 2); }
+  function route(to) {
+    if (!ready('route')) return;
+    if (to) { Phone.setWaypoint(to.clone(), 'DEX\'S MARKER'); say('route', { what: 'the spot I marked' }, 2); return; }
+    const P = Player.pos; const opts = [];
+    for (const C of (Crimes.list || [])) if (!C.done) opts.push({ p: C.at, what: C.T.name.toLowerCase(), d: C.at.distanceTo(P) - 60 });
+    if (Villains.active) opts.push({ p: Villains.active.u.pos, what: Villains.active.D.name, d: -100 });
+    if (Activities.req) opts.push({ p: Activities.req.at, what: Activities.req.T.name.toLowerCase(), d: Activities.req.at.distanceTo(P) });
+    if (G.career) { const T = WorldPlus.towers.find(t => !((Career.state.towers || {})[t.D.zone])); if (T) opts.push({ p: T.top, what: 'the signal tower in ' + T.D.name, d: T.top.distanceTo(P) + 200 }); const s = Activities.sats.find(x => !(Career.state.satchels || []).includes(x.i)); if (s) opts.push({ p: s.p, what: 'a Lost Satchel', d: s.p.distanceTo(P) + 300 }); }
+    opts.sort((a, b) => a.d - b.d); if (!opts.length) { say('routeNone', null, 2); return; }
+    Phone.setWaypoint(opts[0].p.clone(), opts[0].what.toUpperCase()); say('route', { what: opts[0].what }, 2);
+  }
+  // J: whatever helps most right now
+  function smart() {
+    const P = Player; const near = hostiles(P.pos, 40).filter(u => u.angry || u.villain || u.state === 'engage');
+    if (P.hp < P.maxHp * 0.4 && (S.cd.med || 0) <= 0) return med();
+    if (Heists.cell && (S.cd.cams || 0) <= 0) return cams();
+    if (Villains.active && (S.cd.intel || 0) <= 0 && Villains.active.u.pos.distanceTo(P.pos) < 80) return intel();
+    if (near.length >= 3 && (S.cd.drone || 0) <= 0) return drone();
+    if (near.length >= 2 && (S.cd.jam || 0) <= 0) return jam();
+    if (near.length && (S.cd.scan || 0) <= 0) return scan();
+    return route();
+  }
+  // ---------- watching the city ----------
+  function watch(rdt) {
+    S.watchT = (S.watchT || 0) - rdt; if (S.watchT > 0) return; S.watchT = 1;
+    const P = Player;
+    if (P.hp < P.maxHp * 0.3) { say('hurt'); if (S.auto && (S.cd.med || 0) <= 0 && P.hp < P.maxHp * 0.2) med(); }
+    const cl = (Crimes.list || []).filter(c => !c.done); if (cl.length > S.crimes) { const c = cl[cl.length - 1]; say('crime', { what: c.T.name.toLowerCase(), where: districtAt(c.at.x, c.at.z).name.toLowerCase(), d: Math.round(c.at.distanceTo(P.pos)) }); } S.crimes = cl.length;
+    if (Activities.req && Activities.req !== S.req) say('request', { where: districtAt(Activities.req.at.x, Activities.req.at.z).name.toLowerCase() }); S.req = Activities.req;
+    if (S.auto && (S.cd.scan || 0) <= 0 && hostiles(P.pos, 35).filter(u => u.angry).length >= 3) scan();
+    S.idleT -= 1; if (S.idleT <= 0) { S.idleT = frnd(70, 120); say('idle'); }
+  }
+  function update(rdt) {
+    for (const k in S.cd) S.cd[k] -= rdt; S.weakT -= rdt;
+    if (G.mode === 'play') { watch(rdt); if (Input.pressedKey('KeyJ') && !($('ltchoice') && $('ltchoice').style.display === 'block')) smart(); }
+    for (let i = S.marks.length - 1; i >= 0; i--) { const M = S.marks[i]; M.t -= rdt; if (M.t <= 0 || !M.u.alive || M.u.ko) { scene.remove(M.s); S.marks.splice(i, 1); continue; } M.s.position.set(M.u.pos.x, M.u.pos.y + 2.6 + Math.sin(G.time * 4 + i) * 0.1, M.u.pos.z); }
+    const D = S.drone; if (D) {
+      D.t -= rdt; const a = G.time * 0.9; const c = Player.pos; D.g.position.lerp(V3(c.x + Math.cos(a) * 5, c.y + 6, c.z + Math.sin(a) * 5), Math.min(1, rdt * 1.8)); D.g.rotation.y += rdt * 3;
+      D.fire -= rdt; if (D.fire <= 0) { D.fire = 0.7; const u = hostiles(D.g.position, 28)[0]; if (u) { tracer(D.g.position.clone(), u.pos.clone().add(V3(0, 1.2, 0)), '#7fe8ff'); Units.hit(u, 10, null, 'drone', 0.5); if (u.gang && !u.angry) GangAI.anger(u); } }
+      if (D.t <= 0) { FX.sparks(D.g.position.clone(), 12, 0.6); scene.remove(D.g); S.drone = null; }
+    }
+  }
+  function dom() {
+    const css = document.createElement('style'); css.textContent = `#chair{position:fixed;left:22px;top:150px;z-index:15;display:flex;gap:10px;align-items:flex-start;max-width:360px;opacity:0;transform:translateX(-14px);transition:opacity .25s,transform .25s;pointer-events:none}
+#chair.on{opacity:1;transform:none}#chair .av{flex:0 0 46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#ffd8b0 0 30%,transparent 31%),radial-gradient(circle at 50% 100%,#3a5a8a 0 48%,transparent 49%),#14202e;border:2px solid #46f0ff;box-shadow:0 0 12px rgba(70,240,255,.5);position:relative}
+#chair .av:after{content:'';position:absolute;left:4px;right:4px;top:6px;height:20px;border:3px solid #222;border-bottom:none;border-radius:20px 20px 0 0}
+#chair .bx{background:rgba(6,12,22,.82);border:1px solid rgba(70,240,255,.35);border-left:3px solid #46f0ff;padding:7px 11px;font:500 13px var(--sans,sans-serif);color:#e8f6ff;line-height:1.35}
+#chair .bx b{display:block;font:700 10px var(--mono,monospace);letter-spacing:.18em;color:#46f0ff;margin-bottom:3px}`;
+    document.head.appendChild(css); el = document.createElement('div'); el.id = 'chair'; el.innerHTML = '<div class="av"></div><div class="bx"><b>DEX · THE GUY IN THE CHAIR</b><span></span></div>'; document.body.appendChild(el); txt = el.querySelector('span');
+    // he reacts to the big moments
+    const b0 = Hud.banner.bind(Hud); Hud.banner = (t, s) => { b0(t, s); const T = String(t || ''); if (/^WELCOME TO /.test(T)) event('city', { city: T.slice(11) }); else if (T === 'ASCENDANT') event('ascend'); else if (T === 'COLOSSUS' && /CARS/.test(s || '')) event('colossus'); };
+  }
+  function html() {
+    const row = (k, n, d) => `<button data-chair="${k}" ${(S.cd[k] || 0) > 0 ? 'disabled' : ''}>${n}${(S.cd[k] || 0) > 0 ? ' · ' + Math.ceil(S.cd[k]) + ' s' : ''}</button><span class="pdim" style="display:block;margin:-2px 0 6px">${d}</span>`;
+    return `<div class="pc" style="border-left-color:#46f0ff"><h5>🎧 DEX — the guy in the chair</h5><p>Your man on comms. He watches the scanners, calls out threats by clock position and runs support. Press <b>J</b> anywhere and he does whatever helps most right now.</p></div>
+<div class="pc"><div class="pact" style="display:block">${row('scan', '📡 SCAN', 'Mark every hostile within 90 m, through walls')}${row('drone', '🛸 SUPPORT DRONE', 'A drone that shoots at anyone shooting at you, 25 s')}${row('jam', '📶 JAM THEIR GUNS', 'Everyone within 40 m drops to fists')}${row('med', '✚ MED-KIT', '+60 health')}${row('intel', '🧠 INTEL', 'A villain\'s weak point (more damage), or where a lieutenant is hiding')}${row('cams', '🎥 LOOP CAMERAS', 'Inside a heist: cameras see nothing for 15 s')}${row('route', '🧭 FIND ME SOMETHING', 'The nearest crime, villain, request, tower or satchel')}</div></div>
+<div class="pc"><div class="pact"><button data-chair="auto">${S.auto ? 'AUTO-ASSIST ON' : 'AUTO-ASSIST OFF'}</button></div><p class="pdim">Auto-assist: he scans when a fight starts and drops a med-kit when you're nearly down.</p></div>`;
+  }
+  function bind(elx, rerender) { elx.querySelectorAll('[data-chair]').forEach(b => b.onclick = () => { const k = b.dataset.chair; if (k === 'voice') { S.voice = !S.voice; Store.set('chairVoice', S.voice); } else if (k === 'auto') { S.auto = !S.auto; Store.set('chairAuto', S.auto); } else { Phone.close(); ({ scan, drone, jam, med, intel, cams, route })[k](); } rerender && rerender(); }); }
+  function reset() { for (const M of S.marks) scene.remove(M.s); S.marks = []; if (S.drone) { scene.remove(S.drone.g); S.drone = null; } S.cd = {}; }
+  return { S, say, event, update, dom, html, bind, reset, scan, drone, jam, med, intel, cams, route, smart, CD, get dmgBonus() { return S.weakT > 0 ? 1.5 : 1; } };
+})();
+// §VILLAINS -----------------------------------------------------------------------------------
+// Powered villains who turn up on their own, each with a kit: lightning that blinks, an armoured
+// giant who slams the street, a hex-weaver shielded by summoned followers, a blade-dancer on the wind.
+const VILLAIN_DEFS = {
+  voltstrike: { name: 'VOLTSTRIKE', title: 'living storm', color: '#7fe8ff', pal: { torso: '#10202c', legs: '#0a1218', helmet: '#7fe8ff', visor: '#ffffff', chevron: '#7fe8ff', band: '#7fe8ff', boots: '#050a0e', skin: '#c58c6a' }, hp: 820, dmgMul: 0.7, scale: 1.15, weak: 'his capacitor pack overheats after a blink' },
+  ironclad: { name: 'IRONCLAD', title: 'walking fortress', color: '#ffb060', pal: { torso: '#3a3a40', legs: '#2a2a30', helmet: '#4a4a52', visor: '#ff8a2a', chevron: '#ff8a2a', band: '#ff8a2a', boots: '#18181c', skin: '#9a6a4a' }, hp: 1300, dmgMul: 0.42, scale: 1.6, weak: 'the seam under the left arm plate' },
+  hexweaver: { name: 'HEXWEAVER', title: 'the summoner', color: '#c87aff', pal: { torso: '#2a1038', legs: '#1a0828', helmet: '#3a1450', visor: '#e0a0ff', chevron: '#c87aff', band: '#c87aff', boots: '#100418', skin: '#d8b090' }, hp: 760, dmgMul: 0.8, scale: 1.1, weak: 'the shield drops for a heartbeat when a follower falls' },
+  razorwind: { name: 'RAZORWIND', title: 'the blade on the wind', color: '#9affc8', pal: { torso: '#0c2a1e', legs: '#081a14', helmet: '#0e3426', visor: '#9affc8', chevron: '#9affc8', band: '#9affc8', boots: '#040e0a', skin: '#b98262' }, hp: 700, dmgMul: 0.75, scale: 1.05, weak: 'every dash leaves her off balance for a second' },
+};
+const Villains = (() => {
+  let V = null, nextT = 150; const beaten = () => (G.career ? (Career.state.villains = Career.state.villains || {}) : {});
+  function spot() { for (let k = 0; k < 60; k++) { const a = frnd(0, TAU), r = frnd(70, 130); const x = Player.pos.x + Math.cos(a) * r, z = Player.pos.z + Math.sin(a) * r; if (x < 20 || x > CITY_W - 20 || z < 20 || z > CONFIG.city.quayZ - 30 || !Nav.free(x, z)) continue; return V3(x, 0, z); } return null; }
+  function spawn(id, at) {
+    if (V) return null; id = id || fpick(Object.keys(VILLAIN_DEFS)); const D = VILLAIN_DEFS[id]; at = at || spot(); if (!at) return null;
+    const u = Units.spawn('brute', at.x, 0.03, at.z, { force: true, pal: D.pal }); if (!u) return null;
+    u.gang = 'vantablack'; u.villain = id; u.boss = true; u.name = D.name; u.angry = true; u.aggroR = 60; u.state = 'gang'; u.hp = D.hp; u.hp0 = u.hp; u.maxHpV = D.hp; u.dmgMul = D.dmgMul; u.rig.mesh.scale.setScalar(D.scale); u.rig.scale = D.scale; u.post = at.clone();
+    const aura = new THREE.Mesh(new THREE.SphereGeometry(1.3, 16, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(D.color).multiplyScalar(1.6), transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); aura.position.y = 1.1; u.rig.mesh.add(aura);
+    V = { id, D, u, aura, t: {}, minions: [], beacon: Beacons.add(at, D.color, D.name, { icon: '☠', h: 120, r: 1.6 }), weak: 0 };
+    Hud.banner(D.name, D.title.toUpperCase() + ' · ' + districtAt(at.x, at.z).name); Chair.event('villain', { name: D.name.toLowerCase(), where: districtAt(at.x, at.z).name.toLowerCase(), prio: 3 }); Audio.heatUp(3);
+    if (id === 'hexweaver') summon(4);
+    return V;
+  }
+  function summon(n) { for (let k = 0; k < n; k++) { const m = spawnGang('vantablack', k % 2 ? 'gunner' : 'thug', V.u.pos, { spread: 5, angry: true, aggroR: 40 }); if (m) { m.rig.mesh.traverse(o => { }); V.minions.push(m); } } }
+  const cd = (k, s) => { V.t[k] = (V.t[k] || 0) - s; return V.t[k] <= 0; };
+  function bolt(from, to, col) { const pts = [from.clone()]; for (let i = 1; i < 6; i++) pts.push(from.clone().lerp(to, i / 6).add(V3(frnd(-0.5, 0.5), frnd(-0.5, 0.5), frnd(-0.5, 0.5)))); pts.push(to.clone()); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: new THREE.Color(col).multiplyScalar(3), toneMapped: false })); scene.add(l); setTimeout(() => { scene.remove(l); l.geometry.dispose(); }, 120); }
+  function update(dt) {
+    if (!V) { if (G.career && G.mode === 'play' && !Apt.inside && !Interiors.inside && !Heists.cell) { nextT -= dt; if (nextT <= 0) { nextT = frnd(300, 420); spawn(); } } return; }
+    const u = V.u, D = V.D, P = Player.pos; const bar = $('bossbar');
+    if (!u.alive || u.ko) { defeat(); return; }
+    V.weak -= dt; u.dmgMul = D.dmgMul * (V.weak > 0 ? 1.6 : 1) * (V.id === 'hexweaver' && V.minions.some(m => m.alive && !m.ko) ? 0.08 : 1);
+    V.aura.material.opacity = 0.1 + Math.sin(G.time * 5) * 0.04 + (V.id === 'hexweaver' && u.dmgMul < 0.1 ? 0.25 : 0);
+    const d = u.pos.distanceTo(P); const eye = u.pos.clone().add(V3(0, 1.6 * D.scale, 0)); const me = P.clone().add(V3(0, 1.1, 0));
+    if (d < 120) { bar.classList.remove('hidden'); $('bossname').textContent = D.name + ' · ' + D.title.toUpperCase(); $('bosshp').style.width = clamp(u.hp / u.maxHpV, 0, 1) * 100 + '%'; $('bossphase').textContent = V.weak > 0 ? 'WEAK POINT EXPOSED — HIT HARD' : V.id === 'hexweaver' && u.dmgMul < 0.1 ? 'SHIELDED — TAKE OUT THE FOLLOWERS' : 'DEX: PRESS J FOR INTEL'; } else bar.classList.add('hidden');
+    if (d > 70 || u.stunT > 0) return;
+    if (V.id === 'voltstrike') {
+      if (cd('bolt', dt) && d < 38) { V.t.bolt = 2.2; bolt(eye, me, D.color); if (losClear(eye, me, 0.2)) Player.hurt(12, u.pos, 'volt'); Audio.gun('pulse', eye); }
+      if (cd('blink', dt) && d < 50) { V.t.blink = 7; FX.sparks(eye.clone(), 30, 1, new THREE.Color(D.color)); const b = P.clone().add(V3(Math.sin(Player.yaw) * 6, 0, Math.cos(Player.yaw) * 6)); if (Nav.free(b.x, b.z)) { const t = u.body.translation(); u.body.setTranslation({ x: b.x, y: t.y, z: b.z }, true); u.body.setNextKinematicTranslation({ x: b.x, y: t.y, z: b.z }); u.pos.set(b.x, u.pos.y, b.z); } FX.sparks(u.pos.clone().add(V3(0, 1.5, 0)), 30, 1, new THREE.Color(D.color)); }
+      if (cd('nova', dt) && d < 5) { V.t.nova = 5; FX.ring(u.pos.clone(), 7, new THREE.Color(D.color), 60); Player.hurt(20, u.pos, 'volt'); Player.knock && Player.knock(V3().subVectors(P, u.pos).setY(0).normalize().multiplyScalar(12).add(V3(0, 5, 0))); }
+    } else if (V.id === 'ironclad') {
+      if (cd('slam', dt) && d < 9) { V.t.slam = 5; u.action = 'swing'; u.actionT = 0; Timers.after(0.45, () => { if (!u.alive || u.ko) return; FX.ring(u.pos.clone(), 9, new THREE.Color(D.color), 70); Shake.add(0.4); Audio.thud(u.pos, 1); if (Player.pos.distanceTo(u.pos) < 8.5 && Player.grounded) { Player.hurt(24, u.pos, 'slam'); Player.knock && Player.knock(V3().subVectors(Player.pos, u.pos).setY(0).normalize().multiplyScalar(10).add(V3(0, 9, 0))); } for (const v of Vehicles.list) if (v.alive && v.body && bodyPos(v, V3()).distanceTo(u.pos) < 8) Vehicles.damage(v, 60, u.pos.clone(), 'slam'); }); }
+      if (cd('charge', dt) && d < 30 && d > 8) { V.t.charge = 9; u.speedMul = 3.2; Toast.show('IRONCLAD IS CHARGING — GET OUT OF THE WAY', 'heat'); Timers.after(1.4, () => { u.speedMul = 1; }); }
+      if (u.speedMul > 2 && d < 2.6 && cd('ram', dt)) { V.t.ram = 1.5; Player.hurt(26, u.pos, 'ram'); Player.knock && Player.knock(V3().subVectors(P, u.pos).setY(0).normalize().multiplyScalar(16).add(V3(0, 6, 0))); }
+    } else if (V.id === 'hexweaver') {
+      if (cd('hex', dt) && d < 34) { V.t.hex = 2; bolt(eye, me, D.color); if (losClear(eye, me, 0.2)) Player.hurt(10, u.pos, 'hex'); }
+      V.minions = V.minions.filter(m => { if (!m.alive || m.ko) { if (!m._counted) { m._counted = true; V.weak = Math.max(V.weak, 2); } return false; } return true; });
+      if (cd('summon', dt) && V.minions.length < 2) { V.t.summon = 18; summon(3); Toast.show('HEXWEAVER SUMMONS MORE FOLLOWERS', 'heat'); }
+    } else if (V.id === 'razorwind') {
+      u.speedMul = Math.max(u.speedMul || 1, 1.7);
+      if (cd('slash', dt) && d < 28 && d > 5) { V.t.slash = 2.6; tracer(eye, me, D.color); if (losClear(eye, me, 0.2)) Player.hurt(10, u.pos, 'wind'); }
+      if (cd('dash', dt) && d < 18) { V.t.dash = 4.5; const dir = V3().subVectors(P, u.pos).setY(0).normalize(); const to = P.clone().addScaledVector(dir, 5); if (Nav.free(to.x, to.z)) { FX.sparks(eye.clone(), 20, 1, new THREE.Color(D.color)); const t = u.body.translation(); u.body.setTranslation({ x: to.x, y: t.y, z: to.z }, true); u.body.setNextKinematicTranslation({ x: to.x, y: t.y, z: to.z }); u.pos.set(to.x, u.pos.y, to.z); if (d < 16) Player.hurt(18, u.pos, 'blade'); V.weak = Math.max(V.weak, 1.2); } }
+    }
+  }
+  function defeat() {
+    const D = V.D; Beacons.remove(V.beacon); $('bossbar').classList.add('hidden'); Hud.banner(D.name + ' DEFEATED', 'THE CITY BREATHES AGAIN'); Chair.event('villainDown', { name: D.name.toLowerCase(), prio: 3 });
+    if (G.career) { Career.pay(1500, D.name + ' DEFEATED'); const b = beaten(); b[V.id] = (b[V.id] || 0) + 1; Reputation.add(Player.pos, 10, 'VILLAIN DEFEATED'); Career.save(); } Prog.earn(600, G.hero); Score.add && Score.add(5000, Player.pos.clone(), D.name + ' DOWN');
+    for (const m of V.minions) if (m.alive && !m.ko) m.state = 'flee'; V = null; nextT = frnd(300, 420);
+  }
+  function reset() { if (V) { Beacons.remove(V.beacon); if (V.u.alive) removeObj(V.u); $('bossbar').classList.add('hidden'); } V = null; nextT = 150; }
+  return { spawn, update, reset, get active() { return V; }, DEFS: VILLAIN_DEFS };
+})();
+
+// §FORGE ------------------------------------------------------------------------------------
+// Sovereign's blueprint library: weapons that assemble on the arm, structures he builds into the
+// street (walls, ramps, bridges, launch pads, turrets, cages…), rides (board, bike, jet), nanite
+// creatures that fight beside him, and tools. Eight go on the wheel (Q / 1–8); the rest live in the
+// Forge (Tab, or Phone → FORGE), which also has a sculptor for building your own from primitives.
+// Prims: [type, a, b, c, x, y, z, rx, ry, rz] — b box(w,h,d) · c cylinder(r,h) · s sphere(r) · t torus(R,r) · k cone(r,h)
+const H0 = -0.36; // the grip, in the right forearm's space (the forearm points down -y)
+const BLUEPRINTS = [
+  // ---- weapons ----
+  { id: 'blade', name: 'BLADE', kind: 'weapon', cost: 8, prims: [['b', 0.05, 1.5, 0.16, 0, -1.15, 0.02], ['b', 0.32, 0.06, 0.1, 0, -0.42, 0], ['b', 0.06, 0.18, 0.06, 0, -0.33, 0]], beh: { k: 'melee', dmg: 26, reach: 3, n: 3, rate: 0.3 } },
+  { id: 'hammer', name: 'HAMMER', kind: 'weapon', cost: 10, prims: [['c', 0.05, 1.1, 0, 0, -0.85, 0], ['b', 0.62, 0.34, 0.34, 0, -1.45, 0]], beh: { k: 'melee', dmg: 34, reach: 3, rate: 0.75, slam: true, radius: 4.5 } },
+  { id: 'shield', name: 'TOWER SHIELD', kind: 'weapon', anchor: 'arm', cost: 8, prims: [['b', 0.95, 1.7, 0.08, 0.12, -0.25, 0.22], ['b', 0.85, 0.08, 0.12, 0.12, 0.5, 0.24], ['b', 0.85, 0.08, 0.12, 0.12, -1.0, 0.24]], beh: { k: 'melee', dmg: 18, reach: 2.4, rate: 0.5, knock: 9, stun: 2 } },
+  { id: 'whip', name: 'CHAIN WHIP', kind: 'weapon', cost: 8, whip: true, prims: Array.from({ length: 26 }, (_, i) => ['b', 0.07, 0.14, 0.07, 0, -0.45 - i * 0.17, 0]), beh: { k: 'melee', dmg: 16, reach: 7.5, n: 4, rate: 0.55, pull: true } },
+  { id: 'cannon', name: 'CANNON', kind: 'weapon', cost: 10, prims: [['c', 0.17, 0.9, 0, 0, -0.35, 0], ['c', 0.11, 0.5, 0, 0, -0.95, 0], ['b', 0.38, 0.12, 0.3, 0, -0.1, 0]], beh: { k: 'ranged', dmg: 26, rate: 0.35, splash: 2.6, cost: 3 } },
+  { id: 'greatsword', name: 'GREATSWORD', kind: 'weapon', cost: 14, prims: [['b', 0.08, 2.3, 0.28, 0, -1.6, 0], ['k', 0.14, 0.3, 0, 0, -2.9, 0, Math.PI], ['b', 0.6, 0.08, 0.14, 0, H0 - 0.08, 0], ['c', 0.04, 0.3, 0, 0, H0 + 0.1, 0]], beh: { k: 'melee', dmg: 42, reach: 3.8, n: 4, rate: 0.6, knock: 8 } },
+  { id: 'katana', name: 'KATANA', kind: 'weapon', cost: 8, prims: [['b', 0.03, 1.3, 0.08, 0.04, -1.1, 0, 0, 0, 0.06], ['t', 0.08, 0.02, 0, 0, H0 - 0.06, 0, Math.PI / 2], ['c', 0.03, 0.32, 0, 0, H0 + 0.12, 0]], beh: { k: 'melee', dmg: 21, reach: 2.8, n: 2, rate: 0.2 } },
+  { id: 'twinblades', name: 'TWIN BLADES', kind: 'weapon', cost: 10, prims: [['b', 0.04, 0.9, 0.12, 0, -0.85, 0.1], ['b', 0.04, 0.9, 0.12, 0, -0.85, -0.1], ['b', 0.3, 0.05, 0.3, 0, H0 - 0.04, 0]], beh: { k: 'melee', dmg: 15, reach: 2.4, n: 2, rate: 0.14 } },
+  { id: 'spear', name: 'SPEAR', kind: 'weapon', cost: 9, prims: [['c', 0.035, 2.6, 0, 0, -1.2, 0], ['k', 0.09, 0.45, 0, 0, -2.7, 0, Math.PI]], beh: { k: 'melee', dmg: 24, reach: 4.3, n: 2, cone: 0.7, rate: 0.38 } },
+  { id: 'axe', name: 'WAR AXE', kind: 'weapon', cost: 10, prims: [['c', 0.04, 1.2, 0, 0, -0.9, 0], ['b', 0.06, 0.55, 0.6, 0, -1.35, 0.28]], beh: { k: 'melee', dmg: 33, reach: 3, n: 2, rate: 0.55, knock: 7 } },
+  { id: 'scythe', name: 'SCYTHE', kind: 'weapon', cost: 12, prims: [['c', 0.035, 2.0, 0, 0, -1.0, 0], ['b', 0.05, 0.12, 1.3, 0, -1.95, 0.6, 0.3]], beh: { k: 'melee', dmg: 22, reach: 3.6, n: 6, cone: -1, rate: 0.65, spin: true } },
+  { id: 'mace', name: 'MACE', kind: 'weapon', cost: 10, prims: [['c', 0.045, 0.9, 0, 0, -0.75, 0], ['s', 0.26, 0, 0, 0, -1.3, 0], ['k', 0.07, 0.25, 0, 0.28, -1.3, 0, 0, 0, -Math.PI / 2], ['k', 0.07, 0.25, 0, -0.28, -1.3, 0, 0, 0, Math.PI / 2], ['k', 0.07, 0.25, 0, 0, -1.3, 0.28, Math.PI / 2]], beh: { k: 'melee', dmg: 28, reach: 2.8, rate: 0.5, slam: true, radius: 3 } },
+  { id: 'halberd', name: 'HALBERD', kind: 'weapon', cost: 12, prims: [['c', 0.035, 2.8, 0, 0, -1.3, 0], ['b', 0.05, 0.5, 0.55, 0, -2.5, 0.25], ['k', 0.07, 0.4, 0, 0, -2.9, 0, Math.PI]], beh: { k: 'melee', dmg: 29, reach: 4.2, n: 3, rate: 0.55 } },
+  { id: 'gauntlet', name: 'TITAN GAUNTLET', kind: 'weapon', cost: 8, prims: [['b', 0.42, 0.5, 0.42, 0, -0.42, 0], ['b', 0.5, 0.3, 0.5, 0, -0.1, 0], ['b', 0.14, 0.2, 0.44, 0.16, -0.72, 0]], beh: { k: 'melee', dmg: 30, reach: 2.4, rate: 0.32, knock: 14, stun: 2 } },
+  { id: 'claws', name: 'CLAWS', kind: 'weapon', cost: 7, prims: [['b', 0.02, 0.7, 0.05, 0, -0.75, -0.08, 0.2], ['b', 0.02, 0.75, 0.05, 0, -0.78, 0], ['b', 0.02, 0.7, 0.05, 0, -0.75, 0.08, -0.2]], beh: { k: 'melee', dmg: 13, reach: 2.2, n: 2, rate: 0.14 } },
+  { id: 'buzzsaw', name: 'BUZZSAW', kind: 'weapon', cost: 9, prims: [['c', 0.45, 0.03, 0, 0, -0.75, 0, Math.PI / 2], ['t', 0.45, 0.04, 0, 0, -0.75, 0, 0, Math.PI / 2]], beh: { k: 'melee', dmg: 16, reach: 2.6, n: 3, rate: 0.11 } },
+  { id: 'flail', name: 'FLAIL', kind: 'weapon', cost: 10, whip: true, prims: [...Array.from({ length: 10 }, (_, i) => ['t', 0.06, 0.015, 0, 0, -0.45 - i * 0.12, 0, i % 2 ? Math.PI / 2 : 0]), ['s', 0.3, 0, 0, 0, -1.8, 0]], beh: { k: 'melee', dmg: 30, reach: 4, rate: 0.65, slam: true, radius: 3.5 } },
+  { id: 'lance', name: 'LANCE', kind: 'weapon', cost: 11, prims: [['k', 0.2, 3.2, 0, 0, -2.0, 0, Math.PI], ['c', 0.22, 0.12, 0, 0, -0.42, 0]], beh: { k: 'melee', dmg: 31, reach: 4.6, n: 3, cone: 0.8, rate: 0.5, knock: 12 } },
+  { id: 'drill', name: 'DRILL', kind: 'weapon', cost: 9, prims: [['k', 0.22, 1.0, 0, 0, -0.95, 0, Math.PI], ['c', 0.24, 0.3, 0, 0, -0.35, 0]], beh: { k: 'melee', dmg: 12, reach: 2.3, rate: 0.09 } },
+  { id: 'gatling', name: 'GATLING', kind: 'weapon', cost: 12, prims: [['c', 0.05, 1.1, 0, 0.08, -0.7, 0], ['c', 0.05, 1.1, 0, -0.08, -0.7, 0], ['c', 0.05, 1.1, 0, 0, -0.7, 0.08], ['c', 0.05, 1.1, 0, 0, -0.7, -0.08], ['c', 0.17, 0.3, 0, 0, -0.2, 0]], beh: { k: 'ranged', dmg: 7, rate: 0.07, spread: 0.035, cost: 0.4 } },
+  { id: 'railgun', name: 'RAILGUN', kind: 'weapon', cost: 14, prims: [['b', 0.06, 1.5, 0.16, 0.1, -0.85, 0], ['b', 0.06, 1.5, 0.16, -0.1, -0.85, 0], ['t', 0.15, 0.03, 0, 0, -0.5, 0, Math.PI / 2], ['t', 0.15, 0.03, 0, 0, -1.0, 0, Math.PI / 2]], beh: { k: 'ranged', dmg: 75, rate: 1.3, pierce: true, cost: 6, range: 120, knock: 12, color: '#ffffff' } },
+  { id: 'shotgun', name: 'SCATTER', kind: 'weapon', cost: 10, prims: [['c', 0.12, 0.8, 0, 0, -0.6, 0], ['c', 0.15, 0.2, 0, 0, -1.05, 0]], beh: { k: 'ranged', dmg: 9, n: 7, spread: 0.12, rate: 0.6, range: 22, cost: 2 } },
+  { id: 'crossbow', name: 'CROSSBOW', kind: 'weapon', cost: 9, prims: [['b', 0.08, 0.9, 0.08, 0, -0.65, 0], ['b', 1.1, 0.05, 0.06, 0, -0.95, 0, 0, 0, 0], ['b', 0.02, 0.02, 1.1, 0, -0.95, 0]], beh: { k: 'ranged', dmg: 32, rate: 0.7, cost: 1.5, knock: 8 } },
+  { id: 'mortar', name: 'SHOULDER MORTAR', kind: 'weapon', cost: 14, anchor: 'back', prims: [['c', 0.2, 1.1, 0, 0.35, 0.75, -0.15, 0.3], ['b', 0.5, 0.2, 0.3, 0.3, 0.2, -0.15]], beh: { k: 'ranged', dmg: 34, rate: 1.4, splash: 5.5, cost: 6 } },
+  { id: 'plasma', name: 'PLASMA STREAM', kind: 'weapon', cost: 10, prims: [['k', 0.22, 0.6, 0, 0, -0.75, 0, Math.PI], ['c', 0.15, 0.4, 0, 0, -0.3, 0]], beh: { k: 'ranged', dmg: 6, rate: 0.08, cone: true, range: 9, cost: 0.3 } },
+  { id: 'boomerang', name: 'GLAIVE', kind: 'weapon', cost: 8, prims: [['t', 0.4, 0.04, 0, 0, -0.75, 0, 0, Math.PI / 2], ['b', 0.8, 0.03, 0.12, 0, -0.75, 0, 0, Math.PI / 2]], beh: { k: 'ranged', dmg: 22, rate: 0.5, pierce: true, range: 30, cost: 1 } },
+  // ---- structures: built into the street where you aim ----
+  { id: 'wall', name: 'WALL', kind: 'structure', cost: 12, prims: [['b', 6, 3, 0.5, 0, 1.5, 0]] },
+  { id: 'ramp', name: 'RAMP', kind: 'structure', cost: 14, prims: [['b', 4, 0.4, 9, 0, 1.6, 0, -0.38]] },
+  { id: 'bridge', name: 'BRIDGE', kind: 'structure', cost: 22, prims: [['b', 3.4, 0.3, 22, 0, 0, 0], ['b', 0.1, 1.0, 22, 1.65, 0.6, 0], ['b', 0.1, 1.0, 22, -1.65, 0.6, 0]], atHeight: true },
+  { id: 'stairs', name: 'STAIRS', kind: 'structure', cost: 14, prims: Array.from({ length: 10 }, (_, i) => ['b', 3, 0.42 * (i + 1), 0.8, 0, 0.21 * (i + 1), i * 0.8]) },
+  { id: 'tower', name: 'WATCHTOWER', kind: 'structure', cost: 24, prims: [['b', 1.6, 14, 1.6, 0, 7, 0], ['b', 4.5, 0.4, 4.5, 0, 14.2, 0], ['b', 4.5, 0.9, 0.12, 0, 14.8, 2.2], ['b', 4.5, 0.9, 0.12, 0, 14.8, -2.2]] },
+  { id: 'barricade', name: 'BARRICADE', kind: 'structure', cost: 8, prims: [['b', 5, 1.3, 0.7, 0, 0.65, 0], ['k', 0.15, 0.7, 0, -1.8, 1.6, 0], ['k', 0.15, 0.7, 0, 0, 1.6, 0], ['k', 0.15, 0.7, 0, 1.8, 1.6, 0]] },
+  { id: 'cage', name: 'CAGE', kind: 'structure', cost: 16, beh: { cage: 4 }, prims: [...Array.from({ length: 12 }, (_, i) => ['c', 0.06, 3.2, 0, Math.cos(i / 12 * TAU) * 3.4, 1.6, Math.sin(i / 12 * TAU) * 3.4]), ['t', 3.4, 0.08, 0, 0, 3.2, 0, Math.PI / 2]], solid: false },
+  { id: 'launchpad', name: 'LAUNCH PAD', kind: 'structure', cost: 10, beh: { launch: 30 }, prims: [['c', 1.6, 0.25, 0, 0, 0.12, 0], ['t', 1.3, 0.08, 0, 0, 0.28, 0, Math.PI / 2]] },
+  { id: 'turret', name: 'TURRET', kind: 'structure', cost: 18, beh: { turret: 26 }, prims: [['c', 0.6, 1.2, 0, 0, 0.6, 0], ['s', 0.5, 0, 0, 0, 1.45, 0], ['c', 0.08, 1.1, 0, 0, 1.5, 0.55, Math.PI / 2]] },
+  { id: 'dome', name: 'SHIELD DOME', kind: 'structure', cost: 20, beh: { dome: 5 }, prims: Array.from({ length: 9 }, (_, i) => ['t', 5 * Math.cos(i / 9 * Math.PI / 2), 0.06, 0, 0, 5 * Math.sin(i / 9 * Math.PI / 2), 0, Math.PI / 2]), solid: false },
+  { id: 'statue', name: 'STATUE OF YOU', kind: 'structure', cost: 20, beh: { statue: 14 }, prims: [['b', 2.2, 1.2, 2.2, 0, 0.6, 0], ['b', 0.5, 1.6, 0.4, -0.3, 2.0, 0], ['b', 0.5, 1.6, 0.4, 0.3, 2.0, 0], ['b', 1.2, 1.6, 0.6, 0, 3.6, 0], ['b', 0.4, 1.4, 0.4, -0.85, 3.7, 0, 0, 0, -0.3], ['b', 0.4, 1.4, 0.4, 0.85, 3.7, 0, 0, 0, 0.3], ['s', 0.36, 0, 0, 0, 4.75, 0]] },
+  { id: 'spikes', name: 'SPIKE FIELD', kind: 'structure', cost: 10, beh: { spikes: 3.5 }, prims: Array.from({ length: 16 }, (_, i) => ['k', 0.14, 0.6, 0, (i % 4 - 1.5) * 1.6, 0.3, (Math.floor(i / 4) - 1.5) * 1.6]), solid: false },
+  { id: 'platform', name: 'SKY PLATFORM', kind: 'structure', cost: 16, prims: [['b', 5, 0.35, 5, 0, 12, 0], ['t', 2.6, 0.06, 0, 0, 11.8, 0, Math.PI / 2]] },
+  { id: 'arch', name: 'VICTORY ARCH', kind: 'structure', cost: 22, prims: [['b', 1.2, 7, 1.2, -3.5, 3.5, 0], ['b', 1.2, 7, 1.2, 3.5, 3.5, 0], ['b', 8.2, 1.4, 1.4, 0, 7.6, 0], ['b', 3, 0.6, 1.6, 0, 8.6, 0]] },
+  // ---- rides ----
+  { id: 'hoverboard', name: 'HOVERBOARD', kind: 'ride', cost: 10, size: 0.03, ride: { speed: 22, hover: 0.45 }, pose: 'board', prims: [['b', 0.6, 0.06, 1.7, 0, 0.42, 0], ['t', 0.22, 0.03, 0, 0, 0.36, 0.55, Math.PI / 2], ['t', 0.22, 0.03, 0, 0, 0.36, -0.55, Math.PI / 2]] },
+  { id: 'bike', name: 'NANO BIKE', kind: 'ride', cost: 14, size: 0.032, ride: { speed: 32, hover: 0 }, pose: 'seat', prims: [['t', 0.42, 0.09, 0, 0, 0.45, 0.85, 0, Math.PI / 2], ['t', 0.42, 0.09, 0, 0, 0.45, -0.85, 0, Math.PI / 2], ['b', 0.32, 0.4, 1.4, 0, 0.75, 0, -0.1], ['b', 0.5, 0.12, 0.6, 0, 0.98, -0.2], ['b', 0.7, 0.06, 0.06, 0, 1.2, 0.75]] },
+  { id: 'jet', name: 'SKY JET', kind: 'ride', cost: 18, size: 0.032, ride: { speed: 30, fly: true }, pose: 'fly', prims: [['b', 0.7, 0.3, 2.4, 0, 0.95, 0], ['b', 3.6, 0.06, 0.9, 0, 0.95, -0.2], ['b', 1.4, 0.06, 0.4, 0, 1.0, -1.1], ['k', 0.25, 0.5, 0, 0, 0.95, 1.4, Math.PI / 2]] },
+  { id: 'skates', name: 'PULSE SKATES', kind: 'ride', cost: 6, size: 0.025, ride: { speed: 16, hover: 0.12 }, pose: 'board', prims: [['b', 0.14, 0.08, 0.4, 0.15, 0.06, 0], ['b', 0.14, 0.08, 0.4, -0.15, 0.06, 0]] },
+  // ---- creatures ----
+  { id: 'wolf', name: 'NANO WOLF', kind: 'pet', cost: 16, pet: { speed: 13, dmg: 14, rate: 0.7, fly: false }, prims: [['b', 0.5, 0.5, 1.3, 0, 0.8, 0], ['b', 0.36, 0.36, 0.5, 0, 1.05, 0.8], ['k', 0.08, 0.2, 0, 0.1, 1.3, 0.75], ['k', 0.08, 0.2, 0, -0.1, 1.3, 0.75], ['b', 0.12, 0.6, 0.12, 0.18, 0.3, 0.45], ['b', 0.12, 0.6, 0.12, -0.18, 0.3, 0.45], ['b', 0.12, 0.6, 0.12, 0.18, 0.3, -0.45], ['b', 0.12, 0.6, 0.12, -0.18, 0.3, -0.45], ['b', 0.1, 0.1, 0.6, 0, 0.95, -0.85, -0.5]] },
+  { id: 'hawk', name: 'NANO HAWK', kind: 'pet', cost: 12, pet: { speed: 18, dmg: 10, rate: 0.9, fly: true }, prims: [['b', 0.25, 0.22, 0.7, 0, 0, 0], ['b', 1.8, 0.04, 0.4, 0, 0.05, -0.05], ['k', 0.08, 0.2, 0, 0, 0, 0.45, Math.PI / 2], ['b', 0.4, 0.03, 0.3, 0, 0, -0.5]] },
+  { id: 'golem', name: 'NANO GOLEM', kind: 'pet', cost: 24, pet: { speed: 6, dmg: 32, rate: 1.4, fly: false, slam: true }, prims: [['b', 1.3, 1.4, 0.9, 0, 2.4, 0], ['b', 0.6, 0.6, 0.6, 0, 3.4, 0.1], ['b', 0.45, 1.5, 0.45, -0.95, 2.0, 0], ['b', 0.45, 1.5, 0.45, 0.95, 2.0, 0], ['b', 0.5, 1.6, 0.5, -0.4, 0.8, 0], ['b', 0.5, 1.6, 0.5, 0.4, 0.8, 0]] },
+  { id: 'serpent', name: 'NANO SERPENT', kind: 'pet', cost: 14, pet: { speed: 11, dmg: 10, rate: 0.6, fly: false, stun: 2.5 }, prims: Array.from({ length: 12 }, (_, i) => ['s', 0.22 - i * 0.012, 0, 0, Math.sin(i * 0.8) * 0.4, 0.25, 0.9 - i * 0.32]) },
+  { id: 'wyrm', name: 'SKY WYRM', kind: 'pet', cost: 22, pet: { speed: 14, dmg: 8, rate: 0.35, fly: true, breath: true }, prims: [...Array.from({ length: 9 }, (_, i) => ['s', 0.3 - i * 0.025, 0, 0, Math.sin(i * 0.7) * 0.3, 0, 1.2 - i * 0.35]), ['b', 2.6, 0.04, 0.7, 0, 0.1, 0.4], ['k', 0.15, 0.4, 0, 0, 0, 1.6, Math.PI / 2]] },
+  // ---- tools ----
+  { id: 'grapple', name: 'GRAPPLE CLAW', kind: 'tool', cost: 6, prims: [['c', 0.12, 0.4, 0, 0, -0.45, 0], ['k', 0.06, 0.3, 0, 0.12, -0.75, 0, 0, 0, 0.5], ['k', 0.06, 0.3, 0, -0.12, -0.75, 0, 0, 0, -0.5]], beh: { tool: 'grapple', rate: 0.6 } },
+  { id: 'magnet', name: 'MAGNET', kind: 'tool', cost: 8, prims: [['t', 0.32, 0.09, 0, 0, -0.7, 0, 0, 0, 0], ['b', 0.15, 0.25, 0.15, 0.32, -0.95, 0], ['b', 0.15, 0.25, 0.15, -0.32, -0.95, 0]], beh: { tool: 'magnet', rate: 1.2 } },
+  { id: 'jetpack', name: 'JETPACK', kind: 'tool', anchor: 'back', cost: 10, prims: [['c', 0.14, 0.7, 0, 0.18, 0.3, -0.2], ['c', 0.14, 0.7, 0, -0.18, 0.3, -0.2], ['k', 0.14, 0.25, 0, 0.18, -0.15, -0.2, Math.PI], ['k', 0.14, 0.25, 0, -0.18, -0.15, -0.2, Math.PI]], beh: { tool: 'jetpack', rate: 0.15 } },
+  { id: 'repair', name: 'REPAIR FIELD', kind: 'tool', cost: 6, prims: [['t', 0.3, 0.04, 0, 0, -0.6, 0, Math.PI / 2], ['s', 0.12, 0, 0, 0, -0.6, 0]], beh: { tool: 'repair', rate: 3 } },
+];
+const Forge = (() => {
+  const BP = {}; const DEFAULT_SLOTS = ['blade', 'hammer', 'shield', 'cannon', 'railgun', 'wall', 'hoverboard', 'wolf'];
+  const custom = () => Store.get('nanoCustom', []);
+  function register(b) { BP[b.id] = b; NanoShapes.define(b.id, b.prims); }
+  BLUEPRINTS.forEach(register); custom().forEach(register);
+  let slots = Store.get('nanoSlots', DEFAULT_SLOTS).slice(0, 8); while (slots.length < 8) slots.push(null); slots = slots.map(s => s && BP[s] ? s : null);
+  const structs = []; let ghostM = null, pet = null, petCloud = null, sel = 0;
+  const STRUCT_MAT = new THREE.MeshStandardMaterial({ color: 0x0d0d10, metalness: 0.95, roughness: 0.28, envMapIntensity: 1.4, emissive: new THREE.Color(0.06, 0.045, 0.02) });
+  const EDGE_MAT = new THREE.LineBasicMaterial({ color: new THREE.Color(2.2, 1.6, 0.6), toneMapped: false, transparent: true, opacity: 0.85 });
+  const S = () => Sovereign.S;
+  // ---------- structures ----------
+  function placePose(b) { const p = CamRig.aimPoint.clone(); const P = Player.pos; if (p.distanceTo(P) > 40) p.copy(P).addScaledVector(V3(Math.sin(S().heading), 0, Math.cos(S().heading)), 12); if (!b.atHeight) p.y = Math.max(0, City.buildingAt(p.x, p.z) ? City.buildingAt(p.x, p.z).h : 0); const yaw = S().heading; return { p, yaw }; }
+  function ghost(b) {
+    if (ghostM) { scene.remove(ghostM); ghostM.geometry.dispose(); ghostM = null; } if (!b) return;
+    ghostM = new THREE.LineSegments(new THREE.EdgesGeometry(NanoShapes.geo(b.id), 25), new THREE.LineBasicMaterial({ color: new THREE.Color(1.6, 1.2, 0.4), transparent: true, opacity: 0.45, toneMapped: false })); ghostM.userData.id = b.id; scene.add(ghostM);
+  }
+  function colliders(b, p, yaw) {
+    const bodies = []; const q = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
+    for (const pr of b.prims) {
+      const [t, a, bb, c, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0] = pr; const hw = t === 'b' ? a / 2 : t === 't' ? a : a, hh = t === 'b' ? bb / 2 : t === 's' ? a : t === 't' ? bb : bb / 2, hd = t === 'b' ? c / 2 : t === 't' ? a : a;
+      if (rx && t === 'b') { // a slope: stepped slabs along its length
+        const n = 10; for (let i = 0; i < n; i++) { const lz = -hd + (i + 0.5) * (2 * hd / n); const lp = V3(0, 0, lz).applyEuler(new THREE.Euler(rx, 0, 0)).add(V3(x, y, z)).applyQuaternion(q).add(p); bodies.push(addStaticBox(lp.x, lp.y, lp.z, hw, Math.max(hh, 0.25), hd / n + 0.05, yaw).body); }
+        continue;
+      }
+      if (t === 't' && !rx) continue; // flat rings are trim, not floor
+      const c0 = V3(x, y, z).applyQuaternion(q).add(p); bodies.push(addStaticBox(c0.x, c0.y, c0.z, Math.max(hw, 0.05), Math.max(hh, 0.05), Math.max(hd, 0.05), yaw + ry).body);
+    }
+    return bodies;
+  }
+  function place(b) {
+    if (S().mass < b.cost) { Toast.show('NOT ENOUGH NANOMASS — HARVEST A CAR', 'heat'); return; } S().mass -= b.cost;
+    const { p, yaw } = placePose(b); const M = new THREE.Matrix4().compose(p, new THREE.Quaternion().setFromAxisAngle(UP, yaw), V3(1, 1, 1));
+    const main = Sovereign.main; main.form(b.id, NanoShapes.points(b.id, Sovereign.N_MAIN), () => M, { size: 0.045, dur: 0.55, arc: 1.6 });
+    Timers.after(0.6, () => {
+      const geo = NanoShapes.geo(b.id); const mesh = new THREE.Mesh(geo, STRUCT_MAT); mesh.applyMatrix4(M); mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), EDGE_MAT); mesh.add(edges);
+      const bodies = b.solid === false ? [] : colliders(b, p, yaw);
+      structs.push({ b, mesh, bodies, p, yaw, t: 120, M }); if (structs.length > 8) remove(structs[0]);
+      main.form('dormant', NanoShapes.points('dormant', Sovereign.N_MAIN), Sovereign.boneM('spine'), { size: 0, from: 0.04, dur: 0.6, arc: 1.2 });
+      Shake.add(0.12); Audio.thud(p, 0.5); Sovereign.presence(2);
+    });
+  }
+  function remove(s) { const i = structs.indexOf(s); if (i >= 0) structs.splice(i, 1); scene.remove(s.mesh); s.mesh.geometry.dispose(); for (const b of s.bodies) world.removeRigidBody(b); FX.sparks(s.p.clone().add(V3(0, 1, 0)), 30, 1.2, new THREE.Color(2, 1.5, 0.6)); }
+  function updateStructs(rdt) {
+    const P = Player.pos;
+    for (const s of [...structs]) {
+      s.t -= rdt; if (s.t <= 0) { remove(s); continue; } const B = s.b.beh || {};
+      if (B.launch && Math.hypot(P.x - s.p.x, P.z - s.p.z) < 1.8 && Math.abs(P.y - s.p.y) < 0.8 && Player.vel.y <= 0.5) { Player.vel.y = B.launch; Player.grounded = false; FX.ring(s.p.clone(), 3, new THREE.Color(2, 1.5, 0.6), 40); Audio.whoosh && Audio.whoosh(); if (typeof Acro !== 'undefined') Acro.start('frontflip'); }
+      if (B.cage) for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && Math.hypot(u.pos.x - s.p.x, u.pos.z - s.p.z) < B.cage) { u.stunT = Math.max(u.stunT, 0.5); u.disarmed = true; }
+      if (B.spikes) { s.tick = (s.tick || 0) - rdt; if (s.tick <= 0) { s.tick = 0.5; for (const u of Units.list) if (u.alive && !u.ko && u.type !== 'civilian' && Math.abs(u.pos.x - s.p.x) < B.spikes && Math.abs(u.pos.z - s.p.z) < B.spikes) Sovereign.hitU(u, 8, V3(0, 3, 0), 'spikes', 0.6); } }
+      if (B.turret) { s.fire = (s.fire || 0) - rdt; if (s.fire <= 0) { s.fire = 0.55; const u = Units.list.find(o => o.alive && !o.ko && (o.gang || o.villain) && !o.thrall && o.pos.distanceTo(s.p) < B.turret); if (u) { tracer(s.p.clone().add(V3(0, 1.5, 0)), u.pos.clone().add(V3(0, 1.2, 0)), '#ffd27a'); Sovereign.hitU(u, 11, null, 'turret', 0.6); } } }
+      if (B.statue && P.distanceTo(s.p) < B.statue) Sovereign.presence(rdt * 0.8);
+    }
+  }
+  function inDome() { return structs.some(s => s.b.beh && s.b.beh.dome && Player.pos.distanceTo(s.p) < s.b.beh.dome); }
+  // ---------- creatures ----------
+  const petM = new THREE.Matrix4();
+  function summon(b) {
+    if (pet && pet.b === b) { dismiss(); return; } if (S().mass < b.cost) { Toast.show('NOT ENOUGH NANOMASS — HARVEST A CAR', 'heat'); return; } S().mass -= b.cost;
+    if (!petCloud) petCloud = new NanoCloud(6000, 0.04);
+    const P = Player.pos; pet = { b, pos: P.clone().add(V3(Math.sin(S().heading) * 2, b.pet.fly ? 3 : 0, Math.cos(S().heading) * 2)), yaw: S().heading, atk: 0, tgt: null };
+    const src = new Float32Array(6000 * 3); for (let i = 0; i < 6000; i++) { src[i * 3] = P.x; src[i * 3 + 1] = P.y + 1.3; src[i * 3 + 2] = P.z; } petCloud.src.set(src); petCloud.geo.attributes.aSrc.needsUpdate = true; petCloud.U.uK.value = 0;
+    petCloud.form(b.id, NanoShapes.points(b.id, 6000), () => petM, { size: 0.045, dur: 0.7, arc: 1.2 }); petCloud.src.set(src); petCloud.mesh.visible = true; Toast.show(b.name + ' — IT FIGHTS FOR YOU · SELECT AGAIN TO DISMISS'); Audio.ui(1.4);
+  }
+  function dismiss() { if (!pet) return; petCloud.form('dormant', NanoShapes.points('dormant', 6000), Sovereign.boneM('spine'), { size: 0, dur: 0.6, arc: 1.5 }); pet = null; }
+  function updatePet(rdt) {
+    if (petCloud) petCloud.update(rdt); if (!pet) return; const P = Player.pos; const b = pet.b, A = b.pet;
+    if (!pet.tgt || !pet.tgt.alive || pet.tgt.ko || pet.tgt.pos.distanceTo(P) > 30) pet.tgt = Units.list.filter(u => u.alive && !u.ko && (u.gang || u.villain) && !u.thrall && !u.surrendered && u.pos.distanceTo(P) < 28).sort((a, c) => a.pos.distanceTo(pet.pos) - c.pos.distanceTo(pet.pos))[0] || null;
+    const goal = pet.tgt ? pet.tgt.pos.clone() : P.clone().add(V3(Math.cos(S().heading + 2.2) * 2.6, 0, Math.sin(-S().heading - 2.2) * 2.6));
+    if (A.fly) goal.y = (pet.tgt ? pet.tgt.pos.y + 1.4 : P.y + 3.2) + Math.sin(G.time * 2) * 0.4; else goal.y = pet.tgt ? pet.tgt.pos.y : P.y;
+    const d = V3().subVectors(goal, pet.pos); const L = d.length(); const near = pet.tgt ? 1.6 : 0.4;
+    if (L > near) { const step = Math.min(L - near, A.speed * rdt * (L > 25 ? 2 : 1)); pet.pos.addScaledVector(d.normalize(), step); pet.yaw += angDiff(pet.yaw, Math.atan2(d.x, d.z)) * Math.min(1, rdt * 8); }
+    pet.atk -= rdt; if (pet.tgt && L < near + 1.2 && pet.atk <= 0) { pet.atk = A.rate; const u = pet.tgt;
+      if (A.slam) { FX.ring(u.pos.clone(), 4, new THREE.Color(2, 1.5, 0.6), 40); Shake.add(0.12); for (const o of Units.list) if (o.alive && !o.ko && o.gang && o.pos.distanceTo(u.pos) < 3.5) Sovereign.hitU(o, A.dmg, V3().subVectors(o.pos, pet.pos).setY(0).normalize().multiplyScalar(8).add(V3(0, 6, 0)), b.id, 2); }
+      else { Sovereign.hitU(u, A.dmg, A.stun ? null : V3().subVectors(u.pos, pet.pos).setY(0).normalize().multiplyScalar(4).add(V3(0, 2, 0)), b.id, A.stun || 0.8); if (A.breath) for (let k = 0; k < 4; k++) FX.sparks(pet.pos.clone().lerp(u.pos.clone().add(V3(0, 1, 0)), k / 4), 3, 0.5, new THREE.Color(2.4, 1.3, 0.4)); }
+      Audio.punch(0.8); }
+    const bob = A.fly ? Math.sin(G.time * 9) * 0.06 : Math.abs(Math.sin(G.time * (L > near ? 12 : 2))) * (L > near ? 0.12 : 0.02);
+    petM.compose(V3(pet.pos.x, pet.pos.y + bob, pet.pos.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(A.fly ? Math.sin(G.time * 9) * 0.08 : 0, pet.yaw, A.fly ? Math.sin(G.time * 2) * 0.15 : 0, 'YXZ')), V3(1, 1, 1));
+  }
+  // ---------- tools ----------
+  function tool(b) {
+    const P = Player; const T = b.beh.tool;
+    if (T === 'grapple') { const to = CamRig.aimPoint.clone(); if (to.distanceTo(P.pos) > 45 || to.distanceTo(P.pos) < 3) { Toast.show('NOTHING TO GRAB', 'heat'); return; } tracer(P.pos.clone().add(V3(0, 1.4, 0)), to, '#ffd27a'); const dir = V3().subVectors(to, P.pos).normalize(); P.vel.copy(dir.multiplyScalar(26)).add(V3(0, 6, 0)); P.grounded = false; Audio.whoosh && Audio.whoosh(); }
+    else if (T === 'magnet') { let n = 0; const p0 = P.pos; for (const o of objs) { if (!o.body || o.alive === false || o.kind === 'unit' || o.body.isKinematic && o.body.isKinematic()) continue; const t = o.body.translation(); const d = V3(p0.x - t.x, p0.y + 3 - t.y, p0.z - t.z); const L = d.length(); if (L > 26 || L < 2) continue; o.body.wakeUp && o.body.wakeUp(); const m = o.body.mass ? o.body.mass() : 50; const f = V3(Math.sin(S().heading), 0.3, Math.cos(S().heading)).multiplyScalar(18).add(d.normalize().multiplyScalar(8)); o.body.applyImpulse({ x: f.x * m, y: f.y * m, z: f.z * m }, true); n++; } Toast.show(n ? 'MAGNET — ' + n + ' THINGS FLY' : 'NOTHING METAL NEARBY'); Shake.add(0.15); }
+    else if (T === 'jetpack') { if (S().mass < 0.5) return; S().mass -= 0.5; P.vel.y = Math.max(P.vel.y, 9); P.grounded = false; FX.sparks(P.pos.clone().add(V3(0, 0.6, 0)), 6, 0.6, new THREE.Color(2.4, 1.4, 0.4)); }
+    else if (T === 'repair') { if (S().mass < 10) { Toast.show('NOT ENOUGH NANOMASS', 'heat'); return; } S().mass -= 10; P.hp = Math.min(P.maxHp, P.hp + 35); FX.ring(P.pos.clone(), 3, new THREE.Color(2, 1.6, 0.6), 40); Toast.show('+35 HEALTH — THE SUIT KNITS ITSELF'); }
+  }
+  // ---------- frame ----------
+  function update(rdt) {
+    updateStructs(rdt); updatePet(rdt);
+    if (ghostM) { const b = BP[ghostM.userData.id]; if (!b || S().con !== b.id) ghost(null); else { const { p, yaw } = placePose(b); ghostM.position.copy(p); ghostM.rotation.set(0, yaw, 0); ghostM.material.opacity = 0.3 + Math.sin(G.time * 5) * 0.15; ghostM.material.color.setRGB(S().mass >= b.cost ? 1.6 : 2.4, S().mass >= b.cost ? 1.2 : 0.3, 0.4); } }
+    // the jetpack fires while you hold jump in the air
+    if (S().con === 'jetpack' && Input.down('jump') && !Player.grounded && G.mode === 'play') { S().jetT = (S().jetT || 0) - rdt; if (S().jetT <= 0) { S().jetT = 0.12; tool(BP.jetpack); } }
+  }
+  function reset() { for (const s of [...structs]) remove(s); ghost(null); if (pet) dismiss(); if (petCloud) petCloud.mesh.visible = false; }
+  // ---------- the forge (phone tab) ----------
+  const CATS = [['weapon', 'WEAPONS'], ['structure', 'STRUCTURES'], ['ride', 'RIDES'], ['pet', 'CREATURES'], ['tool', 'TOOLS'], ['custom', 'YOUR DESIGNS']];
+  let cat = 'weapon', sculpt = null, prev = null;
+  function html() {
+    const all = Object.values(BP); const list = cat === 'custom' ? all.filter(b => b.custom) : all.filter(b => b.kind === cat && !b.custom);
+    let h = `<div class="pc" style="border-left-color:#e8c26a"><h5>⬢ THE FORGE · ${all.length} BLUEPRINTS</h5><p>Pick a slot, then a blueprint. Slots are your wheel: <b>Q</b> or <b>1–8</b>. Weapons form on your arm, structures build where you aim (left click), rides carry you, creatures fight for you.</p>
+<div class="pact">${slots.map((s, i) => `<button data-fslot="${i}" style="${i === sel ? 'outline:2px solid #e8c26a' : ''}">${i + 1} · ${s ? BP[s].name : '—'}</button>`).join('')}</div></div>
+<div class="pact">${CATS.map(([k, n]) => `<button data-fcat="${k}" class="${k === cat ? 'on' : ''}">${n}</button>`).join('')}<button data-fsculpt="1">✎ SCULPT A NEW ONE</button></div>`;
+    if (sculpt) h += sculptHtml();
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px">' + list.map(b => `<div class="pc" style="margin:0;border-left-color:${slots.includes(b.id) ? '#e8c26a' : 'var(--line)'}"><b>${b.name}</b><div class="pdim">${b.kind}${b.beh && b.beh.k ? ' · ' + b.beh.k + ' · ' + b.beh.dmg + ' dmg' : ''} · ${b.cost} mass</div><div class="pact"><button data-fpick="${b.id}">SLOT ${sel + 1}</button>${b.custom ? `<button data-fedit="${b.id}">EDIT</button>` : ''}</div></div>`).join('') + (list.length ? '' : '<p class="pdim">Nothing here yet — sculpt one.</p>') + '</div>';
+    return h;
+  }
+  const BEH_PRESETS = { 'weapon · light blade': { kind: 'weapon', beh: { k: 'melee', dmg: 18, reach: 2.8, n: 2, rate: 0.22 } }, 'weapon · heavy smash': { kind: 'weapon', beh: { k: 'melee', dmg: 34, reach: 3, rate: 0.7, slam: true, radius: 4 } }, 'weapon · long reach': { kind: 'weapon', beh: { k: 'melee', dmg: 24, reach: 4.5, n: 3, cone: 0.7, rate: 0.45 } }, 'weapon · blaster': { kind: 'weapon', beh: { k: 'ranged', dmg: 18, rate: 0.3, cost: 1.5 } }, 'weapon · rapid fire': { kind: 'weapon', beh: { k: 'ranged', dmg: 7, rate: 0.08, spread: 0.04, cost: 0.4 } }, 'structure · solid': { kind: 'structure' }, 'structure · launch pad': { kind: 'structure', beh: { launch: 28 } }, 'structure · turret': { kind: 'structure', beh: { turret: 24 } }, 'ride · board': { kind: 'ride', ride: { speed: 22, hover: 0.45 }, pose: 'board' }, 'ride · flyer': { kind: 'ride', ride: { speed: 28, fly: true }, pose: 'fly' }, 'creature · runner': { kind: 'pet', pet: { speed: 12, dmg: 14, rate: 0.7 } }, 'creature · flyer': { kind: 'pet', pet: { speed: 16, dmg: 10, rate: 0.8, fly: true } } };
+  function sculptHtml() {
+    const P = sculpt.prims; const inp = (i, k, v, st = 0.05) => `<input data-sp="${i}:${k}" type="number" step="${st}" value="${(+v).toFixed(2)}" style="width:58px;background:#0a0e16;border:1px solid #2a3448;color:#fff;font:inherit;padding:2px">`;
+    return `<div class="pc" style="border-left-color:#e8c26a"><h5>✎ SCULPT — ${sculpt.name}</h5><canvas id="fprev" width="300" height="220" style="float:right;margin-left:10px;background:#05080e;border:1px solid #2a3448"></canvas>
+<p class="pdim">Build from primitives. Weapons: the grip is at the top (y ≈ ${H0}), the weapon points down −y. Structures and creatures: y = 0 is the ground, +z is forward.</p>
+<div class="pact"><input id="fname" value="${sculpt.name}" maxlength="22" style="width:150px;background:#0a0e16;border:1px solid #2a3448;color:#fff;font:inherit;padding:3px"><select id="fbeh" style="background:#0a0e16;color:#fff;border:1px solid #2a3448">${Object.keys(BEH_PRESETS).map(k => `<option ${k === sculpt.preset ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+<table style="font-size:11px;margin-top:6px"><tr><td></td><td>type</td><td>a</td><td>b</td><td>c</td><td>x</td><td>y</td><td>z</td><td>rot x</td><td>rot y</td><td></td></tr>${P.map((p, i) => `<tr><td>${i + 1}</td><td><select data-sp="${i}:0" style="background:#0a0e16;color:#fff">${[['b', 'box'], ['c', 'cylinder'], ['s', 'sphere'], ['t', 'ring'], ['k', 'cone']].map(([t, n]) => `<option value="${t}" ${p[0] === t ? 'selected' : ''}>${n}</option>`).join('')}</select></td><td>${inp(i, 1, p[1])}</td><td>${inp(i, 2, p[2])}</td><td>${inp(i, 3, p[3])}</td><td>${inp(i, 4, p[4], 0.1)}</td><td>${inp(i, 5, p[5], 0.1)}</td><td>${inp(i, 6, p[6], 0.1)}</td><td>${inp(i, 7, p[7] || 0, 0.1)}</td><td>${inp(i, 8, p[8] || 0, 0.1)}</td><td><button data-sdel="${i}">✕</button></td></tr>`).join('')}</table>
+<div class="pact"><button data-sadd="1">+ PRIMITIVE</button><button data-ssave="1">SAVE BLUEPRINT</button><button data-scancel="1">CLOSE</button>${sculpt.id ? '<button data-sdelbp="1">DELETE</button>' : ''}</div></div>`;
+  }
+  function preview() {
+    const cv = $('fprev'); if (!cv || !sculpt) return;
+    if (!prev) { prev = { r: new THREE.WebGLRenderer({ antialias: true, alpha: true }), s: new THREE.Scene(), c: new THREE.PerspectiveCamera(40, 300 / 220, 0.05, 100) }; prev.s.add(new THREE.HemisphereLight(0xffffff, 0x222233, 1.6)); const dl = new THREE.DirectionalLight(0xffe0b0, 2.5); dl.position.set(3, 5, 4); prev.s.add(dl); prev.r.setSize(300, 220); }
+    if (prev.m) { prev.s.remove(prev.m); prev.m.geometry.dispose(); }
+    try { const g = NanoShapes.fromPrims(sculpt.prims.length ? sculpt.prims : [['b', 0.1, 0.1, 0.1, 0, 0, 0]]); g.computeBoundingSphere(); prev.m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x1a1a1e, metalness: 0.8, roughness: 0.3, emissive: 0x3a2a08 })); prev.m.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), new THREE.LineBasicMaterial({ color: 0xe8c26a }))); prev.s.add(prev.m); const R = g.boundingSphere.radius, C = g.boundingSphere.center; prev.c.position.set(C.x + R * 2.2, C.y + R * 1.2, C.z + R * 2.2); prev.c.lookAt(C); } catch (e) { }
+    const tick = () => { if (!$('fprev') || !sculpt) return; if (prev.m) prev.m.rotation.y += 0.02; prev.r.render(prev.s, prev.c); const ctx = $('fprev').getContext('2d'); ctx.clearRect(0, 0, 300, 220); ctx.drawImage(prev.r.domElement, 0, 0); requestAnimationFrame(tick); }; if (!prev.loop) { prev.loop = true; requestAnimationFrame(() => { prev.loop = false; tick(); }); }
+  }
+  function bind(el, rerender) {
+    el.querySelectorAll('[data-fslot]').forEach(b => b.onclick = () => { sel = +b.dataset.fslot; rerender(); });
+    el.querySelectorAll('[data-fcat]').forEach(b => b.onclick = () => { cat = b.dataset.fcat; rerender(); });
+    el.querySelectorAll('[data-fpick]').forEach(b => b.onclick = () => { slots[sel] = b.dataset.fpick; Store.set('nanoSlots', slots); Toast.show('SLOT ' + (sel + 1) + ' — ' + BP[b.dataset.fpick].name); sel = (sel + 1) % 8; rerender(); });
+    el.querySelectorAll('[data-fsculpt]').forEach(b => b.onclick = () => { sculpt = { name: 'MY BLUEPRINT', preset: 'weapon · light blade', prims: [['b', 0.06, 1.2, 0.14, 0, -0.95, 0], ['b', 0.3, 0.06, 0.1, 0, H0 - 0.05, 0]] }; rerender(); });
+    el.querySelectorAll('[data-fedit]').forEach(b => b.onclick = () => { const B = BP[b.dataset.fedit]; sculpt = { id: B.id, name: B.name, preset: B.preset, prims: JSON.parse(JSON.stringify(B.prims)) }; rerender(); });
+    if (sculpt) {
+      el.querySelectorAll('[data-sp]').forEach(i => i.onchange = () => { const [r, k] = i.dataset.sp.split(':').map((v, j) => j ? +v : +v); const p = sculpt.prims[r]; while (p.length < 10) p.push(0); p[k] = k === 0 ? i.value : +i.value; preview(); });
+      const nm = $('fname'); if (nm) nm.oninput = () => { sculpt.name = nm.value.toUpperCase().slice(0, 22); }; const bh = $('fbeh'); if (bh) bh.onchange = () => { sculpt.preset = bh.value; };
+      el.querySelectorAll('[data-sadd]').forEach(b => b.onclick = () => { sculpt.prims.push(['b', 0.2, 0.2, 0.2, 0, -0.6, 0, 0, 0, 0]); rerender(); });
+      el.querySelectorAll('[data-sdel]').forEach(b => b.onclick = () => { sculpt.prims.splice(+b.dataset.sdel, 1); rerender(); });
+      el.querySelectorAll('[data-scancel]').forEach(b => b.onclick = () => { sculpt = null; rerender(); });
+      el.querySelectorAll('[data-sdelbp]').forEach(b => b.onclick = () => { const list = custom().filter(c => c.id !== sculpt.id); Store.set('nanoCustom', list); delete BP[sculpt.id]; slots = slots.map(s => s === sculpt.id ? null : s); Store.set('nanoSlots', slots); sculpt = null; rerender(); });
+      el.querySelectorAll('[data-ssave]').forEach(b => b.onclick = () => {
+        if (!sculpt.prims.length) return; const pr = BEH_PRESETS[sculpt.preset] || BEH_PRESETS['weapon · light blade']; const id = sculpt.id || 'c_' + Date.now().toString(36);
+        const B = Object.assign({ id, name: sculpt.name || 'MY BLUEPRINT', custom: true, preset: sculpt.preset, cost: Math.round(6 + sculpt.prims.length * 1.5), prims: sculpt.prims }, JSON.parse(JSON.stringify(pr)));
+        try { NanoShapes.fromPrims(B.prims); } catch (e) { Toast.show('THAT SHAPE WON\'T HOLD — CHECK THE NUMBERS', 'heat'); return; }
+        const list = custom().filter(c => c.id !== id); list.push(B); Store.set('nanoCustom', list); register(B); slots[sel] = id; Store.set('nanoSlots', slots); sculpt.id = id; cat = 'custom'; Toast.show('BLUEPRINT SAVED — ' + B.name + ' IN SLOT ' + (sel + 1), 'big'); rerender();
+      });
+      setTimeout(preview, 0);
+    }
+  }
+  return { bp: id => BP[id], all: () => Object.values(BP), slots: () => slots, ghost, place, summon, tool, update, reset, inDome, html, bind, get pet() { return pet; }, structs };
+})();
+// a dome turns bullets aside
+{ const oh = Sovereign.onHurt; Sovereign.onHurt = (d, from) => { if (G.hero === 'nano' && Forge.inDome() && from && from.distanceTo(Player.pos) > 4) { FX.sparks(Player.pos.clone().add(V3(0, 2, 0)), 6, 0.5, new THREE.Color(2, 1.5, 0.6)); return true; } return oh(d, from); }; }
+
+// §COOP --------------------------------------------------------------------------------------
+// Split-screen on one computer. Player one keeps mouse + keyboard (WASD); player two takes the
+// arrow keys and the keys on the right — or a gamepad — and plays either a PARTNER hero (any of the
+// five, with jumps, flips, a punch combo and a signature power) or sits IN THE CHAIR: a drone's-eye
+// view of the city with a cursor, and every one of Dex's tools aimed wherever player two points.
+// F9 cycles OFF → PARTNER → IN THE CHAIR. The left half renders with full post-processing.
+const Coop = (() => {
+  const S = { on: false, role: 'partner', hero: 'speed', p: null, cam: null, cur: V3(), camYaw: 0, zoom: 1, ring: null, hud: null, padIdx: -1, prev: {} };
+  const K = Input.keys;
+  // ---------- player two's controls ----------
+  const pad = () => { const ps = navigator.getGamepads ? [...navigator.getGamepads()].filter(g => g && g.connected) : []; if (!ps.length) return null; return ps.length > 1 ? ps[1] : ps[0]; };
+  const dz = v => Math.abs(v) < 0.18 ? 0 : v;
+  function ctl() {
+    const g = pad(); const b = i => !!(g && g.buttons[i] && g.buttons[i].pressed);
+    const c = {
+      mx: (K.ArrowRight ? 1 : 0) - (K.ArrowLeft ? 1 : 0) + (g ? dz(g.axes[0]) : 0), my: (K.ArrowUp ? 1 : 0) - (K.ArrowDown ? 1 : 0) - (g ? dz(g.axes[1]) : 0),
+      look: (K.Period ? 1 : 0) - (K.Comma ? 1 : 0) + (g ? dz(g.axes[2]) : 0), zoom: (K.NumpadAdd || K.Equal ? 1 : 0) - (K.NumpadSubtract || K.Minus ? 1 : 0) + (g ? (g.buttons[7] ? g.buttons[7].value : 0) - (g.buttons[6] ? g.buttons[6].value : 0) : 0),
+      jump: K.Numpad0 || K.ControlRight || b(0), atk: K.Enter || K.NumpadEnter || b(2), power: K.Slash || K.NumpadDecimal || b(3), sprint: K.ShiftRight || b(10),
+      a1: K.Numpad1 || K.Insert || b(0), a2: K.Numpad2 || K.Home || b(2), a3: K.Numpad3 || K.PageUp || b(1), a4: K.Numpad4 || K.Delete || b(3), a5: K.Numpad5 || K.End || b(4), a6: K.Numpad6 || K.PageDown || b(5),
+    };
+    const out = Object.assign({}, c); for (const k of ['jump', 'atk', 'power', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6']) out[k + 'T'] = c[k] && !S.prev[k]; for (const k in c) S.prev[k] = c[k];
+    return out;
+  }
+  // ---------- partner hero ----------
+  const POWERS = { kinetic: 'FORCE PUSH', speed: 'BLUR DASH', shift: 'MIND LANCE', thread: 'THREAD SNARE', nano: 'NANO STORM' };
+  function spawnPartner() {
+    const H = HEROES[S.hero]; const P = Player.pos; const at = V3(P.x + 2, P.y + 0.2, P.z + 2);
+    const rig = makeCharacter('player', { torso: '#2a2f3a', legs: '#1a1d24', hood: H.color, arms: '#2a2f3a', hands: '#1a1d22', boots: '#0d0e10', eyes: H.color, belt: '#111', skin: '#b98262' }); rig.mesh.castShadow = true; scene.add(rig.mesh);
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(at.x, at.y + 0.9, at.z)); const col = world.createCollider(RAPIER.ColliderDesc.capsule(0.52, 0.35).setCollisionGroups(GROUPS.player).setFriction(0), body);
+    const c = world.createCharacterController(0.04); c.setUp({ x: 0, y: 1, z: 0 }); c.setMaxSlopeClimbAngle(50 * Math.PI / 180); c.enableAutostep(0.55, 0.25, true); c.enableSnapToGround(0.4);
+    const p = { rig, body, col, ctl: c, pos: at.clone(), vel: V3(), yaw: Player.yaw, heading: 0, grounded: false, hp: 150, maxHp: 150, alive: true, ko: false, isDecoy: true, downT: 0, atkT: 0, powT: 0, combo: 0, act: null, flip: null, model: null, hero: S.hero };
+    HeroModels.instance(H.model).then(m => { if (!m || S.p !== p) return; if (H.onModel) H.onModel(m, true); scene.add(m.root); p.model = m; rig.model = m; rig.mesh.material = INVISIBLE_MAT; });
+    S.p = p; S.camYaw = Player.yaw;
+  }
+  function freePartner() { const p = S.p; if (!p) return; scene.remove(p.rig.mesh); if (p.model) scene.remove(p.model.root); world.removeRigidBody(p.body); S.p = null; }
+  function hostiles(c, r) { return Units.list.filter(u => u.alive && !u.ko && !u.thrall && (u.gang || u.villain) && u.pos.distanceTo(c) < r); }
+  function updatePartner(dt, c) {
+    const p = S.p; if (!p) return;
+    if (p.hp <= 0 && !p.ko) { p.ko = true; p.downT = 6; Toast.show('PLAYER TWO IS DOWN — BACK IN 6 s', 'heat'); }
+    if (p.ko) { p.downT -= dt; poseRig(p.rig, { t: G.time, speed: 0, down: true }, dt); HeroModels.sync(p.rig); if (p.downT <= 0) { p.ko = false; p.hp = p.maxHp; const t = V3(Player.pos.x + 2, Player.pos.y + 1, Player.pos.z); p.body.setTranslation({ x: t.x, y: t.y + 0.9, z: t.z }, true); p.pos.copy(t); } return; }
+    S.camYaw += c.look * dt * 2.4;
+    const fwd = V3(-Math.sin(S.camYaw), 0, -Math.cos(S.camYaw)), right = V3(Math.cos(S.camYaw), 0, -Math.sin(S.camYaw)); const wish = V3().addScaledVector(fwd, c.my).addScaledVector(right, c.mx); if (wish.lengthSq() > 1) wish.normalize();
+    const fast = p.hero === 'speed' ? 1.8 : p.hero === 'nano' ? 1.2 : 1; const sp = (c.sprint ? 10 : 6.5) * fast; p.vel.x = damp(p.vel.x, wish.x * sp, 9, dt); p.vel.z = damp(p.vel.z, wish.z * sp, 9, dt);
+    // a gentle camera that swings round behind you as you run
+    if (wish.lengthSq() > 0.1 && Math.abs(c.look) < 0.1) S.camYaw += angDiff(S.camYaw, Math.atan2(-wish.x, -wish.z)) * Math.min(1, dt * 0.8);
+    if (p.grounded) { p.vel.y = Math.max(p.vel.y, -1); if (c.jumpT) { p.vel.y = p.hero === 'kinetic' ? 9.5 : 8; p.grounded = false;
+      // the same tricks as player one: back = backflip, side = side flip, sprint forward = front flip
+      const lx = wish.dot(right), ly = wish.dot(fwd); const T = Acro.TRICKS; const id = ly < -0.5 && Math.abs(lx) > 0.5 ? 'cork' : ly < -0.5 ? 'backflip' : Math.abs(lx) > 0.6 ? (lx > 0 ? 'sideR' : 'sideL') : ly > 0.5 && c.sprint ? 'frontflip' : null;
+      if (id) { p.flip = { T: T[id], t: 0 }; p.vel.y += T[id].vy || 0; if (T[id].back) p.vel.addScaledVector(fwd, -T[id].back); Toast.show('P2 · <b>' + T[id].name + '</b>'); } } }
+    p.vel.y += -22 * dt;
+    p.ctl.computeColliderMovement(p.col, { x: p.vel.x * dt, y: p.vel.y * dt, z: p.vel.z * dt }, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS.player);
+    const mv = p.ctl.computedMovement(); const t = p.body.translation(); const nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z; p.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz }); p.pos.set(nx, ny - 0.9, nz);
+    p.grounded = p.ctl.computedGrounded(); if (p.grounded && p.vel.y < 0) p.vel.y = 0; if (p.pos.y < -30 || p.pos.distanceTo(Player.pos) > 300) { const q = V3(Player.pos.x + 2, Player.pos.y + 1, Player.pos.z); p.body.setTranslation({ x: q.x, y: q.y + 0.9, z: q.z }, true); p.pos.copy(q); }
+    const hv = Math.hypot(p.vel.x, p.vel.z); if (hv > 0.3) p.heading += angDiff(p.heading, Math.atan2(p.vel.x, p.vel.z)) * Math.min(1, dt * 12);
+    // punches: a three-hit combo, the third launches
+    p.atkT -= dt; p.powT -= dt;
+    if (c.atkT && p.atkT <= 0) { p.atkT = 0.3; p.combo = (p.combo + 1) % 3; p.act = { k: 'swing', t: 0 }; const f = V3(Math.sin(p.heading), 0, Math.cos(p.heading));
+      const tg = hostiles(p.pos, 3).filter(u => V3().subVectors(u.pos, p.pos).setY(0).normalize().dot(f) > 0.2).slice(0, 2);
+      for (const u of tg) { Units.hit(u, p.combo === 2 ? 26 : 14, f.clone().multiplyScalar(p.combo === 2 ? 10 : 3).add(V3(0, p.combo === 2 ? 7 : 2, 0)), 'melee', p.combo === 2 ? 2 : 1); if (u.gang && !u.angry) GangAI.anger(u); }
+      Audio.punch(tg.length ? 1 : 0.4); }
+    if (c.powerT && p.powT <= 0) power(p);
+    // pose, flips, model
+    const rig = p.rig; rig.mesh.position.copy(p.pos); rig.mesh.rotation.set(0, p.heading, 0); if (p.act) p.act.t += dt; if (p.act && p.act.t > 0.4) p.act = null;
+    poseRig(rig, { t: G.time, speed: p.grounded ? hv : 0, air: !p.grounded, action: p.act ? p.act.k : null, at: p.act ? p.act.t : 0 }, dt);
+    if (p.flip) { p.flip.t += dt; Acro.apply(rig, p.flip); if (p.flip.t >= p.flip.T.dur || (p.grounded && p.flip.t > 0.2)) p.flip = null; }
+    HeroModels.sync(rig);
+  }
+  function power(p) {
+    const f = V3(Math.sin(p.heading), 0, Math.cos(p.heading)); const col = new THREE.Color(HEROES[p.hero].color); p.powT = 3; p.act = { k: 'push', t: 0 };
+    if (p.hero === 'speed') { const to = p.pos.clone().addScaledVector(f, 12); for (const u of hostiles(p.pos, 13)) if (V3().subVectors(u.pos, p.pos).setY(0).normalize().dot(f) > 0.6) Units.hit(u, 22, f.clone().multiplyScalar(8).add(V3(0, 4, 0)), 'melee', 2); p.vel.addScaledVector(f, 30); FX.sparks(p.pos.clone().add(V3(0, 1, 0)), 20, 1, col); }
+    else if (p.hero === 'nano') { FX.ring(p.pos.clone().add(V3(0, 1, 0)), 5, col, 60); for (const u of hostiles(p.pos, 5)) Units.hit(u, 24, V3().subVectors(u.pos, p.pos).setY(0).normalize().multiplyScalar(9).add(V3(0, 5, 0)), 'melee', 2); }
+    else if (p.hero === 'thread') { const u = hostiles(p.pos, 22).sort((a, b) => a.pos.distanceTo(p.pos) - b.pos.distanceTo(p.pos))[0]; if (u) { tracer(p.pos.clone().add(V3(0, 1.4, 0)), u.pos.clone().add(V3(0, 1, 0)), '#bff8ff'); u.stunT = Math.max(u.stunT, 4); u.disarmed = true; Units.hit(u, 10, null, 'snare', 4); } }
+    else if (p.hero === 'shift') { const u = hostiles(p.pos, 30).sort((a, b) => a.pos.distanceTo(p.pos) - b.pos.distanceTo(p.pos))[0]; if (u) { tracer(p.pos.clone().add(V3(0, 1.6, 0)), u.pos.clone().add(V3(0, 1.6, 0)), '#c8a8ff'); Units.hit(u, 30, V3(0, 1.5, 0), 'psi', 1.4); } }
+    else { FX.ring(p.pos.clone().addScaledVector(f, 2), 4, col, 50); for (const u of hostiles(p.pos, 9)) if (V3().subVectors(u.pos, p.pos).setY(0).normalize().dot(f) > 0.3) Units.hit(u, 16, f.clone().multiplyScalar(14).add(V3(0, 5, 0)), 'push', 2); }
+    Audio.whoosh && Audio.whoosh(); Toast.show('P2 · ' + POWERS[p.hero]);
+  }
+  // gangs pick on whoever is closer
+  function target(u) { const p = S.p; if (!S.on || S.role !== 'partner' || !p || p.ko) return null; const dp = u.pos.distanceTo(p.pos), d1 = u.pos.distanceTo(Player.pos); return dp < d1 && dp < 40 ? p : null; }
+  // ---------- in the chair ----------
+  function updateChair(dt, c) {
+    S.camYaw += c.look * dt * 2; S.zoom = clamp(S.zoom - c.zoom * dt * 0.8, 0.4, 2.2);
+    const fwd = V3(-Math.sin(S.camYaw), 0, -Math.cos(S.camYaw)), right = V3(Math.cos(S.camYaw), 0, -Math.sin(S.camYaw));
+    S.cur.addScaledVector(fwd, c.my * dt * 40 * S.zoom).addScaledVector(right, c.mx * dt * 40 * S.zoom); if (S.cur.distanceTo(Player.pos) > 220) S.cur.sub(Player.pos).setLength(220).add(Player.pos);
+    const b = City.buildingAt(S.cur.x, S.cur.z); S.cur.y = b ? b.h : 0;
+    if (!S.ring) { S.ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.0, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.2, 2.6), transparent: true, opacity: 0.8, side: THREE.DoubleSide, toneMapped: false, depthTest: false })); S.ring.rotation.x = -Math.PI / 2; S.ring.renderOrder = 999; scene.add(S.ring); }
+    S.ring.visible = true; S.ring.position.set(S.cur.x, S.cur.y + 0.15, S.cur.z); S.ring.scale.setScalar(1 + Math.sin(G.time * 4) * 0.08);
+    const at = S.cur.clone();
+    if (c.a1T) Chair.scan(at); if (c.a2T) Chair.drone(at); if (c.a3T) Chair.jam(at); if (c.a4T) Chair.route(at); if (c.a5T) Chair.med(); if (c.a6T) { if (Heists.cell) Chair.cams(); else Chair.intel(); }
+  }
+  // ---------- cameras + rendering ----------
+  function camUpdate(dt) {
+    const cam = S.cam; const W = innerWidth, H = innerHeight; cam.aspect = (W / 2) / H; cam.updateProjectionMatrix();
+    if (S.role === 'partner' && S.p) { const p = S.p.pos; const want = V3(p.x + Math.sin(S.camYaw) * 6.5, p.y + 3.2, p.z + Math.cos(S.camYaw) * 6.5); const hit = castRay(p.x, p.y + 1.6, p.z, want.x - p.x, want.y - p.y - 1.6, want.z - p.z, 6.5, GROUPS.losStatic, S.p.body); if (hit && hit.toi < 6.5) want.copy(V3(p.x, p.y + 1.6, p.z).lerp(want, Math.max(0.1, (hit.toi - 0.4) / 6.5))); cam.position.lerp(want, 1 - Math.exp(-10 * dt)); cam.lookAt(p.x, p.y + 1.5, p.z); }
+    else { const c = S.cur; const dist = 26 * S.zoom; const want = V3(c.x + Math.sin(S.camYaw) * dist, c.y + 30 * S.zoom, c.z + Math.cos(S.camYaw) * dist); cam.position.lerp(want, 1 - Math.exp(-6 * dt)); cam.lookAt(c.x, c.y, c.z); }
+  }
+  function render(rdt) {
+    const W = innerWidth, H = innerHeight; const a = camera.aspect;
+    camera.aspect = (W / 2) / H; camera.updateProjectionMatrix();
+    renderer.setScissorTest(true); renderer.setViewport(0, 0, W / 2, H); renderer.setScissor(0, 0, W / 2, H);
+    if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
+    renderer.setRenderTarget(null); renderer.setViewport(W / 2, 0, W / 2, H); renderer.setScissor(W / 2, 0, W / 2, H); renderer.render(scene, S.cam);
+    renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); camera.aspect = a; camera.updateProjectionMatrix();
+  }
+  // ---------- on / off ----------
+  function set(mode) {
+    if (mode === 'off') { S.on = false; freePartner(); if (S.ring) S.ring.visible = false; document.body.classList.remove('coop'); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); Input.arrowsP1 = true; Toast.show('SPLIT-SCREEN OFF', 'big'); return; }
+    if (!S.cam) S.cam = new THREE.PerspectiveCamera(62, 1, 0.1, 1800);
+    S.on = true; S.role = mode; Input.arrowsP1 = false; document.body.classList.add('coop'); freePartner();
+    if (mode === 'partner') { S.hero = S.hero && HEROES[S.hero] ? S.hero : 'speed'; spawnPartner(); Toast.show('SPLIT-SCREEN · PLAYER TWO: ' + HEROES[S.hero].name + ' — ARROWS move · R-CTRL / NUM 0 jump · ENTER punch · / power · R-SHIFT sprint · , . look', 'big'); }
+    else { S.cur.copy(Player.pos); S.camYaw = Player.yaw; Toast.show('SPLIT-SCREEN · PLAYER TWO IS IN THE CHAIR — ARROWS move the cursor · NUM 1–6 (or INS HOME PGUP DEL END PGDN) Dex\'s tools · , . turn · + − zoom', 'big'); Chair.say('hello', null, 3); }
+    S.cam.position.copy(Player.pos).add(V3(0, 8, 8));
+  }
+  function cycle() { set(!S.on ? 'partner' : S.role === 'partner' ? 'chair' : 'off'); }
+  function update(dt, rdt) {
+    if (Input.pressedKey('F9')) cycle();
+    if (!S.on) { if (S.hud) S.hud.style.display = 'none'; return; }
+    const c = G.mode === 'play' ? ctl() : {};
+    if (S.role === 'partner') { if (S.ring) S.ring.visible = false; if (G.mode === 'play' || G.mode === 'detained') updatePartner(rdt, c); }
+    else if (G.mode === 'play') updateChair(rdt, c);
+    camUpdate(rdt); hud();
+  }
+  function hud() {
+    if (!S.hud) return; S.hud.style.display = 'block'; const cd = k => (Chair.S.cd[k] || 0) > 0 ? Math.ceil(Chair.S.cd[k]) + ' s' : 'READY';
+    if (S.role === 'partner' && S.p) { const p = S.p; S.hud.innerHTML = `<div class="p2t">PLAYER 2 · <b style="color:${HEROES[p.hero].color}">${HEROES[p.hero].name}</b></div><div class="p2bar"><i style="width:${clamp(p.hp / p.maxHp, 0, 1) * 100}%"></i></div><div class="p2k">${p.ko ? 'DOWN — BACK IN ' + Math.ceil(p.downT) + ' s' : 'ARROWS move · R-CTRL jump (+ direction = flips) · ENTER punch · / ' + POWERS[p.hero] + (p.powT > 0 ? ' (' + Math.ceil(p.powT) + ')' : '') + ' · , . look'}</div>`; }
+    else S.hud.innerHTML = `<div class="p2t">PLAYER 2 · <b style="color:#46f0ff">🎧 IN THE CHAIR</b> · ${districtAt(S.cur.x, S.cur.z).name}</div><div class="p2k">1 SCAN ${cd('scan')} · 2 DRONE ${cd('drone')} · 3 JAM ${cd('jam')} · 4 MARK FOR P1 · 5 MED-KIT ${cd('med')} · 6 ${Heists.cell ? 'LOOP CAMERAS ' + cd('cams') : 'INTEL ' + cd('intel')}</div><div class="p2k">P1 HEALTH ${Math.round(Player.hp)} / ${Player.maxHp} · ${Math.round(S.cur.distanceTo(Player.pos))} m from P1</div>`;
+  }
+  function dom() {
+    const css = document.createElement('style'); css.textContent = `body.coop #hud{right:50%!important}body.coop #hud #minimap{transform:scale(.8);transform-origin:top right}body.coop #netbadge{left:25%}
+body.coop:after{content:'';position:fixed;left:50%;top:0;bottom:0;width:3px;margin-left:-1px;background:#05080e;z-index:30;pointer-events:none}
+#p2hud{position:fixed;left:calc(50% + 18px);bottom:16px;z-index:16;display:none;font:600 11px var(--mono,monospace);letter-spacing:.1em;color:#dfe8f4;text-shadow:0 0 6px #000;max-width:46vw;pointer-events:none}
+#p2hud .p2t{font-size:12px;margin-bottom:5px}#p2hud .p2bar{width:240px;height:8px;background:#1a2230;margin-bottom:6px}#p2hud .p2bar i{display:block;height:100%;background:linear-gradient(90deg,#ff5f7a,#ffb0c0)}#p2hud .p2k{opacity:.85;margin-top:3px}`;
+    document.head.appendChild(css); S.hud = document.createElement('div'); S.hud.id = 'p2hud'; document.body.appendChild(S.hud);
+  }
+  function html() {
+    return `<div class="pc" style="border-left-color:#46f0ff"><h5>🎮 SPLIT-SCREEN CO-OP (THIS COMPUTER)</h5><p>Player two takes the right half of the screen with the arrow keys and the right side of the keyboard, or a gamepad. <b>F9</b> cycles modes in game.</p>
+<div class="pact"><button data-coop="partner">PLAY TOGETHER — PARTNER HERO</button><button data-coop="chair">PLAYER TWO IN THE CHAIR</button><button data-coop="off">OFF</button></div>
+<div class="pact">${Object.keys(HEROES).map(h => `<button data-coophero="${h}" style="${S.hero === h ? 'outline:2px solid ' + HEROES[h].color : ''}">P2: ${HEROES[h].name}</button>`).join('')}</div>
+<p class="pdim">${S.on ? 'ON · ' + (S.role === 'partner' ? 'partner: ' + HEROES[S.hero].name : 'player two is in the chair') : 'OFF'}</p></div>`;
+  }
+  function bind(el, rerender) {
+    el.querySelectorAll('[data-coop]').forEach(b => b.onclick = () => { set(b.dataset.coop); rerender(); });
+    el.querySelectorAll('[data-coophero]').forEach(b => b.onclick = () => { S.hero = b.dataset.coophero; if (S.on && S.role === 'partner') set('partner'); rerender(); });
+  }
+  function reset() { if (S.on) set('off'); }
+  return { S, update, render, set, cycle, target, dom, html, bind, reset, get on() { return S.on; }, get chairIsP2() { return S.on && S.role === 'chair'; }, get partner() { return S.p; } };
+})();
+
+// §FREERUN ------------------------------------------------------------------------------------
+// Movement freedom for every hero who isn't already swinging: fire a TETHER at any wall (middle
+// mouse, or the ` key) and zip to it; keep holding through the pull to SLINGSHOT off the end;
+// let go mid-zip to fling your momentum; hold back while tethered on the ground to stretch it and
+// launch. Run along walls at a sprint, cling to them, kick off with a flip, and climb up ledges.
+// While any of this is happening Freerun owns the body; the hero's own controller takes over again
+// on landing.
+const Freerun = (() => {
+  const S = { mode: null, a: null, t: 0, charge: 0, wall: null, line: null, cd: 0, fly: 0 };
+  const P = () => Player;
+  const able = () => G.mode === 'play' && G.hero !== 'thread' && !Player.detained && !Apt.inside && !Interiors.inside && !(typeof Shift !== 'undefined' && Shift.inCell) && !(G.hero === 'shift' && (FORMS[Shift.form].kind === 'object' || FORMS[Shift.form].kind === 'animal' || Cortex.busy)) && !(G.hero === 'nano' && (Sovereign.S.mech || Sovereign.S.ride));
+  const held = () => Input.mouse.b[1] || Input.keys.Backquote || (Input.pad.b && Input.pad.b[11]);
+  const tapped = () => Input.mouse.pb[1] || Input.pressedKey('Backquote') || (Input.pad.pb && Input.pad.pb[11]);
+  const color = () => new THREE.Color(HEROES[G.hero].color).multiplyScalar(2.2);
+  function lineMesh() { if (!S.line) { S.line = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, transparent: true, opacity: 0.9 })); S.line.renderOrder = 5; scene.add(S.line); } S.line.material.color.copy(color()); S.line.visible = true; return S.line; }
+  const hand = () => { const b = Player.rig && Player.rig.bones.laR; return b ? V3(0, -0.32, 0).applyMatrix4(b.matrixWorld) : P().pos.clone().add(V3(0, 1.4, 0)); };
+  function drawLine() { const L = lineMesh(); const h = hand(); const d = V3().subVectors(S.a, h); const len = d.length(); L.position.copy(h).addScaledVector(d, 0.5); L.scale.set(1, len, 1); L.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize()); }
+  function fire() {
+    if (S.cd > 0) return; const dir = V3(); camera.getWorldDirection(dir); const o = camera.position;
+    const hit = castRay(o.x, o.y, o.z, dir.x, dir.y, dir.z, 80, GROUPS.losStatic, P().body); if (!hit) { Toast.show('NOTHING TO TETHER TO'); return; }
+    S.a = V3(o.x + dir.x * hit.toi, o.y + dir.y * hit.toi, o.z + dir.z * hit.toi); if (S.a.distanceTo(P().pos) < 3) { S.a = null; return; }
+    S.mode = P().grounded && Input.move()[1] < -0.4 ? 'stretch' : 'zip'; S.t = 0; S.charge = 0; S.cd = 0.35; drawLine(); Audio.whoosh && Audio.whoosh(); Tut.done && Tut.done('tether');
+  }
+  function launch(v, trick) { P().vel.copy(v); S.mode = 'fly'; S.fly = 1.6; if (S.line) S.line.visible = false; if (trick && typeof Acro !== 'undefined') Acro.start(trick); }
+  // the body, moved directly while Freerun owns it
+  function move(dt, g) {
+    const p = P(); if (g) p.vel.y -= g * dt;
+    p.ctl.computeColliderMovement(p.collider, { x: p.vel.x * dt, y: p.vel.y * dt, z: p.vel.z * dt }, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS.player);
+    const mv = p.ctl.computedMovement(); const t = p.body.translation(); const nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
+    p.body.setNextKinematicTranslation({ x: nx, y: ny, z: nz }); p.pos.set(nx, ny - 0.9, nz); p.grounded = p.ctl.computedGrounded(); p.speed2 = p.vel.x * p.vel.x + p.vel.z * p.vel.z;
+    return Math.hypot(mv.x, mv.z) < Math.hypot(p.vel.x * dt, p.vel.z * dt) * 0.3; // blocked
+  }
+  function look(dt) { const p = P(); const sens = CONFIG.camera.sens * settings.sens; p.yaw -= Input.mouse.dx * sens; p.pitch = clamp(p.pitch - Input.mouse.dy * sens * (settings.invertY ? -1 : 1), -1.35, 1.1); p.yaw -= Input.pad.rx * CONFIG.camera.padSens * dt * settings.sens; }
+  function pose(dt, kind) {
+    const p = P(); const rig = p.rig; if (!rig) return; const hv = Math.hypot(p.vel.x, p.vel.z); const head = hv > 0.5 ? Math.atan2(p.vel.x, p.vel.z) : rig.mesh.rotation.y;
+    rig.mesh.position.copy(p.pos); rig.mesh.rotation.set(0, head, 0); poseRig(rig, { t: G.time, speed: 0, air: true }, dt); const B = rig.bones;
+    if (kind === 'zip') { const toA = V3().subVectors(S.a, p.pos); rig.mesh.rotation.set(-0.5, Math.atan2(toA.x, toA.z), 0, 'YXZ'); B.uaR.rotation.set(-2.9, 0, -0.1); B.laR.rotation.x = 0; B.uaL.rotation.set(0.4, 0, 0.5); B.thL.rotation.x = 0.25; B.thR.rotation.x = 0.55; B.shL.rotation.x = 0.4; B.shR.rotation.x = 0.9; }
+    else if (kind === 'stretch') { B.thL.rotation.x = -0.9; B.shL.rotation.x = 1.2; B.thR.rotation.x = 0.5; B.shR.rotation.x = 0.4; B.spine.rotation.x = -0.4 - S.charge * 0.3; B.uaR.rotation.set(-2.6, 0, 0); B.hips.position.y = 0.75; rig.mesh.rotation.y = Math.atan2(S.a.x - p.pos.x, S.a.z - p.pos.z); }
+    else if (kind === 'wallrun') { const W = S.wall; rig.mesh.rotation.set(0, Math.atan2(p.vel.x, p.vel.z), -W.side * 0.55, 'YXZ'); poseRig(rig, { t: G.time * 1.4, speed: 9 }, dt); B.uaL.rotation.z += W.side * 0.6; }
+    else if (kind === 'cling') { rig.mesh.rotation.y = Math.atan2(-S.wall.n.x, -S.wall.n.z); B.uaL.rotation.set(-2.6, 0, 0.4); B.uaR.rotation.set(-2.4, 0, -0.4); B.thL.rotation.x = -0.9; B.shL.rotation.x = 1.3; B.thR.rotation.x = -0.3; B.shR.rotation.x = 0.6; }
+    else if (kind === 'fly') { const k = clamp(p.vel.y / 15, -1, 1); B.uaL.rotation.set(-0.6 - k, 0, 0.9); B.uaR.rotation.set(-0.6 - k, 0, -0.9); B.thL.rotation.x = -0.4; B.shL.rotation.x = 0.9; B.thR.rotation.x = 0.3; B.shR.rotation.x = 0.4; }
+  }
+  // does the hero's own controller get to run this frame?
+  function override(dt) {
+    S.cd -= dt; const p = P();
+    if (!able()) { cancel(); return false; }
+    if (tapped() && !S.mode?.match(/zip|stretch/)) fire();
+    if (!S.mode) { if (!p.grounded && Input.down('sprint')) detectWall(); else if (!p.grounded && Input.move()[1] > 0.5 && p.vel.y < 2) detectCling(); if (!S.mode) return false; }
+    look(dt);
+    if (S.mode === 'zip') {
+      S.t += dt; const toA = V3().subVectors(S.a, p.pos.clone().add(V3(0, 1, 0))); const d = toA.length(); const dir = toA.clone().normalize();
+      const sp = Math.min(36, 14 + S.t * 40); p.vel.copy(dir.multiplyScalar(sp)).add(V3(0, 1.5, 0)); move(dt, 0); drawLine(); pose(dt, 'zip');
+      if (!held()) { launch(p.vel.clone().add(V3(0, 5, 0)), sp > 20 ? 'frontflip' : null); Toast.show('<b>TETHER LAUNCH</b>'); return true; }
+      if (d < 3.2 || S.t > 2.5) { const f = V3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw)); launch(f.multiplyScalar(22).add(V3(0, 16, 0)), 'frontflip'); Toast.show('<b>SLINGSHOT</b>'); Shake.add(0.12); if (typeof Chair !== 'undefined') Chair.event('trick', { name: 'SLINGSHOT', combo: (Acro.S.combo || 1) }); }
+      return true;
+    }
+    if (S.mode === 'stretch') {
+      S.charge = Math.min(1, S.charge + dt); p.vel.set(0, 0, 0); move(dt, 0); drawLine(); pose(dt, 'stretch'); Hud.hint('SLINGSHOT · ' + '▮'.repeat(Math.round(S.charge * 10)) + '▯'.repeat(10 - Math.round(S.charge * 10)) + ' · LET GO', 'ok');
+      if (!held()) { const dir = V3().subVectors(S.a, p.pos).normalize(); launch(dir.multiplyScalar(16 + 30 * S.charge).add(V3(0, 9 + 8 * S.charge, 0)), 'frontflip'); Toast.show('<b>SLINGSHOT</b> ×' + (1 + S.charge).toFixed(1)); Shake.add(0.15 * S.charge); }
+      return true;
+    }
+    if (S.mode === 'fly') { S.fly -= dt; const blocked = move(dt, 20); pose(dt, 'fly');
+      // steer a little in the air
+      const [mx, my] = Input.move(); const f = V3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw)), r = V3(Math.cos(p.yaw), 0, -Math.sin(p.yaw)); p.vel.addScaledVector(f, my * 8 * dt).addScaledVector(r, mx * 8 * dt);
+      if (Input.down('sprint') && !p.grounded) detectWall();
+      if (S.mode === 'fly' && (p.grounded || S.fly <= 0 || blocked)) { S.mode = null; } return true; }
+    if (S.mode === 'wallrun') {
+      const W = S.wall; W.t -= dt; p.vel.copy(W.dir.clone().multiplyScalar(Math.max(9, W.sp))); p.vel.y = W.vy; W.vy -= 6 * dt; move(dt, 0); pose(dt, 'wallrun');
+      const h = castRay(p.pos.x, p.pos.y + 1, p.pos.z, -W.n.x, 0, -W.n.z, 1.4, GROUPS.losStatic, p.body);
+      if (Input.tap('jump')) { launch(W.n.clone().multiplyScalar(8).add(W.dir.clone().multiplyScalar(W.sp * 0.8)).add(V3(0, 10, 0)), W.side > 0 ? 'sideL' : 'sideR'); Toast.show('<b>WALL KICK</b>'); return true; }
+      if (!h || W.t <= 0 || p.grounded) { S.mode = 'fly'; S.fly = 0.8; } return true;
+    }
+    if (S.mode === 'cling') {
+      const W = S.wall; p.vel.set(0, -0.6, 0); move(dt, 0); pose(dt, 'cling'); Hud.hint('SPACE wall-kick · W+SPACE climb up · S let go', 'ok');
+      const b = City.buildingAt(p.pos.x - W.n.x * 1.2, p.pos.z - W.n.z * 1.2);
+      if (Input.tap('jump')) { if (Input.move()[1] > 0.5 && b && b.h - p.pos.y < 4) { const top = V3(p.pos.x - W.n.x * 1.6, b.h + 0.1, p.pos.z - W.n.z * 1.6); const t = { x: top.x, y: top.y + 0.95, z: top.z }; p.body.setTranslation(t, true); p.body.setNextKinematicTranslation(t); p.pos.copy(top); p.vel.set(0, 0, 0); S.mode = null; Acro.start('roll'); Toast.show('<b>CLIMB</b>'); }
+        else { launch(W.n.clone().multiplyScalar(9).add(V3(0, 11, 0)), 'wall'); Toast.show('<b>WALL FLIP</b>'); } return true; }
+      if (Input.move()[1] < -0.5 || p.grounded) { S.mode = null; return false; } return true;
+    }
+    return false;
+  }
+  function detectWall() {
+    const p = P(); const hv = Math.hypot(p.vel.x, p.vel.z); if (hv < 5) return; const f = V3(p.vel.x, 0, p.vel.z).normalize();
+    for (const side of [1, -1]) { const r = V3(f.z * side, 0, -f.x * side); const h = castRay(p.pos.x, p.pos.y + 1, p.pos.z, r.x, 0, r.z, 1.3, GROUPS.losStatic, p.body); if (h) { const n = r.clone().negate(); const dir = f.clone().sub(n.clone().multiplyScalar(f.dot(n))).normalize(); S.mode = 'wallrun'; S.wall = { n, dir, side, t: 1.6, sp: Math.max(hv, 10), vy: Math.max(p.vel.y, 3) }; Toast.show('<b>WALL RUN</b>'); return; } }
+  }
+  function detectCling() { const p = P(); const f = V3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw)); const h = castRay(p.pos.x, p.pos.y + 1.2, p.pos.z, f.x, 0, f.z, 1.0, GROUPS.losStatic, p.body); if (h && p.pos.y > 1.5) { S.mode = 'cling'; S.wall = { n: f.clone().negate() }; } }
+  function cancel() { if (S.mode) S.mode = null; if (S.line) S.line.visible = false; }
+  return { S, override, cancel, get active() { return !!S.mode; } };
+})();
+// §SUITHUD -------------------------------------------------------------------------------------
+// A suit's heads-up display, seen from behind the hero: a heading compass with markers, target
+// brackets on every threat in view (health, distance, a lock on the one under the reticle),
+// health and energy arcs round the reticle, hit-direction arcs, speed and altitude, holo frames.
+const SuitHUD = (() => {
+  let cv = null, g = null, hits = [], on = Store.get('suitHud', true);
+  const _v = V3();
+  function dom() {
+    cv = document.createElement('canvas'); cv.id = 'suithud'; cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:12'; document.body.appendChild(cv); g = cv.getContext('2d');
+    const css = document.createElement('style'); css.textContent = `#netbadge{top:52px!important}
+#heatbox,#vitals,#scorebox{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));box-shadow:inset 0 0 0 1px rgba(120,240,255,.18),inset 0 0 24px rgba(70,240,255,.08)}
+#vitals{background:linear-gradient(100deg,rgba(4,12,22,.86),rgba(4,12,22,.35))!important}
+#vitals .bar,#vitals [id$=bar]{box-shadow:0 0 10px currentColor}
+#slots .slot{clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);background:linear-gradient(180deg,rgba(10,22,36,.85),rgba(4,10,18,.75))!important;box-shadow:inset 0 0 0 1px rgba(120,240,255,.25)}
+#minimap{box-shadow:0 0 0 2px rgba(120,240,255,.25),0 0 26px rgba(70,240,255,.25),inset 0 0 30px rgba(70,240,255,.18)!important}
+#toasts .toast,#banner{text-shadow:0 0 12px rgba(120,240,255,.6)}
+#chair .bx{clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+#chair.ping .av{animation:cping .6s}@keyframes cping{0%{box-shadow:0 0 0 0 rgba(70,240,255,.9)}100%{box-shadow:0 0 0 18px rgba(70,240,255,0)}}`;
+    document.head.appendChild(css);
+    const h0 = Player.hurt.bind(Player); Player.hurt = function (d, from, cause) { const hp = this.hp; h0(d, from, cause); if (from && this.hp < hp) hits.push({ p: from.clone ? from.clone() : V3(from.x, from.y, from.z), t: 1.2 }); };
+  }
+  const hostile = u => u.alive && !u.ko && !u.thrall && (u.gang || u.villain || (u.type !== 'civilian' && !u.ally));
+  function proj(p, W, H) { _v.copy(p).project(camera); if (_v.z > 1) return null; return { x: (_v.x + 1) / 2 * W, y: (1 - _v.y) / 2 * H, z: _v.z }; }
+  function update(rdt) {
+    if (!cv) return; const W = innerWidth * (Coop.on ? 0.5 : 1), H = innerHeight; const dpr = Math.min(2, devicePixelRatio || 1);
+    if (cv.width !== Math.round(innerWidth * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(H * dpr); }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, innerWidth, H);
+    const show = on && (G.mode === 'play' || G.mode === 'detained') && Player.rig; cv.style.display = show ? 'block' : 'none'; if (!show) return;
+    const col = HEROES[G.hero].color; const t = G.time; const cx = W / 2, cy = H / 2;
+    g.lineCap = 'round'; g.font = '600 10px ui-monospace,Menlo,monospace'; g.textAlign = 'center';
+    // holo frame corners with crawling ticks
+    g.strokeStyle = col; g.globalAlpha = 0.35; g.lineWidth = 1.5; const m = 14, L = 70;
+    for (const [x, y, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) { g.beginPath(); g.moveTo(x, y + sy * L); g.lineTo(x, y); g.lineTo(x + sx * L, y); g.stroke(); for (let k = 0; k < 4; k++) { const o = 20 + ((t * 30 + k * 14) % 56); g.beginPath(); g.moveTo(x + sx * o, y + sy * 5); g.lineTo(x + sx * (o + 6), y + sy * 5); g.stroke(); } }
+    g.globalAlpha = 0.06; for (let y = (t * 40) % 4; y < H; y += 4) { g.fillStyle = col; g.fillRect(0, y, W, 1); } g.globalAlpha = 1;
+    // compass: heading with markers
+    const yaw = Math.atan2(-Math.sin(Player.yaw), -Math.cos(Player.yaw)); const deg = ((yaw * 180 / Math.PI) % 360 + 360) % 360; const CW = Math.min(560, W - 200), cx0 = cx, top = 14;
+    g.fillStyle = 'rgba(4,10,18,.55)'; g.fillRect(cx0 - CW / 2, top, CW, 26); g.strokeStyle = col; g.globalAlpha = 0.6; g.strokeRect(cx0 - CW / 2, top, CW, 26); g.globalAlpha = 1;
+    const pxPerDeg = CW / 140; g.save(); g.beginPath(); g.rect(cx0 - CW / 2, top, CW, 26); g.clip();
+    for (let a = -90; a <= 90; a += 5) { const d = Math.round(deg / 5) * 5 + a; const x = cx0 + (d - deg) * pxPerDeg; const n = ((d % 360) + 360) % 360; const card = { 0: 'N', 90: 'E', 180: 'S', 270: 'W' }[n]; g.strokeStyle = 'rgba(200,240,255,.6)'; g.beginPath(); g.moveTo(x, top + 26); g.lineTo(x, top + (card ? 12 : n % 15 === 0 ? 18 : 22)); g.stroke(); if (card) { g.fillStyle = '#fff'; g.font = '800 11px ui-monospace,monospace'; g.fillText(card, x, top + 11); } else if (n % 45 === 0) { g.fillStyle = 'rgba(200,240,255,.7)'; g.font = '600 9px ui-monospace,monospace'; g.fillText(n, x, top + 10); } }
+    const mark = (p, c, icon) => { let a = Math.atan2(p.x - Player.pos.x, p.z - Player.pos.z) * 180 / Math.PI; a = ((a % 360) + 360) % 360; let d = a - deg; d = ((d + 540) % 360) - 180; const x = cx0 + clamp(d, -68, 68) * pxPerDeg; g.fillStyle = c; g.font = '700 12px sans-serif'; g.fillText(icon, x, top + 22); };
+    for (const b of Beacons.list) mark(b.pos, b.color, b.icon || '◆'); if (Villains.active) mark(Villains.active.u.pos, '#ff3b4f', '☠'); if (Coop.partner) mark(Coop.partner.pos, '#9affc8', '2');
+    g.restore(); g.fillStyle = col; g.beginPath(); g.moveTo(cx0 - 6, top + 32); g.lineTo(cx0 + 6, top + 32); g.lineTo(cx0, top + 26); g.fill(); g.fillStyle = '#dff'; g.font = '700 10px ui-monospace,monospace'; g.fillText(Math.round(deg) + '°', cx0, top + 44);
+    // target brackets
+    let lockU = null, lockD = 1e9;
+    if (!Coop.on) for (const u of Units.list) {
+      if (!hostile(u)) continue; const dd = u.pos.distanceTo(Player.pos); if (dd > 55) continue; const a = proj(_v.set(u.pos.x, u.pos.y + 2.1 * (u.rig ? u.rig.scale || 1 : 1), u.pos.z), W, H), b = proj(V3(u.pos.x, u.pos.y, u.pos.z), W, H); if (!a || !b) continue;
+      const h = Math.max(18, b.y - a.y), w = h * 0.55, x = (a.x + b.x) / 2, y = a.y; if (x < -40 || x > W + 40) continue;
+      const c = u.villain ? '#ff3b4f' : u.mad ? '#ff7ad0' : u.surrendered ? '#8a94a8' : u.angry ? '#ffb347' : '#ffe08a'; const sz = Math.max(4, w * 0.25);
+      g.strokeStyle = c; g.lineWidth = u.villain ? 2.5 : 1.5; g.globalAlpha = u.angry || u.villain ? 0.95 : 0.55;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const px = x + sx * w / 2, py = y + (sy > 0 ? h : 0); g.beginPath(); g.moveTo(px, py - sy * -sz * 0 + (sy < 0 ? sz : -sz)); g.lineTo(px, py); g.lineTo(px - sx * sz, py); g.stroke(); }
+      const hp0 = u.maxHpV || u.hp0 || 100; g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(x - w / 2, y - 7, w, 3); g.fillStyle = c; g.fillRect(x - w / 2, y - 7, w * clamp(u.hp / hp0, 0, 1), 3);
+      g.globalAlpha = 0.85; g.fillStyle = c; g.font = '600 9px ui-monospace,monospace'; g.fillText((u.villain ? VILLAIN_DEFS[u.villain].name + ' · ' : '') + Math.round(dd) + 'm', x, y + h + 11); g.globalAlpha = 1;
+      const sd = Math.hypot(x - cx, (y + h / 2) - cy); if (sd < 90 && sd < lockD) { lockD = sd; lockU = { x, y: y + h / 2, h }; }
+    }
+    if (lockU) { g.save(); g.translate(lockU.x, lockU.y); g.rotate(t * 2); g.strokeStyle = '#ff3b4f'; g.lineWidth = 1.5; const r = Math.max(14, lockU.h * 0.45); g.strokeRect(-r / 1.4, -r / 1.4, r * 1.41, r * 1.41); g.restore(); g.fillStyle = '#ff3b4f'; g.font = '800 9px ui-monospace,monospace'; g.fillText('LOCK', lockU.x, lockU.y - lockU.h * 0.6 - 6); }
+    // arcs round the reticle: health left, energy right
+    const R = 54; const hp = clamp(Player.hp / Player.maxHp, 0, 1), en = clamp(Player.mind / Math.max(1, Player.maxMind), 0, 1);
+    g.lineWidth = 3; g.globalAlpha = 0.25; g.strokeStyle = '#fff'; g.beginPath(); g.arc(cx, cy, R, Math.PI * 0.62, Math.PI * 1.38); g.stroke(); g.beginPath(); g.arc(cx, cy, R, -Math.PI * 0.38, Math.PI * 0.38); g.stroke();
+    g.globalAlpha = 0.85; g.strokeStyle = hp < 0.3 ? '#ff3b4f' : '#ff8fa3'; g.beginPath(); g.arc(cx, cy, R, Math.PI * 1.38 - Math.PI * 0.76 * hp, Math.PI * 1.38); g.stroke(); g.strokeStyle = col; g.beginPath(); g.arc(cx, cy, R, Math.PI * 0.38 - Math.PI * 0.76 * en, Math.PI * 0.38); g.stroke(); g.globalAlpha = 1;
+    // speed and altitude
+    const sp = Math.hypot(Player.vel.x, Player.vel.y, Player.vel.z); g.textAlign = 'left'; g.fillStyle = 'rgba(220,245,255,.85)'; g.font = '700 10px ui-monospace,monospace'; g.fillText(Math.round(sp) + ' m/s', cx + R + 12, cy - 4); g.fillStyle = 'rgba(220,245,255,.55)'; g.fillText('ALT ' + Math.max(0, Math.round(Player.pos.y)) + ' m', cx + R + 12, cy + 9);
+    if (Freerun.active) { g.fillStyle = col; g.fillText(Freerun.S.mode.toUpperCase(), cx + R + 12, cy + 22); } g.textAlign = 'center';
+    // hit direction
+    for (let i = hits.length - 1; i >= 0; i--) { const h = hits[i]; h.t -= rdt; if (h.t <= 0) { hits.splice(i, 1); continue; } const a = Math.atan2(h.p.x - Player.pos.x, h.p.z - Player.pos.z) - yaw; g.strokeStyle = 'rgba(255,40,70,' + Math.min(1, h.t) * 0.9 + ')'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, 120, -Math.PI / 2 + a - 0.3, -Math.PI / 2 + a + 0.3); g.stroke(); }
+  }
+  return { dom, update, toggle() { on = !on; Store.set('suitHud', on); } };
 })();
 // game state + run flow ------------------------------------------------------------------
 const G = { hero: Store.get('hero', 'kinetic'), mode: 'loading', time: 0, runTime: 0, modifier: null, daily: null, wardenKills: 0, grip: null, allUnlocked: false, god: false, lightT: 12 };
@@ -12584,7 +13425,7 @@ const Game = {
     Music.setLevel(0); Hud.banner('YOU WAKE UP AT ' + H.name, 'HOSPITAL BILL ' + fmtCash(H.fine + fine) + ' · BANKED CASH IS SAFE');
     try { renderer.domElement.requestPointerLock(); } catch { }
   },
-  quitCareer() { Career.save(); Phone.close(); Apt.reset(); Activities.reset(); WorldPlus.reset(); Interiors.reset(); G.career = false; Input.releaseLock(); Hud.show(false); Hud.boss(null); this.toTitle(); },
+  quitCareer() { Career.save(); Phone.close(); Apt.reset(); Activities.reset(); WorldPlus.reset(); Interiors.reset(); Villains.reset(); Chair.reset(); Coop.reset(); G.career = false; Input.releaseLock(); Hud.show(false); Hud.boss(null); this.toTitle(); },
   end() {
     $('detainedflash').classList.add('hidden');
     const score = Score.total;
@@ -12680,10 +13521,10 @@ function frame(now) {
     G.time += dt; if (M === 'play') { G.runTime += rdt; Stats.time = G.runTime; }
     const pdt = G.hero !== 'kinetic' ? rdt : Catch.active ? rdt * 0.8 : dt;
     if (M === 'play' || M === 'detained') {
-      Player.update(pdt, rdt);
+      Player.update(pdt, rdt); Acro.update(rdt);
       LockOn.show(null);
       if (M === 'play') { if (G.hero === 'kinetic') { TK.update(pdt, rdt); Push.update(pdt); Slam.update(pdt); Shield.update(pdt); Catch.update(pdt, rdt); Levitate.update(pdt); Vortex.update(pdt); Overload.update(dt, rdt); } else HeroUpdate(rdt, dt); Booths.update(rdt); }
-      Rescue.update(dt, rdt); Hazards.update(dt, rdt); Pacer.update(rdt, dt); Career.update(dt, rdt); Apt.update(rdt); Activities.update(dt, rdt); WorldPlus.update(dt, rdt); Interiors.update(rdt);
+      Rescue.update(dt, rdt); Hazards.update(dt, rdt); Pacer.update(rdt, dt); Career.update(dt, rdt); Apt.update(rdt); Activities.update(dt, rdt); WorldPlus.update(dt, rdt); Chair.update(rdt); Villains.update(dt); Interiors.update(rdt);
       Units.update(dt, G.time); Squads.update(dt); Heat.update(dt); Air.update(dt, G.time); Dampen.update(rdt); Walker.update(dt, G.time); Cranes.update(dt); Ship.update(dt);
       Projectiles.update(dt); Flyers.update(dt); Score.update(dt); Snare.update && 0;
     }
@@ -12708,9 +13549,9 @@ function frame(now) {
   Rain.update(rdt, G.time); environment(rdt, G.time);
   Mirror.uniforms.uTime.value = G.time;
   Mirror.update(camera);
-  if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
-  HeroModels.sync(Player.rig); Ghosts.update(rdt); Ripple.update(rdt); if (M === 'play' || M === 'title') Critters.update(dt);
-  DayNight.update(rdt); Defence.update(rdt); Design.update(rdt); Pigeons.update(rdt); LensFlare.update(rdt); Mobile.update(); Beacons.update(); Net.update(rdt); if (live) Threads.update(rdt * (G.hero === 'thread' && Thread.focusOn ? 0.5 : 1) * (M === 'play' || M === 'title' || M === 'detained' ? 1 : 0)); Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
+  if (Coop.on) Coop.render(rdt); else if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
+  Acro.post(); HeroModels.sync(Player.rig); Ghosts.update(rdt); Ripple.update(rdt); if (M === 'play' || M === 'title') Critters.update(dt);
+  DayNight.update(rdt); Defence.update(rdt); Design.update(rdt); Pigeons.update(rdt); LensFlare.update(rdt); Mobile.update(); Beacons.update(); Net.update(rdt); Coop.update(dt, rdt); SuitHUD.update(rdt); if (live) Threads.update(rdt * (G.hero === 'thread' && Thread.focusOn ? 0.5 : 1) * (M === 'play' || M === 'title' || M === 'detained' ? 1 : 0)); Hud.update(rdt); Audio.update(rdt); Replay.record(dt); Debug.update(rdt); autoQuality(rdt);
   Input.endFrame();
 }
 
@@ -12727,12 +13568,12 @@ async function boot() {
   await new Promise(r => setTimeout(r, 20));
   buildWorld(CONFIG.seed);
   Player.spawn(118, 0.1, 62, 0); Player.rig.mesh.visible = false;
-  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Cortex.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
+  Threads.init(); Hud.build(); careerDom(); threadDom(); Interiors.dom(); Phone.dom(); Net.dom(); WorldPlus.dom(); Cortex.dom(); Chair.dom(); Coop.dom(); SuitHUD.dom(); Mobile.init(); LensFlare.init(); Menus.wire();
   setLoad(1, 'READY');
   G.mode = 'title';
   $('loading').style.display = 'none';
   Menus.showTitle();
-  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Cortex, Sovereign, CamRig, Input, Menus, Photo, Replay };
+  window.KINETIC = { G, Player, Heat, Units, Vehicles, Air, Walker, Prog, Records, TK, Catch, Shield, Vortex, Overload, Game, City, Props, Tut, Peds, Projectiles, Speed, Hero, Mobile, Design, DayNight, Defence, Hospital, Interiors, Phone, Thread, Threads, Snare, Ninja, Courses, CitySim, Incidents, Counters, Lieutenants, Leaders, Rivals, Reputation, Career, Crimes, Contracts, Job, Apt, Phone, Beacons, GangAI, spawnGang, spawnAlly, FACTIONS, Rescue, Pacer, Hazards, Shift, Heists, Critters, Guards, CloseCall, Debug, Score, Challenges, Cosmetics, Dampen, liftCap, CONFIG, world: () => world, camera, scene, IntKit, Net, Activities, WorldPlus, Emote, Cortex, Sovereign, CamRig, Acro, Chair, Villains, Forge, Coop, Freerun, SuitHUD, HEROES, Input, Menus, Photo, Replay };
   if (BENCH) Game.start({});
   requestAnimationFrame(t => { lastNow = t; frame(t); });
 }

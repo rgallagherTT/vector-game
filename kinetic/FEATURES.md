@@ -10,6 +10,14 @@ Single-file browser superhero sandbox (Three.js + Rapier): `kinetic/index.html`.
 - **THREADRUNNER (ninja swinger):** Verlet-rope thread swinging, auto-chain, wall climb, zip/perch, zip line, slingshot, tether/spike, snare, tripwire, thread storm, shuriken, smoke, Focus (slow-mo), blade/kick/slam/silent takedowns, hang drop, traversal courses, scarf cloth sim.
 - **Defence powers** (tough skin, quick heal, barrier), fast health regen, knockout → wake at hospital and pay a fee.
 
+## Guy in the chair, acrobatics, HUD, villains, co-op
+- DEX on comms (text): callouts, support on J (scan, drone, jam, med-kit, intel, loop cameras, route), auto-assist.
+- Flips (back/side/front/corkscrew/double/wall), landing rolls, combos; tether zip, slingshot, launch, wall-run, wall-cling, climb — every hero.
+- Suit HUD: compass, target brackets + lock, health/energy arcs, speed/altitude, hit direction.
+- Super villains: Voltstrike, Ironclad, Hexweaver, Razorwind.
+- Split-screen co-op (F9): partner hero or player two in the chair.
+- Sovereign Forge: 53 blueprints (weapons, structures, rides, creatures, tools) + sculpt your own.
+
 ## World
 - **Five cities on one 2.4 km coast:** Arc City (Neon Row, Financial Core, Harbour, Underworks, Midtown, Old Town, Heights), Port Sable (Lantern Quarter, Sable Central, Sable Terraces), Ashgrove (Village, Hills), Vantor Works, Lumen Bay; the Greenbelt between. ~1,250 buildings in 300 blocks, chunked rendering.
 - Day/night cycle (long days, short nights), rain, dusk, design kit: PBR facades, 60 neon signs, billboards, decals, interior-mapped windows (rooms visible through glass), pigeons, lens flare.
