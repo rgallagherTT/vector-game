@@ -17,6 +17,7 @@ Single-file browser superhero sandbox (Three.js + Rapier): `kinetic/index.html`.
 - Super villains: Voltstrike, Ironclad, Hexweaver, Razorwind.
 - Split-screen co-op (F9): partner hero or player two in the chair.
 - Chair has separate keys, map zoom + marking, hacking, gunship drone (MG + rockets), artillery stands, contract board (accept → route for P1).
+- Solo Chair: one player in the chair full-screen, AI plays the hero (orders, hero power buttons, mouse targeting).
 - Gang wars of ~30 with hackable comms relays.
 - Every floor enterable: smash windows at any height, elevator floor picker.
 - Sovereign Forge: 53 blueprints (weapons, structures, rides, creatures, tools) + sculpt your own.
