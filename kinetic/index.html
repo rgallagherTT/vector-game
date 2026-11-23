@@ -266,6 +266,7 @@ label.opt{display:flex;justify-content:space-between;align-items:center;gap:20px
     <div id="menu">
       <button class="primary" id="b-career">CAREER · FREE ROAM</button>
       <button class="primary" id="b-coop">2 PLAYERS · SPLIT-SCREEN</button>
+      <button class="primary" id="b-solo">SOLO CHAIR · AI HERO</button>
       <button id="b-play">ARCADE RUN</button>
       <button id="b-daily">DAILY RUN</button>
       <button id="b-tree">POWER TREE</button>
@@ -3339,27 +3340,29 @@ const Input = (() => {
   let locked = false;
   const pad = { lx: 0, ly: 0, rx: 0, ry: 0, b: [], pb: [], rb: [], prev: [], connected: false };
   const P2KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'NumpadEnter', 'ShiftRight', 'ControlRight', 'AltRight', 'Slash', 'Period', 'Comma', 'Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Backslash', 'Semicolon', 'Quote', 'Backspace', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'KeyK', 'KeyL', 'Insert', 'Home', 'PageUp', 'Delete', 'End', 'PageDown']);
-  const p2keys = {}; const p2own = c => (typeof Coop !== 'undefined' && Coop.on) && (P2KEYS.has(c) || c.startsWith('Numpad'));
+  const p2keys = {}; const p2own = c => typeof Coop !== 'undefined' && Coop.on && (Coop.solo ? !/^(Escape|Tab|F\d+)$/.test(c) : (P2KEYS.has(c) || c.startsWith('Numpad')));
+  const soloOn = () => typeof Coop !== 'undefined' && Coop.solo; const clicks = []; const cm = { x: 0, y: 0, wheel: 0 };
   addEventListener('keydown', e => {
     if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow') || (p2own(e.code) && e.code === 'Backspace')) e.preventDefault();
-    if (p2own(e.code)) { p2keys[e.code] = true; return; }
+    if (p2own(e.code)) { p2keys[e.code] = true; if (soloOn() && /^(Digit|Key[A-Z]$|Space)/.test(e.code)) e.preventDefault(); return; }
     if (e.code === 'KeyH' && typeof Coop !== 'undefined' && Coop.on) { if (!keys.KeyU) pressed.KeyU = true; keys.KeyU = true; return; } // player one's ultimate moves to H
     if (!keys[e.code]) pressed[e.code] = true; keys[e.code] = true;
     if (Audio.ctx && Audio.ctx.state === 'suspended') Audio.ctx.resume();
   });
-  addEventListener('keyup', e => { p2keys[e.code] = false; if (e.code === 'KeyH' && keys.KeyU) { keys.KeyU = false; released.KeyU = true; } keys[e.code] = false; released[e.code] = true; });
+  addEventListener('keyup', e => { p2keys[e.code] = false; if (soloOn() && e.code !== 'Escape' && e.code !== 'Tab') return; if (e.code === 'KeyH' && keys.KeyU) { keys.KeyU = false; released.KeyU = true; } keys[e.code] = false; released[e.code] = true; });
   addEventListener('blur', () => { for (const k in keys) { if (keys[k]) released[k] = true; keys[k] = false; } mouse.b = [false, false, false]; });
   const cv = renderer.domElement;
   cv.addEventListener('mousedown', e => {
     Audio.unlock();
+    if (soloOn() && G.mode === 'play') { clicks.push({ b: e.button, x: e.clientX, y: e.clientY }); e.preventDefault(); return; }
     if (G.mode === 'play' && !locked && !document.pointerLockElement) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch { } }
     mouse.b[e.button] = true; mouse.pb[e.button] = true; e.preventDefault();
   });
-  addEventListener('mouseup', e => { mouse.b[e.button] = false; mouse.rb[e.button] = true; });
+  addEventListener('mouseup', e => { if (soloOn() && G.mode === 'play') return; mouse.b[e.button] = false; mouse.rb[e.button] = true; });
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  addEventListener('mousemove', e => { if (locked || G.mode === 'photo' || mouse.b[0] || mouse.b[2] || G.mode === 'play') { mouse.dx += e.movementX || 0; mouse.dy += e.movementY || 0; } });
-  addEventListener('wheel', e => { mouse.wheel += Math.sign(e.deltaY); }, { passive: true });
-  document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === cv; });
+  addEventListener('mousemove', e => { cm.x = e.clientX; cm.y = e.clientY; if (soloOn()) return; if (locked || G.mode === 'photo' || mouse.b[0] || mouse.b[2] || G.mode === 'play') { mouse.dx += e.movementX || 0; mouse.dy += e.movementY || 0; } });
+  addEventListener('wheel', e => { if (soloOn()) { cm.wheel += Math.sign(e.deltaY); return; } mouse.wheel += Math.sign(e.deltaY); }, { passive: true });
+  document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === cv; if (locked && soloOn()) document.exitPointerLock(); });
   function pollPad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : []; let p = null; const live = [...pads].filter(g => g && g.connected); p = (typeof Coop !== 'undefined' && Coop.on) ? (live.length > 1 ? live[0] : null) : (live[0] || null);
     pad.connected = !!p; if (!p) { pad.lx = pad.ly = pad.rx = pad.ry = 0; return; }
@@ -3375,7 +3378,7 @@ const Input = (() => {
     pause: { k: ['Escape'], p: [9] }, photo: { k: ['KeyP'], p: [8] }, help: { k: ['KeyH'] },
   };
   return {
-    keys, p2keys, mouse, pad, get locked() { return locked; }, pollPad,
+    keys, p2keys, clicks, cm, mouse, pad, get locked() { return locked; }, pollPad,
     down(a) { const m = A[a]; return (m.k && m.k.some(k => keys[k])) || (m.m != null && mouse.b[m.m]) || (m.p && m.p.some(i => pad.b[i])); },
     tap(a) { const m = A[a]; return (m.k && m.k.some(k => pressed[k])) || (m.m != null && mouse.pb[m.m]) || (m.p && m.p.some(i => pad.pb[i])); },
     up(a) { const m = A[a]; return (m.k && m.k.some(k => released[k])) || (m.m != null && mouse.rb[m.m]) || (m.p && m.p.some(i => pad.rb[i])); },
@@ -6171,6 +6174,7 @@ const Menus = (() => {
     $('b-play').onclick = () => { Audio.unlock(); HeroSelect.open(false, false); };
     $('b-career').onclick = () => { Audio.unlock(); HeroSelect.open(false, true); };
     $('b-coop').onclick = () => { Audio.unlock(); Coop.picker(); };
+    $('b-solo').onclick = () => { Audio.unlock(); Coop.soloPick(); };
     $('b-daily').onclick = () => { Audio.unlock(); HeroSelect.open(true); };
     $('b-tree').onclick = () => { $('title').classList.add('hidden'); open('tree'); };
     $('b-chal').onclick = () => { $('title').classList.add('hidden'); open('chal'); };
@@ -13121,8 +13125,8 @@ const Coop = (() => {
   function ctl() {
     const K = Input.p2keys; const g = pad(); const b = i => !!(g && g.buttons[i] && g.buttons[i].pressed); const ax = i => g ? dz(g.axes[i] || 0) : 0;
     const c = {
-      mx: (K.ArrowRight ? 1 : 0) - (K.ArrowLeft ? 1 : 0) + ax(0), my: (K.ArrowUp ? 1 : 0) - (K.ArrowDown ? 1 : 0) - ax(1), look: (K.Period ? 1 : 0) - (K.Comma ? 1 : 0) + ax(2), tilt: -ax(3),
-      zoom: (K.Equal || K.NumpadAdd ? 1 : 0) - (K.Minus || K.NumpadSubtract ? 1 : 0) + (b(12) ? 1 : 0) - (b(13) ? 1 : 0),
+      mx: (K.ArrowRight ? 1 : 0) - (K.ArrowLeft ? 1 : 0) + ax(0) + (S.solo ? (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0) : 0), my: (K.ArrowUp ? 1 : 0) - (K.ArrowDown ? 1 : 0) - ax(1) + (S.solo ? (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0) : 0), look: (K.Period ? 1 : 0) - (K.Comma ? 1 : 0) + ax(2) + (S.solo ? (K.KeyE ? 1 : 0) - (K.KeyQ ? 1 : 0) : 0), tilt: -ax(3),
+      zoom: (K.Equal || K.NumpadAdd ? 1 : 0) - (K.Minus || K.NumpadSubtract ? 1 : 0) + (b(12) ? 1 : 0) - (b(13) ? 1 : 0) - (S.solo ? Input.cm.wheel * 4 : 0),
       // partner
       jump: K.ControlRight || K.Numpad0 || b(0), atk: K.Enter || K.NumpadEnter || b(2), power: K.Slash || K.NumpadDecimal || b(3), sprint: K.ShiftRight || b(10),
       // chair: eight tools on the right-hand letters (and the numpad), views on the brackets
@@ -13195,12 +13199,13 @@ const Coop = (() => {
   }
   // ---------- cameras + rendering ----------
   function camUpdate(dt) {
-    const cam = S.cam; const W = innerWidth, H = innerHeight; cam.aspect = (W / 2) / H; cam.updateProjectionMatrix(); cam.layers.enable(LAYER_NOREFLECT);
+    const cam = S.cam; const W = innerWidth, H = innerHeight; cam.aspect = (S.solo ? W : W / 2) / H; cam.updateProjectionMatrix(); cam.layers.enable(LAYER_NOREFLECT);
     if (S.role === 'partner' && S.p) { const p = S.p.pos; const want = V3(p.x + Math.sin(S.camYaw) * 6.5, p.y + 3.2, p.z + Math.cos(S.camYaw) * 6.5); const hit = castRay(p.x, p.y + 1.6, p.z, want.x - p.x, want.y - p.y - 1.6, want.z - p.z, 6.5, GROUPS.losStatic, S.p.body); if (hit && hit.toi < 6.5) want.copy(V3(p.x, p.y + 1.6, p.z).lerp(want, Math.max(0.1, (hit.toi - 0.4) / 6.5))); cam.position.lerp(want, 1 - Math.exp(-10 * dt)); cam.lookAt(p.x, p.y + 1.5, p.z); }
     else ChairOps.camera(dt, cam);
   }
   function render(rdt) {
     const W = innerWidth, H = innerHeight; const a = camera.aspect;
+    if (S.solo) { renderer.setRenderTarget(null); renderer.setViewport(0, 0, W, H); renderer.render(scene, S.cam); return; }
     camera.aspect = (W / 2) / H; camera.updateProjectionMatrix();
     renderer.setScissorTest(true); renderer.setViewport(0, 0, W / 2, H); renderer.setScissor(0, 0, W / 2, H);
     if (debugToggles.noPost) renderer.render(scene, camera); else composer.render(rdt);
@@ -13209,21 +13214,31 @@ const Coop = (() => {
   }
   // ---------- on / off ----------
   function set(mode) {
+    if (S.solo && mode !== 'solo') { S.solo = false; document.body.classList.remove('solo'); Bot.reset(); }
     if (mode === 'off') { S.on = false; freePartner(); ChairOps.reset(); if (S.ring) S.ring.visible = false; document.body.classList.remove('coop'); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); Input.arrowsP1 = true; Toast.show('SPLIT-SCREEN OFF', 'big'); return; }
     if (!S.cam) S.cam = new THREE.PerspectiveCamera(62, 1, 0.1, 1800);
+    const solo = mode === 'solo'; if (solo) mode = 'chair'; S.solo = solo; document.body.classList.toggle('solo', solo); Bot.reset();
     S.on = true; S.role = mode; Input.arrowsP1 = false; document.body.classList.add('coop'); freePartner(); ChairOps.reset();
     if (mode === 'partner') { S.hero = S.hero && HEROES[S.hero] ? S.hero : 'speed'; spawnPartner(); Toast.show('SPLIT-SCREEN · PLAYER TWO: ' + HEROES[S.hero].name + ' — ARROWS move · R-CTRL jump · ENTER punch · / power · R-SHIFT sprint · , . look · (player one: ultimate moved to H)', 'big'); }
+    else if (solo) { S.cur.copy(Player.pos); S.camYaw = Player.yaw; ChairOps.setMode('hover'); if (document.pointerLockElement) document.exitPointerLock(); Toast.show('🎧 SOLO CHAIR — YOU RUN MISSION CONTROL, AN AI FLIES ' + HEROES[G.hero].name + '. ORDERS: G go · H hold · F attack · B fall back · Y follow · C auto · N nearest crime · X stance. HERO: SPACE jump · 1–4 powers · 5 fire · 6 push · 7 catch · 8 ultimate · 9 dodge · 0 interact · Z punch. CLICK to place the cursor, RIGHT-CLICK to send them.', 'big'); ChairOps.log('AI HERO ONLINE — ' + HEROES[G.hero].name, '#6dffb0'); }
     else { S.cur.copy(Player.pos); S.camYaw = Player.yaw; Toast.show('PLAYER TWO IN THE CHAIR — ARROWS move · [ switch view · - = zoom · U scan · I gunship · O hack (hold) · P artillery · K med · L mark · ; drone · \' intel · ENTER fire', 'big'); Chair.say('hello', null, 3); }
     S.cam.position.copy(Player.pos).add(V3(0, 8, 8));
   }
-  function cycle() { set(!S.on ? 'partner' : S.role === 'partner' ? 'chair' : 'off'); }
+  function cycle() { set(!S.on ? 'partner' : S.role === 'partner' ? 'chair' : !S.solo ? 'solo' : 'off'); }
+  // solo: the mouse points at the city — click places the cursor, right-click sends the hero there
+  function clicks() {
+    const L = Input.clicks; if (!L.length) return; const cam = S.cam;
+    for (const c of L.splice(0)) { const nd = new THREE.Vector2(c.x / innerWidth * 2 - 1, -(c.y / innerHeight) * 2 + 1); const rc = new THREE.Raycaster(); rc.setFromCamera(nd, cam); const o = rc.ray.origin, d = rc.ray.direction; if (d.y > -0.01) continue; const t = -o.y / d.y; const p = o.clone().addScaledVector(d, t); p.x = clamp(p.x, -40, CITY_W + 40); p.z = clamp(p.z, -40, CONFIG.city.quayZ + 40);
+      const M = ChairOps.mode; if (M === 'hover') { ChairOps.S.off.copy(p).sub(Player.pos).setY(0).clampLength(0, 120); S.cur.copy(Player.pos).add(ChairOps.S.off); } else { if (M !== 'tactical' && M !== 'map' && M !== 'pilot') ChairOps.setMode('tactical'); S.cur.copy(p); }
+      S.cur.y = 0; if (c.b === 2) Bot.order('go'); }
+  }
   function update(dt, rdt) {
     if (Input.pressedKey('F9')) cycle();
     if (!S.on) { if (S.hud) S.hud.style.display = 'none'; return; }
     const c = G.mode === 'play' ? ctl() : {};
     if (S.role === 'partner') { if (S.ring) S.ring.visible = false; if (G.mode === 'play' || G.mode === 'detained') updatePartner(rdt, c); }
-    else if (G.mode === 'play') updateChair(rdt, c);
-    camUpdate(rdt); hud();
+    else if (G.mode === 'play') { updateChair(rdt, c); if (S.solo) { Bot.keys(); clicks(); } }
+    Input.cm.wheel = 0; camUpdate(rdt); hud();
   }
   function hud() {
     if (!S.hud) return; S.hud.style.display = 'block'; const cd = k => (Chair.S.cd[k] || 0) > 0 ? Math.ceil(Chair.S.cd[k]) + ' s' : 'READY';
@@ -13234,6 +13249,7 @@ const Coop = (() => {
   function dom() {
     const css = document.createElement('style'); css.textContent = `body.coop #hud{right:50%!important}body.coop #hud #minimap{transform:scale(.72);transform-origin:top right}body.coop #netbadge{left:25%;top:auto!important;bottom:6px}
 body.coop #slots{transform:translateX(-50%) scale(.6)!important;transform-origin:bottom center}body.coop #vitals{transform:scale(.8);transform-origin:bottom left}body.coop #heatbox{transform:scale(.8);transform-origin:top left}body.coop #scorebox{transform:scale(.8);transform-origin:top right}body.coop #keys{display:none}body.coop #chair{transform:scale(.85);transform-origin:left top}
+body.solo #hud,body.solo #chair,body.solo #keys,body.solo #crosshair,body.solo #reticle{display:none!important}body.solo:after{display:none}body.solo canvas{cursor:crosshair}
 body.coop:after{content:'';position:fixed;left:50%;top:0;bottom:0;width:3px;margin-left:-1px;background:#05080e;z-index:30;pointer-events:none}
 #p2hud{position:fixed;left:calc(50% + 18px);bottom:16px;z-index:16;display:none;font:600 11px var(--mono,monospace);letter-spacing:.1em;color:#dfe8f4;text-shadow:0 0 6px #000;max-width:46vw;pointer-events:none}
 #p2hud .p2t{font-size:12px;margin-bottom:5px}#p2hud .p2bar{width:240px;height:8px;background:#1a2230;margin-bottom:6px}#p2hud .p2bar i{display:block;height:100%;background:linear-gradient(90deg,#ff5f7a,#ffb0c0)}#p2hud .p2k{opacity:.85;margin-top:3px}`;
@@ -13241,9 +13257,9 @@ body.coop:after{content:'';position:fixed;left:50%;top:0;bottom:0;width:3px;marg
   }
   function html() {
     return `<div class="pc" style="border-left-color:#46f0ff"><h5>🎮 SPLIT-SCREEN CO-OP (THIS COMPUTER)</h5><p>Player two takes the right half of the screen with the arrow keys and the right side of the keyboard, or a gamepad. <b>F9</b> cycles modes in game.</p>
-<div class="pact"><button data-coop="partner">PLAY TOGETHER — PARTNER HERO</button><button data-coop="chair">PLAYER TWO IN THE CHAIR</button><button data-coop="off">OFF</button></div>
+<div class="pact"><button data-coop="partner">PLAY TOGETHER — PARTNER HERO</button><button data-coop="chair">PLAYER TWO IN THE CHAIR</button><button data-coop="solo">SOLO CHAIR · AI HERO</button><button data-coop="off">OFF</button></div>
 <div class="pact">${Object.keys(HEROES).map(h => `<button data-coophero="${h}" style="${S.hero === h ? 'outline:2px solid ' + HEROES[h].color : ''}">P2: ${HEROES[h].name}</button>`).join('')}</div>
-<p class="pdim">${S.on ? 'ON · ' + (S.role === 'partner' ? 'partner: ' + HEROES[S.hero].name : 'player two is in the chair') : 'OFF'}</p></div>`;
+<p class="pdim">${S.on ? 'ON · ' + (S.role === 'partner' ? 'partner: ' + HEROES[S.hero].name : S.solo ? 'solo chair — the AI is flying your hero' : 'player two is in the chair') : 'OFF'}</p></div>`;
   }
   function bind(el, rerender) {
     el.querySelectorAll('[data-coop]').forEach(b => b.onclick = () => { set(b.dataset.coop); rerender(); });
@@ -13255,9 +13271,10 @@ body.coop:after{content:'';position:fixed;left:50%;top:0;bottom:0;width:3px;marg
     $('title').classList.add('hidden'); const p = $('subpanel'); $('sub').classList.remove('hidden'); $('herotabs').innerHTML = '';
     const draw = () => { p.innerHTML = `<h2>2 PLAYERS · ONE SCREEN</h2><p style="max-width:720px">Player one: mouse + keyboard (WASD) on the left. Player two: the right half, with a <b>gamepad</b> or the <b>arrow keys</b> and the right-hand keys (U I O P K L ; \' [ ] , . - = ENTER R-SHIFT R-CTRL /) — those keys belong to player two only, so they never trigger player one's powers. F9 switches modes in game.</p>
 <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))"><div class="card ${S.pick === 'partner' ? 'owned' : ''}"><h3>PLAY TOGETHER</h3><p>Player two is a second hero beside you — run, jump, flip, punch, a signature power. Gangs fight both of you.</p><button class="primary" data-pk="partner">PLAYER TWO: PARTNER</button></div>
-<div class="card ${S.pick === 'chair' ? 'owned' : ''}"><h3>THE GUY IN THE CHAIR</h3><p>Player two runs support from a drone's-eye view: scan, drones, jam guns, med-kits, intel, mark targets for player one.</p><button class="primary" data-pk="chair">PLAYER TWO: IN THE CHAIR</button></div></div>
+<div class="card ${S.pick === 'chair' ? 'owned' : ''}"><h3>THE GUY IN THE CHAIR</h3><p>Player two runs support from a drone's-eye view: scan, drones, jam guns, med-kits, intel, mark targets for player one.</p><button class="primary" data-pk="chair">PLAYER TWO: IN THE CHAIR</button></div>
+<div class="card ${S.pick === 'solo' ? 'owned' : ''}"><h3>SOLO · YOU'RE THE CHAIR</h3><p>One player. You run mission control full-screen with the whole keyboard and mouse; an AI plays the hero. Give orders, fire their powers, fly the gunship, hack, call artillery, take contracts.</p><button class="primary" data-pk="solo">SOLO CHAIR · AI HERO</button></div></div>
 ${S.pick === 'partner' ? '<h3 style="margin-top:14px">PLAYER TWO\'S HERO</h3><div class="row">' + HERO_IDS.filter(heroReady).map(h => `<button data-ph="${h}" class="${S.hero === h ? 'primary' : ''}" style="${S.hero === h ? 'background:' + HEROES[h].color : ''}">${HEROES[h].name}</button>`).join('') + '</div>' : ''}
-<div class="row" style="margin-top:16px"><button class="primary" id="pk-go" ${S.pick ? '' : 'disabled'}>NEXT — PLAYER ONE PICKS A HERO</button><button id="pk-back">BACK</button></div>`;
+<div class="row" style="margin-top:16px"><button class="primary" id="pk-go" ${S.pick ? '' : 'disabled'}>${S.pick === 'solo' ? 'NEXT — PICK THE AI\'S HERO' : 'NEXT — PLAYER ONE PICKS A HERO'}</button><button id="pk-back">BACK</button></div>`;
       p.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { S.pick = b.dataset.pk; draw(); });
       p.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { S.hero = b.dataset.ph; draw(); });
       $('pk-go').onclick = () => { S.pending = S.pick; HeroSelect.open(false, true); };
@@ -13265,8 +13282,9 @@ ${S.pick === 'partner' ? '<h3 style="margin-top:14px">PLAYER TWO\'S HERO</h3><di
     };
     S.pick = S.pick || 'partner'; draw();
   }
+  function soloPick() { $('title').classList.add('hidden'); S.pick = 'solo'; S.pending = 'solo'; HeroSelect.open(false, true); }
   function started() { if (S.pending) { const m = S.pending; S.pending = null; set(m); } }
-  return { S, update, render, set, cycle, target, dom, html, bind, reset, picker, started, get on() { return S.on; }, get chairIsP2() { return S.on && S.role === 'chair'; }, get partner() { return S.p; } };
+  return { S, update, render, set, cycle, target, dom, html, bind, reset, picker, soloPick, started, get on() { return S.on; }, get solo() { return S.on && !!S.solo; }, get chairIsP2() { return S.on && S.role === 'chair'; }, get partner() { return S.p; } };
 })();
 
 // §GPS --------------------------------------------------------------------------------------
@@ -13388,7 +13406,7 @@ const ChairOps = (() => {
   function bar(g, x, y, w, k, c) { g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x, y, w, 6); g.fillStyle = c; g.fillRect(x, y, w * clamp(k, 0, 1), 6); }
   function state() { if (Freerun.active) return Freerun.S.mode.toUpperCase(); if (G.hero === 'thread' && Thread.swing) return 'SWINGING'; if (Acro.active) return 'FLIPPING'; if (Apt.inside || Interiors.inside) return 'INSIDE'; if (!Player.grounded) return 'AIRBORNE'; if (G.time - (Player.combatT || -99) < 4) return 'IN COMBAT'; return Math.hypot(Player.vel.x, Player.vel.z) > 1 ? 'MOVING' : 'IDLE'; }
   function draw(rdt) {
-    const cv = S.cv, g = S.g; const W = innerWidth / 2, H = innerHeight; const dpr = Math.min(2, devicePixelRatio || 1);
+    const cv = S.cv, g = S.g; const W = Coop.solo ? innerWidth : innerWidth / 2, H = innerHeight; const dpr = Math.min(2, devicePixelRatio || 1);
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); const cam = Coop.S.cam; const hc = col(); const P = Player.pos; const t = G.time;
     g.font = '600 10px ui-monospace,Menlo,monospace'; g.textBaseline = 'middle';
@@ -13397,7 +13415,7 @@ const ChairOps = (() => {
     // top bar: views
     panel(g, 10, 10, W - 20, 40); g.textAlign = 'left'; g.font = '800 11px ui-monospace,monospace'; g.fillStyle = '#46f0ff'; g.fillText('🎧 MISSION CONTROL', 22, 30);
     let x = 190; for (const m of MODES) { const on = S.mode === m; const w = g.measureText(MODE_NAME[m]).width + 18; g.fillStyle = on ? '#46f0ff' : 'rgba(70,240,255,.12)'; g.fillRect(x, 19, w, 22); g.fillStyle = on ? '#021018' : '#9fdcef'; g.fillText(MODE_NAME[m], x + 9, 30); x += w + 6; }
-    g.fillStyle = 'rgba(200,235,255,.65)'; g.font = '600 9px ui-monospace,monospace'; g.fillText('/ contracts · [ view · ] camera drone · \\ next cam · BACKSPACE recentre · ARROWS move · , . turn · − = zoom · tools U I O P K L ; \' · ENTER / R-SHIFT fire', 18, 60);
+    g.fillStyle = 'rgba(200,235,255,.65)'; g.font = '600 9px ui-monospace,monospace'; if (Coop.solo) g.fillText('WASD / ARROWS cursor · Q E turn · WHEEL / − = zoom · CLICK place cursor · RIGHT-CLICK send hero · M map · [ view · ] cam drone · \\ next cam · / contracts · tools U I O P K L ; \' · ENTER / R-SHIFT gunship fire', 18, 60); else g.fillText('/ contracts · [ view · ] camera drone · \\ next cam · BACKSPACE recentre · ARROWS move · , . turn · − = zoom · tools U I O P K L ; \' · ENTER / R-SHIFT fire', 18, 60);
     // threats and points of interest, through the drone's eyes
     for (const u of Units.list) { if (!u.alive || u.ko || u.thrall || !(u.gang || u.villain) || u.pos.distanceTo(P) > 120) continue; const s = proj(V3(u.pos.x, u.pos.y + 1, u.pos.z), cam, W, H); if (!s.on) continue; const c = u.villain ? '#ff3b4f' : u.angry ? '#ffb347' : '#ffe08a'; g.strokeStyle = c; g.lineWidth = u.villain ? 2.5 : 1.5; const r = u.villain ? 12 : 7; g.strokeRect(s.x - r, s.y - r, r * 2, r * 2); if (u.villain) { g.fillStyle = c; g.textAlign = 'center'; g.font = '800 10px ui-monospace,monospace'; g.fillText('☠ ' + VILLAIN_DEFS[u.villain].name, s.x, s.y - r - 9); } }
     g.textAlign = 'center';
@@ -13413,8 +13431,14 @@ const ChairOps = (() => {
     if (S.mode === 'map') { g.textAlign = 'center'; g.font = '700 10px ui-monospace,monospace'; for (const T of WorldPlus.towers) { const s0 = proj(T.top, cam, W, H); if (s0.on) { g.fillStyle = '#6dffb0'; g.fillText('📡', s0.x, s0.y); } } for (const D of DISTRICTS) { let sx = 0, sz = 0, n = 0; for (const bl of City.blocks) if (bl.district === D) { sx += (bl.x0 + bl.x1) / 2; sz += (bl.z0 + bl.z1) / 2; n++; } if (!n) continue; const s0 = proj(V3(sx / n, 0, sz / n), cam, W, H); if (s0.on) { g.fillStyle = 'rgba(220,240,255,.55)'; g.fillText(D.name, s0.x, s0.y); } } if (GangWar.active) { const s0 = proj(GangWar.active.c, cam, W, H); if (s0.on) { g.fillStyle = '#ff3b4f'; g.font = '800 12px ui-monospace,monospace'; g.fillText('⚔ GANG WAR', s0.x, s0.y - 18); } } }
     // cursor readout
     if (S.mode !== 'watch' && S.mode !== 'cams') { const c = Coop.S.cur; const s = proj(c, cam, W, H); if (s.on) { g.strokeStyle = 'rgba(70,240,255,.8)'; g.lineWidth = 1; g.beginPath(); g.moveTo(s.x - 22, s.y); g.lineTo(s.x - 8, s.y); g.moveTo(s.x + 8, s.y); g.lineTo(s.x + 22, s.y); g.moveTo(s.x, s.y - 22); g.lineTo(s.x, s.y - 8); g.moveTo(s.x, s.y + 8); g.lineTo(s.x, s.y + 22); g.stroke(); const n = Units.list.filter(u => u.alive && !u.ko && (u.gang || u.villain) && u.pos.distanceTo(c) < 15).length; g.fillStyle = '#bff8ff'; g.textAlign = 'left'; g.font = '700 9px ui-monospace,monospace'; g.fillText(districtAt(c.x, c.z).name + ' · ' + Math.round(c.distanceTo(P)) + 'm FROM P1' + (n ? ' · ' + n + ' HOSTILE' : ''), s.x + 26, s.y + 4); } }
+    // solo: the AI hero's orders panel, its goal and its target
+    if (Coop.solo) { const B = Bot.S; const ax = 10, ay = H - 214 - 168; panel(g, ax, ay, 250, 160, '#6dffb0'); g.textAlign = 'left'; g.fillStyle = '#6dffb0'; g.font = '800 11px ui-monospace,monospace'; g.fillText('🤖 AI HERO · ' + Bot.ORD[B.order] + ' · ' + (B.stance === 'aggro' ? 'AGGRESSIVE' : 'DEFENSIVE'), ax + 12, ay + 15);
+      g.fillStyle = '#fff'; g.font = '700 9px ui-monospace,monospace'; g.fillText(String(B.doing).slice(0, 40), ax + 12, ay + 32); g.fillStyle = B.hurt ? '#ff8fa3' : '#9fdcef'; g.fillText(B.hurt ? '⚠ BADLY HURT — SEND A MED-KIT (K)' : 'TAKEDOWNS ' + B.kills, ax + 12, ay + 46);
+      g.fillStyle = 'rgba(200,235,255,.8)'; const L = ['ORDERS  G go · H hold · F attack', '        B fall back · Y follow · C auto', '        N nearest crime · X stance', 'HERO    SPACE jump · 1-4 powers · 5 fire', '        6 push · 7 catch · 8 ultimate', '        9 dodge · 0 interact · Z punch']; L.forEach((l, i) => g.fillText(l, ax + 12, ay + 66 + i * 15));
+      if (B.goal && (B.order === 'go' || B.order === 'hold' || B.order === 'retreat')) { const s0 = proj(V3(B.goal.x, 0.5, B.goal.z), cam, W, H); if (s0.on) { g.strokeStyle = '#6dffb0'; g.lineWidth = 2; g.beginPath(); g.arc(s0.x, s0.y, 12, 0, TAU); g.stroke(); g.fillStyle = '#6dffb0'; g.textAlign = 'center'; g.font = '800 9px ui-monospace,monospace'; g.fillText(B.order === 'hold' ? 'HOLD' : B.order === 'retreat' ? 'FALL BACK' : 'GO', s0.x, s0.y - 20); } }
+      const T = Bot.target; if (T && T.alive) { const s0 = proj(V3(T.pos.x, T.pos.y + 1, T.pos.z), cam, W, H); if (s0.on) { g.strokeStyle = '#ff3b4f'; g.lineWidth = 2.5; g.strokeRect(s0.x - 13, s0.y - 13, 26, 26); g.fillStyle = '#ff3b4f'; g.textAlign = 'center'; g.font = '800 9px ui-monospace,monospace'; g.fillText('TARGET', s0.x, s0.y - 20); } } }
     // left: player one's status
-    const py = H - 214; panel(g, 10, py, 250, 112, hc); g.textAlign = 'left'; g.fillStyle = hc; g.font = '800 12px ui-monospace,monospace'; g.fillText('P1 · ' + HEROES[G.hero].name, 22, py + 16); g.fillStyle = '#dff'; g.font = '700 9px ui-monospace,monospace'; g.fillText(state(), 175, py + 16);
+    const py = H - 214; panel(g, 10, py, 250, 112, hc); g.textAlign = 'left'; g.fillStyle = hc; g.font = '800 12px ui-monospace,monospace'; g.fillText((Coop.solo ? 'AI · ' : 'P1 · ') + HEROES[G.hero].name, 22, py + 16); g.fillStyle = '#dff'; g.font = '700 9px ui-monospace,monospace'; g.fillText(state(), 175, py + 16);
     g.fillText('HEALTH ' + Math.round(Player.hp), 22, py + 34); bar(g, 100, py + 31, 145, hp(), hp() < 0.3 ? '#ff3b4f' : '#ff8fa3'); g.fillStyle = '#dff'; g.fillText('ENERGY', 22, py + 50); bar(g, 100, py + 47, 145, Player.mind / Math.max(1, Player.maxMind), hc);
     const sp = Math.round(Math.hypot(Player.vel.x, Player.vel.y, Player.vel.z)); const th = Units.list.filter(u => u.alive && !u.ko && (u.gang || u.villain) && u.angry && u.pos.distanceTo(P) < 40).length; g.fillStyle = '#dff'; g.fillText(sp + ' m/s · ALT ' + Math.max(0, Math.round(P.y)) + ' m · ' + districtAt(P.x, P.z).name, 22, py + 68);
     g.fillStyle = th ? '#ffb347' : '#6dffb0'; g.fillText(th ? '⚠ ' + th + ' HOSTILES ON P1' : '✓ NO THREATS NEAR P1', 22, py + 84);
@@ -13448,7 +13472,7 @@ const ChairOps = (() => {
   }
   function update(rdt) {
     const on = Coop.chairIsP2 && (G.mode === 'play' || G.mode === 'detained' || G.mode === 'phone');
-    if (!S.cv) return; S.cv.style.display = on ? 'block' : 'none'; if (!on) { hideMarks(); return; } draw(rdt);
+    if (!S.cv) return; S.cv.style.display = on ? 'block' : 'none'; S.cv.style.left = Coop.solo ? '0' : '50%'; S.cv.style.width = Coop.solo ? '100%' : '50%'; if (!on) { hideMarks(); return; } draw(rdt);
   }
   function reset() { for (const d of S.drones) scene.remove(d.mesh); S.drones = []; hideMarks(); S.mode = 'hover'; S.off.set(0, 0, 0); Ops.reset(); }
   return { S, dom, control, camera, update, reset, deploy, log, setMode(m) { S.mode = m; }, get mode() { return S.mode; } };
@@ -13587,6 +13611,99 @@ const GangWar = (() => {
   function reset() { if (W) { Beacons.remove(W.beacon); for (const x of W.relays) scene.remove(x.mesh); for (const u of W.members) if (u.alive) removeObj(u); W = null; } nextT = 260; }
   return { start, update, reset, relayNear, hackRelay, blast, get active() { return W; } };
 })();
+// §BOT ----------------------------------------------------------------------------------------
+// Solo chair: you are the guy in the chair, an AI flies the hero. It presses the same keys a player
+// would (so every hero's moves, powers and tricks work), follows street routes, fights, takes orders.
+const Bot = (() => {
+  const S = { order: 'auto', stance: 'aggro', goal: null, tgt: null, path: null, pathI: 1, pathT: 0, pathGoal: null, atkT: 0, stuckT: 0, last: V3(), lastT: 0, strafe: 0, strafeT: 0, held: new Set(), rel: [], relB: false, powT: 4, shieldT: 0, tT: 0, wanderT: 0, doing: 'STANDING BY', hurt: false, barkT: 0, kills: 0 };
+  const ORD = { auto: 'AUTO', go: 'GO TO MARK', hold: 'HOLD HERE', attack: 'ATTACK', retreat: 'FALL BACK', follow: 'FOLLOW CURSOR' };
+  const BARK = { auto: ['On it — I\'ll find trouble.', 'Running free. Shout if you need me.'], go: ['Heading to your mark.', 'Moving.', 'On my way.'], hold: ['Holding here.', 'Not moving.'], attack: ['Engaging.', 'I see them.', 'Going in.'], retreat: ['Falling back!', 'Pulling out.'], follow: ['Right behind your cursor.', 'Lead the way.'] };
+  const hostile = u => u.alive && !u.ko && !u.thrall && !u.ally && (u.gang || u.villain);
+  function near(p, r, angry) { let best = null, bd = r; for (const u of Units.list) { if (!hostile(u)) continue; if (angry && !u.angry && !u.villain) continue; const d = u.pos.distanceTo(p); if (d < bd) { bd = d; best = u; } } return best; }
+  function count(p, r) { let n = 0; for (const u of Units.list) if (hostile(u) && u.pos.distanceTo(p) < r) n++; return n; }
+  function say(m) { ChairOps.log('P1 (AI): ' + m, HEROES[G.hero].color); }
+  function order(o) {
+    const cur = Coop.S.cur; S.path = null; S.tgt = null; S.hurt = false;
+    if (o === 'attack') { S.tgt = near(cur, 26) || near(Player.pos, 45); if (!S.tgt) { ChairOps.log('NO TARGET NEAR THE CURSOR', '#ffb347'); return; } }
+    if (o === 'go' || o === 'follow') S.goal = cur.clone().setY(0);
+    if (o === 'hold') S.goal = Player.pos.clone().setY(0);
+    if (o === 'retreat') { const c = V3(); let n = 0; for (const u of Units.list) if (hostile(u) && u.pos.distanceTo(Player.pos) < 40) { c.add(u.pos); n++; } const away = n ? V3().subVectors(Player.pos, c.divideScalar(n)).setY(0).normalize() : V3().subVectors(cur, Player.pos).setY(0).normalize(); S.goal = Player.pos.clone().addScaledVector(away.lengthSq() ? away : V3(1, 0, 0), 60).setY(0); }
+    S.order = o; ChairOps.log('ORDER · ' + ORD[o], '#6dffb0'); say(fpick(BARK[o]));
+  }
+  function nearestJob() {
+    const B = Beacons.list.find(b => b.main); if (B) return { p: B.pos, what: (B.label || 'THE OBJECTIVE') };
+    let best = null, bd = 450; for (const C of Crimes.list) { if (C.done) continue; const d = C.at.distanceTo(Player.pos); if (d < bd) { bd = d; best = C; } } if (best) return { p: best.at, what: (best.T && best.T.name || best.type || 'CRIME').toUpperCase() };
+    if (GangWar.active && GangWar.active.c.distanceTo(Player.pos) < 700) return { p: GangWar.active.c, what: 'THE GANG WAR' };
+    return null;
+  }
+  function sendNearest() { const J = nearestJob(); if (!J) { ChairOps.log('NOTHING ON THE SCANNERS', '#ffb347'); return; } S.order = 'go'; S.goal = J.p.clone().setY(0); S.path = null; ChairOps.log('ORDER · GO TO ' + J.what, '#6dffb0'); say('Heading to ' + J.what.toLowerCase() + '.'); }
+  // ---- key presses ----
+  function apply(want) { for (const k of S.held) if (!want.has(k)) { Input.vkey(k, false); S.held.delete(k); } for (const k of want) { Input.vkey(k, true); S.held.add(k); } }
+  function tap(code) { if (code === 'mouse') { Input.vbtn(0, true); S.relB = true; return; } Input.vkey(code, true); S.rel.push(code); }
+  function release() { for (const k of S.held) Input.vkey(k, false); S.held.clear(); for (const k of S.rel) Input.vkey(k, false); S.rel = []; if (S.relB) { Input.vbtn(0, false); S.relB = false; } }
+  // ---- steering ----
+  function steer(to, dt, want, arrive) {
+    const P = Player.pos; const d = Math.hypot(to.x - P.x, to.z - P.z); if (d < arrive) return true;
+    let aim = to;
+    if (d > 14) { S.pathT -= dt; if (!S.path || S.pathT <= 0 || !S.pathGoal || S.pathGoal.distanceTo(to) > 6) { S.path = GPS.route(P, to); S.pathI = 1; S.pathT = 2; S.pathGoal = to.clone(); }
+      while (S.path && S.pathI < S.path.length - 1 && Math.hypot(S.path[S.pathI].x - P.x, S.path[S.pathI].z - P.z) < 4) S.pathI++; if (S.path && S.path[S.pathI]) aim = S.path[S.pathI]; }
+    const dx = aim.x - P.x, dz = aim.z - P.z; const yaw = Math.atan2(-dx, -dz); Player.yaw += angDiff(Player.yaw, yaw) * Math.min(1, dt * 9); Player.pitch += (-0.12 - Player.pitch) * Math.min(1, dt * 3);
+    if (Math.abs(angDiff(Player.yaw, yaw)) < 1.2) want.add('KeyW'); if (d > 22) want.add('ShiftLeft');
+    if (S.strafeT > 0) { S.strafeT -= dt; want.add(S.strafe > 0 ? 'KeyD' : 'KeyA'); }
+    // stuck? hop, sidestep, re-route
+    S.lastT += dt; if (S.lastT > 0.8) { const moved = Math.hypot(P.x - S.last.x, P.z - S.last.z); S.last.copy(P); S.lastT = 0; if (moved < 0.8) { S.stuckT++; tap('Space'); if (S.stuckT > 1) { S.strafe = Math.random() < 0.5 ? -1 : 1; S.strafeT = 0.7; } if (S.stuckT > 3) { S.path = null; S.stuckT = 0; } } else S.stuckT = 0; }
+    return false;
+  }
+  function face(u, dt) { const dx = u.pos.x - Player.pos.x, dz = u.pos.z - Player.pos.z; Player.yaw += angDiff(Player.yaw, Math.atan2(-dx, -dz)) * Math.min(1, dt * 12); }
+  function fight(u, dt, want) {
+    const d = u.pos.distanceTo(Player.pos); S.doing = 'FIGHTING ' + (u.villain ? VILLAIN_DEFS[u.villain].name : u.boss ? (u.name || 'A BOSS') : 'A ' + (u.type || 'THUG').toUpperCase()) + ' · ' + Math.round(d) + ' m';
+    if (d > 2.4) { S.atkT -= dt; steer(u.pos, dt, want, 2.2); if (d < 14 && S.atkT <= 0 && Math.random() < 0.3) { S.atkT = 0.9; tap('KeyF'); } return; }
+    face(u, dt); S.atkT -= dt;
+    if (S.atkT <= 0) { S.atkT = 0.34; tap('mouse'); const f = V3().subVectors(u.pos, Player.pos).setY(0).normalize(); Units.hit(u, 8, f.multiplyScalar(3).add(V3(0, 2, 0)), 'melee', 1); if (u.gang && !u.angry) GangAI.anger(u); Player.combatT = G.time; if (!u.alive || u.ko) { S.kills++; if (Math.random() < 0.3) say(fpick(['One down.', 'Got him.', 'Next!', 'That\'s handled.'])); } }
+  }
+  // ---- brain ----
+  function update(dt) {
+    if (!Coop.solo || G.mode !== 'play') { release(); return; }
+    for (const k of S.rel) Input.vkey(k, false); S.rel = []; if (S.relB) { Input.vbtn(0, false); S.relB = false; }
+    const want = new Set(); const P = Player.pos; const hp = Player.hp / Player.maxHp;
+    S.powT -= dt; S.shieldT -= dt; S.tT -= dt;
+    // badly hurt: pull back on its own until it heals (or the chair sends a med-kit)
+    if (S.order !== 'retreat' && hp < 0.25 && !S.hurt) { S.hurt = true; say('I\'m hurt bad — med-kit (K)!'); }
+    if (S.hurt && hp > 0.6) { S.hurt = false; say('Back on my feet.'); }
+    if (hp < 0.45 && S.shieldT <= 0 && count(P, 10)) { S.shieldT = 12; tap('Digit1'); }
+    const eng = S.stance === 'aggro' ? 32 : 10;
+    if (S.tgt && (!hostile(S.tgt) || S.tgt.pos.distanceTo(P) > 90)) { if (S.order === 'attack') { const nx = near(P, 25); if (nx) S.tgt = nx; else { S.order = 'auto'; S.tgt = null; say('Target down. Back to roaming.'); } } else S.tgt = null; }
+    let u = S.order === 'attack' ? S.tgt : null;
+    if (!u && S.order !== 'retreat' && !S.hurt) { const base = S.order === 'hold' ? S.goal : P; u = near(base, S.order === 'hold' ? 12 : eng, S.stance !== 'aggro') || near(P, 4); if (u && S.order === 'go' && u.pos.distanceTo(P) > 8 && S.stance !== 'aggro') u = null; }
+    if (u) { fight(u, dt, want);
+      if (S.stance === 'aggro' && S.powT <= 0 && count(P, 9) >= 3) { S.powT = frnd(5, 9); tap(fpick(['Digit3', 'Digit4', 'KeyQ'])); } }
+    else if (S.order === 'retreat' || S.hurt) { const g = S.goal && S.order === 'retreat' ? S.goal : (() => { const c = V3(); let n = 0; for (const x of Units.list) if (hostile(x) && x.pos.distanceTo(P) < 40) { c.add(x.pos); n++; } return n ? P.clone().add(V3().subVectors(P, c.divideScalar(n)).setY(0).setLength(30)) : P; })(); S.doing = 'FALLING BACK'; if (steer(g, dt, want, 4) && S.order === 'retreat') { S.order = 'hold'; S.goal = P.clone().setY(0); say('Clear. Holding.'); } }
+    else if (S.order === 'go' || S.order === 'follow') { if (S.order === 'follow') S.goal = Coop.S.cur.clone().setY(0); const d = Math.round(Math.hypot(S.goal.x - P.x, S.goal.z - P.z)); S.doing = (S.order === 'follow' ? 'FOLLOWING THE CURSOR · ' : 'HEADING TO THE MARK · ') + d + ' m';
+      if (steer(S.goal, dt, want, S.order === 'follow' ? 5 : 3) && S.order === 'go') { if (S.tT <= 0) { S.tT = 1.4; tap('KeyT'); } S.order = 'hold'; S.goal = P.clone().setY(0); say('At the mark.'); } }
+    else if (S.order === 'hold') { S.doing = 'HOLDING POSITION'; if (S.goal && Math.hypot(S.goal.x - P.x, S.goal.z - P.z) > 3) steer(S.goal, dt, want, 2.5); }
+    else { // auto: jobs and crimes first, then roam
+      const J = nearestJob(); if (J) { const d = Math.round(Math.hypot(J.p.x - P.x, J.p.z - P.z)); S.doing = 'AUTO · ' + J.what.slice(0, 24) + ' · ' + d + ' m'; if (steer(J.p, dt, want, 3.5) && S.tT <= 0) { S.tT = 1.6; tap('KeyT'); } }
+      else { S.wanderT -= dt; if (!S.wander || S.wanderT <= 0 || Math.hypot(S.wander.x - P.x, S.wander.z - P.z) < 5) { S.wanderT = 30; const a = frnd(0, TAU); S.wander = V3(clamp(P.x + Math.cos(a) * 90, 30, CITY_W - 30), 0, clamp(P.z + Math.sin(a) * 90, 30, CONFIG.city.quayZ - 30)); } S.doing = 'AUTO · PATROLLING'; steer(S.wander, dt, want, 4); } }
+    apply(want);
+  }
+  // the chair's direct hero buttons (solo only)
+  const ACT = { Space: 'Space', Digit1: 'Digit1', Digit2: 'Digit2', Digit3: 'Digit3', Digit4: 'Digit4', Digit5: 'KeyF', Digit6: 'KeyQ', Digit7: 'KeyE', Digit8: 'KeyU', Digit9: 'KeyV', Digit0: 'KeyT', KeyZ: 'mouse' };
+  const ACT_NAME = { Space: 'JUMP', Digit1: 'POWER 1', Digit2: 'POWER 2', Digit3: 'POWER 3', Digit4: 'POWER 4', Digit5: 'FIRE', Digit6: 'PUSH', Digit7: 'CATCH', Digit8: 'ULTIMATE', Digit9: 'DODGE', Digit0: 'INTERACT', KeyZ: 'PUNCH' };
+  const ORDK = { KeyG: 'go', KeyH: 'hold', KeyF: 'attack', KeyB: 'retreat', KeyY: 'follow', KeyC: 'auto' };
+  const prev = {};
+  function keys() {
+    if (!Coop.solo || G.mode !== 'play') return; const K = Input.p2keys; const t = k => K[k] && !prev[k];
+    for (const k in ORDK) if (t(k)) order(ORDK[k]);
+    if (t('KeyX')) { S.stance = S.stance === 'aggro' ? 'def' : 'aggro'; ChairOps.log('STANCE · ' + (S.stance === 'aggro' ? 'AGGRESSIVE' : 'DEFENSIVE'), '#6dffb0'); say(S.stance === 'aggro' ? 'Gloves off.' : 'Keeping my head down.'); }
+    if (t('KeyN')) sendNearest();
+    if (t('KeyM')) ChairOps.setMode(ChairOps.mode === 'map' ? 'hover' : 'map');
+    for (const k in ACT) if (t(k)) { tap(ACT[k]); ChairOps.log('P1 · ' + ACT_NAME[k], HEROES[G.hero].color); }
+    for (const k of [...Object.keys(ORDK), ...Object.keys(ACT), 'KeyX', 'KeyN', 'KeyM']) prev[k] = !!K[k];
+  }
+  function reset() { release(); S.order = 'auto'; S.goal = null; S.tgt = null; S.path = null; S.hurt = false; S.kills = 0; }
+  return { S, update, keys, order, release, reset, ORD, get target() { return S.tgt; } };
+})();
+
 // §FREERUN ------------------------------------------------------------------------------------
 // Movement freedom for every hero who isn't already swinging: fire a TETHER at any wall (middle
 // mouse, or the ` key) and zip to it; keep holding through the pull to SLINGSHOT off the end;
@@ -13912,7 +14029,7 @@ function frame(now) {
     G.time += dt; if (M === 'play') { G.runTime += rdt; Stats.time = G.runTime; }
     const pdt = G.hero !== 'kinetic' ? rdt : Catch.active ? rdt * 0.8 : dt;
     if (M === 'play' || M === 'detained') {
-      Player.update(pdt, rdt); Acro.update(rdt);
+      if (Coop.solo) Bot.update(rdt); Player.update(pdt, rdt); Acro.update(rdt);
       LockOn.show(null);
       if (M === 'play') { if (G.hero === 'kinetic') { TK.update(pdt, rdt); Push.update(pdt); Slam.update(pdt); Shield.update(pdt); Catch.update(pdt, rdt); Levitate.update(pdt); Vortex.update(pdt); Overload.update(dt, rdt); } else HeroUpdate(rdt, dt); Booths.update(rdt); }
       Rescue.update(dt, rdt); Hazards.update(dt, rdt); Pacer.update(rdt, dt); Career.update(dt, rdt); Apt.update(rdt); Activities.update(dt, rdt); WorldPlus.update(dt, rdt); Chair.update(rdt); Villains.update(dt); Interiors.update(rdt);
