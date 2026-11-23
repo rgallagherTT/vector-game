@@ -13665,6 +13665,9 @@ const Bot = (() => {
   function update(dt) {
     if (!Coop.solo || G.mode !== 'play') { release(); return; }
     for (const k of S.rel) Input.vkey(k, false); S.rel = []; if (S.relB) { Input.vbtn(0, false); S.relB = false; }
+    // indoors (the apartment at the start, or any room): head out unless told to hold
+    if (Apt.inside) { S.inT = (S.inT || 0) + dt; if (S.order !== 'hold' && S.inT > 2) { S.inT = 0; say(fpick(['Heading out.', 'Out the door.', 'Hitting the street.'])); if (Interiors.inside) Interiors.leave(); else Apt.leave(); S.path = null; } else S.doing = 'INDOORS — HEADING OUT'; apply(new Set()); return; }
+    S.inT = 0;
     const want = new Set(); const P = Player.pos; const hp = Player.hp / Player.maxHp;
     S.powT -= dt; S.shieldT -= dt; S.tT -= dt;
     // badly hurt: pull back on its own until it heals (or the chair sends a med-kit)
@@ -13953,7 +13956,7 @@ const Game = {
 };
 function setLoadVisible(on, msg) { const l = $('loading'); l.style.display = on ? 'flex' : 'none'; if (msg) $('loadmsg').textContent = msg; $('loadbar').style.width = on ? '70%' : '100%'; }
 addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') Game.pause(); });
-document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && G.mode === 'play' && !BENCH && Input._wasLocked) Game.pause(); Input._wasLocked = !!document.pointerLockElement; });
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && G.mode === 'play' && !BENCH && Input._wasLocked && !Coop.solo) Game.pause(); Input._wasLocked = !!document.pointerLockElement; });
 addEventListener('keydown', e => { if (e.code === 'Enter' && !$('summary').classList.contains('hidden')) { $('summary').classList.add('hidden'); Game.start({ daily: !!(Menus._res && Menus._res.daily) }); } });
 
 // §LOOP --------------------------------------------------------------------------------
