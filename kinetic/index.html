@@ -8171,7 +8171,7 @@ const GangAI = (() => {
     if (u.hp < u.hp0 - 0.5) { u.hp0 = u.hp; if (dist < 40) anger(u); }
     if (u.ally) { u.life -= dt; if (u.life <= 0 && !u.leaving) { u.leaving = true; u.fleePt = freeSpot(V3(u.pos.x + frnd(-50, 50), 0, u.pos.z + frnd(-50, 50)), 0, 8); Toast.show(`<b>${u.name}</b> HEADS OFF`); } }
     if (u.state === 'flee' || u.leaving) { const sp = Units.moveTo(u, u.fleePt || u.pos, u.def.speed * 1.1, dt); if ((u.fleePt && u.pos.distanceTo(u.fleePt) < 4) || dist > 80) return -1; return sp; }
-    if (!u.job && dist > 150) return -1;
+    if (!u.job && !u.war && dist > 150) return -1;
     if (u.thinkT <= 0) { u.thinkT = frnd(0.3, 0.6); u.tgt = pick(u, dist); }
     let tg = u.tgt; if (tg && tg !== 'player' && (!tg.alive || tg.ko)) tg = u.tgt = null;
     if (!tg) {
@@ -13579,7 +13579,7 @@ const GangWar = (() => {
     // player one can hack a relay in person
     const r = relayNear(Player.pos, 3);
     if (r && G.mode === 'play') { G.tClaim = G.time; r.p1 = (r.p1 || 0) + (Input.keys.KeyT ? dt / 2 : -dt); r.p1 = clamp(r.p1, 0, 1); Hud.hint('HOLD T — HACK THE COMMS RELAY ' + Math.round(r.p1 * 100) + '%', 'ok'); if (r.p1 >= 1) hackRelay(r); }
-    const down = W.members.filter(u => !u.alive || u.ko).length;
+    const down = W.members.filter(u => u.ko || u.hp <= 0 || (!u.alive && !u.culled)).length;
     if (down >= 26) { const F = W.F; Hud.banner('GANG WAR WON', F.name + ' ARE BROKEN'); if (G.career) { Career.pay(2500, 'GANG WAR WON'); Career.rep(W.g, -15); Reputation.add(W.c, 10, 'BLOCK RETAKEN'); Career.save(); } Prog.earn(800, G.hero); end(); }
     else if (W.t > 600) end();
   }
