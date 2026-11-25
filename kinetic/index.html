@@ -361,6 +361,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -525,17 +526,19 @@ composer.addPass(bloomPass);
 const FinalShader = {
   uniforms: {
     tDiffuse: { value: null }, uTime: { value: 0 }, uCA: { value: 0 }, uBlur: { value: 0 }, uBlurC: { value: new THREE.Vector2(0.5, 0.5) },
-    uGrain: { value: 0.045 }, uVig: { value: 0.32 }, uDamp: { value: 0 }, uSlow: { value: 0 }, uHurt: { value: 0 }, uCool: { value: 0 }, uKeep: { value: 0 }, uPsi: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) },
+    uGrain: { value: 0.045 }, uVig: { value: 0.32 }, uDamp: { value: 0 }, uSlow: { value: 0 }, uHurt: { value: 0 }, uCool: { value: 0 }, uKeep: { value: 0 }, uPsi: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) }, uGrade: { value: 1 }, uSharp: { value: 0.35 },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float uTime,uCA,uBlur,uGrain,uVig,uDamp,uSlow,uHurt,uCool,uKeep,uPsi; uniform vec2 uBlurC,uRes; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float uTime,uCA,uBlur,uGrain,uVig,uDamp,uSlow,uHurt,uCool,uKeep,uPsi,uGrade,uSharp; uniform vec2 uBlurC,uRes; varying vec2 vUv;
     float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
     void main(){
       vec2 uv=vUv; vec2 dc=uv-0.5;
       vec3 col=vec3(0.0);
       if(uBlur>0.002){ vec2 dir=(uv-uBlurC)*uBlur; for(int i=0;i<8;i++){ float t=float(i)/7.0; col+=texture2D(tDiffuse,uv-dir*t).rgb; } col/=8.0; }
       else col=texture2D(tDiffuse,uv).rgb;
+      // crisper detail: a light unsharp mask
+      if(uSharp>0.0){ vec2 px=1.0/uRes; vec3 nb=texture2D(tDiffuse,uv+vec2(px.x,0.0)).rgb+texture2D(tDiffuse,uv-vec2(px.x,0.0)).rgb+texture2D(tDiffuse,uv+vec2(0.0,px.y)).rgb+texture2D(tDiffuse,uv-vec2(0.0,px.y)).rgb; col=max(col+(col-nb*0.25)*uSharp,0.0); }
       float ca=uCA+0.0012+uPsi*0.006*(0.6+0.4*sin(uTime*3.0+uv.y*14.0));
       vec2 o=dc*ca*(0.6+length(dc));
       col.r=mix(col.r,texture2D(tDiffuse,uv+o).r,0.85);
@@ -546,6 +549,8 @@ const FinalShader = {
       col=mix(col,col*vec3(0.85,0.6,1.25)+vec3(0.03,0.0,0.06),uDamp);
       col=mix(col,col*vec3(0.74,0.9,1.22)+vec3(0.0,0.012,0.035),uCool);
       col+=vec3(0.35,0.0,0.03)*uHurt*smoothstep(0.25,0.75,length(dc));
+      // grade: richer colour, cool shadows, warm highlights, a touch of contrast in the mids
+      if(uGrade>0.0){ float L2=dot(col,vec3(0.2126,0.7152,0.0722)); vec3 g=mix(vec3(L2),col,1.0+0.16*uGrade); float sh=1.0-smoothstep(0.0,0.35,L2), hi=smoothstep(0.5,2.0,L2); g*=mix(vec3(1.0),vec3(0.93,0.98,1.08),sh*0.6*uGrade); g*=mix(vec3(1.0),vec3(1.07,1.0,0.9),hi*0.5*uGrade); g=mix(g,g*(0.92+0.16*smoothstep(0.05,0.6,L2)),uGrade); col=g; }
       float v=1.0-uVig*smoothstep(0.35,0.85,length(dc*vec2(1.15,1.0)));
       col*=v;
       col+=(h(uv*uRes+fract(uTime*7.3)*91.0)-0.5)*uGrain;
@@ -557,6 +562,9 @@ composer.addPass(finalPass);
 let bokehPass = null;
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
+// edge smoothing after the tone map (the renderer runs without MSAA)
+const fxaaPass = new ShaderPass(FXAAShader); const _fxRes = () => { const pr = renderer.getPixelRatio(); fxaaPass.material.uniforms.resolution.value.set(1 / (innerWidth * pr), 1 / (innerHeight * pr)); }; _fxRes();
+composer.addPass(fxaaPass);
 
 function applyQuality() {
   Q = CONFIG.quality[settings.quality] || CONFIG.quality.medium;
@@ -565,7 +573,8 @@ function applyQuality() {
   composer.setPixelRatio(Math.min(devicePixelRatio || 1, Q.pr));
   composer.setSize(innerWidth, innerHeight);
   bloomPass.enabled = Q.bloom && !debugToggles.noBloom;
-  finalPass.uniforms.uGrain.value = Q.grain ? 0.045 : 0;
+  finalPass.uniforms.uGrain.value = Q.grain ? 0.03 : 0;
+  fxaaPass.enabled = Q !== CONFIG.quality.low; finalPass.uniforms.uSharp.value = Q === CONFIG.quality.low ? 0 : 0.35; _fxRes();
   shadowSpot.castShadow = Q.shadows;
   renderer.shadowMap.enabled = Q.shadows;
   Mirror.resize();
@@ -576,7 +585,7 @@ const debugToggles = { noBloom: false, noRefl: false, noPost: false, noShafts: f
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
-  finalPass.uniforms.uRes.value.set(innerWidth, innerHeight);
+  finalPass.uniforms.uRes.value.set(innerWidth, innerHeight); _fxRes();
   Mirror.resize();
 });
 
@@ -12487,12 +12496,12 @@ class NanoCloud {
 }
 // ---------- the hero ----------
 const Sovereign = (() => {
-  const S = { mass: 60, presence: 0, ascend: 0, con: null, lastKoCon: null, used: new Set(), blocking: false, blocked: 0, harvest: null, swarm: null, decoys: [], mech: null, cd: {}, idleT: 0, combo: 0, heading: 0, suitT: 0, glide: false, surr: 0, minions: [] };
+  const S = { mass: 400, fly: false, presence: 0, ascend: 0, con: null, lastKoCon: null, used: new Set(), blocking: false, blocked: 0, harvest: null, swarm: null, decoys: [], mech: null, cd: {}, idleT: 0, combo: 0, heading: 0, suitT: 0, glide: false, surr: 0, minions: [] };
   let main = null, aux = null, halo = null, built = false;
   const CON = ['blade', 'hammer', 'shield', 'whip', 'cannon'];
   const CON_NAME = { blade: 'BLADE', hammer: 'HAMMER', shield: 'TOWER SHIELD', whip: 'CHAIN WHIP', cannon: 'CANNON' };
   const N_MAIN = 22000, N_AUX = 7000, N_HALO = 1400;
-  const maxMass = () => 100 + Prog.level('mass') * 30;
+  const maxMass = () => 600 + Prog.level('mass') * 150;
   const asc = () => S.ascend > 0;
   const bone = n => Player.rig && Player.rig.bones[n];
   const _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _s = new THREE.Matrix4();
@@ -12551,7 +12560,7 @@ const Sovereign = (() => {
     if (toMech) aux.stream(pts, auxOff, n, 'mech', NanoShapes.points('mech', N_AUX), () => S.mech ? S.mech.rootM : null, { size: 0.08, from: 0.06, dur: 1.6 });
     else aux.stream(pts, auxOff, n, 'absorb', NanoShapes.points('dormant', N_AUX), boneM('spine'), { size: 0, from: 0.06, dur: 1.3 });
     auxOff = (auxOff + n) % N_AUX;
-    const big = (v.mass || 1500) > 5000; const gain = big ? 55 : 32; if (!toMech) { S.mass = Math.min(maxMass(), S.mass + gain); Toast.show(`+${gain} NANOMASS`); }
+    const big = (v.mass || 1500) > 5000; const gain = big ? 180 : 110; if (!toMech) { S.mass = Math.min(maxMass(), S.mass + gain); Toast.show(`+${gain} NANOMASS`); }
     const mesh = v.mesh; const t0 = performance.now(); const shrink = () => { const k = (performance.now() - t0) / 900; if (k >= 1 || !mesh) { removeObj(v); return; } mesh.scale.set(1 - k * 0.9, 1 - k, 1 - k * 0.9); requestAnimationFrame(shrink); }; shrink();
     if (v.mra && v.crew) { } Stats.harvested = (Stats.harvested || 0) + 1; Records.bump('harvested', Stats.harvested); if (Stats.harvested >= 10) Challenges.flag('nvHarvest10'); Tut.done('harvest');
     FX.sparks(V3(v.body ? v.body.translation().x : Player.pos.x, 1, v.body ? v.body.translation().z : Player.pos.z), 20, 0.8, new THREE.Color(2, 1.5, 0.6));
@@ -12706,14 +12715,20 @@ const Sovereign = (() => {
     const R = S.ride && S.ride.ride; S.dashCd = (S.dashCd || 0) - dt; S.dashT = (S.dashT || 0) - dt;
     if (Input.tap('dodge') && S.dashCd <= 0 && !S.mech) { S.dashCd = 0.8; S.dashT = 0.22; S.dashDir = wish.lengthSq() > 0.01 ? wish.clone().normalize() : V3(Math.sin(S.heading), 0, Math.cos(S.heading)); Audio.whoosh && Audio.whoosh(); FX.sparks(P.pos.clone().add(V3(0, 1, 0)), 14, 0.8, new THREE.Color(2, 1.5, 0.6)); }
     if (R) S.mass = Math.max(0, S.mass - (R.fly ? 2 : 0.8) * dt); if (R && S.mass <= 0) dismount();
-    const speed = S.mech ? 6 : R ? R.speed * (Input.down('sprint') ? 1.3 : 1) : S.glide ? 15 : Input.down('sprint') ? 9.5 : S.blocking ? 3 : 5.2;
-    const tgt = S.dashT > 0 ? S.dashDir.clone().multiplyScalar(24) : wish.multiplyScalar(speed); const acc = S.dashT > 0 ? 40 : R ? (R.fly ? 2.5 : 3.5) : S.glide ? 1.5 : 8; P.vel.x = damp(P.vel.x, tgt.x, acc, dt); P.vel.z = damp(P.vel.z, tgt.z, acc, dt);
+    const speed = S.mech ? 6 : R ? R.speed * (Input.down('sprint') ? 1.3 : 1) : S.fly ? (Input.down('sprint') ? 46 : 24) : S.glide ? 15 : Input.down('sprint') ? 9.5 : S.blocking ? 3 : 5.2;
+    const tgt = S.dashT > 0 ? S.dashDir.clone().multiplyScalar(24) : wish.multiplyScalar(speed); const acc = S.dashT > 0 ? 40 : R ? (R.fly ? 2.5 : 3.5) : S.fly ? 3.5 : S.glide ? 1.5 : 8; P.vel.x = damp(P.vel.x, tgt.x, acc, dt); P.vel.z = damp(P.vel.z, tgt.z, acc, dt);
     // wings: glide and slow, grand flight
     const wingsOk = Prog.has('wings') && !S.mech;
-    if (P.grounded) { S.glide = false; P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump')) { P.vel.y = S.mech ? 9 : 7.5; P.grounded = false; } }
-    else if (wingsOk && Input.down('jump') && P.vel.y < 1.5 && S.mass > 0) { if (!S.glide) { S.glide = true; S.preCon = S.con; main.form('wings', NanoShapes.points('wings', N_MAIN), boneM('spine'), { size: 0.03, dur: 0.6 }); } }
+    // nanotech flight: SPACE again in the air and he rides a storm of his own nanites — no wings needed
+    if (!S.mech && !R && !P.grounded && Input.tap('jump') && !S.fly && S.mass > 5) { S.fly = true; S.glide = false; S.preCon = S.con; main.form('wings', NanoShapes.points('wings', N_MAIN), boneM('spine'), { size: 0.03, dur: 0.4 }); Toast.show('<b>NANO FLIGHT</b> · SPACE up · CTRL down · SHIFT boost · land to stop'); }
+    if (S.fly) { if (P.grounded && P.vel.y <= 0.5 && !Input.keys.Space || S.mass <= 0 || S.mech || R) { S.fly = false; const c = S.preCon; S.con = '__'; construct(c && c !== 'wings' ? c : null); if (!c) S.con = null; }
+      else { const up = (Input.keys.Space ? 1 : 0) - (Input.keys.ControlLeft || Input.keys.KeyC ? 1 : 0); P.vel.y = damp(P.vel.y, up * 16, 5, dt); P.grounded = false; S.mass = Math.max(0, S.mass - (Input.down('sprint') ? 4 : 1.5) * dt);
+        if (Math.random() < 0.6) FX.sparks(V3(P.pos.x, P.pos.y + 0.3, P.pos.z), 2, 0.5, new THREE.Color(2.2, 1.7, 0.7)); } }
+    if (P.grounded && !S.fly) { S.glide = false; P.vel.y = Math.max(P.vel.y, -1); if (Input.tap('jump')) { P.vel.y = S.mech ? 9 : 7.5; P.grounded = false; } }
+    else if (!S.fly && wingsOk && Input.down('jump') && P.vel.y < 1.5 && S.mass > 0) { if (!S.glide) { S.glide = true; S.preCon = S.con; main.form('wings', NanoShapes.points('wings', N_MAIN), boneM('spine'), { size: 0.03, dur: 0.6 }); } }
     if (S.glide && (!Input.down('jump') || S.mass <= 0)) { S.glide = false; const c = S.preCon; S.con = '__'; construct(c && c !== 'wings' ? c : null); if (!c) S.con = null; }
-    if (R && R.fly) { const up = (Input.keys.Space ? 1 : 0) - (Input.keys.ControlLeft ? 1 : 0); P.vel.y = damp(P.vel.y, up * 12, 4, dt); P.grounded = false; }
+    if (S.fly) { }
+    else if (R && R.fly) { const up = (Input.keys.Space ? 1 : 0) - (Input.keys.ControlLeft ? 1 : 0); P.vel.y = damp(P.vel.y, up * 12, 4, dt); P.grounded = false; }
     else if (S.glide) { const climb = Input.down('sprint') && S.mass > 0; P.vel.y = damp(P.vel.y, climb ? 3 : -2.2, 3, dt); S.mass = Math.max(0, S.mass - (climb ? 7 : 2) * dt); }
     else P.vel.y += -22 * dt;
     const want = { x: P.vel.x * dt, y: P.vel.y * dt, z: P.vel.z * dt };
@@ -12729,8 +12744,8 @@ const Sovereign = (() => {
     // pose: a deliberate walk, the construct arm up, wings spread
     const rig = P.rig; if (!rig) return; rig.mesh.position.copy(P.pos); rig.mesh.rotation.set(0, S.heading, 0);
     const A = S.act; if (A) A.t += dt; const action = S.blocking ? 'shield' : A && A.t < 0.35 ? (A.k === 'cannon' ? 'shoot' : A.k === 'hammer' ? 'swing' : A.k === 'fist' ? 'push' : 'swing') : S.con === 'cannon' ? 'shoot' : null;
-    poseRig(rig, { t: G.time, speed: P.grounded ? Math.sqrt(P.speed2) * 0.85 : 0, air: !P.grounded && !S.glide, levitate: S.glide, action, at: A ? A.t : 0, aimPitch: P.pitch * 0.8 }, dt);
-    if (S.glide) { rig.bones.uaL.rotation.z = 1.2; rig.bones.uaR.rotation.z = -1.2; rig.bones.spine.rotation.x = 0.35; }
+    poseRig(rig, { t: G.time, speed: P.grounded ? Math.sqrt(P.speed2) * 0.85 : 0, air: !P.grounded && !S.glide && !S.fly, levitate: S.glide || S.fly, action, at: A ? A.t : 0, aimPitch: P.pitch * 0.8 }, dt);
+    if (S.glide || S.fly) { rig.bones.uaL.rotation.z = 1.2; rig.bones.uaR.rotation.z = -1.2; rig.bones.spine.rotation.x = S.fly ? 0.15 + Math.min(0.9, Math.hypot(P.vel.x, P.vel.z) / 40) : 0.35; }
     if (!S.con && P.grounded && P.speed2 < 0.05 && !S.blocking) { rig.bones.spine.rotation.x = -0.06; rig.bones.head.rotation.x = -0.08; } // chin up
     if (R) { const B = rig.bones; // ride stances: a surfer's crouch, a rider's seat, a jet pilot laid flat
       if (R.pose === 'board') { B.thL.rotation.set(-0.5, 0, 0.25); B.thR.rotation.set(-0.2, 0, -0.25); B.shL.rotation.x = 0.9; B.shR.rotation.x = 0.6; B.hips.position.y = 0.78 + (R.hover || 0); B.spine.rotation.set(0.25, 0.6, 0); B.uaL.rotation.set(-0.3, 0, 0.9); B.uaR.rotation.set(0.2, 0, -0.9); rig.mesh.rotation.y = S.heading - 0.6; }
@@ -12750,6 +12765,7 @@ const Sovereign = (() => {
   }
   // ---------- frame ----------
   function update(rdt, dt) {
+    if (G.hero === 'nano' && G.mode === 'play') S.mass = Math.min(maxMass(), S.mass + (S.fly ? 2 : 7) * rdt); // the nanites replicate
     build(); const P = Player; for (const k in S.cd) S.cd[k] -= rdt; S.cd.atk = S.cd.atk || 0;
     SUIT_U.uBase.value = P.pos.y; SUIT_U.uTime.value += rdt; if (S.suitT > 0) { S.suitT -= rdt; SUIT_U.uDis.value = Math.min(1.4, SUIT_U.uDis.value + rdt * 1.75 / (asc() ? 0.7 : 1.5)); } else SUIT_U.uDis.value = 1.4;
     SUIT_U.uGlow.value = 0.12 + S.presence / 100 * 0.35 + (asc() ? 0.4 : 0);
@@ -12776,12 +12792,12 @@ const Sovereign = (() => {
   function onHurt(dmg, from) { if (G.hero !== 'nano') return false; if (S.mech) return true; if (guard(dmg, from)) return true; presence(-15); S.lastKoCon = null; return false; }
   function reset() {
     S.presence = 0; S.ascend = 0; S.con = null; S.swarm = null; S.glide = false; S.blocking = false; S.blocked = 0; S.surr = 0; S.used.clear(); for (const D of S.decoys) scene.remove(D.rig.mesh); S.decoys = []; S.minions = []; S.wheel = false;
-    if (S.mech) { S.mech = null; CamRig.dMul = 1; CamRig.hOv = null; } S.mass = Math.min(maxMass(), 60); S.ride = null; Forge.reset();
+    if (S.mech) { S.mech = null; CamRig.dMul = 1; CamRig.hOv = null; } S.mass = Math.min(maxMass(), 400); S.ride = null; S.fly = false; Forge.reset();
     if (built) { main.form('dormant', NanoShapes.points('dormant', N_MAIN), boneM('spine'), { size: 0, dur: 0.1 }); halo.form('halo', NanoShapes.points('halo', N_HALO), haloM, { size: 0, dur: 0.1 }); }
     visible(G.hero === 'nano'); if (G.hero === 'nano') suitUp(false);
   }
   function hide() { visible(false); }
-  const keysHtml = () => '<b>WASD</b> walk · <b>SHIFT</b> stride · <b>SPACE</b> jump, hold in the air for <b>wings</b><br><b>HOLD E</b> harvest a car into Nanomass · <b>HOLD Q</b> / <b>1–5</b> constructs<br><b>LMB</b> strike · <b>RMB</b> guard (bullets break on it)<br><b>F</b> swarm · <b>G</b> assimilate · <b>C</b> decoys · <b>R</b> rebuild · <b>U</b> colossus';
+  const keysHtml = () => '<b>WASD</b> walk · <b>SHIFT</b> stride · <b>SPACE</b> jump · <b>SPACE again in the air</b> = nano flight (SPACE up · CTRL down · SHIFT boost)<br><b>HOLD E</b> harvest a car into Nanomass · <b>HOLD Q</b> / <b>1–5</b> constructs<br><b>LMB</b> strike · <b>RMB</b> guard (bullets break on it)<br><b>F</b> swarm · <b>G</b> assimilate · <b>C</b> decoys · <b>R</b> rebuild · <b>U</b> colossus';
   function slot(s) {
     const L = id => !Prog.has(id);
     if (s.id === 'con') return { active: !!S.con && S.con !== 'swarm', cd: 0 }; if (s.id === 'harvest') return { active: !!S.harvest, cd: 0 }; if (s.id === 'block') return { active: S.blocking, cd: 0 };
@@ -13133,6 +13149,31 @@ const BLUEPRINTS = [
   { id: 'magnet', name: 'MAGNET', kind: 'tool', cost: 8, prims: [['t', 0.32, 0.09, 0, 0, -0.7, 0, 0, 0, 0], ['b', 0.15, 0.25, 0.15, 0.32, -0.95, 0], ['b', 0.15, 0.25, 0.15, -0.32, -0.95, 0]], beh: { tool: 'magnet', rate: 1.2 } },
   { id: 'jetpack', name: 'JETPACK', kind: 'tool', anchor: 'back', cost: 10, prims: [['c', 0.14, 0.7, 0, 0.18, 0.3, -0.2], ['c', 0.14, 0.7, 0, -0.18, 0.3, -0.2], ['k', 0.14, 0.25, 0, 0.18, -0.15, -0.2, Math.PI], ['k', 0.14, 0.25, 0, -0.18, -0.15, -0.2, Math.PI]], beh: { tool: 'jetpack', rate: 0.15 } },
   { id: 'repair', name: 'REPAIR FIELD', kind: 'tool', cost: 6, prims: [['t', 0.3, 0.04, 0, 0, -0.6, 0, Math.PI / 2], ['s', 0.12, 0, 0, 0, -0.6, 0]], beh: { tool: 'repair', rate: 3 } },
+  // ---- the deep library: the crazy stuff ----
+  { id: 'megablade', name: 'COLOSSUS BLADE', kind: 'weapon', cost: 30, prims: [['b', 0.14, 5.2, 0.6, 0, -3.0, 0], ['b', 1.4, 0.16, 0.3, 0, -0.42, 0], ['c', 0.06, 0.5, 0, 0, -0.1, 0]], beh: { k: 'melee', dmg: 70, reach: 6.5, n: 10, cone: -1, rate: 0.9, spin: true, knock: 14 } },
+  { id: 'rocketfist', name: 'ROCKET FIST', kind: 'weapon', cost: 20, prims: [['b', 0.6, 0.6, 0.7, 0, -0.5, 0], ['k', 0.2, 0.5, 0, 0, -0.05, 0], ['c', 0.25, 0.3, 0, 0, 0.1, 0]], beh: { k: 'ranged', dmg: 70, rate: 1.1, splash: 7, range: 70, cost: 3 } },
+  { id: 'tentacles', name: 'NANO TENTACLES', kind: 'weapon', cost: 22, whip: true, prims: Array.from({ length: 40 }, (_, i) => ['s', 0.16 - i * 0.003, 0, 0, Math.sin(i * 0.45) * 0.3, -0.4 - i * 0.2, Math.cos(i * 0.45) * 0.3]), beh: { k: 'melee', dmg: 24, reach: 9, n: 8, rate: 0.45, pull: true } },
+  { id: 'chainsword', name: 'CHAINSAW SWORD', kind: 'weapon', cost: 16, prims: [['b', 0.12, 2.0, 0.3, 0, -1.4, 0], ...Array.from({ length: 14 }, (_, i) => ['b', 0.14, 0.06, 0.08, 0, -0.5 - i * 0.14, 0.18])], beh: { k: 'melee', dmg: 14, reach: 3.4, n: 4, rate: 0.08 } },
+  { id: 'lightning', name: 'STORM LANCE', kind: 'weapon', cost: 18, prims: [['k', 0.12, 2.4, 0, 0, -1.6, 0, Math.PI], ...Array.from({ length: 5 }, (_, i) => ['t', 0.25 - i * 0.03, 0.02, 0, 0, -0.6 - i * 0.4, 0, Math.PI / 2])], beh: { k: 'ranged', dmg: 34, rate: 0.25, pierce: true, range: 60, cost: 1 } },
+  { id: 'twincannon', name: 'TWIN DOOM CANNONS', kind: 'weapon', cost: 26, anchor: 'back', prims: [['c', 0.25, 1.6, 0, 0.55, 0.9, -0.2, 0.25], ['c', 0.25, 1.6, 0, -0.55, 0.9, -0.2, 0.25], ['b', 1.4, 0.3, 0.4, 0, 0.2, -0.2]], beh: { k: 'ranged', dmg: 48, rate: 0.6, splash: 6, range: 80, cost: 2 } },
+  { id: 'fortress', name: 'FORTRESS', kind: 'structure', cost: 60, prims: [['b', 14, 5, 0.8, 0, 2.5, -7], ['b', 14, 5, 0.8, 0, 2.5, 7], ['b', 0.8, 5, 14, -7, 2.5, 0], ['b', 0.8, 5, 6, 7, 2.5, -4], ['b', 0.8, 5, 6, 7, 2.5, 4], ...[[-7, -7], [7, -7], [-7, 7], [7, 7]].map(([x, z]) => ['c', 1.4, 8, 0, x, 4, z])] },
+  { id: 'megacannon', name: 'MEGA CANNON', kind: 'structure', cost: 45, beh: { turret: 60 }, prims: [['c', 1.6, 2.4, 0, 0, 1.2, 0], ['s', 1.3, 0, 0, 0, 2.8, 0], ['c', 0.4, 4, 0, 0, 3.0, 2.2, Math.PI / 2], ['t', 0.5, 0.08, 0, 0, 3.0, 4.0]] },
+  { id: 'colossus_statue', name: 'COLOSSAL SOVEREIGN', kind: 'structure', cost: 70, beh: { statue: 30 }, prims: [['b', 5, 2, 5, 0, 1, 0], ['b', 1.2, 6, 1, -0.8, 5, 0], ['b', 1.2, 6, 1, 0.8, 5, 0], ['b', 3, 5, 1.6, 0, 10.5, 0], ['b', 1, 5, 1, -2.2, 10.5, 0, 0, 0, 0.3], ['b', 1, 5, 1, 2.2, 12.5, 0, 0, 0, -2.6], ['s', 1.1, 0, 0, 0, 14, 0], ['t', 1.4, 0.1, 0, 0, 15.6, 0, Math.PI / 2]] },
+  { id: 'pyramid', name: 'NANO PYRAMID', kind: 'structure', cost: 50, prims: Array.from({ length: 8 }, (_, i) => ['b', 16 - i * 2, 1.2, 16 - i * 2, 0, 0.6 + i * 1.2, 0]) },
+  { id: 'loop', name: 'STUNT LOOP', kind: 'structure', cost: 40, prims: Array.from({ length: 24 }, (_, i) => { const a = i / 24 * TAU; return ['b', 4, 0.3, 1.6, 0, 6 - Math.cos(a) * 6, Math.sin(a) * 6, a]; }) },
+  { id: 'skybridge', name: 'SKY HIGHWAY', kind: 'structure', cost: 40, atHeight: true, prims: [['b', 6, 0.4, 60, 0, 0, 0], ['b', 0.2, 1.2, 60, 3, 0.7, 0], ['b', 0.2, 1.2, 60, -3, 0.7, 0]] },
+  { id: 'trampoline', name: 'MEGA LAUNCHER', kind: 'structure', cost: 25, beh: { launch: 70 }, prims: [['c', 3.2, 0.4, 0, 0, 0.2, 0], ['t', 2.8, 0.12, 0, 0, 0.45, 0, Math.PI / 2], ['t', 1.6, 0.1, 0, 0, 0.45, 0, Math.PI / 2]] },
+  { id: 'prison', name: 'NANO PRISON', kind: 'structure', cost: 35, beh: { cage: 9 }, prims: [...Array.from({ length: 24 }, (_, i) => ['c', 0.08, 5, 0, Math.cos(i / 24 * TAU) * 8, 2.5, Math.sin(i / 24 * TAU) * 8]), ['t', 8, 0.12, 0, 0, 5, 0, Math.PI / 2], ['t', 8, 0.12, 0, 0, 0.1, 0, Math.PI / 2]] },
+  { id: 'dragon', name: 'NANO DRAGON', kind: 'ride', cost: 40, size: 0.04, ride: { speed: 48, fly: true }, pose: 'seat', prims: [...Array.from({ length: 10 }, (_, i) => ['s', 0.55 - i * 0.04, 0, 0, 0, 1.0 + Math.sin(i * 0.5) * 0.15, 1.6 - i * 0.55]), ['b', 0.5, 0.45, 0.9, 0, 1.4, 2.3], ['k', 0.12, 0.5, 0, 0.2, 1.8, 2.0, -0.6], ['k', 0.12, 0.5, 0, -0.2, 1.8, 2.0, -0.6], ['b', 5.0, 0.06, 1.6, 0, 1.3, 0.2, 0, 0, 0.15], ['b', 5.0, 0.06, 1.6, 0, 1.3, 0.2, 0, 0, -0.15]] },
+  { id: 'ufo', name: 'NANO SAUCER', kind: 'ride', cost: 30, size: 0.035, ride: { speed: 40, fly: true }, pose: 'seat', prims: [['c', 2.4, 0.3, 0, 0, 0.7, 0], ['s', 0.9, 0, 0, 0, 1.1, 0], ['t', 2.4, 0.1, 0, 0, 0.7, 0, Math.PI / 2]] },
+  { id: 'tank', name: 'NANO TANK', kind: 'ride', cost: 34, size: 0.036, ride: { speed: 18, hover: 0 }, pose: 'seat', prims: [['b', 2.4, 0.9, 3.6, 0, 0.6, 0], ['b', 0.6, 0.7, 3.8, 1.3, 0.35, 0], ['b', 0.6, 0.7, 3.8, -1.3, 0.35, 0], ['b', 1.4, 0.6, 1.6, 0, 1.35, -0.3], ['c', 0.14, 2.6, 0, 0, 1.4, 1.6, Math.PI / 2]] },
+  { id: 'spiderwalk', name: 'SPIDER WALKER', kind: 'ride', cost: 30, size: 0.034, ride: { speed: 20, hover: 1.2 }, pose: 'seat', prims: [['s', 0.9, 0, 0, 0, 1.6, 0], ...Array.from({ length: 8 }, (_, i) => { const a = i / 8 * TAU; return ['b', 0.12, 0.12, 2.2, Math.cos(a) * 1.4, 1.0, Math.sin(a) * 1.4, 0.6, -a + Math.PI / 2]; })] },
+  { id: 'surf', name: 'NANO WAVE SURFER', kind: 'ride', cost: 16, size: 0.03, ride: { speed: 34, hover: 1.1 }, pose: 'board', prims: [['b', 0.7, 0.08, 2.2, 0, 1.1, 0], ...Array.from({ length: 10 }, (_, i) => ['s', 0.3, 0, 0, 0, 0.5 - i * 0.03, -1 + i * 0.22])] },
+  { id: 'kraken', name: 'STREET KRAKEN', kind: 'pet', cost: 40, pet: { speed: 8, dmg: 40, rate: 1.2, fly: false, slam: true }, prims: [['s', 1.4, 0, 0, 0, 2.2, 0], ...Array.from({ length: 8 }, (_, i) => { const a = i / 8 * TAU; return ['k', 0.3, 2.6, 0, Math.cos(a) * 1.4, 0.9, Math.sin(a) * 1.4, Math.PI + Math.sin(a) * 0.5, 0, Math.cos(a) * 0.5]; })] },
+  { id: 'phoenix', name: 'NANO PHOENIX', kind: 'pet', cost: 30, pet: { speed: 22, dmg: 14, rate: 0.3, fly: true, breath: true }, prims: [['s', 0.45, 0, 0, 0, 0, 0], ['k', 0.2, 0.6, 0, 0, 0.05, 0.6, Math.PI / 2], ['b', 3.4, 0.05, 0.8, 0, 0.1, -0.1, 0, 0, 0.2], ['b', 3.4, 0.05, 0.8, 0, 0.1, -0.1, 0, 0, -0.2], ...Array.from({ length: 5 }, (_, i) => ['b', 0.1, 0.04, 1.4, (i - 2) * 0.18, 0, -1.2])] },
+  { id: 'titan', name: 'NANO TITAN', kind: 'pet', cost: 55, pet: { speed: 7, dmg: 60, rate: 1.6, fly: false, slam: true }, prims: [['b', 2.4, 2.6, 1.6, 0, 4.8, 0], ['b', 1.0, 1.0, 1.0, 0, 6.7, 0.15], ['b', 0.8, 2.8, 0.8, -1.7, 4.5, 0], ['b', 0.8, 2.8, 0.8, 1.7, 4.5, 0], ['b', 0.9, 3.4, 0.9, -0.7, 1.7, 0], ['b', 0.9, 3.4, 0.9, 0.7, 1.7, 0]] },
+  { id: 'rhino', name: 'NANO RHINO', kind: 'pet', cost: 24, pet: { speed: 16, dmg: 30, rate: 1.0, fly: false, stun: 1.5 }, prims: [['b', 1.0, 1.0, 2.0, 0, 1.0, 0], ['b', 0.6, 0.6, 0.7, 0, 1.0, 1.25], ['k', 0.14, 0.6, 0, 0, 1.35, 1.6, 0.6], ...[[-0.35, -0.6], [0.35, -0.6], [-0.35, 0.6], [0.35, 0.6]].map(([x, z]) => ['b', 0.25, 0.6, 0.25, x, 0.3, z])] },
+  { id: 'scorpion', name: 'NANO SCORPION', kind: 'pet', cost: 22, pet: { speed: 12, dmg: 18, rate: 0.7, fly: false, stun: 3 }, prims: [['b', 0.9, 0.4, 1.4, 0, 0.5, 0], ...Array.from({ length: 6 }, (_, i) => ['s', 0.18, 0, 0, 0, 0.6 + i * 0.25, -0.7 - Math.sin(i / 5 * Math.PI) * 0.6]), ['k', 0.1, 0.3, 0, 0, 2.0, -0.4, Math.PI], ['b', 0.25, 0.15, 0.6, 0.45, 0.5, 0.8], ['b', 0.25, 0.15, 0.6, -0.45, 0.5, 0.8]] },
 ];
 const Forge = (() => {
   const BP = {}; const DEFAULT_SLOTS = ['blade', 'hammer', 'shield', 'cannon', 'railgun', 'wall', 'hoverboard', 'wolf'];
@@ -13885,7 +13926,7 @@ const Capes = (() => {
   // ---------- frame ----------
   function update(dt) {
     const play = G.mode === 'play';
-    S.list = S.list.filter(u => { if (!u.alive) { if (u.cape.model) scene.remove(u.cape.model.root); return false; } return true; });
+    S.list = S.list.filter(u => { if (!u.alive || !Units.list.includes(u)) { if (u.cape.model) scene.remove(u.cape.model.root); return false; } return true; });
     for (const u of S.list) { const C = u.cape; if (C.model) { try { HeroModels.sync(u.rig); } catch (e) { scene.remove(C.model.root); C.model = null; u.rig.model = null; u.rig.mesh.material = CHAR_MAT; } }
       if (u.ko && !u.thrall) { C.downT += dt; if (C.downT > 8 && (C.spar || u.pos.distanceTo(Player.pos) > 40)) { if (C.spar) { const n = spawn({ at: freeSpot(u.pos.clone().setY(0), 1, 4), hero: C.hero, team: C.team, rogue: false }); if (n) { n.cape.name = C.name; n.hp = n.hp0 * 0.6; say(n, 'Rematch some time.'); } removeObj(u); } else if (C.downT > 30) { removeObj(u); } } }
       if (!u.thrall && !u.ko && u.pos.distanceTo(Player.pos) > 280 && C.follow <= 0) removeObj(u); }
@@ -13913,7 +13954,7 @@ const Capes = (() => {
 #capetalk{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:40;display:none;min-width:420px;max-width:92vw;padding:14px 18px;background:rgba(6,10,18,.92);border:1px solid rgba(255,255,255,.18);border-radius:10px;font:600 13px var(--sans,sans-serif);color:#e8f0ff}#capetalk .ct-h{font:800 13px var(--mono,monospace);letter-spacing:.08em}#capetalk .ct-h span{opacity:.65;font-size:10px}#capetalk .ct-l{margin:10px 0 12px;font-style:italic;font-size:15px}#capetalk .ct-o{display:flex;flex-wrap:wrap;gap:6px}#capetalk button{flex:1;min-width:120px;padding:7px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 11px var(--mono,monospace);cursor:pointer;border-radius:6px}#capetalk button:hover{background:rgba(255,255,255,.16)}`;
     document.head.appendChild(css); const el = document.createElement('div'); el.id = 'capetalk'; document.body.appendChild(el);
   }
-  function reset() { closeTalk(); for (const u of [...S.list]) { if (u.cape.model) scene.remove(u.cape.model.root); if (u.alive) removeObj(u); } S.list = []; for (const t of S.tags) t.style.display = 'none'; }
+  function reset() { closeTalk(); for (const u of [...S.list]) { if (u.cape.model) scene.remove(u.cape.model.root); if (u.alive && Units.list.includes(u)) try { removeObj(u); } catch (e) { } } S.list = []; for (const t of S.tags) t.style.display = 'none'; }
   return { S, spawn, drive, onHit, down, attack, power, update, dom, reset, TEAMS, get npc() { return S.npc; }, set npc(v) { S.npc = v; } };
 })();
 
